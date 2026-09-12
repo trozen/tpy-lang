@@ -1,5 +1,5 @@
-from tpy import Int32, Span
-def f(sp: Span[Int32] | None) -> Int32:
+from tpy import int32, Span
+def f(sp: Span[int32] | None) -> int32:
     xs = [sp]
     return len(xs)
 def main() -> None:

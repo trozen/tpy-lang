@@ -1,5 +1,5 @@
-from tpy import Int32, Own
-def mk(n: Int32) -> Own[list[Int32]]:
+from tpy import int32, Own
+def mk(n: int32) -> Own[list[int32]]:
     return [n]
 def main() -> None:
     xs = mk(1)

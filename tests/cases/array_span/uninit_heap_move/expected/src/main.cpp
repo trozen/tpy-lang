@@ -7,9 +7,9 @@ namespace tpyapp::main {
 ::tpy::UninitHeapStorage<int32_t>* storage{};
 
 // # Move via return (NRVO or move construction)
-// def make_storage() -> Own[UninitHeapStorage[Int32]]:
+// def make_storage() -> Own[UninitHeapStorage[int32]]:
 ::tpy::UninitHeapStorage<int32_t> make_storage() {
-    // s = UninitHeapStorage[Int32](4)
+    // s = UninitHeapStorage[int32](4)
     ::tpy::UninitHeapStorage<int32_t> s = ::tpy::UninitHeapStorage<int32_t>(4);
     // s.init(0, 100)
     s.init(0, 100);
@@ -20,9 +20,9 @@ namespace tpyapp::main {
 }
 
 // # Move via Own parameter (auto-move at last use)
-// def consume(s: Own[UninitHeapStorage[Int32]]) -> Int32:
+// def consume(s: Own[UninitHeapStorage[int32]]) -> int32:
 int32_t consume(::tpy::UninitHeapStorage<int32_t>&& s) {
-    // val: Int32 = s.load(0)
+    // val: int32 = s.load(0)
     int32_t val = s.load(0);
     // s.drop(0)
     s.drop(0);
@@ -32,7 +32,7 @@ int32_t consume(::tpy::UninitHeapStorage<int32_t>&& s) {
 
 // def test_pass_own() -> None:
 void test_pass_own() {
-    // s2 = UninitHeapStorage[Int32](2)
+    // s2 = UninitHeapStorage[int32](2)
     ::tpy::UninitHeapStorage<int32_t> s2 = ::tpy::UninitHeapStorage<int32_t>(2);
     // s2.init(0, 300)
     s2.init(0, 300);

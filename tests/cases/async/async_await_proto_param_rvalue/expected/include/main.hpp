@@ -50,7 +50,7 @@ struct __coro_consume {
         return os << "<coroutine consume>";
     }
 };
-// async def consume(it: Iterable[Int32]) -> None:
+// async def consume(it: Iterable[int32]) -> None:
 template <::tpystd::typing::Iterable<int32_t> T_it>
 ::tpystd::tpy::Poll<::std::monostate> __coro_consume<T_it>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
@@ -87,7 +87,7 @@ template <::tpystd::typing::Iterable<int32_t> T_it>
 }
 
 
-// async def consume(it: Iterable[Int32]) -> None:
+// async def consume(it: Iterable[int32]) -> None:
 template <::tpystd::typing::Iterable<int32_t> T_it>
 __coro_consume<T_it> consume(T_it&& it) {
     return __coro_consume<T_it>(std::forward<T_it>(it));

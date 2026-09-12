@@ -4,19 +4,19 @@
 namespace tpyapp::main {
 
 
-// def build() -> Own[Tree[Int32]]:
+// def build() -> Own[Tree[int32]]:
 Tree<int32_t> build() {
     // return 7
     return 7;
 }
 
-// def make_some() -> Own[Optional[Tree[Int32]]]:
+// def make_some() -> Own[Optional[Tree[int32]]]:
 std::optional<Tree<int32_t>> make_some() {
     // return build()
     return build();
 }
 
-// def make_none() -> Own[Optional[Tree[Int32]]]:
+// def make_none() -> Own[Optional[Tree[int32]]]:
 std::optional<Tree<int32_t>> make_none() {
     // return None
     return std::nullopt;

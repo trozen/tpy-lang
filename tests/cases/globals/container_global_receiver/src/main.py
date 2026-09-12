@@ -2,17 +2,17 @@
 # through its slot pointer, so the mutating and the reading calls both act on
 # the one module-level object. Two legs of one shape: the bytearray receiver
 # takes the same container receiver row the list global does.
-from tpy import Int32, UInt8
+from tpy import int32, uint8
 
 BUF: bytearray = bytearray(b"ab")
-NUMS: list[Int32] = [1, 2]
+NUMS: list[int32] = [1, 2]
 
 
-def add(n: UInt8) -> None:
+def add(n: uint8) -> None:
     BUF.append(n)  # tpyc: ok
 
 
-def add_num(n: Int32) -> None:
+def add_num(n: int32) -> None:
     NUMS.append(n)
 
 

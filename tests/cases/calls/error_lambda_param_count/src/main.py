@@ -1,7 +1,7 @@
 # Lambda parameter count must match Fn signature.
-from tpy import Fn, Int32
+from tpy import Fn, int32
 
-def apply(f: Fn[[Int32, Int32], Int32], x: Int32) -> Int32:
+def apply(f: Fn[[int32, int32], int32], x: int32) -> int32:
     return f(x, x)
 
 def main() -> None:

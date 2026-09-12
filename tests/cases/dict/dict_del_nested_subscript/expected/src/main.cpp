@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def drop(d: dict[str, dict[str, Int32]]) -> Int32:
+// def drop(d: dict[str, dict[str, int32]]) -> int32:
 int32_t drop(::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>& d) {
     // # The nested del: the inner dict loses the key in place.
     // del d["a"]["b"]
@@ -13,7 +13,7 @@ int32_t drop(::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int
     return ::tpy::__len__(::tpy::__getitem__(d, "a"));
 }
 
-// def drop_list(rows: list[dict[str, Int32]]) -> Int32:
+// def drop_list(rows: list[dict[str, int32]]) -> int32:
 int32_t drop_list(std::vector<::tpy::ordered_map<std::string, int32_t>>& rows) {
     // # The same shape with a list receiver for the outer level.
     // del rows[0]["x"]
@@ -24,13 +24,13 @@ int32_t drop_list(std::vector<::tpy::ordered_map<std::string, int32_t>>& rows) {
 
 // def main() -> None:
 void main() {
-    // outer: dict[str, dict[str, Int32]] = {"a": {"b": 1, "c": 2}}
+    // outer: dict[str, dict[str, int32]] = {"a": {"b": 1, "c": 2}}
     ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>> outer = ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>({{"a", ::tpy::ordered_map<std::string, int32_t>({{"b", 1}, {"c", 2}})}});
     // print(drop(outer))
     std::cout << drop(outer) << "\n";
     // print(len(outer["a"]), outer["a"]["c"])
     std::cout << ::tpy::__len__(::tpy::__getitem__(outer, "a")) << " " << ::tpy::__getitem__(::tpy::__getitem__(outer, "a"), "c") << "\n";
-    // rows: list[dict[str, Int32]] = [{"x": 7, "y": 8}]
+    // rows: list[dict[str, int32]] = [{"x": 7, "y": 8}]
     std::vector<::tpy::ordered_map<std::string, int32_t>> rows = {::tpy::ordered_map<std::string, int32_t>({{"x", 7}, {"y", 8}})};
     // print(drop_list(rows))
     std::cout << drop_list(rows) << "\n";

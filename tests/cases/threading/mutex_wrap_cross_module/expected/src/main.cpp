@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // p = make_producer[Int32]()
+    // p = make_producer[int32]()
     ::tpyapp::achan::Producer<int32_t> p = ::tpyapp::achan::make_producer<int32_t>();
     // print(p.capacity())
     std::cout << p.capacity() << "\n";

@@ -3,29 +3,29 @@
 # branch-aliased-local reads).
 import asyncio
 from typing import Iterator
-from tpy import Int32, readonly, nocopy
+from tpy import int32, readonly, nocopy
 
 
 @nocopy
 class Tag:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
-async def asum(pair: readonly[tuple[Tag, Tag]]) -> Int32:
+async def asum(pair: readonly[tuple[Tag, Tag]]) -> int32:
     await asyncio.sleep(0.001)
     return pair[0].n + pair[1].n
 
 
-def gsum(pair: readonly[tuple[Tag, Tag]]) -> Iterator[Int32]:
+def gsum(pair: readonly[tuple[Tag, Tag]]) -> Iterator[int32]:
     yield pair[0].n
     yield pair[1].n
 
 
 def pick(p1: readonly[tuple[Tag, Tag]], p2: readonly[tuple[Tag, Tag]],
-         c: bool) -> Int32:
+         c: bool) -> int32:
     t = p1 if c else p2
     return t[1].n
 

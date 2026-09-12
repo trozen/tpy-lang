@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def consume(b: Own[Box]) -> Int32:
+// def consume(b: Own[Box]) -> int32:
 int32_t consume(Box&& b) {
     // return b.value
     return b.value;
 }
 
-// def use_int(x: Own[Int32]) -> Int32:
+// def use_int(x: Own[int32]) -> int32:
 int32_t use_int(int32_t x) {
     // return x
     return x;
@@ -30,8 +30,8 @@ void main() {
     std::cout << consume(Box(b2)) << "\n";
     // print(b2.value)
     std::cout << b2.value << "\n";
-    // # Value type Own[Int32] -- passed by value (no T&&), std::move is harmless
-    // n: Int32 = 7
+    // # Value type Own[int32] -- passed by value (no T&&), std::move is harmless
+    // n: int32 = 7
     int32_t n = 7;
     // print(use_int(n))
     int32_t __tmp_1 = n;

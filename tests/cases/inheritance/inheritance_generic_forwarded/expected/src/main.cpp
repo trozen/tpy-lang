@@ -3,7 +3,7 @@
 
 namespace tpyapp::main {
 
-// w: Wrapper[str] = Wrapper[str]("hello", Int32(42))
+// w: Wrapper[str] = Wrapper[str]("hello", int32(42))
 Wrapper<std::string>* w{};
 
 void __tpy_init() {
@@ -11,7 +11,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // w: Wrapper[str] = Wrapper[str]("hello", Int32(42))
+    // w: Wrapper[str] = Wrapper[str]("hello", int32(42))
     static Wrapper<std::string> __global_slot_1 = Wrapper<std::string>("hello", 42);
     w = &__global_slot_1;
     // print(w.get_value())

@@ -1,11 +1,11 @@
 # None-seeded variable reassigned inside a loop should be Optional[T]
 # after the loop, allowing narrowing with `is not None`.
-from tpy import Int32
+from tpy import int32
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 

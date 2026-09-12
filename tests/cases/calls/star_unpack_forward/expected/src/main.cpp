@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def sum_all(*args: Int32) -> Int32:
+// def sum_all(*args: int32) -> int32:
 int32_t sum_all(::tpy::varargs<const int32_t> args) {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for x in args:
     auto& __obj_0 = args;
@@ -21,7 +21,7 @@ int32_t sum_all(::tpy::varargs<const int32_t> args) {
     return total;
 }
 
-// def double_sum(*args: Int32) -> Int32:
+// def double_sum(*args: int32) -> int32:
 int32_t double_sum(::tpy::varargs<const int32_t> args) {
     // return sum_all(*args) * 2
     return (::tpy::mul_check<int32_t>(sum_all(::tpy::varargs<const int32_t>(args)), 2));

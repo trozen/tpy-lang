@@ -170,7 +170,7 @@ void test_rebind_to_global() {
 // # Test 11: List sharing — lists are non-value, assignment shares
 // def test_list_sharing() -> None:
 void test_list_sharing() {
-    // a: list[Int32] = [1, 2, 3]
+    // a: list[int32] = [1, 2, 3]
     std::vector<int32_t> a = {1, 2, 3};
     // b = a
     std::vector<int32_t>& b = a;
@@ -212,9 +212,9 @@ void test_method_on_pointer_local() {
 // # Test 14: For-each value elements from pointer-local list
 // def test_foreach_value_from_pointer_local() -> None:
 void test_foreach_value_from_pointer_local() {
-    // nums: list[Int32] = [10, 20, 30]
+    // nums: list[int32] = [10, 20, 30]
     std::vector<int32_t> nums = {10, 20, 30};
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for n in nums:
     auto& __obj_0 = nums;

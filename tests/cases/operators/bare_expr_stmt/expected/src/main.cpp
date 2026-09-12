@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def peek(n: Int32) -> Int32:
+// def peek(n: int32) -> int32:
 int32_t peek(int32_t n) {
     // print("peeked")
     std::cout << "peeked" << "\n";

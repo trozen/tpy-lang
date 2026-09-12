@@ -40,7 +40,7 @@ void test_ro() {
 void test_iterate_twice() {
     // buf = MutBuffer()
     MutBuffer buf = MutBuffer();
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for x in buf:
     auto& __src_0 = buf;
@@ -68,7 +68,7 @@ void test_iterate_twice() {
 
 // def test_readonly_param(buf: readonly[MutBuffer]) -> None:
 void test_readonly_param(const MutBuffer& buf) {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for x in buf:
     auto& __src_0 = buf;
@@ -87,7 +87,7 @@ void test_readonly_param(const MutBuffer& buf) {
 // def test_rvalue_span() -> None:
 void test_rvalue_span() {
     // # Iterate over a temporary -- the container must stay alive for the span
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for x in MutBuffer():
     {

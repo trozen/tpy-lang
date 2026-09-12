@@ -1,19 +1,19 @@
 # Tests list() constructor from user-defined iterator
 from __future__ import annotations
-from tpy import Int32
+from tpy import int32
 
 class Counter:
-    current: Int32
-    limit: Int32
+    current: int32
+    limit: int32
 
-    def __init__(self, limit: Int32) -> None:
+    def __init__(self, limit: int32) -> None:
         self.current = 0
         self.limit = limit
 
     def __iter__(self) -> Counter:
         return self
 
-    def __next__(self) -> Int32:
+    def __next__(self) -> int32:
         if self.current < self.limit:
             val = self.current
             self.current += 1

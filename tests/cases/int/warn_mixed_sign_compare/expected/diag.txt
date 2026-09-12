@@ -1,4 +1,4 @@
-main.py:7: warning: comparison between signed and unsigned integer types ('Int32' and 'UInt32'); cast one operand to make the type intent explicit
-main.py:13: warning: comparison between signed and unsigned integer types ('Int32' and 'UInt64'); cast one operand to make the type intent explicit
-main.py:19: warning: comparison between signed and unsigned integer types ('Int64' and 'UInt32'); cast one operand to make the type intent explicit
-main.py:23: warning: comparison between signed and unsigned integer types ('Int32' and 'UInt32'); cast one operand to make the type intent explicit
+main.py:7: warning: comparison between signed and unsigned integer types ('int32' and 'uint32'); cast one operand to make the type intent explicit
+main.py:13: warning: comparison between signed and unsigned integer types ('int32' and 'uint64'); cast one operand to make the type intent explicit
+main.py:19: warning: comparison between signed and unsigned integer types ('int64' and 'uint32'); cast one operand to make the type intent explicit
+main.py:23: warning: comparison between signed and unsigned integer types ('int32' and 'uint32'); cast one operand to make the type intent explicit

@@ -1,20 +1,20 @@
 # A Ptr[T] borrow-tuple element must pass BARE (it already is the pointer), from
 # a local, a param and a list subscript; the plain-record local is the inverse.
-from tpy import Ptr, Int32
+from tpy import Ptr, int32
 
 
 class Node:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
-def bump(t: tuple[Node, Int32]) -> None:
+def bump(t: tuple[Node, int32]) -> None:
     t[0].x = t[0].x + t[1]
 
 
-def via_local(items: list[Node]) -> Int32:
+def via_local(items: list[Node]) -> int32:
     p: Ptr[Node] = items[0]
     bump((p, 10))
     return items[0].x
@@ -28,7 +28,7 @@ def via_subscript(ps: list[Ptr[Node]]) -> None:
     bump((ps[0], 1000))
 
 
-def via_plain() -> Int32:
+def via_plain() -> int32:
     n = Node(5)
     bump((n, 10000))
     return n.x

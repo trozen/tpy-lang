@@ -3,34 +3,34 @@
 
 namespace tpyapp::main {
 
-// a: Char = "a"
+// a: char = "a"
 char a{};
-// b: Char = "b"
+// b: char = "b"
 char b{};
-// none_char: Char | None = None
+// none_char: char | None = None
 std::optional<char> none_char;
-// some_a: Char | None = a
+// some_a: char | None = a
 std::optional<char> some_a;
 
-// def eq_left(o: Char | None, c: Char) -> bool:
+// def eq_left(o: char | None, c: char) -> bool:
 bool eq_left(std::optional<char> o, char c) {
     // return o == c  # tpyc: ok
     return (o == c);
 }
 
-// def eq_right(c: Char, o: Char | None) -> bool:
+// def eq_right(c: char, o: char | None) -> bool:
 bool eq_right(char c, std::optional<char> o) {
     // return c == o  # tpyc: ok
     return (c == o);
 }
 
-// def ne_left(o: Char | None, c: Char) -> bool:
+// def ne_left(o: char | None, c: char) -> bool:
 bool ne_left(std::optional<char> o, char c) {
     // return o != c  # tpyc: ok
     return (o != c);
 }
 
-// def ne_right(c: Char, o: Char | None) -> bool:
+// def ne_right(c: char, o: char | None) -> bool:
 bool ne_right(char c, std::optional<char> o) {
     // return c != o  # tpyc: ok
     return (c != o);
@@ -41,13 +41,13 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // a: Char = "a"
+    // a: char = "a"
     a = 'a';
-    // b: Char = "b"
+    // b: char = "b"
     b = 'b';
-    // none_char: Char | None = None
+    // none_char: char | None = None
     none_char = std::nullopt;
-    // some_a: Char | None = a
+    // some_a: char | None = a
     some_a = a;
     // print(eq_left(some_a, a))
     std::cout << ::tpy::print_bool(eq_left(some_a, a)) << "\n";

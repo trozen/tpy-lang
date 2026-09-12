@@ -1,8 +1,8 @@
-from tpy import Int32
+from tpy import int32
 
 
 class Counter:
-    value: Int32
+    value: int32
 
 
 class Tag:

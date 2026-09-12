@@ -7,19 +7,19 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // # Annotated dict/set literals with tuple-of-literals keys/elements.
-    // d: dict[tuple[Int32, Int32], str] = {(1, 2): "a", (3, 4): "b"}
+    // d: dict[tuple[int32, int32], str] = {(1, 2): "a", (3, 4): "b"}
     ::tpy::ordered_map<std::tuple<int32_t, int32_t>, std::string> d = ::tpy::ordered_map<std::tuple<int32_t, int32_t>, std::string>({{std::tuple<int32_t, int32_t>{1, 2}, "a"}, {std::tuple<int32_t, int32_t>{3, 4}, "b"}});
-    // s: set[tuple[Int32, Int32]] = {(1, 2), (5, 6)}
+    // s: set[tuple[int32, int32]] = {(1, 2), (5, 6)}
     ::tpy::ordered_set<std::tuple<int32_t, int32_t>> s = ::tpy::ordered_set<std::tuple<int32_t, int32_t>>({std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{5, 6}});
     // # Unannotated dict literal: exercises the default-int resolution path.
     // d2 = {(1, 2): "a", (3, 4): "b"}
     ::tpy::ordered_map<std::tuple<int32_t, int32_t>, std::string> d2 = ::tpy::ordered_map<std::tuple<int32_t, int32_t>, std::string>({{std::tuple<int32_t, int32_t>{1, 2}, "a"}, {std::tuple<int32_t, int32_t>{3, 4}, "b"}});
     // # List literal of tuples mixing literal and concrete element types.
-    // pairs = [(1, 2), (Int32(3), 4)]
+    // pairs = [(1, 2), (int32(3), 4)]
     std::array<std::tuple<int32_t, int32_t>, 2> pairs = {std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}};
-    // k1: tuple[Int32, Int32] = (1, 2)
+    // k1: tuple[int32, int32] = (1, 2)
     std::tuple<int32_t, int32_t> k1 = std::tuple<int32_t, int32_t>{1, 2};
-    // k2: tuple[Int32, Int32] = (9, 9)
+    // k2: tuple[int32, int32] = (9, 9)
     std::tuple<int32_t, int32_t> k2 = std::tuple<int32_t, int32_t>{9, 9};
     // print(k1 in d, k2 in d)
     std::cout << ::tpy::print_bool((d.contains(k1))) << " " << ::tpy::print_bool((d.contains(k2))) << "\n";
@@ -36,7 +36,7 @@ void main() {
     // print(pairs[0][0], pairs[1][0])
     std::cout << std::get<0>(::tpy::__getitem__(pairs, 0)) << " " << std::get<0>(::tpy::__getitem__(pairs, 1)) << "\n";
     // # Tuple-literal membership still works (regression guard).
-    // x: Int32 = 2
+    // x: int32 = 2
     int32_t x = 2;
     // print(x in (1, 2, 3), x in (4, 5, 6))
     std::cout << ::tpy::print_bool(((x == 1) || (x == 2) || (x == 3))) << " " << ::tpy::print_bool(((x == 4) || (x == 5) || (x == 6))) << "\n";

@@ -18,7 +18,7 @@ void main();
 struct Walker {
 
 
-    // def walk(self, xs: list[Int32]) -> Iterator[Int32]:
+    // def walk(self, xs: list[int32]) -> Iterator[int32]:
     auto walk(std::vector<int32_t>& xs) const {
         return ::tpy::make_generator<int32_t>(
             [this, &xs, __beg = decltype((xs).begin())(), __end = decltype((xs).begin())(), __init = false]() mutable -> std::optional<int32_t> {

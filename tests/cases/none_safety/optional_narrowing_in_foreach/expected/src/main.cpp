@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def sum_items(items: list[Int32], bonus: Int32 | None) -> Int32:
+// def sum_items(items: list[int32], bonus: int32 | None) -> int32:
 int32_t sum_items(const std::vector<int32_t>& items, std::optional<int32_t> bonus) {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // if bonus is not None:
     if ((bonus.has_value())) {
-        // # bonus narrowed to Int32 here
+        // # bonus narrowed to int32 here
         // for item in items:
         auto& __obj_0 = items;
         auto __beg_0 = __obj_0.begin();
@@ -36,11 +36,11 @@ int32_t sum_items(const std::vector<int32_t>& items, std::optional<int32_t> bonu
     return total;
 }
 
-// def assert_then_loop(x: Int32 | None, items: list[Int32]) -> Int32:
+// def assert_then_loop(x: int32 | None, items: list[int32]) -> int32:
 int32_t assert_then_loop(std::optional<int32_t> x, const std::vector<int32_t>& items) {
     // assert x is not None
     if (!((x.has_value()))) ::tpy::raise_assertion_error();
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for item in items:
     auto& __obj_0 = items;

@@ -23,7 +23,7 @@ __coro_amain amain();
 
 // class Collector:
 struct Collector {
-    // total: Int32
+    // total: int32
     int32_t total;
 
     // def __init__(self) -> None:
@@ -40,10 +40,10 @@ inline std::ostream& operator<<(std::ostream& os, const Collector& obj) {
 
 // class Countdown:
 struct Countdown {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Countdown() = default;
     explicit Countdown(int32_t n);
 
@@ -149,7 +149,7 @@ struct __coro_amain {
 // def __init__(self) -> None:
 inline Collector::Collector() : total(0) {}
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Countdown::Countdown(int32_t n) : n(n) {}
 
 // def __aiter__(self) -> "Countdown":

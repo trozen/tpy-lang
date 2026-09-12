@@ -19,7 +19,7 @@ void main();
 struct Options {
     // host: str
     std::string host;
-    // port: Int32
+    // port: int32
     int32_t port;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.Options";

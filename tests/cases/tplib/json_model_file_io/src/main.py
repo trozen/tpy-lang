@@ -1,12 +1,12 @@
 # Test @model file I/O: save_json, load_json, try_load_json.
-from tpy import Int32
+from tpy import int32
 from tplib.json.model import model
 from tplib.json.parser import JsonError
 
 @model
 class Item:
     name: str
-    count: Int32
+    count: int32
     active: bool
 
 def test_roundtrip() -> None:

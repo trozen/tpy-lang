@@ -9,21 +9,21 @@
 # @nocopy move-only member, which also makes Vault itself move-only -- returning
 # it via make_vault exercises instance_to_py's nothrow_move requirement on an
 # enclosing class whose movability comes from an internal field). The same rule
-# hides an exception's internal fields, including one (`_trace: list[Int32]`) of a
+# hides an exception's internal fields, including one (`_trace: list[int32]`) of a
 # container type a PUBLIC exc data field cannot be; an exception whose fields are
 # ALL internal falls back to the message-only setter. The hiding is an
 # acknowledged divergence: under plain Python `_secret`/`_log`/`_cell`/`_trace`/
 # `_note` are ordinary attributes, so the driver never reads them; ext_checks.py
 # asserts their absence on the `.so`.
-from tpy import Int32, Int64, Own, nocopy
+from tpy import int32, int64, Own, nocopy
 from tpy.extern import export
 
 
 @export
 class Entry:
-    v: Int64
+    v: int64
 
-    def __init__(self, v: Int64):
+    def __init__(self, v: int64):
         self.v = v
 
 
@@ -33,32 +33,32 @@ class Cell:
     # itself move-only, so returning Vault across the boundary exercises
     # instance_to_py's nothrow_move requirement on an enclosing class whose
     # movability comes from an internal field.
-    n: Int64
+    n: int64
 
-    def __init__(self, n: Int64):
+    def __init__(self, n: int64):
         self.n = n
 
 
 @export
 class Vault:
-    owner: Int64        # public -- crosses as a getset
-    _secret: Int64      # internal scalar -- payload only
+    owner: int64        # public -- crosses as a getset
+    _secret: int64      # internal scalar -- payload only
     _log: Entry         # internal reference-class member -- payload only
     _cell: Cell         # internal @nocopy member -- payload only, move-only
 
-    def __init__(self, owner: Int64, secret: Int64):
+    def __init__(self, owner: int64, secret: int64):
         self.owner = owner
         self._secret = secret
         self._log = Entry(secret)
         self._cell = Cell(secret)
 
-    def reveal(self) -> Int64:
+    def reveal(self) -> int64:
         return self._secret
 
-    def cell_n(self) -> Int64:
+    def cell_n(self) -> int64:
         return self._cell.n        # read the move-only internal member
 
-    def record(self, v: Int64) -> None:
+    def record(self, v: int64) -> None:
         self._log.v = v            # mutate the internal member through self
 
     def snapshot(self) -> Own[Entry]:
@@ -66,7 +66,7 @@ class Vault:
 
 
 @export
-def make_vault(owner: Int64, secret: Int64) -> Own[Vault]:
+def make_vault(owner: int64, secret: int64) -> Own[Vault]:
     # Returns Vault across the boundary -> instantiates instance_to_py<Vault>,
     # whose nothrow_move static_assert must hold even though Vault is move-only
     # (its @nocopy Cell member deletes copy).
@@ -74,11 +74,11 @@ def make_vault(owner: Int64, secret: Int64) -> Own[Vault]:
 
 
 class OpError(ValueError):
-    code: Int32          # public data field -- crosses as an attribute
-    _trace: list[Int32]  # internal -- and a container, which a PUBLIC exc data
+    code: int32          # public data field -- crosses as an attribute
+    _trace: list[int32]  # internal -- and a container, which a PUBLIC exc data
                          # field cannot be (located error); internal is allowed
 
-    def __init__(self, message: str, code: Int32, trace: Int32):
+    def __init__(self, message: str, code: int32, trace: int32):
         self.message = message
         self.code = code
         self._trace = [trace]
@@ -87,15 +87,15 @@ class OpError(ValueError):
 class SilentError(ValueError):
     # Every declared field is internal, so after the `_`-filter the exception
     # carries no crossing data and falls back to the message-only setter.
-    _note: Int32
+    _note: int32
 
-    def __init__(self, message: str, note: Int32):
+    def __init__(self, message: str, note: int32):
         self.message = message
         self._note = note
 
 
 @export
-def run(n: Int64) -> Int64:
+def run(n: int64) -> int64:
     if n < 0:
         raise OpError("boom", 3, 999)
     if n == 0:

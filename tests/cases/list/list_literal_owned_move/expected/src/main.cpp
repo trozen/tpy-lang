@@ -21,7 +21,7 @@ void vector_lit() {
     // q = Box(3)
     ::tpystd::tplib::box::Box<int32_t> q = ::tpystd::tplib::box::Box<int32_t>(3);
     // # annotated list[...] forces the std::vector (not fixed-size Array) path
-    // xs: list[Box[Int32]] = [p, q]
+    // xs: list[Box[int32]] = [p, q]
     std::vector<::tpystd::tplib::box::Box<int32_t>> xs = ::tpy::make_vector<::tpystd::tplib::box::Box<int32_t>>(std::move(p), std::move(q));
     // print(len(xs), xs[0].get(), xs[1].get())
     std::cout << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, 0).get() << " " << ::tpy::__getitem__(xs, 1).get() << "\n";

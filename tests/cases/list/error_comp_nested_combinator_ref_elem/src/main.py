@@ -4,16 +4,16 @@
 # factory spells them by reference -- the mutation would be lost even though
 # `filter` alone lends, and even though the same nesting under `map`/`filter`
 # routes (tests/cases/list/comp_combinator_source).
-from tpy import Int32
+from tpy import int32
 
 
 class Node:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
-    def bump(self, d: Int32) -> Int32:
+    def bump(self, d: int32) -> int32:
         self.v += d
         return self.v
 

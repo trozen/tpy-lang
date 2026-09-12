@@ -4,13 +4,13 @@
 # acknowledged divergence -- CPython aliases both -- so it warns at the rebind
 # and offers copy() as the acknowledgement. no_cpython for that reason: the
 # divergence is the thing under test.
-from tpy import Int32, Own, copy
+from tpy import int32, Own, copy
 
 
 class Box:
-    val: Int32
+    val: int32
 
-    def __init__(self, val: Int32) -> None:
+    def __init__(self, val: int32) -> None:
         self.val = val
 
 

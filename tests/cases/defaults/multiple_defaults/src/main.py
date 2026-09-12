@@ -1,7 +1,7 @@
 # Multiple consecutive default parameters, called with varying arg counts
-from tpy import Int32
+from tpy import int32
 
-def create(name: str, width: Int32 = Int32(100), height: Int32 = Int32(50), visible: bool = True) -> None:
+def create(name: str, width: int32 = int32(100), height: int32 = int32(50), visible: bool = True) -> None:
     print(name)
     print(width)
     print(height)
@@ -9,8 +9,8 @@ def create(name: str, width: Int32 = Int32(100), height: Int32 = Int32(50), visi
 
 def main() -> None:
     create("a")
-    create("b", Int32(200))
-    create("c", Int32(200), Int32(300))
-    create("d", Int32(200), Int32(300), False)
+    create("b", int32(200))
+    create("c", int32(200), int32(300))
+    create("d", int32(200), int32(300), False)
 
 main()

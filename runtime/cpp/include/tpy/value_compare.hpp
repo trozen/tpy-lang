@@ -37,7 +37,7 @@ namespace tpy {
 
 namespace detail {
 
-// `Char` is C++ `char`; TPy's Int8/UInt8 are signed/unsigned char, so only
+// `char` is C++ `char`; TPy's int8/uint8 are signed/unsigned char, so only
 // the plain spelling is the character type.
 template<typename T>
 concept vc_char = std::same_as<std::remove_cv_t<T>, char>;
@@ -294,7 +294,7 @@ inline bool py_eq_ptr(const A& a, const B& b) {
             return static_cast<const void*>(a) == static_cast<const void*>(b);
         } else {
             // The VALUE legs, on the pointees -- a borrow form can hold
-            // pointers to value members (`bytearray | Int32`), and `1` vs
+            // pointers to value members (`bytearray | int32`), and `1` vs
             // `1.0` through such a union is Python-equal.
             return py_eq(*a, *b);
         }

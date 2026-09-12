@@ -1,9 +1,9 @@
-from tpy import Int32
+from tpy import int32
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32):
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32):
         self.x = x
         self.y = y
 
@@ -17,8 +17,8 @@ def foo(cond: bool) -> None:
 
 # Record with method that has pointer-local `p` (tests method→global path)
 class Picker:
-    val: Int32
-    def __init__(self, val: Int32):
+    val: int32
+    def __init__(self, val: int32):
         self.val = val
     def pick(self, cond: bool) -> None:
         if cond:

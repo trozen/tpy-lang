@@ -4,19 +4,19 @@
 namespace tpyapp::main {
 
 
-// def make_xs() -> Own[list[Int32]]:
+// def make_xs() -> Own[list[int32]]:
 std::vector<int32_t> make_xs() {
     // return [1, 2, 3]
     return {1, 2, 3};
 }
 
-// def make_ys() -> Own[list[Int32]]:
+// def make_ys() -> Own[list[int32]]:
 std::vector<int32_t> make_ys() {
     // return [10, 20, 30]
     return {10, 20, 30};
 }
 
-// def add(a: Int32, b: Int32) -> Int32:
+// def add(a: int32, b: int32) -> int32:
 int32_t add(int32_t a, int32_t b) {
     // return a + b
     return (::tpy::add_check<int32_t>(a, b));

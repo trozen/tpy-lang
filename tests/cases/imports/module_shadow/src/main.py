@@ -1,8 +1,8 @@
 import time
-from tpy import Int32
+from tpy import int32
 
 class Timer:
-    x: Int32
+    x: int32
 
 def main():
     time: Timer = Timer()

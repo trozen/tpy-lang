@@ -2,18 +2,18 @@
 # The child must not re-append its own call for an inherited hook, or the hook
 # would run twice under TPy's static dispatch (CPython runs it once).
 from dataclasses import dataclass
-from tpy import Int32
+from tpy import int32
 
 @dataclass
 class Base:
-    a: Int32
+    a: int32
 
     def __post_init__(self) -> None:
         print("post_init")
 
 @dataclass
 class Child(Base):
-    b: Int32
+    b: int32
 
 def main() -> None:
     c = Child(1, 2)

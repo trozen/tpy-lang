@@ -1,12 +1,12 @@
 # Generic Own[T] params use T&& (rvalue ref); last-use auto-move uses std::move.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Box:
-    value: Int32
+    value: int32
 
 
-def consume(x: Own[Box]) -> Int32:
+def consume(x: Own[Box]) -> int32:
     return x.value
 
 

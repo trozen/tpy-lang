@@ -22,10 +22,10 @@ void main();
 
 // class Rec:
 struct Rec {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32):
+    // def __init__(self, v: int32):
     Rec() = default;
     explicit Rec(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Rec";
@@ -212,7 +212,7 @@ inline __gen_Lim_echo Lim::echo(std::vector<int32_t>& xs) const {
 }
 
 
-// def __init__(self, v: Int32):
+// def __init__(self, v: int32):
 inline Rec::Rec(int32_t v) : v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

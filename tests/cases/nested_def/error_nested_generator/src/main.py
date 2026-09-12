@@ -2,11 +2,11 @@
 # clean diagnostic -- the closure-as-generator shape is unsupported (the
 # reverse, a generator containing a nested def, works).
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
-def outer(k: Int32) -> Int32:
-    def gen() -> Iterator[Int32]:  # tpyc: error(/nested generator functions are not supported/)
+def outer(k: int32) -> int32:
+    def gen() -> Iterator[int32]:  # tpyc: error(/nested generator functions are not supported/)
         yield k
 
     total = 0

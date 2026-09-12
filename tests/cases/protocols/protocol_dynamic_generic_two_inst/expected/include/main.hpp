@@ -41,7 +41,7 @@ void main();
 struct IntBox {
 
 
-    // def get(self) -> Int32:
+    // def get(self) -> int32:
     int32_t get() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.IntBox";
 };
@@ -85,7 +85,7 @@ struct tpy::RefAdapter<tpyapp::main::Container<T>, __tpy_Impl> : tpyapp::main::C
 namespace tpyapp::main {
 
 
-// def get(self) -> Int32:
+// def get(self) -> int32:
 inline int32_t IntBox::get() const {
     // return 5
     return 5;

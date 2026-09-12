@@ -1,14 +1,14 @@
 # Multiple elif conditions each producing a temp (list literal passed by
 # mutable ref): temp numbers stay sequential across the nested emits.
-from tpy import Int32
+from tpy import int32
 
 
-def take(items: list[Int32]) -> Int32:
+def take(items: list[int32]) -> int32:
     items.append(1)
     return len(items)
 
 
-def test(x: Int32) -> Int32:
+def test(x: int32) -> int32:
     if x < 0:
         return -1
     elif take([10]) == x:

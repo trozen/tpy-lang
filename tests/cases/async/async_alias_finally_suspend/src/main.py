@@ -5,10 +5,10 @@
 # MUTATING finally (BUGS.md: suspending-finally eager capture); the proper
 # deferral fix must not regress this read-only shape.
 import asyncio
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
-async def make() -> Own[list[Int32]]:
+async def make() -> Own[list[int32]]:
     xs = [1, 2, 3]
     ys = xs
     try:
@@ -18,7 +18,7 @@ async def make() -> Own[list[Int32]]:
         print(len(ys))
 
 
-async def driver() -> Int32:
+async def driver() -> int32:
     r = await make()
     return len(r)
 

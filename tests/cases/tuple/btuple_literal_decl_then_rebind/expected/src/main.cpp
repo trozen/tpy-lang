@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def use(h: Holder, b: Box) -> Int32:
+// def use(h: Holder, b: Box) -> int32:
 int32_t use(Holder& h, Box& b) {
     // t = (1, b)  # the borrow-tuple literal declaration
     std::tuple<int32_t, Box*> t = std::tuple<int32_t, Box*>{1, &(b)};

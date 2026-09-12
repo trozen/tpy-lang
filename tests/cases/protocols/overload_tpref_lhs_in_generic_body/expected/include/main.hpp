@@ -28,9 +28,9 @@ template<typename T>
 ::tpy::val_or_ref_t<T> use(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
     // # Bare TPRef LHS. Both overloads might appear viable, but the generic
     // # `pick[U](U, U) -> U` is the only one that can accept any T. Pre-fix:
-    // # probe falsely accepts the non-generic candidate `pick(Int32, Int32)`
-    // # via TPRef binding-and-accepting, biases arg analysis toward Int32,
-    // # picks the non-generic overload (returns Int32). For non-Int32 T this
+    // # probe falsely accepts the non-generic candidate `pick(int32, int32)`
+    // # via TPRef binding-and-accepting, biases arg analysis toward int32,
+    // # picks the non-generic overload (returns int32). For non-int32 T this
     // # type-checks fails at the assignment.
     // r: T = pick(a, b)
     ::tpy::val_or_ref_t<T> r = pick<T>(a, b);

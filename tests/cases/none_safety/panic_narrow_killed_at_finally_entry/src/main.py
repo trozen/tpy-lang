@@ -1,12 +1,12 @@
 # A finally body runs on mid-try exception paths, so facts the try body
 # kills (even if later re-established) must not be assumed inside it.
-from tpy import Int32
+from tpy import int32
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32):
+    def __init__(self, x: int32):
         self.x = x
 
 

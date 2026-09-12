@@ -79,17 +79,17 @@ inline std::ostream& operator<<(std::ostream& os, const Printer<T>& obj) {
 // # Test 5: Type satisfying multiple protocols (Stringable and Sized)
 // class MyValue:
 struct MyValue {
-    // val: Int32
+    // val: int32
     int32_t val;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     MyValue() = default;
     explicit MyValue(int32_t v);
 
     // def to_str(self) -> str:
     std::string to_str() const;
 
-    // def __len__(self) -> Int32:
+    // def __len__(self) -> int32:
     int32_t __len__() const;
 
     size_t size() const {
@@ -108,12 +108,12 @@ inline std::ostream& operator<<(std::ostream& os, const MyValue& obj) {
 // # Another type satisfying Stringable
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
-    // y: Int32
+    // y: int32
     int32_t y;
 
-    // def __init__(self, x: Int32, y: Int32) -> None:
+    // def __init__(self, x: int32, y: int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y);
 
@@ -132,17 +132,17 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 struct Widget {
     // name: str
     std::string name;
-    // val: Int32
+    // val: int32
     int32_t val;
 
-    // def __init__(self, name: str, val: Int32) -> None:
+    // def __init__(self, name: str, val: int32) -> None:
     Widget() = default;
     explicit Widget(std::string_view name, int32_t val);
 
     // def get_name(self) -> str:
     std::string get_name() const;
 
-    // def get_value(self) -> Int32:
+    // def get_value(self) -> int32:
     int32_t get_value() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Widget";
 };
@@ -155,10 +155,10 @@ inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
 // # Type satisfying Clonable protocol
 // class Box:
 struct Box {
-    // value: Int32
+    // value: int32
     int32_t value;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Box() = default;
     explicit Box(int32_t v);
 
@@ -173,7 +173,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline MyValue::MyValue(int32_t v) : val(v) {}
 
 // def to_str(self) -> str:
@@ -182,13 +182,13 @@ inline std::string MyValue::to_str() const {
     return "value";
 }
 
-// def __len__(self) -> Int32:
+// def __len__(self) -> int32:
 inline int32_t MyValue::__len__() const {
     // return self.val
     return this->val;
 }
 
-// def __init__(self, x: Int32, y: Int32) -> None:
+// def __init__(self, x: int32, y: int32) -> None:
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def to_str(self) -> str:
@@ -197,7 +197,7 @@ inline std::string Point::to_str() const {
     return "Point";
 }
 
-// def __init__(self, name: str, val: Int32) -> None:
+// def __init__(self, name: str, val: int32) -> None:
 inline Widget::Widget(std::string_view name, int32_t val) : name(name), val(val) {}
 
 // def get_name(self) -> str:
@@ -206,13 +206,13 @@ inline std::string Widget::get_name() const {
     return this->name;
 }
 
-// def get_value(self) -> Int32:
+// def get_value(self) -> int32:
 inline int32_t Widget::get_value() const {
     // return self.val
     return this->val;
 }
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Box::Box(int32_t v) : value(v) {}
 
 // def clone(self) -> Own[Box]:
@@ -221,7 +221,7 @@ inline Box Box::clone() const {
     return Box(this->value);
 }
 // # Test 1: Builtin protocol (Sized) method call inside generic function
-// def get_length[T: Sized](item: T) -> Int32:
+// def get_length[T: Sized](item: T) -> int32:
 template<::tpystd::typing::Sized T>
 int32_t get_length(::tpy::param_val_or_ref_t<T> item) {
     // return len(item)
@@ -235,7 +235,7 @@ std::string stringify(::tpy::param_val_or_ref_t<T> item) {
     return item.to_str();
 }
 // # Test 6: Multiple type params with different bounds
-// def process_both[T: Sized, U: Stringable](a: T, b: U) -> Int32:
+// def process_both[T: Sized, U: Stringable](a: T, b: U) -> int32:
 template<::tpystd::typing::Sized T, Stringable U>
 int32_t process_both(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<U> b) {
     // print(b.to_str())
@@ -252,13 +252,13 @@ void use_multi(::tpy::param_val_or_ref_t<T> item) {
     std::cout << item.get_value() << "\n";
 }
 // # Test 8: Nested bounded calls (passing bounded param to another bounded function)
-// def inner_len[T: Sized](x: T) -> Int32:
+// def inner_len[T: Sized](x: T) -> int32:
 template<::tpystd::typing::Sized T>
 int32_t inner_len(::tpy::param_val_or_ref_t<T> x) {
     // return len(x)
     return ::tpy::__len__(x);
 }
-// def outer_len[T: Sized](x: T) -> Int32:
+// def outer_len[T: Sized](x: T) -> int32:
 template<::tpystd::typing::Sized T>
 int32_t outer_len(::tpy::param_val_or_ref_t<T> x) {
     // return inner_len(x)

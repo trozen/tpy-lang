@@ -6,13 +6,13 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // print(native_func(Int32(10)))
+    // print(native_func(int32(10)))
     std::cout << ::nativelib::native_func(10) << "\n";
-    // print(native_c_func(Int32(5)))
+    // print(native_c_func(int32(5)))
     std::cout << native_c_func(5) << "\n";
-    // print(tmpl_add(Int32(3), Int32(4)))
+    // print(tmpl_add(int32(3), int32(4)))
     std::cout << (3 + 4) << "\n";
-    // c = NativeClass(Int32(42))
+    // c = NativeClass(int32(42))
     ::nativelib::NativeClass c = ::nativelib::NativeClass(42);
     // print(c.value)
     std::cout << c.value << "\n";

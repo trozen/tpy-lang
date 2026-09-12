@@ -24,10 +24,10 @@ __coro_amain amain();
 
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
 
-    // def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: int32) -> None:
     Point() = default;
     explicit Point(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
@@ -142,7 +142,7 @@ struct __coro_amain {
 };
 
 
-// def __init__(self, x: Int32) -> None:
+// def __init__(self, x: int32) -> None:
 inline Point::Point(int32_t x) : x(x) {}
 
 // def __init__(self, items: Own[list[Point]]) -> None:

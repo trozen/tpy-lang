@@ -5,7 +5,7 @@
 # moves a @nocopy Box across the accessor boundary and mutates it (no copy).
 from enum import Enum
 from typing import Final, Protocol
-from tpy import Own, Int32, dynamic
+from tpy import Own, int32, dynamic
 from tplib import Box
 
 
@@ -51,7 +51,7 @@ class widget:
 
 
 class gauge:
-    day: Final[Int32] = 3                   # class constant shadows type `day`
+    day: Final[int32] = 3                   # class constant shadows type `day`
     def read(self) -> Own[day]:
         return day(9)
 

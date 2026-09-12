@@ -48,9 +48,9 @@ def _compose_parent_subst(
 # ---------------------------------------------------------------------------
 
 def _resolve_concrete_type_name(name: str) -> "TpyType | None":
-    """Resolve a concrete type name (like 'Char', 'Int32') to its TpyType singleton.
+    """Resolve a concrete type name (like 'char', 'int32') to its TpyType singleton.
 
-    Used for resolving extends declarations like extends=["NativeIterable[Char]"].
+    Used for resolving extends declarations like extends=["NativeIterable[char]"].
     """
     from tpyc.typesys import (
         CHAR, BOOL, STR, STRING, STRVIEW, VOID, BIGINT, FLOAT, FLOAT32,
@@ -61,10 +61,10 @@ def _resolve_concrete_type_name(name: str) -> "TpyType | None":
     # Map of simple type names to their singleton instances
     type_map = {
         "bool": BOOL,
-        "Char": CHAR,
-        "Int8": INT8, "Int16": INT16, "Int32": INT32, "Int64": INT64,
-        "UInt8": UINT8, "UInt16": UINT16, "UInt32": UINT32, "UInt64": UINT64,
-        "Float32": FLOAT32,
+        "char": CHAR,
+        "int8": INT8, "int16": INT16, "int32": INT32, "int64": INT64,
+        "uint8": UINT8, "uint16": UINT16, "uint32": UINT32, "uint64": UINT64,
+        "float32": FLOAT32,
         "str": STR, "String": STRING, "StrView": STRVIEW,
         "int": BIGINT,
         "float": FLOAT,
@@ -81,7 +81,7 @@ def _resolve_extends_type_arg(type_str: str, type_params: dict[str, "TpyType"]) 
 
     Handles:
     - Simple type param refs: "K", "V", "T"
-    - Concrete type names: "Char", "Int32"
+    - Concrete type names: "char", "int32"
     - Tuple types: "tuple[K, V]"
     """
     # Handle tuple[...] pattern
@@ -113,8 +113,8 @@ def _resolve_extends_type_arg(type_str: str, type_params: dict[str, "TpyType"]) 
 def extract_type_params(tpy_type: "TpyType") -> dict[str, "TpyType"]:
     """Extract type parameters from a concrete type instance.
 
-    For list[Int32], returns {"T": Int32}.
-    For dict[str, Int32], returns {"K": str, "V": Int32}.
+    For list[int32], returns {"T": int32}.
+    For dict[str, int32], returns {"K": str, "V": int32}.
     For Container[Point, 10], returns {"T": Point}.
     For Ptr[Point], returns {"T": Point}.
 
@@ -186,8 +186,8 @@ def resolve_method(method: MethodDef, type_params: dict[str, "TpyType"]) -> Meth
     Example:
         method = MethodDef(params=[ParamDef("value", TypeParamRef("T"))],
                            returns=TypeParamRef("T"), cpp=...)
-        resolved = resolve_method(method, {"T": Int32})
-        # resolved.params[0].type == Int32, resolved.returns == Int32
+        resolved = resolve_method(method, {"T": int32})
+        # resolved.params[0].type == int32, resolved.returns == int32
     """
     resolved_params = [
         ParamDef(name=p.name, type=_resolve_type_or_param(p.type, type_params),
@@ -239,8 +239,8 @@ def get_extends_protocol_type_arg(
 ) -> "TpyType | None":
     """Extract the first type arg from a type's extends declaration for a protocol.
 
-    For example, Ptr[Int32] extends Deref[T] with T=Int32, so
-    get_extends_protocol_type_arg(Ptr[Int32], "Deref") returns Int32.
+    For example, Ptr[int32] extends Deref[T] with T=int32, so
+    get_extends_protocol_type_arg(Ptr[int32], "Deref") returns int32.
 
     Checks builtin type extends strings first, then user record
     implemented_protocols if a registry is provided.
@@ -379,8 +379,8 @@ def _ancestor_iter_element(
     inheritance binding chain applied.
 
     For `class Counted[T](Iterable[T], Protocol)` instantiated as
-    `Counted[Int32]`, the element type is `Int32` -- read off Iterable's
-    type_args after substituting Counted's own T->Int32 binding.
+    `Counted[int32]`, the element type is `int32` -- read off Iterable's
+    type_args after substituting Counted's own T->int32 binding.
     """
     if visited is None:
         visited = set()
@@ -427,7 +427,7 @@ def get_iterable_element_type(tpy_type: "TpyType", registry: "TypeRegistry") -> 
     Covers all iterable categories:
     - Compiler-internal adapters (CopyIter, OwnIter, GenExpr, SpanIter)
     - Protocol-typed params (Iterator[T], Iterable[T], NativeIterable[T], Spannable[T])
-    - String types -> Char
+    - String types -> char
     - error_return __next__ iterators
     - __iter__() method (built-in containers + user records)
 
@@ -473,7 +473,7 @@ def _iterable_element_type_inner(tpy_type: "TpyType", registry: "TypeRegistry") 
         if ancestor_elem is not None:
             return ancestor_elem
 
-    # String types -> Char
+    # String types -> char
     if is_any_str_type(tpy_type):
         return CHAR
 

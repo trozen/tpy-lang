@@ -1,10 +1,10 @@
 # docs/LANGUAGE_FEATURES.md: "In a position with no statement to hoist a needed
 # temp into ... the call is rejected" -- the need here is the `T&` slot's.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Cell:
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
@@ -13,7 +13,7 @@ def anyslot[T](name: str, v: T) -> bool:
 
 
 def mk_cell() -> Own[Cell]:
-    return Cell(Int32(7))
+    return Cell(int32(7))
 
 
 def main() -> None:

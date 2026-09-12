@@ -1,19 +1,19 @@
 # Returning a pair of @nocopy / Own elements via `tuple[Own[T], Own[T]]`.
 # Both elements move into the value tuple at last-use of the local.
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 
 
 @nocopy
 class Handle:
-    fd: Int32
+    fd: int32
 
-    def __init__(self, fd: Int32) -> None:
+    def __init__(self, fd: int32) -> None:
         self.fd = fd
 
 
 def make_pair() -> tuple[Own[Handle], Own[Handle]]:
-    a = Handle(Int32(1))
-    b = Handle(Int32(2))
+    a = Handle(int32(1))
+    b = Handle(int32(2))
     return (a, b)  # tpyc: ok
 
 

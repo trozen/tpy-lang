@@ -1,5 +1,5 @@
 # Error: non-iterable source in comprehension
-from tpy import Int32
+from tpy import int32
 def main() -> None:
-    result = [x for x in Int32(42)]  # tpyc: error(/[Cc]annot iterate/)
+    result = [x for x in int32(42)]  # tpyc: error(/[Cc]annot iterate/)
 main()

@@ -1,8 +1,8 @@
 # Complex generator with nested for-loops containing yields
-from tpy import Int32
+from tpy import int32
 from typing import Iterator
 
-def matrix(rows: list[Int32], cols: list[Int32]) -> Iterator[Int32]:
+def matrix(rows: list[int32], cols: list[int32]) -> Iterator[int32]:
     yield -1
     for r in rows:
         for c in cols:

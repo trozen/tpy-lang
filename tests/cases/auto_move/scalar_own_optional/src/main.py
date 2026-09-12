@@ -9,12 +9,12 @@
 # The Own qualifier is meaningful here: pointer-repr Optional is `P*` at
 # the borrow boundary, but Own forces the storage form (`optional<P>`),
 # which the function can move out of, store as a field, etc.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class P:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
@@ -26,13 +26,13 @@ class Holder:
         self.slot = p
 
 
-def take(x: Own[P | None]) -> Int32:
+def take(x: Own[P | None]) -> int32:
     if x is None:
-        return Int32(-1)
+        return int32(-1)
     return x.x
 
 
-def make(v: Int32) -> Own[P | None]:
+def make(v: int32) -> Own[P | None]:
     if v > 0:
         return P(v)
     return None
@@ -45,36 +45,36 @@ def passthrough(x: Own[P | None]) -> Own[P | None]:
     return x
 
 
-def borrow(p: P | None) -> Int32:
+def borrow(p: P | None) -> int32:
     if p is None:
-        return Int32(-1)
+        return int32(-1)
     return p.x
 
 
-def forward_borrow(x: Own[P | None]) -> Int32:
+def forward_borrow(x: Own[P | None]) -> int32:
     # Forwarding a storage-form Optional param into a borrow-form
     # `P | None` slot needs an explicit optional_to_ptr lift -- C++ won't
     # convert std::optional<P> to const P*.
     return borrow(x)
 
 
-def reassign_pointer(x: Own[P | None]) -> Int32:
+def reassign_pointer(x: Own[P | None]) -> int32:
     # Reassign a pointer-form local from the Own-Optional param: the
     # rebind path needs the lift, otherwise C++ assigns optional<P> to P*.
     y: P | None = None
     y = x
     if y is None:
-        return Int32(-1)
+        return int32(-1)
     return y.x
 
 
-def first_decl(x: Own[P | None]) -> Int32:
+def first_decl(x: Own[P | None]) -> int32:
     # First-declaration of a pointer-form local from the Own-Optional
     # param (no prior `y = None` line). The var-decl path needs the lift
     # too -- otherwise C++ declares `P* y = x` with x as optional<P>.
     y = x
     if y is None:
-        return Int32(-1)
+        return int32(-1)
     return y.x
 
 
@@ -97,15 +97,15 @@ def test_return_into_pointer_receiver() -> None:
     # Own[P|None] return into a P|None receiver: function returns
     # std::optional<P> (storage form) but the local is P*. Codegen
     # materializes a slot for the optional and lifts via optional_to_ptr.
-    r = make(Int32(11))
+    r = make(int32(11))
     if r is not None:
         print(r.x)
-    s = make(Int32(-1))
+    s = make(int32(-1))
     print(s is None)
 
 
 def test_forward_own_return_to_own_param() -> None:
-    print(take(make(Int32(13))))
+    print(take(make(int32(13))))
 
 
 def test_return_passthrough() -> None:
@@ -137,11 +137,11 @@ def test_first_decl_pointer_local() -> None:
 def test_rebind_from_successive_returns() -> None:
     # A single std::optional<P> slot holds the current value, the
     # pointer-local re-lifts after each rebind.
-    z = make(Int32(41))
-    z = make(Int32(43))
+    z = make(int32(41))
+    z = make(int32(43))
     if z is not None:
         print(z.x)
-    z = make(Int32(-1))
+    z = make(int32(-1))
     print(z is None)
 
 

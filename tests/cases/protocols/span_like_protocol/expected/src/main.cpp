@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def accept_ro(s: Span[readonly[Int32]]) -> Int32:
+// def accept_ro(s: Span[readonly[int32]]) -> int32:
 int32_t accept_ro(std::span<const int32_t> s) {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for x in s:
     auto& __obj_0 = s;

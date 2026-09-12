@@ -1,11 +1,11 @@
 # @readonly: local alias of param inherits readonly -- non-readonly method call rejected.
-from tpy import Int32, readonly
+from tpy import int32, readonly
 
 
 class Box:
-    value: Int32
+    value: int32
 
-    def __init__(self, v: Int32):
+    def __init__(self, v: int32):
         self.value = v
 
     def inc(self) -> None:

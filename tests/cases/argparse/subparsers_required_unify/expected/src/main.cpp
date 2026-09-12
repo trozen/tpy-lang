@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def main() -> Int32:
+// def main() -> int32:
 int32_t main() {
     // args = parser.parse_args(["b"])
     std::vector<std::string> __tmp_1 = {"b"};

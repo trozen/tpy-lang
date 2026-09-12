@@ -3,13 +3,13 @@
 # reading it must not lift it a second time through `optional_to_ptr`. The
 # read is narrowed and then written through, and the caller reads the original
 # afterwards -- a copy anywhere on that path shows up as a wrong number.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Box:
-    val: Int32
+    val: int32
 
-    def __init__(self, val: Int32) -> None:
+    def __init__(self, val: int32) -> None:
         self.val = val
 
 
@@ -21,7 +21,7 @@ def make_none() -> tuple[Own[Box], Box | None]:
     return (Box(2), None)
 
 
-def write_through(b: Box) -> Int32:
+def write_through(b: Box) -> int32:
     p = make_mixed(b)
     e = p[1]
     if e is not None:
@@ -29,7 +29,7 @@ def write_through(b: Box) -> Int32:
     return p[0].val
 
 
-def read_direct(b: Box) -> Int32:
+def read_direct(b: Box) -> int32:
     # No intermediate local. Narrowing does not track a subscript path, so the
     # read keeps its runtime null check -- unrelated to the element's form.
     p = make_mixed(b)
@@ -38,7 +38,7 @@ def read_direct(b: Box) -> Int32:
     return -1
 
 
-def none_element() -> Int32:
+def none_element() -> int32:
     p = make_none()
     e = p[1]
     if e is None:

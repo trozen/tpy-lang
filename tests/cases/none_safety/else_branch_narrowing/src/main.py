@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 
 
-def describe(x: Int32 | None) -> Int32:
+def describe(x: int32 | None) -> int32:
     if x is None:
         return -1
     else:

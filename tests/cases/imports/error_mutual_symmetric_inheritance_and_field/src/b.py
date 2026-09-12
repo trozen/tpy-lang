@@ -1,8 +1,8 @@
 from a import A
-from tpy import Int32
+from tpy import int32
 
 class B:
-    n: Int32
+    n: int32
     payload: A
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n

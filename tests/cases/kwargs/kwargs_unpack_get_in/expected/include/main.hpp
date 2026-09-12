@@ -19,7 +19,7 @@ void main();
 struct Config {
     // host: str
     std::optional<std::string> host = std::nullopt;
-    // port: Int32
+    // port: int32
     std::optional<int32_t> port = std::nullopt;
     // verbose: bool
     std::optional<bool> verbose = std::nullopt;

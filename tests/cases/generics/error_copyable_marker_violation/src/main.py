@@ -2,14 +2,14 @@
 # the Copyable shadow bound on a user method, mirroring how Box.clone is
 # gated. Verifies the marker arm rejects @nocopy types directly (without
 # relying on Box/Rc as the carrier).
-from tpy import Int32, Own, Copyable, nocopy
+from tpy import int32, Own, Copyable, nocopy
 
 
 @nocopy
 class MoveOnly:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
@@ -24,7 +24,7 @@ class Cell[T]:
 
 
 def main() -> None:
-    c = Cell[MoveOnly](MoveOnly(Int32(7)))
+    c = Cell[MoveOnly](MoveOnly(int32(7)))
     _ = c.duplicate()  # tpyc: error(/Method 'duplicate' requires type parameter 'T' to satisfy 'Copyable'/)
 
 

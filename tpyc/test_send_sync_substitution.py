@@ -44,10 +44,10 @@ def _box_recordinfo():
 
 @pytest.fixture
 def _wrapper_with_send_int_field():
-    """Register Wrapper[T] with a `tag: Int32` field plus `data: T`.
+    """Register Wrapper[T] with a `tag: int32` field plus `data: T`.
 
     Exercises that concrete-typed fields keep their definition-time
-    answer (Int32 is Send) while the TypeParamRef field is re-checked
+    answer (int32 is Send) while the TypeParamRef field is re-checked
     under substitution.
     """
     info = RecordInfo(
@@ -85,7 +85,7 @@ def _buf() -> NominalType:
 
 class TestGenericRecordSendSync:
     def test_box_of_int_is_send(self, _box_recordinfo) -> None:
-        """Int32 is Send -> Box[Int32] is Send (record bool stays True)."""
+        """int32 is Send -> Box[int32] is Send (record bool stays True)."""
         assert _box(INT32).is_send() is True
         assert _box(INT32).is_sync() is True
 
@@ -152,7 +152,7 @@ class TestGenericRecordSendSync:
         """`class W[T]: c: list[T]` -- at registration `list[T].is_send()`
         evaluates to False because the TypeDef callable propagates
         `T.is_send() == False`. The use-site walker substitutes the
-        concrete `type_args`, so W[Int32] correctly reports True."""
+        concrete `type_args`, so W[int32] correctly reports True."""
         info = RecordInfo(
             name="W",
             fields=[FieldInfo(
@@ -181,7 +181,7 @@ class TestGenericRecordSendSync:
         """`class Tree[T]: value: T; children: list[Tree[T]]` is the
         canonical self-recursive generic. The cycle guard returns True
         (greatest fixed point) on re-entry, so the answer is decided by
-        the non-recursive value field: Tree[Int32] is Send (Int32 is
+        the non-recursive value field: Tree[int32] is Send (int32 is
         Send), Tree[Ptr[Buf]] is not."""
         info = RecordInfo(
             name="Tree",
@@ -215,7 +215,7 @@ class TestGenericRecordSendSync:
         the prior test never re-enters the walker for is_sync and
         `_evaluating_sync` never fires. Optional[T] passes is_sync
         through to T, so a Tree whose recursive field is Optional[Tree[T]]
-        forces the walker to re-enter Tree[Int32].is_sync() recursively,
+        forces the walker to re-enter Tree[int32].is_sync() recursively,
         exercising the greatest-fixed-point branch."""
         info = RecordInfo(
             name="Tree",

@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def test_basic() -> None:
 void test_basic() {
-    // s = set()  # tpyc: type(set[Int32])
+    // s = set()  # tpyc: type(set[int32])
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>();
     // s.add(42)
     s.insert(42);
@@ -32,7 +32,7 @@ void test_str() {
 
 // def test_multiple() -> None:
 void test_multiple() {
-    // s = set()  # tpyc: type(set[Int32])
+    // s = set()  # tpyc: type(set[int32])
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>();
     // s.add(1)
     s.insert(1);
@@ -46,17 +46,17 @@ void test_multiple() {
 
 // def test_numeric_widen() -> None:
 void test_numeric_widen() {
-    // s = set()  # tpyc: type(set[Int64])
+    // s = set()  # tpyc: type(set[int64])
     ::tpy::ordered_set<int64_t> s = ::tpy::ordered_set<int64_t>();
-    // s.add(Int32(1))
+    // s.add(int32(1))
     s.insert(1);
-    // s.add(Int64(2))
+    // s.add(int64(2))
     s.insert(2);
     // print(s)
     std::cout << ::tpy::SetPrinter(s) << "\n";
 }
 
-// def takes_set(s: set[Int32]) -> None:
+// def takes_set(s: set[int32]) -> None:
 void takes_set(const ::tpy::ordered_set<int32_t>& s) {
     // for x in s:
     auto& __obj_0 = s;
@@ -71,7 +71,7 @@ void takes_set(const ::tpy::ordered_set<int32_t>& s) {
 
 // def test_param_context() -> None:
 void test_param_context() {
-    // s = set()  # tpyc: type(set[Int32])
+    // s = set()  # tpyc: type(set[int32])
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>();
     // s.add(42)
     s.insert(42);
@@ -81,7 +81,7 @@ void test_param_context() {
 
 // def test_param_only() -> None:
 void test_param_only() {
-    // s = set()  # tpyc: type(set[Int32])
+    // s = set()  # tpyc: type(set[int32])
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>();
     // takes_set(s)
     takes_set(s);
@@ -89,7 +89,7 @@ void test_param_only() {
 
 // def test_discard_infers() -> None:
 void test_discard_infers() {
-    // s = set()  # tpyc: type(set[Int32])
+    // s = set()  # tpyc: type(set[int32])
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>();
     // s.discard(42)
     s.erase(42);

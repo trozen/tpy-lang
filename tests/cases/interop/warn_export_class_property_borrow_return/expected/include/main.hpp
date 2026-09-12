@@ -15,7 +15,7 @@ inline constexpr std::string_view __name__ = "__main__";
 // @export
 // class Inner:
 struct Inner {
-    // x: Int64
+    // x: int64
     int64_t x;
 
     // def __init__(self) -> None:
@@ -31,7 +31,7 @@ inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
 // @export
 // class Box:
 struct Box {
-    // _items: list[Int64]
+    // _items: list[int64]
     std::vector<int64_t> _items;
     // _inner: Inner
     Inner _inner;
@@ -45,11 +45,11 @@ struct Box {
     void rebind_alt();
 
     // @property
-    // def items(self) -> list[Int64]:
+    // def items(self) -> list[int64]:
     std::vector<int64_t>& items();
 
     // @property
-    // def items(self) -> list[Int64]:
+    // def items(self) -> list[int64]:
     const std::vector<int64_t>& items() const;
 
     // @property
@@ -69,7 +69,7 @@ struct Box {
     const Inner& alt() const;
 
     // @property
-    // def snapshot(self) -> Own[list[Int64]]:  # tpyc: ok
+    // def snapshot(self) -> Own[list[int64]]:  # tpyc: ok
     std::vector<int64_t> snapshot() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
@@ -93,14 +93,14 @@ inline void Box::rebind_alt() {
 }
 
 // @property
-// def items(self) -> list[Int64]:
+// def items(self) -> list[int64]:
 inline std::vector<int64_t>& Box::items() {
     // return self._items  # tpyc: warning(/property 'items': returns a list by reference.*copied across the CPython boundary.*return Own/)
     return this->_items;
 }
 
 // @property
-// def items(self) -> list[Int64]:
+// def items(self) -> list[int64]:
 inline const std::vector<int64_t>& Box::items() const {
     // return self._items  # tpyc: warning(/property 'items': returns a list by reference.*copied across the CPython boundary.*return Own/)
     return this->_items;
@@ -139,9 +139,9 @@ inline const Inner& Box::alt() const {
 }
 
 // @property
-// def snapshot(self) -> Own[list[Int64]]:  # tpyc: ok
+// def snapshot(self) -> Own[list[int64]]:  # tpyc: ok
 inline std::vector<int64_t> Box::snapshot() const {
-    // out: list[Int64] = []
+    // out: list[int64] = []
     std::vector<int64_t> out = std::vector<int64_t>{};
     // for x in self._items:
     auto& __obj_0 = this->_items;

@@ -4,12 +4,12 @@
 namespace tpyapp::main {
 
 
-// async def co(x: Int32) -> Int32:
+// async def co(x: int32) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_co::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return x + Int32(1)
+        // return x + int32(1)
         __state = S_DONE;
         int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(x, 1));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -20,14 +20,14 @@ namespace tpyapp::main {
 }
 
 
-// async def co(x: Int32) -> Int32:
+// async def co(x: int32) -> int32:
 __coro_co co(int32_t x) {
     return __coro_co(x);
 }
 
-// def task_arity_concrete(t: Task[Int32]) -> Int32:
+// def task_arity_concrete(t: Task[int32]) -> int32:
 int32_t task_arity_concrete(const ::tpystd::asyncio::_executor::Task<int32_t>& t) {
-    // # Signature only: param is a Task[Int32] borrow. Body proves the
+    // # Signature only: param is a Task[int32] borrow. Body proves the
     // # codegen path accepts the binding without copying.
     // return 0
     return 0;
@@ -37,11 +37,11 @@ int32_t task_arity_concrete(const ::tpystd::asyncio::_executor::Task<int32_t>& t
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // t = asyncio.create_task(co(Int32(7)))
+        // t = asyncio.create_task(co(int32(7)))
         t.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(co(7))));
         // _ = task_arity_concrete(t)
         _ = task_arity_concrete((*t));
-        // _ = task_arity_generic[Int32](t)
+        // _ = task_arity_generic[int32](t)
         _ = task_arity_generic<int32_t>((*t));
         // result = await t
         __sub_0 = &((*t));
@@ -83,7 +83,7 @@ void __tpy_init() {
     // # Regression: generic and concrete Task[T] params are emitted by
     // # reference at the C++ signature. Previously tpy.Task was registered
     // # as is_value_type=True, so both `t: Task[T]` (generic) and
-    // # `t: Task[Int32]` (concrete) emitted `Task<T> t` by-value at the
+    // # `t: Task[int32]` (concrete) emitted `Task<T> t` by-value at the
     // # generated C++ signature -- breaking the deleted copy ctor at the
     // # call site. Now Task[T] is correctly is_value_type=False (matching
     // # its @nocopy nature), so concrete returns spell `Own[Task[T]]` and

@@ -34,7 +34,7 @@ __coro_relay relay(Box b) {
     return __coro_relay(std::move(b));
 }
 
-// async def driver() -> Int32:
+// async def driver() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_driver::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -61,7 +61,7 @@ __coro_relay relay(Box b) {
 }
 
 
-// async def driver() -> Int32:
+// async def driver() -> int32:
 __coro_driver driver() {
     return __coro_driver();
 }

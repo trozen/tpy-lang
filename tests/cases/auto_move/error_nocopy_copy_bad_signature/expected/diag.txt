@@ -1,1 +1,1 @@
-main.py:19: error: __copy__ must return BadReturn, got Int32
+main.py:19: error: __copy__ must return BadReturn, got int32

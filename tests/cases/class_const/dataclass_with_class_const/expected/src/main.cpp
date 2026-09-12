@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // c = Counter(count=Int32(0), label="hits")
+    // c = Counter(count=int32(0), label="hits")
     Counter c = Counter(0, "hits");
     // print(c.count)
     std::cout << c.count << "\n";

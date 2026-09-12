@@ -201,8 +201,8 @@ def check_default_value_type(expr: TpyExpr, target_type: 'TpyType | None',
 
     The parser admits a default by SHAPE only ("is this a constant
     expression?"), so without this an ill-typed constant reaches codegen and
-    renders through arms that cannot fail -- `n: Int32 = None` emitting
-    `int32_t n = nullptr`, or an out-of-range `Int8 = 200` wrapping silently.
+    renders through arms that cannot fail -- `n: int32 = None` emitting
+    `int32_t n = nullptr`, or an out-of-range `int8 = 200` wrapping silently.
     Routed through the same compatibility check an assignment uses, so a
     default and its equivalent `x: T = <const>` agree on what is legal and
     report it in the same words.
@@ -218,7 +218,7 @@ def check_default_value_type(expr: TpyExpr, target_type: 'TpyType | None',
     if actual is None:
         return
     context = f"{target_noun} '{target_name}'"
-    # A fixed-int ctor carries its own range contract: `Int8(200)` is out of
+    # A fixed-int ctor carries its own range contract: `int8(200)` is out of
     # range whatever the slot is, so check the wrapped literal against the
     # ctor's type before the ctor's type against the slot.
     if isinstance(expr, TpyCall) and expr.args and is_fixed_int_type(actual):
@@ -252,7 +252,7 @@ def _validate_const_field_default(expr: TpyExpr, loc: object,
             f"a macro from '{mod}'", loc)
     raise SemanticError(
         "Default field value must be a constant expression "
-        "(literal, None, or fixed-int constructor like Int32(5))", loc)
+        "(literal, None, or fixed-int constructor like int32(5))", loc)
 
 
 def build_record_self_type(record: TpyRecord, qname: str | None = None) -> NominalType:
@@ -307,7 +307,7 @@ def _validate_dyn_dunder_kind(record: 'TpyRecord', dunder_name: str) -> object:
 def _is_valid_dyn_getattr_return(ret: TpyType) -> bool:
     """D16 Phase 1: __getattr__ return type allow-list.
 
-    Allowed: value types (primitives, Char, str, BigInt, tuples, value-type
+    Allowed: value types (primitives, char, str, BigInt, tuples, value-type
     user records), Any, or Own[T]. Bare reference types (non-value records,
     list/dict/set/bytes/bytearray) and views (Span/Ptr/Ref/StrView/BytesView)
     are rejected -- the dunder body computes a result with no place to borrow
@@ -419,7 +419,7 @@ class TypeRegistrar:
         Registers all exported types and functions from the tpy module
         into the global namespace and imported_names tracking.
         """
-        # Register tpy types from type factories (Int32, Array, Span, etc.)
+        # Register tpy types from type factories (int32, Array, Span, etc.)
         # Compile-time-only types (e.g. FStr) are also registered as type aliases
         # so the parser resolves them directly to their NominalType singleton.
         for qname in factory_qnames_in_module("tpy"):
@@ -452,7 +452,7 @@ class TypeRegistrar:
         Compile-time-only types (like FStr) have a type factory but no C++
         representation. They're resolved to their singleton at sema time so
         predicate checks (e.g. is_fstr_type(ptype)) work.
-        Regular builtin types (Int32, basic_slice, etc.) also flow as NominalType
+        Regular builtin types (int32, basic_slice, etc.) also flow as NominalType
         and use @native for C++ mapping.
         """
         type_obj = builtin_modules.get_builtin_type_obj(f"{module}.{original_name}")
@@ -561,8 +561,8 @@ class TypeRegistrar:
 
     _INT_ENUM_UNDERLYING_MAP: dict[str, TpyType] = {
         "int": INT32,
-        "Int8": INT8, "Int16": INT16, "Int32": INT32, "Int64": INT64,
-        "UInt8": UINT8, "UInt16": UINT16, "UInt32": UINT32, "UInt64": UINT64,
+        "int8": INT8, "int16": INT16, "int32": INT32, "int64": INT64,
+        "uint8": UINT8, "uint16": UINT16, "uint32": UINT32, "uint64": UINT64,
     }
 
     def _resolve_int_enum_underlying(self, type_name: str) -> TpyType:
@@ -725,7 +725,7 @@ class TypeRegistrar:
         appears as a `TpyName` anywhere in `expr`, or None. Used by Phase 9
         to verify that the initializer of a class constant on a generic
         class doesn't reference any of the class's type parameters
-        (e.g. `Final[Int32] = T()`). Iterating `type_params` rather than the
+        (e.g. `Final[int32] = T()`). Iterating `type_params` rather than the
         set intersection keeps the error message deterministic across runs.
         """
         names = collect_name_refs(expr)
@@ -765,7 +765,7 @@ class TypeRegistrar:
                 # Phase 9: T-independent class constants on generic classes
                 # are supported -- the inner type and initializer must not
                 # reference any of the class's type parameters. T-dependent
-                # forms (`Final[T]`, `Final[Int32] = T()`) are deferred to
+                # forms (`Final[T]`, `Final[int32] = T()`) are deferred to
                 # a future extension because they need per-monomorphization
                 # codegen. The initializer check is name-based (collides
                 # with type-param-shadowed globals): in C++ the template
@@ -891,7 +891,7 @@ class TypeRegistrar:
             )
         if not resolved_return.type_args:
             raise SemanticError(
-                f"Iterator must have a type argument, e.g. Iterator[Int32]",
+                f"Iterator must have a type argument, e.g. Iterator[int32]",
                 func.loc,
             )
         func.generator_yield_type = resolved_return.type_args[0]
@@ -1390,7 +1390,7 @@ class TypeRegistrar:
                     )
                 if not method_return.type_args:
                     raise SemanticError(
-                        f"Iterator must have a type argument, e.g. Iterator[Int32]",
+                        f"Iterator must have a type argument, e.g. Iterator[int32]",
                         method.loc or record.loc,
                     )
                 method.generator_yield_type = method_return.type_args[0]
@@ -1986,7 +1986,7 @@ class TypeRegistrar:
         self.ctx.global_ns.bind_record(info)
         # Per-module attribute table (Phase 1). Local definition: no
         # defining_module override, so binding is "owned by this module".
-        # Skips builtin records (Int32, list, ...) -- those are
+        # Skips builtin records (int32, list, ...) -- those are
         # attached to TypeDef and don't surface as module attributes.
         if not record.builtin_type_key:
             install_binding(
@@ -3350,7 +3350,7 @@ class TypeRegistrar:
                     )
                 if not resolved_return.type_args:
                     raise SemanticError(
-                        f"Iterator must have a type argument, e.g. Iterator[Int32]",
+                        f"Iterator must have a type argument, e.g. Iterator[int32]",
                         func.loc
                     )
                 func.generator_yield_type = resolved_return.type_args[0]

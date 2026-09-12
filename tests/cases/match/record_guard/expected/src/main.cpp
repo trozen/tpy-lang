@@ -55,22 +55,22 @@ std::string or_pattern(const Point& p) {
 
 // def main() -> None:
 void main() {
-    // print(guarded(Point(Int32(0), Int32(0))))
+    // print(guarded(Point(int32(0), int32(0))))
     Point __tmp_1 = Point(0, 0);
     std::cout << guarded(__tmp_1) << "\n";
-    // print(guarded(Point(Int32(5), Int32(3))))
+    // print(guarded(Point(int32(5), int32(3))))
     Point __tmp_2 = Point(5, 3);
     std::cout << guarded(__tmp_2) << "\n";
-    // print(guarded(Point(Int32(-1), Int32(0))))
+    // print(guarded(Point(int32(-1), int32(0))))
     Point __tmp_3 = Point(-1, 0);
     std::cout << guarded(__tmp_3) << "\n";
-    // print(or_pattern(Point(Int32(0), Int32(0))))
+    // print(or_pattern(Point(int32(0), int32(0))))
     Point __tmp_4 = Point(0, 0);
     std::cout << or_pattern(__tmp_4) << "\n";
-    // print(or_pattern(Point(Int32(1), Int32(1))))
+    // print(or_pattern(Point(int32(1), int32(1))))
     Point __tmp_5 = Point(1, 1);
     std::cout << or_pattern(__tmp_5) << "\n";
-    // print(or_pattern(Point(Int32(2), Int32(3))))
+    // print(or_pattern(Point(int32(2), int32(3))))
     Point __tmp_6 = Point(2, 3);
     std::cout << or_pattern(__tmp_6) << "\n";
 }

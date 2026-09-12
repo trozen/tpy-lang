@@ -3,10 +3,10 @@
 # migrated `yield` -> `__next__` codegen (Phase C of the generator ->
 # resumable-frame migration).
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
-def counts() -> Iterator[Int32]:
+def counts() -> Iterator[int32]:
     n = 10
     yield n
     n += 5

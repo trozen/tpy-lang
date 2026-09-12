@@ -16,7 +16,7 @@ void main();
 
 // class Counter:
 struct Counter {
-    // n: ClassVar[Int32] = 0
+    // n: ClassVar[int32] = 0
     static inline int32_t n = 0;
 
     // def __init__(self) -> None:

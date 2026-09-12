@@ -7,14 +7,14 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // # list from set at last use
-    // s: set[Int32] = {10, 20, 30}
+    // s: set[int32] = {10, 20, 30}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({10, 20, 30});
     // items = list(s)
     std::vector<int32_t> items = ::tpy::construct<std::vector<int32_t>>(::tpy::own_iter_set(std::move(s)));
     // print(items)
     std::cout << ::tpy::ListPrinter(items) << "\n";
     // # set from list at last use
-    // nums: list[Int32] = [1, 2, 3]
+    // nums: list[int32] = [1, 2, 3]
     std::vector<int32_t> nums = {1, 2, 3};
     // s2 = set(nums)
     ::tpy::ordered_set<int32_t> s2 = ::tpy::set_construct<int32_t>(::tpy::own_iter(std::move(nums)));

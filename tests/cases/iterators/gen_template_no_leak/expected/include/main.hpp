@@ -249,12 +249,12 @@ struct __gen_first_n : public ::tpy::next_iter_mixin<__gen_first_n<T, T_it>, T> 
         return os << "<generator first_n>";
     }
 };
-// def first_n[T](it: Iterable[T], n: Int32) -> Iterator[T]:
+// def first_n[T](it: Iterable[T], n: int32) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 std::expected<T, ::tpy::StopIteration> __gen_first_n<T, T_it>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // c: Int32 = 0
+        // c: int32 = 0
         c = 0;
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
@@ -292,7 +292,7 @@ std::expected<T, ::tpy::StopIteration> __gen_first_n<T, T_it>::__next__() {
 }
 
 
-// def first_n[T](it: Iterable[T], n: Int32) -> Iterator[T]:
+// def first_n[T](it: Iterable[T], n: int32) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 __gen_first_n<T, T_it> first_n(T_it&& it, int32_t n) {
     return __gen_first_n<T, T_it>(std::forward<T_it>(it), n);

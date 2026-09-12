@@ -1,10 +1,10 @@
 # A nested def cannot mutate self inside a declared @readonly method -- the
 # readonly-scope enforcement reaches closure bodies.
-from tpy import Int32, readonly
+from tpy import int32, readonly
 
 
 class C:
-    n: Int32
+    n: int32
 
     def __init__(self) -> None:
         self.n = 0

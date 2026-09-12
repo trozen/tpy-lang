@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 
 
-def use_else(x: Int32 | None) -> Int32:
+def use_else(x: int32 | None) -> int32:
     if not x:  # tpyc: warning(/Truthiness check on optional value/)
         return 0
     else:

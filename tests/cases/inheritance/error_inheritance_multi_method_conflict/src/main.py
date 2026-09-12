@@ -1,6 +1,6 @@
 # Method conflict: both bases define foo() and the child does not override it.
 # Non-virtual C++ MI leaves self.foo() ambiguous -- child must disambiguate.
-from tpy import Int32
+from tpy import int32
 
 
 class Speaker:

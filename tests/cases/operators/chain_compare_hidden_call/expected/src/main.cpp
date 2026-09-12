@@ -12,7 +12,7 @@ namespace tpyapp::main {
 int32_t calls{};
 // # Evaluation order as digits, appended left to right: 1 = first operand,
 // # 2 = middle, 3 = last. Source order is 123; the unbound first operand gave 213.
-// # Annotated as a workaround: a bare `0` infers Int32, and a plain
+// # Annotated as a workaround: a bare `0` infers int32, and a plain
 // # re-assignment does not currently widen it to the BigInt the RHS produces.
 // order: int = 0
 ::tpy::BigInt order;
@@ -84,7 +84,7 @@ void __tpy_init() {
     calls = 0;
     // # Evaluation order as digits, appended left to right: 1 = first operand,
     // # 2 = middle, 3 = last. Source order is 123; the unbound first operand gave 213.
-    // # Annotated as a workaround: a bare `0` infers Int32, and a plain
+    // # Annotated as a workaround: a bare `0` infers int32, and a plain
     // # re-assignment does not currently widen it to the BigInt the RHS produces.
     // order: int = 0
     order = ::tpy::BigInt(0);

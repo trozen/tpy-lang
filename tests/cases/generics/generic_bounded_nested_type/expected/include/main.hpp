@@ -22,14 +22,14 @@ void main();
 
 // class IntListHolder:
 struct IntListHolder {
-    // data: list[Int32]
+    // data: list[int32]
     std::vector<int32_t> data;
 
-    // def __init__(self, data: list[Int32]) -> None:
+    // def __init__(self, data: list[int32]) -> None:
     IntListHolder() = default;
     explicit IntListHolder(const std::vector<int32_t>& data);
 
-    // def items(self) -> list[Int32]:
+    // def items(self) -> list[int32]:
     std::vector<int32_t>& items();
     static constexpr std::string_view __tpy_class_name__ = "__main__.IntListHolder";
 };
@@ -39,8 +39,8 @@ inline std::ostream& operator<<(std::ostream& os, const IntListHolder& obj) {
     return os;
 }
 
-// # Bound is ItemsProvider[Int32], so items() must return list[Int32]
-// class Wrapper[V: ItemsProvider[Int32]]:
+// # Bound is ItemsProvider[int32], so items() must return list[int32]
+// class Wrapper[V: ItemsProvider[int32]]:
 template<ItemsProvider<int32_t> V>
 struct Wrapper {
     // holder: V
@@ -65,10 +65,10 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper<V>& obj) {
 }
 
 
-// def __init__(self, data: list[Int32]) -> None:
+// def __init__(self, data: list[int32]) -> None:
 inline IntListHolder::IntListHolder(const std::vector<int32_t>& data) : data(data) {}
 
-// def items(self) -> list[Int32]:
+// def items(self) -> list[int32]:
 inline std::vector<int32_t>& IntListHolder::items() {
     // return self.data
     return this->data;

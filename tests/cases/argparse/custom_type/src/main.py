@@ -12,7 +12,7 @@
 # missing-required check has fired.
 from __future__ import annotations
 from argparse import ArgumentParser
-from tpy import Own, Int32
+from tpy import Own, int32
 
 
 class Tag:
@@ -22,7 +22,7 @@ class Tag:
     def __init__(self, raw: str) -> None:
         self.namespace = ""
         self.name = raw
-        idx: Int32 = raw.find(":")
+        idx: int32 = raw.find(":")
         if idx >= 0:
             self.namespace = raw[:idx]
             self.name = raw[idx + 1:]

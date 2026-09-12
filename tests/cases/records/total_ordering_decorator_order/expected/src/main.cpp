@@ -3,13 +3,13 @@
 
 namespace tpyapp::main {
 
-// a, b = Outer(Int32(1)), Outer(Int32(2))
+// a, b = Outer(int32(1)), Outer(int32(2))
 Outer* a{};
-// a, b = Outer(Int32(1)), Outer(Int32(2))
+// a, b = Outer(int32(1)), Outer(int32(2))
 Outer* b{};
-// c, d = Inner(Int32(1)), Inner(Int32(2))
+// c, d = Inner(int32(1)), Inner(int32(2))
 Inner* c{};
-// c, d = Inner(Int32(1)), Inner(Int32(2))
+// c, d = Inner(int32(1)), Inner(int32(2))
 Inner* d{};
 
 void __tpy_init() {
@@ -26,19 +26,19 @@ void __tpy_init() {
     // from dataclasses import dataclass
     // from functools import total_ordering
     ::tpystd::functools::__tpy_init();
-    // a, b = Outer(Int32(1)), Outer(Int32(2))
+    // a, b = Outer(int32(1)), Outer(int32(2))
     Outer __unpack_0_0 = Outer(1);
     Outer __unpack_0_1 = Outer(2);
     a = &(__unpack_0_0);
     b = &(__unpack_0_1);
-    // print(a < b, a <= b, a > b, a >= b, a == Outer(Int32(1)))
+    // print(a < b, a <= b, a > b, a >= b, a == Outer(int32(1)))
     std::cout << ::tpy::print_bool((((*a)) < ((*b)))) << " " << ::tpy::print_bool((((*a)) <= ((*b)))) << " " << ::tpy::print_bool((((*a)) > ((*b)))) << " " << ::tpy::print_bool((((*a)) >= ((*b)))) << " " << ::tpy::print_bool((((*a)) == (Outer(1)))) << "\n";
-    // c, d = Inner(Int32(1)), Inner(Int32(2))
+    // c, d = Inner(int32(1)), Inner(int32(2))
     Inner __unpack_1_0 = Inner(1);
     Inner __unpack_1_1 = Inner(2);
     c = &(__unpack_1_0);
     d = &(__unpack_1_1);
-    // print(c < d, c <= d, c > d, c >= d, c == Inner(Int32(1)))
+    // print(c < d, c <= d, c > d, c >= d, c == Inner(int32(1)))
     std::cout << ::tpy::print_bool((((*c)) < ((*d)))) << " " << ::tpy::print_bool((((*c)) <= ((*d)))) << " " << ::tpy::print_bool((((*c)) > ((*d)))) << " " << ::tpy::print_bool((((*c)) >= ((*d)))) << " " << ::tpy::print_bool((((*c)) == (Inner(1)))) << "\n";
 }
 

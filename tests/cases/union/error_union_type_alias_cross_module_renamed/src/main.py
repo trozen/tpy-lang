@@ -8,7 +8,7 @@
 # -> the importing module's "MyShape") and THIR (union_display_names -> the
 # defining module's "Shape"). When this rejection is lifted, the storage-slot
 # name divergence must be resolved together.
-from tpy import Int32
+from tpy import int32
 from shapes import Circle, Rect, Shape as MyShape
 
 
@@ -20,7 +20,7 @@ def describe(s: MyShape) -> str:
 
 
 def main() -> None:
-    c: MyShape = Circle(Int32(10))  # tpyc: error(/Unknown type: Shape/)
+    c: MyShape = Circle(int32(10))  # tpyc: error(/Unknown type: Shape/)
     print(describe(c))
 
 main()

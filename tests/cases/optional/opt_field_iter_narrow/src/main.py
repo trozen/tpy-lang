@@ -2,13 +2,13 @@
 # receivers): the narrowed field must render exactly one Optional unwrap in
 # the for-iterable position (a doubled unwrap derefs the contained value).
 
-from tpy import Int32
+from tpy import int32
 
 
 class Holder:
     d: dict[str, str] | None
-    lst: list[Int32] | None
-    st: set[Int32] | None
+    lst: list[int32] | None
+    st: set[int32] | None
     s: str | None
 
     def __init__(self):
@@ -17,7 +17,7 @@ class Holder:
         self.st = {40}
         self.s = "xy"
 
-    def scan_dict(self) -> Int32:
+    def scan_dict(self) -> int32:
         n = 0
         if self.d is not None:
             for k in self.d:
@@ -25,21 +25,21 @@ class Holder:
                     n += 1
         return n
 
-    def sum_list(self) -> Int32:
+    def sum_list(self) -> int32:
         n = 0
         if self.lst is not None:
             for x in self.lst:
                 n += x
         return n
 
-    def sum_set(self) -> Int32:
+    def sum_set(self) -> int32:
         n = 0
         if self.st is not None:
             for x in self.st:
                 n += x
         return n
 
-    def count_str(self) -> Int32:
+    def count_str(self) -> int32:
         n = 0
         if self.s is not None:
             for c in self.s:

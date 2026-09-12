@@ -2,11 +2,11 @@
 # (or to a mutable `Ptr[Parent]` / `Ptr[@dynamic Protocol]` via the
 # upcast variants) -- the upcast requires a mutable lvalue, and a
 # readonly binding doesn't qualify.
-from tpy import Int32, Ptr, readonly
+from tpy import int32, Ptr, readonly
 
 
 class Node:
-    x: Int32
+    x: int32
     def __init__(self) -> None:
         self.x = 0
 

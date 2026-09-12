@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def bump(p: tuple[Int32, Box]) -> None:
+// async def bump(p: tuple[int32, Box]) -> None:
 ::tpystd::tpy::Poll<::std::monostate> __coro_bump::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -29,7 +29,7 @@ namespace tpyapp::main {
 }
 
 
-// async def bump(p: tuple[Int32, Box]) -> None:
+// async def bump(p: tuple[int32, Box]) -> None:
 __coro_bump bump(std::tuple<int32_t, Box*> p) {
     return __coro_bump(p);
 }

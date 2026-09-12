@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def main() -> Int32:
+// def main() -> int32:
 int32_t main() {
     // args = parser.parse_args()
     std::vector<std::string> __tmp_1 = ::tpy::construct<std::vector<std::string>>(::tpy::list_slice((*::tpystd::sys::argv), ::tpy::BasicSlice{1, std::nullopt}));

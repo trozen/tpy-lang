@@ -1,5 +1,5 @@
-from tpy import Int32
+from tpy import int32
 
 def value_type_uninit() -> None:
-    x: Int32
+    x: int32
     print(x)  # tpyc: error(/may not be assigned at this point/)

@@ -17,12 +17,12 @@ void foo(bool cond);
 
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
-    // y: Int32
+    // y: int32
     int32_t y;
 
-    // def __init__(self, x: Int32, y: Int32):
+    // def __init__(self, x: int32, y: int32):
     Point() = default;
     explicit Point(int32_t x, int32_t y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
@@ -36,10 +36,10 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 // # Record with method that has pointer-local `p` (tests method→global path)
 // class Picker:
 struct Picker {
-    // val: Int32
+    // val: int32
     int32_t val;
 
-    // def __init__(self, val: Int32):
+    // def __init__(self, val: int32):
     Picker() = default;
     explicit Picker(int32_t val);
 
@@ -54,10 +54,10 @@ inline std::ostream& operator<<(std::ostream& os, const Picker& obj) {
 }
 
 
-// def __init__(self, x: Int32, y: Int32):
+// def __init__(self, x: int32, y: int32):
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
-// def __init__(self, val: Int32):
+// def __init__(self, val: int32):
 inline Picker::Picker(int32_t val) : val(val) {}
 
 // def pick(self, cond: bool) -> None:

@@ -4,10 +4,10 @@
 namespace tpyapp::main {
 
 // # Aliased array storage
-// a = U[Int32, 2]()
+// a = U[int32, 2]()
 ::tpy::UninitArrayStorage<int32_t, 2>* a{};
 // # Aliased heap storage
-// h = H[Int32](2)
+// h = H[int32](2)
 ::tpy::UninitHeapStorage<int32_t>* h{};
 
 void __tpy_init() {
@@ -17,7 +17,7 @@ void __tpy_init() {
 
     // from tpy.mem import UninitArrayStorage as U
     // # Aliased array storage
-    // a = U[Int32, 2]()
+    // a = U[int32, 2]()
     static ::tpy::UninitArrayStorage<int32_t, 2> __global_slot_1 = ::tpy::UninitArrayStorage<int32_t, 2>();
     a = &__global_slot_1;
     // a.init(0, 10)
@@ -33,7 +33,7 @@ void __tpy_init() {
     // a.drop(1)
     a->drop(1);
     // # Aliased heap storage
-    // h = H[Int32](2)
+    // h = H[int32](2)
     static ::tpy::UninitHeapStorage<int32_t> __global_slot_2 = ::tpy::UninitHeapStorage<int32_t>(2);
     h = &__global_slot_2;
     // h.init(0, 30)

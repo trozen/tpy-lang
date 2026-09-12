@@ -4,12 +4,12 @@
 # register_record, before the protocol pass sets user records' ValueType
 # flags; it now runs with the deferred value-type validation pass.
 from typing import Optional
-from tpy import Int32, ValueType
+from tpy import int32, ValueType
 
 
 class Coord(ValueType):
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
     def __init__(self, x: int, y: int) -> None:
         self.x = x
@@ -20,8 +20,8 @@ class Coord(ValueType):
 
 
 class Track:
-    _cx: Int32
-    _cy: Int32
+    _cx: int32
+    _cy: int32
     _has_goal: bool
 
     def __init__(self, cx: int, cy: int) -> None:

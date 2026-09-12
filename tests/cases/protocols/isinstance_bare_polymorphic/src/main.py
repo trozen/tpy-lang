@@ -4,7 +4,7 @@
 # lowers to dynamic_cast<Sub*>(&p) (address-of step) and narrowing binds
 # the variable to a Sub& in the true branch via the cast-and-cache path.
 from typing import Protocol
-from tpy import dynamic, readonly, Int32
+from tpy import dynamic, readonly, int32
 
 
 @dynamic
@@ -78,7 +78,7 @@ def assert_dog(p: Pet) -> str:
     return "ASSERT: " + p.bark()
 
 
-def short_circuit(p: Pet, threshold: Int32) -> bool:
+def short_circuit(p: Pet, threshold: int32) -> bool:
     # Inline isinstance fact on `&&` RHS: the narrowed read `p.bark()` on the
     # right of the short-circuit emits `(*static_cast<const Dog*>(&p)).bark()`,
     # not `std::get<Dog>(p)` (the source isn't a variant). static_cast is

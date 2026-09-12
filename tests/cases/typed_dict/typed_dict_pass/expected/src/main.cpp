@@ -10,7 +10,7 @@ std::string describe(const Point& p) {
     return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("(", ::tpy::fixed_to_str<int32_t>(p.x))), ", ")), ::tpy::fixed_to_str<int32_t>(p.y))), ")"));
 }
 
-// def translate(p: Point, dx: Int32, dy: Int32) -> Own[Point]:
+// def translate(p: Point, dx: int32, dy: int32) -> Own[Point]:
 Point translate(const Point& p, int32_t dx, int32_t dy) {
     // return Point(x=p["x"] + dx, y=p["y"] + dy)
     return Point((::tpy::add_check<int32_t>(p.x, dx)), (::tpy::add_check<int32_t>(p.y, dy)));
@@ -18,11 +18,11 @@ Point translate(const Point& p, int32_t dx, int32_t dy) {
 
 // def main() -> None:
 void main() {
-    // p = Point(x=Int32(1), y=Int32(2))
+    // p = Point(x=int32(1), y=int32(2))
     Point p = Point(1, 2);
     // print(describe(p))
     std::cout << describe(p) << "\n";
-    // p2 = translate(p, Int32(10), Int32(20))
+    // p2 = translate(p, int32(10), int32(20))
     Point p2 = translate(p, 10, 20);
     // print(describe(p2))
     std::cout << describe(p2) << "\n";

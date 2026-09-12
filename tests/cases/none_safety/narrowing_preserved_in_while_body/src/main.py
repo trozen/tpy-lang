@@ -1,23 +1,23 @@
 # Outer narrowing from "if x is not None" preserved inside while loop bodies.
 # Covers: simple while, multiple optionals, and mixed if/while narrowing.
-from tpy import Int32
+from tpy import int32
 
 
-def simple_while(x: Int32 | None, n: Int32) -> Int32:
-    total: Int32 = 0
+def simple_while(x: int32 | None, n: int32) -> int32:
+    total: int32 = 0
     if x is not None:
-        i: Int32 = 0
+        i: int32 = 0
         while i < n:
             total = total + x  # tpyc: ok
             i = i + 1
     return total
 
 
-def multiple_optionals(a: Int32 | None, b: Int32 | None, n: Int32) -> Int32:
-    total: Int32 = 0
+def multiple_optionals(a: int32 | None, b: int32 | None, n: int32) -> int32:
+    total: int32 = 0
     if a is not None:
         if b is not None:
-            i: Int32 = 0
+            i: int32 = 0
             while i < n:
                 total = total + a + b  # tpyc: ok
                 i = i + 1
@@ -25,21 +25,21 @@ def multiple_optionals(a: Int32 | None, b: Int32 | None, n: Int32) -> Int32:
 
 
 def outer_if_inner_while_narrowing(
-    x: Int32 | None, items: list[Int32 | None]
-) -> Int32:
-    total: Int32 = 0
+    x: int32 | None, items: list[int32 | None]
+) -> int32:
+    total: int32 = 0
     if x is not None:
-        i: Int32 = 0
+        i: int32 = 0
         while i < len(items):
-            y: Int32 | None = items[i]
+            y: int32 | None = items[i]
             if y is not None:
                 total = total + x + y  # tpyc: ok
             i = i + 1
     return total
 
 
-def for_loop_variant(x: Int32 | None, items: list[Int32]) -> Int32:
-    total: Int32 = 0
+def for_loop_variant(x: int32 | None, items: list[int32]) -> int32:
+    total: int32 = 0
     if x is not None:
         for item in items:
             total = total + item + x  # tpyc: ok
@@ -54,11 +54,11 @@ def main() -> None:
     print(multiple_optionals(None, 3, 4))
     print(multiple_optionals(2, None, 4))
 
-    items: list[Int32 | None] = [1, None, 3]
+    items: list[int32 | None] = [1, None, 3]
     print(outer_if_inner_while_narrowing(10, items))
     print(outer_if_inner_while_narrowing(None, items))
 
-    nums: list[Int32] = [1, 2, 3]
+    nums: list[int32] = [1, 2, 3]
     print(for_loop_variant(5, nums))
     print(for_loop_variant(None, nums))
 

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def describe(p: Point | None) -> Int32:
+// def describe(p: Point | None) -> int32:
 int32_t describe(Point* p) {
     // match p:
     auto& __match_subject_1 = p;

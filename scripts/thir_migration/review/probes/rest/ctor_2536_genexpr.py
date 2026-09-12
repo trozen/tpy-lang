@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 class H:
-    t: tuple[Int32, tuple[Int32, str]]
-    def __init__(self, d: dict[Int32, Int32]) -> None:
+    t: tuple[int32, tuple[int32, str]]
+    def __init__(self, d: dict[int32, int32]) -> None:
         self.t = (1, (sum(k for k in d), "a"))
 def main() -> None:
     h = H({1: 2})

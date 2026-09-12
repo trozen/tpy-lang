@@ -7,10 +7,10 @@ namespace tpyapp::main {
 // # Test that subscript out-of-bounds access on list panics at runtime
 // def test_list_subscript_oob() -> None:
 void test_list_subscript_oob() {
-    // nums: list[Int32] = [1, 2, 3]
+    // nums: list[int32] = [1, 2, 3]
     std::vector<int32_t> nums = {1, 2, 3};
     // # Access index 10 via subscript - out of bounds (only 3 elements)
-    // x: Int32 = nums[10]
+    // x: int32 = nums[10]
     int32_t x = ::tpy::__getitem__(nums, 10);
     // print(x)
     std::cout << x << "\n";

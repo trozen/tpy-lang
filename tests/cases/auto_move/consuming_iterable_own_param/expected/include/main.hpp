@@ -17,10 +17,10 @@ void main();
 
 // class Item:
 struct Item {
-    // value: Int32
+    // value: int32
     int32_t value;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Item() = default;
     explicit Item(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Item";
@@ -32,7 +32,7 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Item::Item(int32_t v) : value(v) {}
 // def collect(source: Iterable[Own[Item]]) -> Own[list[Item]]:
 template<::tpystd::typing::Iterable<Item> T_source>

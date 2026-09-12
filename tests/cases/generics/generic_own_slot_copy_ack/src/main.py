@@ -2,13 +2,13 @@
 # the slot acknowledges the duplication, and a moved Own[T] never copied at all.
 # Both agree with CPython, so the sections stay parity-checked.
 from __future__ import annotations
-from tpy import Fn, Int32, Own, ValueType, copy
+from tpy import Fn, int32, Own, ValueType, copy
 
 
 class Cell:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
@@ -54,21 +54,21 @@ def dup_bounded[T: ValueType](h: VHolder[T]) -> Own[T]:
 
 # the bounded twin: a concrete value payload, silent for the same reason.
 class IntHolder:
-    val: Int32
+    val: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.val = v
 
-    def borrow(self) -> Int32:
+    def borrow(self) -> int32:
         return self.val
 
 
-def dup_bounded_twin(h: IntHolder) -> Own[Int32]:
+def dup_bounded_twin(h: IntHolder) -> Own[int32]:
     return h.borrow()  # tpyc: ok
 
 
 def sec_value_bound() -> None:
-    b = VHolder[Int32](7)
+    b = VHolder[int32](7)
     t = IntHolder(7)
     print("value-bound:", dup_bounded(b), dup_bounded_twin(t))
 
@@ -86,7 +86,7 @@ def apply_generic[T, K](xs: list[T], f: Fn[[T], K], out: list[K]) -> None:
         out.append(f(x))  # tpyc: ok
 
 
-def apply_twin(xs: list[Int32], f: Fn[[Int32], Cell], out: list[Cell]) -> None:
+def apply_twin(xs: list[int32], f: Fn[[int32], Cell], out: list[Cell]) -> None:
     for x in xs:
         out.append(f(x))  # tpyc: ok
 
@@ -95,12 +95,12 @@ def ret_generic[T, K](x: T, f: Fn[[T], K]) -> Own[K]:
     return f(x)  # tpyc: ok
 
 
-def ret_twin(x: Int32, f: Fn[[Int32], Cell]) -> Own[Cell]:
+def ret_twin(x: int32, f: Fn[[int32], Cell]) -> Own[Cell]:
     return f(x)  # tpyc: ok
 
 
 def sec_callable_value() -> None:
-    xs: list[Int32] = [1]
+    xs: list[int32] = [1]
     g: list[Cell] = []
     apply_generic(xs, lambda v: Cell(v), g)
     t: list[Cell] = []

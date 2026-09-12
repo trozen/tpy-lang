@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def maybe_show(c: Optional[Container[Int32]]) -> Int32:
+// def maybe_show(c: Optional[Container[int32]]) -> int32:
 int32_t maybe_show(Container<int32_t>* c) {
     // if c is None:                 # tpyc: ok
     if ((c == nullptr)) {

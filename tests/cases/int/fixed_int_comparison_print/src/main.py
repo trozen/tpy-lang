@@ -1,9 +1,9 @@
 # Printing comparison results of fixed-width integers should output True/False
-from tpy import Int32, Int64, UInt32
+from tpy import int32, int64, uint32
 
 def test_int32_cmp() -> None:
-    a = Int32(5)
-    b = Int32(3)
+    a = int32(5)
+    b = int32(3)
     print(a > b)
     print(a < b)
     print(a == b)
@@ -12,15 +12,15 @@ def test_int32_cmp() -> None:
     print(a <= b)
 
 def test_int64_cmp() -> None:
-    x = Int64(100)
-    y = Int64(200)
+    x = int64(100)
+    y = int64(200)
     print(x < y)
     print(x > y)
     print(x == y)
 
 def test_uint32_cmp() -> None:
-    m = UInt32(10)
-    n = UInt32(10)
+    m = uint32(10)
+    n = uint32(10)
     print(m == n)
     print(m != n)
     print(m >= n)

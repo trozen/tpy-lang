@@ -1,12 +1,12 @@
 # Unpacking a tuple through a NAME when the tuple mixes a borrowed and an
 # owned record: TPy lowers the direct call-unpack form only, so this rejects.
-from tpy import Int32, Own, copy
+from tpy import int32, Own, copy
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 

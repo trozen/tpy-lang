@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def make_bigints() -> Own[list[int]]:
 std::vector<::tpy::BigInt> make_bigints() {
-    // items: list[Int32] = [1, 2, 3]
+    // items: list[int32] = [1, 2, 3]
     std::vector<int32_t> items = {1, 2, 3};
     // return [x for x in items]
     return ({
@@ -23,7 +23,7 @@ std::vector<::tpy::BigInt> make_bigints() {
     });
 }
 
-// def accept_wide(items: list[Int64]) -> None:
+// def accept_wide(items: list[int64]) -> None:
 void accept_wide(const std::vector<int64_t>& items) {
     // print(items)
     std::cout << ::tpy::ListPrinter(items) << "\n";
@@ -31,8 +31,8 @@ void accept_wide(const std::vector<int64_t>& items) {
 
 // def main() -> None:
 void main() {
-    // # Widen Int32 -> BigInt via annotation
-    // items: list[Int32] = [10, 20, 30]
+    // # Widen int32 -> BigInt via annotation
+    // items: list[int32] = [10, 20, 30]
     std::vector<int32_t> items = {10, 20, 30};
     // big: list[int] = [x for x in items]
     std::vector<::tpy::BigInt> big = ({
@@ -49,8 +49,8 @@ void main() {
     });
     // print(big)
     std::cout << ::tpy::ListPrinter(big) << "\n";
-    // # Widen Int32 -> Int64
-    // wide: list[Int64] = [x for x in items]
+    // # Widen int32 -> int64
+    // wide: list[int64] = [x for x in items]
     std::vector<int64_t> wide = ({
         std::vector<int64_t> __result;
         auto& __obj_1 = items;
@@ -65,7 +65,7 @@ void main() {
     });
     // print(wide)
     std::cout << ::tpy::ListPrinter(wide) << "\n";
-    // # Return type propagation (Own[list[int]] from Int32 source)
+    // # Return type propagation (Own[list[int]] from int32 source)
     // result = make_bigints()
     std::vector<::tpy::BigInt> result = make_bigints();
     // print(result)

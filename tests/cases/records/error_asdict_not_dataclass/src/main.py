@@ -1,15 +1,15 @@
 # Error: asdict() on a non-dataclass type
 from dataclasses import asdict
-from tpy import Int32
+from tpy import int32
 
 class NotDataclass:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32):
+    def __init__(self, x: int32):
         self.x = x
 
 def main() -> None:
-    obj = NotDataclass(Int32(1))
+    obj = NotDataclass(int32(1))
     d = asdict(obj)  # tpyc: error(/asdict\(\) requires a @dataclass instance/)
 
 main()

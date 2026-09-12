@@ -64,7 +64,7 @@ inline void write_byte_repr(std::ostream& os, uint8_t b) {
 
 }  // namespace detail
 
-// The printers take the bare vector too: a `list[UInt8]` never prints as
+// The printers take the bare vector too: a `list[uint8]` never prints as
 // bytes, but the buffer-family helpers below hand them a plain vector, so
 // the span is spelled rather than converted (`BytesView` refuses a bare
 // vector by design).
@@ -151,7 +151,7 @@ inline Bytes bytes_literal_owned(const char* data, size_t n) {
 }
 
 // TODO(hot-path): per-element int_to_byte range check; revisit alongside a
-// @not_hot_path / unchecked variant. Prefer the UInt8 overload when possible.
+// @not_hot_path / unchecked variant. Prefer the uint8 overload when possible.
 // The buffer is deduced: the same helper fills a fresh `bytes` (through
 // bytes_from_int_iterable) and appends to a live `bytearray`.
 template<typename Buf, typename Arg>

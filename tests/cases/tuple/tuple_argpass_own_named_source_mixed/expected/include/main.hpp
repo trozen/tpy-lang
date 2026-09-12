@@ -18,10 +18,10 @@ void main();
 // @nocopy
 // class A:
 struct A {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32):
+    // def __init__(self, n: int32):
     A() = default;
     explicit A(int32_t n);
     // non-copyable (@nocopy)
@@ -38,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const A& obj) {
 }
 
 
-// def __init__(self, n: Int32):
+// def __init__(self, n: int32):
 inline A::A(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

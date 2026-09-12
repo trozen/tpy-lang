@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def take_marked(cb: Send[Callable[[Int32], None]]) -> None:
+// def take_marked(cb: Send[Callable[[int32], None]]) -> None:
 void take_marked(const std::function<void(int32_t)>& cb) {
     // cb(1)
     cb(1);
 }
 
-// def take_bare(cb: Callable[[Int32], None]) -> None:
+// def take_bare(cb: Callable[[int32], None]) -> None:
 void take_bare(const std::function<void(int32_t)>& cb) {
     // cb(1)
     cb(1);
@@ -18,11 +18,11 @@ void take_bare(const std::function<void(int32_t)>& cb) {
 
 // def main() -> None:
 void main() {
-    // x: Send[Int32] = 5              # tpyc: type(Int32) is_send(yes)
+    // x: Send[int32] = 5              # tpyc: type(int32) is_send(yes)
     int32_t x = 5;
-    // xs: Send[list[Int32]] = [1, 2]  # tpyc: type(list[Int32]) is_sync(no)
+    // xs: Send[list[int32]] = [1, 2]  # tpyc: type(list[int32]) is_sync(no)
     std::vector<int32_t> xs = {1, 2};
-    // y: Sync[Int32] = 6              # tpyc: type(Int32) is_sync(yes)
+    // y: Sync[int32] = 6              # tpyc: type(int32) is_sync(yes)
     int32_t y = 6;
     // take_bare(lambda n: print(n))
     take_bare([](int32_t n) { std::cout << n << "\n"; });

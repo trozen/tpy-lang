@@ -1,14 +1,14 @@
 # Auto-move for per-iteration variable in loop: variable is created
 # and consumed each iteration, so each use is a last use.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 
-def consume(p: Own[Point]) -> Int32:
+def consume(p: Own[Point]) -> int32:
     return p.x
 
 

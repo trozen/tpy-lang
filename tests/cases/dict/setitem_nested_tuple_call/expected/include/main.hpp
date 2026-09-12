@@ -16,14 +16,14 @@ void main();
 
 // class Src:
 struct Src {
-    // base: Int32
+    // base: int32
     int32_t base;
 
-    // def __init__(self, base: Int32) -> None:
+    // def __init__(self, base: int32) -> None:
     Src() = default;
     explicit Src(int32_t base);
 
-    // def pair(self) -> tuple[Int32, tuple[Int32, Int32]]:
+    // def pair(self) -> tuple[int32, tuple[int32, int32]]:
     std::tuple<int32_t, std::tuple<int32_t, int32_t>> pair() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Src";
 };
@@ -34,10 +34,10 @@ inline std::ostream& operator<<(std::ostream& os, const Src& obj) {
 }
 
 
-// def __init__(self, base: Int32) -> None:
+// def __init__(self, base: int32) -> None:
 inline Src::Src(int32_t base) : base(base) {}
 
-// def pair(self) -> tuple[Int32, tuple[Int32, Int32]]:
+// def pair(self) -> tuple[int32, tuple[int32, int32]]:
 inline std::tuple<int32_t, std::tuple<int32_t, int32_t>> Src::pair() const {
     // return (self.base, (self.base + 1, self.base + 2))
     return std::tuple<int32_t, std::tuple<int32_t, int32_t>>{this->base, std::tuple<int32_t, int32_t>{(::tpy::add_check<int32_t>(this->base, 1)), (::tpy::add_check<int32_t>(this->base, 2))}};

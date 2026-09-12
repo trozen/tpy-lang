@@ -29,7 +29,7 @@ struct Bag {
         this->items.push_back(::tpy::param_to_storage<T>(value));
     }
 
-    // def resize[T: Default](self, n: Int32) -> None:
+    // def resize[T: Default](self, n: int32) -> None:
     void resize(int32_t n)
       requires ::std::default_initializable<T> {
         // while len(self.items) > n:
@@ -44,7 +44,7 @@ struct Bag {
         }
     }
 
-    // def get(self, i: Int32) -> T:
+    // def get(self, i: int32) -> T:
     ::tpy::val_or_ref_t<T> get(int32_t i) {
         // return self.items[i]
         return ::tpy::__getitem__(this->items, i);
@@ -58,7 +58,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bag<T, N>& obj) {
     return os;
 }
 
-// class IntBag(Bag[Int32, 4]):
+// class IntBag(Bag[int32, 4]):
 struct IntBag : Bag<int32_t, 4> {
 
     using Bag<int32_t, 4>::Bag;

@@ -5,13 +5,13 @@
 from __future__ import annotations
 import asyncio
 from typing import Iterator
-from tpy import Int32, Own, readonly, auto_readonly, copy, error_return, ReturnException
+from tpy import int32, Own, readonly, auto_readonly, copy, error_return, ReturnException
 
 
 class Cell:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
@@ -81,21 +81,21 @@ def sec_generic(c: readonly[Cell]) -> None:
 
 
 # generator: the copy happens inside a resumable frame.
-def gen_copies(c: readonly[Cell]) -> Iterator[Int32]:
+def gen_copies(c: readonly[Cell]) -> Iterator[int32]:
     d = bump(copy(c))  # tpyc: ok
     yield d.n
     yield c.n
 
 
 def sec_generator(c: readonly[Cell]) -> None:
-    out: list[Int32] = []
+    out: list[int32] = []
     for n in gen_copies(c):
         out.append(n)
     print("generator:", out[1], out[0])
 
 
 # async: the copy happens inside a coroutine frame.
-async def copy_in_task(c: readonly[Cell]) -> Int32:
+async def copy_in_task(c: readonly[Cell]) -> int32:
     d = bump(copy(c))  # tpyc: ok
     return d.n
 
@@ -112,7 +112,7 @@ def sec_comprehension(cs: readonly[list[Cell]]) -> None:
 
 # closure: the copy is inside a nested function.
 def sec_closure(c: readonly[Cell]) -> None:
-    def inner() -> Int32:
+    def inner() -> int32:
         return bump(copy(c)).n  # tpyc: ok
     print("closure:", c.n, inner())
 
@@ -147,7 +147,7 @@ class Missing(Exception, ReturnException):
 
 # @error_return body.
 @error_return(Missing)
-def ret_copy(c: readonly[Cell]) -> Int32:
+def ret_copy(c: readonly[Cell]) -> int32:
     d = bump(copy(c))  # tpyc: ok
     return d.n
 
@@ -160,7 +160,7 @@ def sec_error_return(c: readonly[Cell]) -> None:
 
 
 # match arm.
-def sec_match(c: readonly[Cell], k: Int32) -> None:
+def sec_match(c: readonly[Cell], k: int32) -> None:
     match k:
         case 1:
             d = bump(copy(c))  # tpyc: ok

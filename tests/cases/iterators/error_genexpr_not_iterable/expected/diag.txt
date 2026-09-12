@@ -1,1 +1,1 @@
-main.py:6: error: Cannot iterate over type Int32
+main.py:6: error: Cannot iterate over type int32

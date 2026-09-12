@@ -1,7 +1,7 @@
 # A user-record `__add__` whose operand is a COMPOSITE over a local that widens
 # later in the body: the operand slot runs its disposition for the whole body,
 # so the composite has no admitted render.
-from tpy import Int32
+from tpy import int32
 
 
 def gi() -> int:
@@ -9,12 +9,12 @@ def gi() -> int:
 
 
 class Bag:
-    xs: list[Int32]
+    xs: list[int32]
 
     def __init__(self) -> None:
         self.xs = [1, 2, 3, 4]
 
-    def __add__(self, k: Int32) -> Int32:
+    def __add__(self, k: int32) -> int32:
         return k + 1
 
 

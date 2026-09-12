@@ -9,7 +9,7 @@
 # ZoneInfo.from_file and TZPATH / reset_tzpath (deferred -- backend work,
 # see the roadmap). All are loud absences.
 from datetime import ZoneInfo, ZoneInfoNotFoundError
-from tpy import Int32, Own
+from tpy import int32, Own
 from _bindings import hinnant_date
 
 
@@ -21,5 +21,5 @@ def available_timezones() -> Own[set[str]]:
     out: set[str] = set()
     n = int(hinnant_date.zone_db_count())
     for i in range(n):
-        out.add(hinnant_date.zone_db_key_at(Int32(i)))
+        out.add(hinnant_date.zone_db_key_at(int32(i)))
     return out

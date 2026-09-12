@@ -1,11 +1,11 @@
 # Warn when container constructors materialize borrowed references from iterators.
 # The iterator is an rvalue, but its elements are Ref[T] -- copying into owned storage.
-from tpy import Int32, Own, copy, copy_iter
+from tpy import int32, Own, copy, copy_iter
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32) -> None:
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 
@@ -15,12 +15,12 @@ def identity(p: Point) -> Point:
 def clone_point(p: Point) -> Own[Point]:
     return copy(p)
 
-def double(x: Int32) -> Int32:
+def double(x: int32) -> int32:
     return x * 2
 
 def main() -> None:
     pts: list[Point] = [Point(1, 2), Point(3, 4)]
-    vals: list[Int32] = [Int32(1), Int32(2)]
+    vals: list[int32] = [int32(1), int32(2)]
 
     # map returning Ref[Point] -> list copies on materialization
     a = list(map(identity, pts))  # tpyc: warning(/copies Point elements/)

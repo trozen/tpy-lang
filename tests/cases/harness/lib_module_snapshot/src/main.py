@@ -6,14 +6,14 @@
 # The program itself just instantiates the generic container over a user record
 # and mutates through a borrowed element, so a silent copy would show up as a
 # missing mutation rather than as matching output.
-from tpy import Int32
+from tpy import int32
 from tplib import ArrayList
 
 
 class Counter:
-    hits: Int32
+    hits: int32
 
-    def __init__(self, hits: Int32) -> None:
+    def __init__(self, hits: int32) -> None:
         self.hits = hits
 
     def bump(self) -> None:

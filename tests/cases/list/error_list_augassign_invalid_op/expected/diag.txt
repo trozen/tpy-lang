@@ -1,1 +1,1 @@
-main.py:6: error: Operator '-=' is not supported for list[Int32]
+main.py:6: error: Operator '-=' is not supported for list[int32]

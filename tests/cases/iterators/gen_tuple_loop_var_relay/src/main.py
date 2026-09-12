@@ -5,29 +5,29 @@
 # the next yield of the same element. The two-yield sections take the
 # RESUMABLE FRAME, where the loop var is a borrow-tuple frame field.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    val: Int32
-    def __init__(self, v: Int32) -> None:
+    val: int32
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 
-def gen() -> Iterator[tuple[Int32, Box]]:
-    items: list[tuple[Int32, Box]] = [(1, Box(5))]
+def gen() -> Iterator[tuple[int32, Box]]:
+    items: list[tuple[int32, Box]] = [(1, Box(5))]
     for _ in range(2):
         yield items[0]
 
 
-def relay() -> Iterator[tuple[Int32, Box]]:
+def relay() -> Iterator[tuple[int32, Box]]:
     for p in gen():
         yield p
 
 
 # free generator, TWO yields (frame): the whole borrow-tuple loop var is
 # relayed twice per inner pull, still aliasing the inner generator's element.
-def relay_twice() -> Iterator[tuple[Int32, Box]]:
+def relay_twice() -> Iterator[tuple[int32, Box]]:
     for p in gen():  # tpyc: ok
         yield p
         yield p
@@ -35,7 +35,7 @@ def relay_twice() -> Iterator[tuple[Int32, Box]]:
 
 class Hub:
     # generator METHOD, same shape.
-    def relay(self) -> Iterator[tuple[Int32, Box]]:
+    def relay(self) -> Iterator[tuple[int32, Box]]:
         for p in gen():  # tpyc: ok
             yield p
             yield p
@@ -52,7 +52,7 @@ def main() -> None:
 
     # Mutate through the first relayed tuple; the next yield of the same
     # element sees it, so the relay aliases rather than copying.
-    seen: list[Int32] = []
+    seen: list[int32] = []
     n = 0
     for q2 in relay_twice():
         if n == 0:
@@ -61,7 +61,7 @@ def main() -> None:
         n += 1
     print("free", seen)
 
-    seen_m: list[Int32] = []
+    seen_m: list[int32] = []
     m = 0
     for q3 in Hub().relay():
         if m == 0:

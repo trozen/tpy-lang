@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def total(xs: Span[readonly[Int32]]) -> Int32:
+// def total(xs: Span[readonly[int32]]) -> int32:
 int32_t total(std::span<const int32_t> xs) {
-    // acc: Int32 = 0
+    // acc: int32 = 0
     int32_t acc = 0;
     // for x in xs:
     auto& __obj_0 = xs;

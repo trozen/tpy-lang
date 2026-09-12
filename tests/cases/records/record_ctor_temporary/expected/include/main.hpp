@@ -15,14 +15,14 @@ void main();
 
 // class Numbers:
 struct Numbers {
-    // data: list[Int32]
+    // data: list[int32]
     std::vector<int32_t> data;
 
-    // def __init__(self, items: list[Int32]) -> None:
+    // def __init__(self, items: list[int32]) -> None:
     Numbers() = default;
     explicit Numbers(const std::vector<int32_t>& items);
 
-    // def sum(self) -> Int32:
+    // def sum(self) -> int32:
     int32_t sum() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Numbers";
 };
@@ -33,14 +33,14 @@ inline std::ostream& operator<<(std::ostream& os, const Numbers& obj) {
 }
 
 
-// def __init__(self, items: list[Int32]) -> None:
+// def __init__(self, items: list[int32]) -> None:
 inline Numbers::Numbers(const std::vector<int32_t>& items) : data(items) {}
 
-// def sum(self) -> Int32:
+// def sum(self) -> int32:
 inline int32_t Numbers::sum() const {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < len(self.data):
     while ((i < ::tpy::__len__(this->data))) {

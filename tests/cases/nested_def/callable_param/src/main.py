@@ -1,13 +1,13 @@
 # Test passing nested def to Callable parameter
 from typing import Callable
-from tpy import Int32
+from tpy import int32
 
-def invoke(f: Callable[[Int32], Int32], x: Int32) -> Int32:
+def invoke(f: Callable[[int32], int32], x: int32) -> int32:
     return f(x)
 
 def main() -> None:
-    offset: Int32 = 50
-    def add_offset(x: Int32) -> Int32:
+    offset: int32 = 50
+    def add_offset(x: int32) -> int32:
         return x + offset
     print(invoke(add_offset, 7))
 

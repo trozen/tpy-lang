@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // a: Int32 = make_default[Int32]()
+    // a: int32 = make_default[int32]()
     int32_t a = make_default<int32_t>();
     // print(a)
     std::cout << a << "\n";
@@ -20,12 +20,12 @@ void main() {
     bool c = make_default<bool>();
     // print(c)
     std::cout << ::tpy::print_bool(c) << "\n";
-    // d: Int32 = make_default[Int32](42)
+    // d: int32 = make_default[int32](42)
     int32_t d = make_default<int32_t>(42);
     // print(d)
     std::cout << d << "\n";
     // # T inferred from arg
-    // e: Int32 = make_default(42)
+    // e: int32 = make_default(42)
     int32_t e = make_default<int32_t>(42);
     // print(e)
     std::cout << e << "\n";

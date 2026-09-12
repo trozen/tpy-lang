@@ -1,12 +1,12 @@
 # @dataclass with user-defined __eq__ (user wins, no synthesis)
 from dataclasses import dataclass
 from typing import Self
-from tpy import Int32
+from tpy import int32
 
 @dataclass
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
     def __eq__(self, other: Self) -> bool:  # tpyc: ok
         return self.x == other.x
 

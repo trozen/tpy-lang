@@ -150,7 +150,7 @@ inline void Item::save_json(std::string_view __path, int32_t indent) const {
     auto& __f = __ctx_1.__enter__();
     try {
         // # Test panic on missing required field in @model deserialization.
-        // from tpy import Int32, try_parse
+        // from tpy import int32, try_parse
         __f.write(this->to_json(indent));
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -171,7 +171,7 @@ inline Item Item::load_json(std::string_view __path) {
     auto& __f = __ctx_2.__enter__();
     try {
         // # Test panic on missing required field in @model deserialization.
-        // from tpy import Int32, try_parse
+        // from tpy import int32, try_parse
         __data = __f.read();
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
@@ -194,7 +194,7 @@ inline std::expected<Item, ::tpystd::tplib::json::parser::JsonError> Item::try_l
     auto& __f = __ctx_3.__enter__();
     try {
         // # Test panic on missing required field in @model deserialization.
-        // from tpy import Int32, try_parse
+        // from tpy import int32, try_parse
         __data = __f.read();
         goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {

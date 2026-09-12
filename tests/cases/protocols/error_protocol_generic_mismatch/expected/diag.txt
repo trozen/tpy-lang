@@ -1,1 +1,1 @@
-main.py:14: error: Type list[str] does not conform to protocol Sequence[Int32] in argument 'items'
+main.py:14: error: Type list[str] does not conform to protocol Sequence[int32] in argument 'items'

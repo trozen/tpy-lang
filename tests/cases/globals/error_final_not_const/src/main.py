@@ -1,8 +1,8 @@
 # Error: Final variable requires constant initializer
 from typing import Final
-from tpy import Int32
+from tpy import int32
 
-def compute() -> Int32:
-    return Int32(42)
+def compute() -> int32:
+    return int32(42)
 
-X: Final[Int32] = compute()  # tpyc: error(/compile-time constant/)
+X: Final[int32] = compute()  # tpyc: error(/compile-time constant/)

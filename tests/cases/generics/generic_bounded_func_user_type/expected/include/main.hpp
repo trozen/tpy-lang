@@ -17,14 +17,14 @@ void main();
 
 // class MyContainer:
 struct MyContainer {
-    // data: list[Int32]
+    // data: list[int32]
     std::vector<int32_t> data;
 
-    // def __init__(self, items: list[Int32]) -> None:
+    // def __init__(self, items: list[int32]) -> None:
     MyContainer() = default;
     explicit MyContainer(const std::vector<int32_t>& items);
 
-    // def __len__(self) -> Int32:
+    // def __len__(self) -> int32:
     int32_t __len__() const;
 
     size_t size() const {
@@ -41,15 +41,15 @@ inline std::ostream& operator<<(std::ostream& os, const MyContainer& obj) {
 }
 
 
-// def __init__(self, items: list[Int32]) -> None:
+// def __init__(self, items: list[int32]) -> None:
 inline MyContainer::MyContainer(const std::vector<int32_t>& items) : data(items) {}
 
-// def __len__(self) -> Int32:
+// def __len__(self) -> int32:
 inline int32_t MyContainer::__len__() const {
     // return len(self.data)
     return ::tpy::__len__(this->data);
 }
-// def get_length[T: Sized](item: T) -> Int32:
+// def get_length[T: Sized](item: T) -> int32:
 template<::tpystd::typing::Sized T>
 int32_t get_length(::tpy::param_val_or_ref_t<T> item) {
     // # Note: Can't call len(item) here yet - returning fixed value

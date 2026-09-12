@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def probe(x: "Fixed | None" = None, **kwargs: Unpack[Options]) -> Int64:
+// def probe(x: "Fixed | None" = None, **kwargs: Unpack[Options]) -> int64:
 int64_t probe(std::optional<Fixed> x, const Options& kwargs) {
     // return -1 if x is None else x.off
     return (((!x.has_value())) ? (-1) : ((*x).off));
 }
 
-// def spread(a: Int64, b: Int64 = 4, *rest: Int64, tag: Int64 = 9) -> Int64:
+// def spread(a: int64, b: int64 = 4, *rest: int64, tag: int64 = 9) -> int64:
 int64_t spread(int64_t a, int64_t b, ::tpy::varargs<const int64_t> rest, int64_t tag) {
     // total = a * 1000 + b * 100 + tag
     int64_t total = (::tpy::add_check<int64_t>((::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(a, 1000)), (::tpy::mul_check<int64_t>(b, 100)))), tag));

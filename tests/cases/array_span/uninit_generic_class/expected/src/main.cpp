@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 // # Value type
-// h = Holder[Int32](42)
+// h = Holder[int32](42)
 Holder<int32_t>* h{};
 // # str
 // s = Holder[str]("hello")
@@ -17,7 +17,7 @@ void __tpy_init() {
 
     // from tpy.mem import UninitHeapStorage
     // # Value type
-    // h = Holder[Int32](42)
+    // h = Holder[int32](42)
     static Holder<int32_t> __global_slot_1 = Holder<int32_t>(42);
     h = &__global_slot_1;
     // print(h.get())

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def step() -> Int32:
+// async def step() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_step::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
@@ -20,7 +20,7 @@ namespace tpyapp::main {
 }
 
 
-// async def step() -> Int32:
+// async def step() -> int32:
 __coro_step step() {
     return __coro_step();
 }

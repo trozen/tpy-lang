@@ -19,10 +19,10 @@ void main();
 // @nocopy
 // class Resource:
 struct Resource {
-    // id: Int32
+    // id: int32
     int32_t id;
 
-    // def __init__(self, id: Int32):
+    // def __init__(self, id: int32):
     Resource() = default;
     explicit Resource(int32_t id);
     // non-copyable (@nocopy)
@@ -81,7 +81,7 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
 }
 
 
-// def __init__(self, id: Int32):
+// def __init__(self, id: int32):
 inline Resource::Resource(int32_t id) : id(id) {}
 
 // def __init__(self, res: Own[Resource]):

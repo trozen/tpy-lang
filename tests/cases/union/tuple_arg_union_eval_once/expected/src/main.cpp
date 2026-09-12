@@ -12,7 +12,7 @@ Fixed mk(std::string_view tag, const ::tpy::BigInt& n) {
     return Fixed((n).to_fixed_check<int32_t>());
 }
 
-// def take(pair: tuple[Box, Int32]) -> int:
+// def take(pair: tuple[Box, int32]) -> int:
 ::tpy::BigInt take(const std::tuple<const Box*, int32_t>& pair) {
     // return int(pair[0].v) + int(pair[1])
     return ((::tpy::BigInt(static_cast<int64_t>(std::get<0>(pair)->v))) + (::tpy::BigInt(static_cast<int64_t>(std::get<1>(pair)))));
@@ -24,9 +24,9 @@ Fixed mk(std::string_view tag, const ::tpy::BigInt& n) {
     return ((::tpy::BigInt(static_cast<int64_t>(std::get<0>(pair)->v))) + (::tpy::BigInt(static_cast<int64_t>(std::get<1>(pair)->v))));
 }
 
-// def take_opt(pair: tuple[Box | None, Int32]) -> int:
+// def take_opt(pair: tuple[Box | None, int32]) -> int:
 ::tpy::BigInt take_opt(const std::tuple<const Box*, int32_t>& pair) {
-    // # Reads only the Int32 slot: reading the Optional-Box element hits a
+    // # Reads only the int32 slot: reading the Optional-Box element hits a
     // # separate pre-existing const-propagation bug (BUGS.md). The point here
     // # is the CONSTRUCTION of the rvalue element into the Optional-borrow
     // # slot, which exercises the fix's elem_target.inner unwrap arm.

@@ -20,13 +20,13 @@ void main();
 
 // class Counter:
 struct Counter {
-    // n: UInt64
+    // n: uint64
     uint64_t n;
 
     // def __init__(self) -> None:
     Counter();
 
-    // def bump(self, by: UInt32) -> UInt64:
+    // def bump(self, by: uint32) -> uint64:
     uint64_t bump(uint32_t by);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
@@ -40,9 +40,9 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 // def __init__(self) -> None:
 inline Counter::Counter() : n(0) {}
 
-// def bump(self, by: UInt32) -> UInt64:
+// def bump(self, by: uint32) -> uint64:
 inline uint64_t Counter::bump(uint32_t by) {
-    // self.n = self.n + UInt64(by)
+    // self.n = self.n + uint64(by)
     this->n = (::tpy::add_check<uint64_t>(this->n, ::tpy::int_cast_check<uint64_t>(by)));
     // return self.n
     return this->n;

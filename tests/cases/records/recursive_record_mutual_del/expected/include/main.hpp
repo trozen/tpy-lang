@@ -16,13 +16,13 @@ void main();
 
 // class A:
 struct A {
-    // val: Int32
+    // val: int32
     int32_t val;
     // bs: list[B]
     std::vector<B> bs;
     bool __tpy_owned_ = true;
 
-    // def __init__(self, val: Int32) -> None:
+    // def __init__(self, val: int32) -> None:
     explicit A(int32_t val);
     A(const A&) = delete;
     A& operator=(const A&) = delete;
@@ -41,13 +41,13 @@ inline std::ostream& operator<<(std::ostream& os, const A& obj) {
 
 // class B:
 struct B {
-    // val: Int32
+    // val: int32
     int32_t val;
     // as_: list[A]
     std::vector<A> as_;
     bool __tpy_owned_ = true;
 
-    // def __init__(self, val: Int32) -> None:
+    // def __init__(self, val: int32) -> None:
     explicit B(int32_t val);
     B(const B&) = delete;
     B& operator=(const B&) = delete;
@@ -65,7 +65,7 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 }
 
 
-// def __init__(self, val: Int32) -> None:
+// def __init__(self, val: int32) -> None:
 inline A::A(int32_t val) : val(val), bs(std::vector<B>{}) {}
 
 inline A::A(A&& other) noexcept : val(std::move(other.val)), bs(std::move(other.bs)) {
@@ -86,7 +86,7 @@ inline A::~A() {
     std::cout << "del A" << " " << this->val << "\n";
 }
 
-// def __init__(self, val: Int32) -> None:
+// def __init__(self, val: int32) -> None:
 inline B::B(int32_t val) : val(val), as_(std::vector<A>{}) {}
 
 inline B::B(B&& other) noexcept : val(std::move(other.val)), as_(std::move(other.as_)) {

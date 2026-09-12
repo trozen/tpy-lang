@@ -24,9 +24,9 @@ struct R {
     ::tpy::BigInt neg = ::tpy::BigInt(static_cast<int64_t>(-90000000000LL));
     // small: int = 3
     ::tpy::BigInt small = ::tpy::BigInt(3);
-    // wide: Int64 = 90000000000
+    // wide: int64 = 90000000000
     int64_t wide = static_cast<int64_t>(90000000000);
-    // wrapped: int = Int64(90000000000)
+    // wrapped: int = int64(90000000000)
     ::tpy::BigInt wrapped = ::tpy::BigInt(static_cast<int64_t>(90000000000LL));
 
     explicit R(const ::tpy::BigInt& big = ::tpy::BigInt(static_cast<int64_t>(90000000000LL)), const ::tpy::BigInt& neg = ::tpy::BigInt(static_cast<int64_t>(-90000000000LL)), const ::tpy::BigInt& small = ::tpy::BigInt(3), int64_t wide = static_cast<int64_t>(90000000000), const ::tpy::BigInt& wrapped = ::tpy::BigInt(static_cast<int64_t>(90000000000LL)));

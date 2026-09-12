@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // top_flag = anyslot("module", 5)  # tpyc: ok
 bool top_flag{};
 
-// def anyslot_i32(name: str, v: Int32) -> bool:
+// def anyslot_i32(name: str, v: int32) -> bool:
 bool anyslot_i32(std::string_view name, int32_t v) {
     // # The monomorphic twin: its slot is `int32_t` by value, and it has always
     // # taken the rvalue inline.
@@ -26,7 +26,7 @@ void free_positions() {
     // # The four value-typed instantiations: each renders its rvalue inline.
     // a = anyslot("free", 42)  # tpyc: ok
     bool a = anyslot<int32_t>("free", 42);
-    // b = anyslot("free", Float32(2.25))  # tpyc: ok
+    // b = anyslot("free", float32(2.25))  # tpyc: ok
     bool b = anyslot<float>("free", 2.25f);
     // c = anyslot("free", "lit")  # tpyc: ok
     bool c = anyslot<std::string>("free", "lit");
@@ -76,7 +76,7 @@ void ref_lvalue() {
 // def method_and_ctor() -> None:
 void method_and_ctor() {
     // # Record ctor and record method, both at a value-typed T.
-    // b = Boxed[Int32](3)  # tpyc: ok
+    // b = Boxed[int32](3)  # tpyc: ok
     Boxed<int32_t> b = Boxed<int32_t>(3);
     // print("method_ctor", b.v, b.holds(4))  # tpyc: ok
     std::cout << "method_ctor" << " " << b.v << " " << ::tpy::print_bool(b.holds(4)) << "\n";
@@ -119,7 +119,7 @@ bool cond_operand(bool flag) {
     return (flag || anyslot<int32_t>("cond", 42));
 }
 
-// def while_condition() -> Int32:
+// def while_condition() -> int32:
 int32_t while_condition() {
     // # A COMPOUND while condition is not a flush position; the inline render
     // # needs none.
@@ -134,7 +134,7 @@ int32_t while_condition() {
     return n;
 }
 
-// def match_arm(tag: Int32) -> bool:
+// def match_arm(tag: int32) -> bool:
 bool match_arm(int32_t tag) {
     // match tag:
     auto& __match_subject_1 = tag;
@@ -194,7 +194,7 @@ void with_body() {
     __ctx_1.__exit__({}, nullptr, {});
 }
 
-// def gen_body() -> Iterator[Int32]:
+// def gen_body() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_body::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -236,13 +236,13 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_body::__next__() {
 }
 
 
-// def gen_body() -> Iterator[Int32]:
+// def gen_body() -> Iterator[int32]:
 __gen_gen_body gen_body() {
     return __gen_gen_body();
 }
 
 // @error_return(Missing)
-// def er_body(n: Int32) -> Int32:
+// def er_body(n: int32) -> int32:
 std::expected<int32_t, Missing> er_body(int32_t n) {
     // # @error_return body: the same inline render under the expected-return tier.
     // if not (anyslot("erbody", n) and anyslot_i32("erbody", n)):  # tpyc: ok
@@ -320,7 +320,7 @@ void generator_factory() {
     std::cout << "generator" << " " << out << "\n";
 }
 
-// async def async_main() -> Int32:
+// async def async_main() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_async_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -343,7 +343,7 @@ void generator_factory() {
 }
 
 
-// async def async_main() -> Int32:
+// async def async_main() -> int32:
 __coro_async_main async_main() {
     return __coro_async_main();
 }

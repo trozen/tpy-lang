@@ -13,10 +13,10 @@ template<::tpystd::typing::Iterable<int32_t> T_items>
 int32_t sum_items(T_items& items);
 void main();
 
-// def sum_items(items: Iterable[Int32]) -> Int32:
+// def sum_items(items: Iterable[int32]) -> int32:
 template<::tpystd::typing::Iterable<int32_t> T_items>
 int32_t sum_items(T_items& items) {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for x in items:
     auto& __src_0 = items;

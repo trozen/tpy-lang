@@ -1,12 +1,12 @@
-from tpy import Int32, Own, error_return, ReturnException
+from tpy import int32, Own, error_return, ReturnException
 class Err(Exception, ReturnException):
     pass
 @error_return(Err)
-def small(n: Int32) -> Int32:
+def small(n: int32) -> int32:
     if n < 0:
         raise Err
     return n
-def use(n: Int32) -> int:
+def use(n: int32) -> int:
     try:
         v: int = small(n)
     except Err:

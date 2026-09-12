@@ -41,8 +41,8 @@ def main() -> None:
     nfrac, nip = math.modf(-3.75)
     print(nfrac, nip)
 
-    # frexp: (mantissa in [0.5, 1), exponent as T). T defaults to Int32
-    # (see math_frexp_generic for explicit Int64/BigInt variants).
+    # frexp: (mantissa in [0.5, 1), exponent as T). T defaults to int32
+    # (see math_frexp_generic for explicit int64/BigInt variants).
     m1, ex1 = math.frexp(12.0)    # 0.75, 4
     print(m1, ex1)
     m2, ex2 = math.frexp(0.5)     # 0.5, 0

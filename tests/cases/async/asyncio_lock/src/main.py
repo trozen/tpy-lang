@@ -2,11 +2,11 @@
 # 1), plus acquire/release/locked, release-on-throw, and release-when-unheld.
 import asyncio
 from asyncio import Lock
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    n: Int32
+    n: int32
 
     def __init__(self) -> None:
         self.n = 0

@@ -21,7 +21,7 @@ void bump_items(::tpy::ordered_map<std::string, Point>& d) {
     }
 }
 
-// def bump_values(d: dict[str, list[Int32]]):
+// def bump_values(d: dict[str, list[int32]]):
 void bump_values(::tpy::ordered_map<std::string, std::vector<int32_t>>& d) {
     // for v in d.values():
     auto __obj_0 = ::tpy::dict_values(d);
@@ -34,7 +34,7 @@ void bump_values(::tpy::ordered_map<std::string, std::vector<int32_t>>& d) {
     }
 }
 
-// def total(d: dict[str, list[Int32]]) -> Int32:
+// def total(d: dict[str, list[int32]]) -> int32:
 int32_t total(const ::tpy::ordered_map<std::string, std::vector<int32_t>>& d) {
     // n = 0
     int32_t n = 0;
@@ -63,7 +63,7 @@ void main() {
     bump_items(pts);
     // print(pts["a"].x, pts["b"].x)
     std::cout << ::tpy::__getitem__(pts, "a").x << " " << ::tpy::__getitem__(pts, "b").x << "\n";
-    // lists: dict[str, list[Int32]] = {}
+    // lists: dict[str, list[int32]] = {}
     ::tpy::ordered_map<std::string, std::vector<int32_t>> lists = ::tpy::ordered_map<std::string, std::vector<int32_t>>();
     // lists["a"] = [1]
     ::tpy::__setitem__(lists, "a", std::vector<int32_t>{1});

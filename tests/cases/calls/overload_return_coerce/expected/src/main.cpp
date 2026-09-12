@@ -6,11 +6,11 @@ namespace tpyapp::main {
 
 
 
-// # Test 1: Int32 returned where stub says -> int, union has float first
+// # Test 1: int32 returned where stub says -> int, union has float first
 // @overload
 // def get_val(obj: A) -> int: ...  # tpyc: ok
 ::tpy::BigInt get_val(const A& obj) {
-    // return obj.x  # Int32, stub -> int (not float)
+    // return obj.x  # int32, stub -> int (not float)
     return obj.x;
 }
 
@@ -24,11 +24,11 @@ double get_val(const B& obj) {
 
 
 
-// # Test 2: Int64 returned where stub says -> int, union has float first
+// # Test 2: int64 returned where stub says -> int, union has float first
 // @overload
 // def get_big(obj: C) -> int: ...  # tpyc: ok
 ::tpy::BigInt get_big(const C& obj) {
-    // return obj.z  # Int64, stub -> int (not float)
+    // return obj.z  # int64, stub -> int (not float)
     return obj.z;
 }
 
@@ -42,11 +42,11 @@ double get_big(const B& obj) {
 
 
 
-// # Test 3: Int32 returned where stub says -> Int64, union has float first
+// # Test 3: int32 returned where stub says -> int64, union has float first
 // @overload
-// def get_wide(obj: A) -> Int64: ...  # tpyc: ok
+// def get_wide(obj: A) -> int64: ...  # tpyc: ok
 int64_t get_wide(const A& obj) {
-    // return obj.x  # Int32, stub -> Int64 (not float)
+    // return obj.x  # int32, stub -> int64 (not float)
     return obj.x;
 }
 
@@ -60,11 +60,11 @@ double get_wide(const B& obj) {
 
 
 
-// # Test 4: Int32 returned where stub says -> float, union has int first
+// # Test 4: int32 returned where stub says -> float, union has int first
 // @overload
 // def get_cast(obj: A) -> float: ...  # tpyc: ok
 double get_cast(const A& obj) {
-    // return obj.x  # Int32, stub -> float (not int)
+    // return obj.x  # int32, stub -> float (not int)
     return obj.x;
 }
 
@@ -78,11 +78,11 @@ double get_cast(const A& obj) {
 
 // def main() -> None:
 void main() {
-    // a = A(Int32(42))
+    // a = A(int32(42))
     A a = A(42);
     // b = B(3.14)
     B b = B(3.14);
-    // c = C(Int64(100))
+    // c = C(int64(100))
     C c = C(100);
     // print(get_val(a))
     std::cout << get_val(a) << "\n";
@@ -96,7 +96,7 @@ void main() {
     std::cout << get_wide(a) << "\n";
     // print(get_wide(b))
     std::cout << ::tpy::print_float(get_wide(b)) << "\n";
-    // # int() normalizes output: TPy returns float (via stub), CPython returns Int32
+    // # int() normalizes output: TPy returns float (via stub), CPython returns int32
     // print(int(get_cast(a)))
     std::cout << ::tpy::BigInt::from_float(get_cast(a)) << "\n";
     // print(get_cast(c))

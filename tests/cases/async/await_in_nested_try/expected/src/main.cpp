@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def value(n: Int32) -> Int32:
+// async def value(n: int32) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_value::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
@@ -20,12 +20,12 @@ namespace tpyapp::main {
 }
 
 
-// async def value(n: Int32) -> Int32:
+// async def value(n: int32) -> int32:
 __coro_value value(int32_t n) {
     return __coro_value(n);
 }
 
-// async def fail() -> Int32:
+// async def fail() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_fail::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
@@ -39,12 +39,12 @@ __coro_value value(int32_t n) {
 }
 
 
-// async def fail() -> Int32:
+// async def fail() -> int32:
 __coro_fail fail() {
     return __coro_fail();
 }
 
-// async def go() -> Int32:
+// async def go() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_go::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
@@ -74,7 +74,7 @@ __coro_fail fail() {
                 try {
                     // print("inner-handler")
                     std::cout << "inner-handler" << "\n";
-                    // y = await value(Int32(5))
+                    // y = await value(int32(5))
                     __sub_1.emplace(5);
                     __state = S_RESUME_1;
                     continue;
@@ -156,7 +156,7 @@ void __coro_go::__finally_1() {
     std::cout << "inner-finally" << "\n";
 }
 
-// async def go() -> Int32:
+// async def go() -> int32:
 __coro_go go() {
     return __coro_go();
 }

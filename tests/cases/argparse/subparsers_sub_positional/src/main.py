@@ -1,11 +1,11 @@
 # Sub-parser with a positional argument: the positional lives on the
 # sub's own parse fn, and the field surfaces as Optional[T] on the
 # top namespace under the flat-namespace layout.
-from tpy import Int32
+from tpy import int32
 from argparse import ArgumentParser
 
 
-def main() -> Int32:
+def main() -> int32:
     parser = ArgumentParser(prog="prog")
     sub = parser.add_subparsers(dest="cmd", required=True)
 

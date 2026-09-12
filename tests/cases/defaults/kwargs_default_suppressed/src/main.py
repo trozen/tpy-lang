@@ -2,18 +2,18 @@
 # be dropped -- which means the call site must supply them.
 from typing import TypedDict, Unpack
 
-from tpy import Int64
+from tpy import int64
 
 
 class Options(TypedDict):
     host: str
 
 
-def scaled(a: Int64, b: Int64 = 5, **kwargs: Unpack[Options]) -> Int64:
+def scaled(a: int64, b: int64 = 5, **kwargs: Unpack[Options]) -> int64:
     return a * 10 + b
 
 
-def spanned(a: Int64, b: Int64 = 2, c: Int64 = 3, **kwargs: Unpack[Options]) -> Int64:
+def spanned(a: int64, b: int64 = 2, c: int64 = 3, **kwargs: Unpack[Options]) -> int64:
     return a * 100 + b * 10 + c
 
 

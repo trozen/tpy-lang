@@ -15,7 +15,7 @@ void main();
 
 // class C:
 struct C {
-    // LIMIT: Final[Int32] = 10
+    // LIMIT: Final[int32] = 10
     static constexpr int32_t LIMIT = 10;
     // NAME: Final[str] = "C"
     static constexpr std::string_view NAME = "C";

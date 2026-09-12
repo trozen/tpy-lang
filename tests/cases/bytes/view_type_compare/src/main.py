@@ -2,7 +2,7 @@
 # looks up through ONE C++ view type, so a param, a view, a literal and an
 # owned buffer meet with bare operators the way str / String / StrView do.
 from typing import Iterator
-from tpy import BytesView, Comparable, Int32, Own
+from tpy import BytesView, Comparable, int32, Own
 
 
 class Entry:
@@ -56,7 +56,7 @@ def compare_pairs(a: bytes, v: BytesView, ba: bytearray) -> None:
 
 
 # free function: a bytes needle in a tuple literal, a list, a set and a dict
-def membership(name: bytes, xs: list[bytes], s: set[bytes], d: dict[bytes, Int32]) -> None:
+def membership(name: bytes, xs: list[bytes], s: set[bytes], d: dict[bytes, int32]) -> None:
     print("tuple", name in (b"PLAYPAL", b"COLORMAP"), name not in (b"PLAYPAL", b"COLORMAP"))  # tpyc: ok
     print("list", name in xs, b"zz" in xs)  # tpyc: ok
     print("set", name in s, name not in s, b"zz" in s)  # tpyc: ok

@@ -3,19 +3,19 @@
 # functions and async coroutines), not the default `T&` shape -- otherwise
 # the factory wants a `T&` but the body accesses via `->` (mismatch) and
 # `None` callers fail to find a conversion.
-from tpy import nocopy, Int32
+from tpy import nocopy, int32
 from typing import Iterator
 
 
 @nocopy
 class P:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
-def gen_n_times(p: P | None, n: Int32) -> Iterator[Int32]:
+def gen_n_times(p: P | None, n: int32) -> Iterator[int32]:
     for _ in range(n):
         if p is not None:
             yield p.n

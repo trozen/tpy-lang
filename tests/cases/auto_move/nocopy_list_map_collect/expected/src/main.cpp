@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def make_resource(x: Int32) -> Own[Resource]:
+// def make_resource(x: int32) -> Own[Resource]:
 Resource make_resource(int32_t x) {
     // return Resource(x)
     return Resource(x);
 }
 
-// def make_pair(x: Int32) -> Own[tuple[str, Resource]]:
+// def make_pair(x: int32) -> Own[tuple[str, Resource]]:
 std::tuple<std::string, Resource> make_pair(int32_t x) {
     // return (str(x), Resource(x))
     return std::tuple<std::string, Resource>{::tpy::fixed_to_str<int32_t>(x), Resource(x)};
@@ -18,7 +18,7 @@ std::tuple<std::string, Resource> make_pair(int32_t x) {
 
 // def main() -> None:
 void main() {
-    // vals: list[Int32] = [Int32(1), Int32(2), Int32(3)]
+    // vals: list[int32] = [int32(1), int32(2), int32(3)]
     std::vector<int32_t> vals = {1, 2, 3};
     // # list collect path
     // result = list(map(make_resource, vals))  # tpyc: ok

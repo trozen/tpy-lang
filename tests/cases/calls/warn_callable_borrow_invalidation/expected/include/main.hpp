@@ -24,10 +24,10 @@ void main();
 
 // class P:
 struct P {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     P() = default;
     explicit P(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.P";
@@ -39,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline P::P(int32_t v) : v(v) {}
 // def use_fn(f: Fn[[list[P]], None]) -> None:
 template<typename __F0>

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def touch_readonly(h: readonly[Holder]) -> Int32:
+// def touch_readonly(h: readonly[Holder]) -> int32:
 int32_t touch_readonly(const Holder& h) {
     // return h.first()
     return h.first();
@@ -12,7 +12,7 @@ int32_t touch_readonly(const Holder& h) {
 
 // def main() -> None:
 void main() {
-    // h = Holder(Int32(42))
+    // h = Holder(int32(42))
     Holder h = Holder(42);
     // print(h.first())
     std::cout << h.first() << "\n";

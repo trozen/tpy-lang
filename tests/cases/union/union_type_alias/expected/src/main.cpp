@@ -22,10 +22,10 @@ std::string describe(::tpy::Union<const Circle*, const Rect*> s) {
 
 // def main() -> None:
 void main() {
-    // c: Shape = Circle(Int32(10))
+    // c: Shape = Circle(int32(10))
     Shape __slot_1 = Circle(10);
     ::tpy::Union<Circle*, Rect*> c = ::tpy::to_ptr_variant(__slot_1);
-    // r: Shape = Rect(Int32(3), Int32(4))
+    // r: Shape = Rect(int32(3), int32(4))
     Shape __slot_2 = Rect(3, 4);
     ::tpy::Union<Circle*, Rect*> r = ::tpy::to_ptr_variant(__slot_2);
     // print(describe(c))

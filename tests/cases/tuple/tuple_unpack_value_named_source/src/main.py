@@ -2,10 +2,10 @@
 # named local must NOT trigger the owned-source move (no owned target) -- it
 # still ref-binds the source (`const auto& __tup`). Guards the move branch
 # against over-firing on value tuples.
-from tpy import Int32
+from tpy import int32
 
 
-def make() -> tuple[Int32, Int32]:
+def make() -> tuple[int32, int32]:
     return (1, 2)
 
 

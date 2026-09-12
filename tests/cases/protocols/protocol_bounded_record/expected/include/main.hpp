@@ -63,7 +63,7 @@ inline std::ostream& operator<<(std::ostream& os, const SortedPair<T>& obj) {
 struct DefaultPairFactory {
 
 
-    // def make_pair(self, a: Int32, b: Int32) -> Own[SortedPair[Int32]]:
+    // def make_pair(self, a: int32, b: int32) -> Own[SortedPair[int32]]:
     SortedPair<int32_t> make_pair(int32_t a, int32_t b) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.DefaultPairFactory";
 };
@@ -74,12 +74,12 @@ inline std::ostream& operator<<(std::ostream& os, const DefaultPairFactory& obj)
 }
 
 
-// def make_pair(self, a: Int32, b: Int32) -> Own[SortedPair[Int32]]:
+// def make_pair(self, a: int32, b: int32) -> Own[SortedPair[int32]]:
 inline SortedPair<int32_t> DefaultPairFactory::make_pair(int32_t a, int32_t b) const {
-    // return SortedPair[Int32](a, b)
+    // return SortedPair[int32](a, b)
     return SortedPair<int32_t>(a, b);
 }
-// def create_pair[T: PairFactory](factory: T, a: Int32, b: Int32) -> Own[SortedPair[Int32]]:
+// def create_pair[T: PairFactory](factory: T, a: int32, b: int32) -> Own[SortedPair[int32]]:
 template<PairFactory T>
 SortedPair<int32_t> create_pair(::tpy::param_val_or_ref_t<T> factory, int32_t a, int32_t b) {
     // return factory.make_pair(a, b)

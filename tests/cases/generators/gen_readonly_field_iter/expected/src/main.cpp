@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def alias_param(h: Holder) -> Iterator[Int32]:
+// def alias_param(h: Holder) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_alias_param::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -31,7 +31,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_alias_param::__next__() {
 }
 
 
-// def alias_param(h: Holder) -> Iterator[Int32]:
+// def alias_param(h: Holder) -> Iterator[int32]:
 __gen_alias_param alias_param(Holder& h) {
     return __gen_alias_param(h);
 }
@@ -62,7 +62,7 @@ void main() {
     std::cout << ::tpy::__getitem__(b.cells, 0).v << " " << ::tpy::__getitem__(b.cells, 1).v << "\n";
 }
 
-// def direct(self) -> Iterator[Int32]:
+// def direct(self) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_direct::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -100,7 +100,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_direct::__next__() {
 }
 
 
-// def via_alias(self) -> Iterator[Int32]:
+// def via_alias(self) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_via_alias::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -140,7 +140,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_via_alias::__next__() 
 }
 
 
-// def live_alias(self) -> Iterator[Int32]:
+// def live_alias(self) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_live_alias::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {

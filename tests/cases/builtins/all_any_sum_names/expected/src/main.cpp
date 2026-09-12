@@ -16,7 +16,7 @@ bool check_any(const std::vector<bool>& xs) {
     return ::tpy::builtin_any(xs);
 }
 
-// def total(xs: list[Int32]) -> Int32:
+// def total(xs: list[int32]) -> int32:
 int32_t total(const std::vector<int32_t>& xs) {
     // return sum(xs)
     return ::tpy::builtin_sum<int32_t>(xs);
@@ -30,7 +30,7 @@ void main() {
     std::cout << ::tpy::print_bool(::tpy::builtin_all(bs)) << "\n";
     // print(any(bs))
     std::cout << ::tpy::print_bool(::tpy::builtin_any(bs)) << "\n";
-    // ns: list[Int32] = [1, 2, 3]
+    // ns: list[int32] = [1, 2, 3]
     std::vector<int32_t> ns = {1, 2, 3};
     // print(total(ns))
     std::cout << total(ns) << "\n";

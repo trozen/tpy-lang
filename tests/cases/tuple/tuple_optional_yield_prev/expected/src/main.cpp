@@ -17,7 +17,7 @@ std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __gen_gen::__next__() {
     }
     case S_RESUME_0: {
         // # Sentinel: x == 0 means "reset prev"; otherwise carry forward.
-        // if it.x == Int32(0):
+        // if it.x == int32(0):
         if ((it->x == 0)) {
             // prev = None
             prev = nullptr;

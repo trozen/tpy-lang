@@ -25,7 +25,7 @@ void main();
 struct Int32One {
 
 
-    // def __poll__(self, w: Waker) -> Own[Poll[Int32]]:
+    // def __poll__(self, w: Waker) -> Own[Poll[int32]]:
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker w) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Int32One";
 };
@@ -50,9 +50,9 @@ inline std::ostream& operator<<(std::ostream& os, const Nothing& obj) {
 }
 
 
-// def __poll__(self, w: Waker) -> Own[Poll[Int32]]:
+// def __poll__(self, w: Waker) -> Own[Poll[int32]]:
 inline ::tpystd::tpy::Poll<int32_t> Int32One::__poll__(::tpystd::coro::Waker w) const {
-    // return poll_ready(Int32(1))
+    // return poll_ready(int32(1))
     return ::tpystd::coro::poll_ready<int32_t>(1);
 }
 

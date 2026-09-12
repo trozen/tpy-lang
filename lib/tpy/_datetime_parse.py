@@ -11,24 +11,24 @@
 # branch (vd/vm/vh...): the pre-scan hoisting misses tuple-unpack targets
 # reused across sibling branches, emitting assignments to undeclared C++
 # locals.
-from tpy import Char, Int32
+from tpy import char, int32
 from _datetime_cal import (
     _DAY_ABBR, _DAY_FULL, _MONTH_ABBR, _MONTH_FULL, _MAXORDINAL,
     _ymd2ord, _ord2ymd, _is_leap, _isoweek1monday, _isoweek_to_gregorian,
 )
 
 
-def _is_digit_char(c: Char) -> bool:
+def _is_digit_char(c: char) -> bool:
     o = ord(c)
     return 48 <= o <= 57
 
 
-def _is_space_char(c: Char) -> bool:
+def _is_space_char(c: char) -> bool:
     o = ord(c)
     return o == 32 or 9 <= o <= 13
 
 
-def _char_ieq(a: Char, b: Char) -> bool:
+def _char_ieq(a: char, b: char) -> bool:
     # ASCII case-insensitive char compare (strptime literals and names
     # match case-insensitively -- CPython compiles with IGNORECASE).
     x = ord(a)
@@ -219,7 +219,7 @@ def _parse_zoffset(data: str, p: int, st: _ParseState, fmt: str) -> int:
     return p
 
 
-def _apply_directive(d: Char, data: str, p: int, st: _ParseState,
+def _apply_directive(d: char, data: str, p: int, st: _ParseState,
                      fmt: str) -> int:
     m = len(data)
     if d == "%":

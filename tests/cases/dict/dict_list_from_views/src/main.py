@@ -1,8 +1,8 @@
 # Test list() construction from dict views (keys, values, items)
-from tpy import Int32
+from tpy import int32
 
 def main() -> None:
-    d: dict[str, Int32] = {"a": 1, "b": 2, "c": 3}
+    d: dict[str, int32] = {"a": 1, "b": 2, "c": 3}
 
     keys = list(d.keys())
     print(keys)

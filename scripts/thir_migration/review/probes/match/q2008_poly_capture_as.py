@@ -1,5 +1,5 @@
 from typing import Protocol, Iterator, Optional
-from tpy import dynamic, Int32, Ptr
+from tpy import dynamic, int32, Ptr
 
 @dynamic
 class Pet(Protocol):

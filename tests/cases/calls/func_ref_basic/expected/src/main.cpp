@@ -4,25 +4,25 @@
 namespace tpyapp::main {
 
 
-// def double(x: Int32) -> Int32:
+// def double(x: int32) -> int32:
 int32_t double_(int32_t x) {
     // return x * 2
     return (::tpy::mul_check<int32_t>(x, 2));
 }
 
-// def negate(x: Int32) -> Int32:
+// def negate(x: int32) -> int32:
 int32_t negate(int32_t x) {
     // return -x
     return ::tpy::neg_check<int32_t>(x);
 }
 
-// def add(a: Int32, b: Int32) -> Int32:
+// def add(a: int32, b: int32) -> int32:
 int32_t add(int32_t a, int32_t b) {
     // return a + b
     return (::tpy::add_check<int32_t>(a, b));
 }
 
-// def print_val(x: Int32) -> None:
+// def print_val(x: int32) -> None:
 void print_val(int32_t x) {
     // print(x)
     std::cout << x << "\n";
@@ -39,7 +39,7 @@ void main() {
     // run_void(print_val, 99)    # 99
     run_void(print_val, 99);
     // # Non-void function passed to void hint (return value discarded)
-    // run_void(double, 7)        # (no output -- double returns Int32, discarded)
+    // run_void(double, 7)        # (no output -- double returns int32, discarded)
     run_void(double_, 7);
 }
 

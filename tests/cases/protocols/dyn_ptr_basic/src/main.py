@@ -3,42 +3,42 @@
 #   * record -> Ptr[@dynamic Protocol]                (address-of upcast at arg/init site)
 #   * record -> Ptr[readonly[@dynamic Protocol]]      (readonly target variant)
 from typing import Protocol
-from tpy import Int32, Ptr, dynamic, nocopy, readonly
+from tpy import int32, Ptr, dynamic, nocopy, readonly
 
 
 @dynamic
 class Awaker(Protocol):
-    def mark(self, task_id: Int32) -> None: ...
+    def mark(self, task_id: int32) -> None: ...
 
 
 @nocopy
 class ExecutorA(Awaker):
-    log: list[Int32]
+    log: list[int32]
     def __init__(self) -> None:
         self.log = []
-    def mark(self, task_id: Int32) -> None:
+    def mark(self, task_id: int32) -> None:
         self.log.append(task_id * 10)
 
 
 @nocopy
 class ExecutorB(Awaker):
-    log: list[Int32]
+    log: list[int32]
     def __init__(self) -> None:
         self.log = []
-    def mark(self, task_id: Int32) -> None:
+    def mark(self, task_id: int32) -> None:
         self.log.append(task_id + 1000)
 
 
 @nocopy
 class Notifier:
     awaker: Ptr[Awaker]
-    task_id: Int32
+    task_id: int32
 
     def __init__(self) -> None:
         self.awaker = None  # Ptr[T] is implicitly nullable
         self.task_id = 0
 
-    def aim(self, p: Ptr[Awaker], tid: Int32) -> None:
+    def aim(self, p: Ptr[Awaker], tid: int32) -> None:
         self.awaker = p
         self.task_id = tid
 
@@ -51,7 +51,7 @@ class Notifier:
 # record -> Ptr[Awaker] direct upcast (UPCAST_TO_PTR path). Takes a
 # CONCRETE-record param so the coerce happens at the call site, not
 # inside the body.
-def fire_direct(exec: ExecutorA, tid: Int32) -> None:
+def fire_direct(exec: ExecutorA, tid: int32) -> None:
     n = Notifier()
     n.aim(exec, tid)  # record exec -> Ptr[Awaker] arg
     n.fire()

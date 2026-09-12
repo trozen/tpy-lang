@@ -21,7 +21,7 @@ void main();
 struct Guard {
 
 
-    // def __enter__(self) -> Int32:
+    // def __enter__(self) -> int32:
     int32_t __enter__() const;
 
     // def __exit__(self, et, ev, tb) -> bool:
@@ -35,7 +35,7 @@ inline std::ostream& operator<<(std::ostream& os, const Guard& obj) {
 }
 
 
-// def __enter__(self) -> Int32:
+// def __enter__(self) -> int32:
 inline int32_t Guard::__enter__() const {
     // return 1
     return 1;

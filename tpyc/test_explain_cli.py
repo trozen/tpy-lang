@@ -10,13 +10,13 @@ from .explain import explain_send_sync
 _STDLIB_DIRS = [get_lib_dir() / "tpy"]
 
 _PROG = """\
-from tpy import Int32, Ptr
+from tpy import int32, Ptr
 
 
 class Order:
-    handler: Ptr[Int32]
+    handler: Ptr[int32]
 
-    def __init__(self, h: Ptr[Int32]) -> None:
+    def __init__(self, h: Ptr[int32]) -> None:
         self.handler = h
 
 
@@ -35,9 +35,9 @@ def _compile():
 
 def test_explain_send_holds(capsys):
     modules, compiler = _compile()
-    rc = explain_send_sync(modules, compiler, "Int32", send=True)
+    rc = explain_send_sync(modules, compiler, "int32", send=True)
     assert rc == 0
-    assert capsys.readouterr().out.strip() == "Int32 is Send"
+    assert capsys.readouterr().out.strip() == "int32 is Send"
 
 
 def test_explain_send_chain(capsys):
@@ -46,14 +46,14 @@ def test_explain_send_chain(capsys):
     assert rc == 0
     out = capsys.readouterr().out
     assert "list[Order] is not Send" in out
-    assert "field 'handler: Ptr[Int32]' is not Send (raw pointer" in out
+    assert "field 'handler: Ptr[int32]' is not Send (raw pointer" in out
 
 
 def test_explain_sync_mutable_container(capsys):
     modules, compiler = _compile()
-    rc = explain_send_sync(modules, compiler, "list[Int32]", send=False)
+    rc = explain_send_sync(modules, compiler, "list[int32]", send=False)
     assert rc == 0
-    assert "list[Int32] is not Sync (mutable container" in capsys.readouterr().out
+    assert "list[int32] is not Sync (mutable container" in capsys.readouterr().out
 
 
 def test_explain_unknown_type_errors(capsys):

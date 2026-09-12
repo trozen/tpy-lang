@@ -1,13 +1,13 @@
-from tpy import Int32
+from tpy import int32
 
 # next() takes a parameter — should not be iterable
 class BadArity:
-    value: Int32
+    value: int32
 
     def __init__(self) -> None:
         self.value = 0
 
-    def next(self, step: Int32) -> Int32 | None:
+    def next(self, step: int32) -> int32 | None:
         self.value += step
         return self.value
 

@@ -17,10 +17,10 @@ void main();
 
 // class Leaf:
 struct Leaf {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Leaf() = default;
     explicit Leaf(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Leaf";
@@ -32,7 +32,7 @@ inline std::ostream& operator<<(std::ostream& os, const Leaf& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Leaf::Leaf(int32_t v) : v(v) {}
 struct Tree {
     using variant_type = ::tpy::Union<Leaf, std::vector<Tree>>;

@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def take_mut(*items: Box) -> Int32:
+// def take_mut(*items: Box) -> int32:
 int32_t take_mut(::tpy::varargs<const Box> items) {
-    // n: Int32 = 0
+    // n: int32 = 0
     int32_t n = 0;
     // for b in items:
     auto& __obj_0 = items;
@@ -21,9 +21,9 @@ int32_t take_mut(::tpy::varargs<const Box> items) {
     return n;
 }
 
-// def take_ro(*items: readonly[Box]) -> Int32:
+// def take_ro(*items: readonly[Box]) -> int32:
 int32_t take_ro(::tpy::varargs<const Box> items) {
-    // n: Int32 = 0
+    // n: int32 = 0
     int32_t n = 0;
     // for b in items:
     auto& __obj_0 = items;
@@ -38,13 +38,13 @@ int32_t take_ro(::tpy::varargs<const Box> items) {
     return n;
 }
 
-// def via_mut(xs: list[Box]) -> Int32:
+// def via_mut(xs: list[Box]) -> int32:
 int32_t via_mut(const std::vector<Box>& xs) {
     // return take_mut(*xs)
     return take_mut(::tpy::varargs<const Box>(::tpy::as_span(xs)));
 }
 
-// def via_ro(xs: list[Box]) -> Int32:
+// def via_ro(xs: list[Box]) -> int32:
 int32_t via_ro(const std::vector<Box>& xs) {
     // return take_ro(*xs)
     return take_ro(::tpy::varargs<const Box>(::tpy::as_span(xs)));

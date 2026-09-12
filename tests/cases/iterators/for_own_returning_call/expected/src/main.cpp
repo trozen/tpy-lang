@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def make_batch(n: Int32) -> Own[list[Int32]]:
+// def make_batch(n: int32) -> Own[list[int32]]:
 std::vector<int32_t> make_batch(int32_t n) {
-    // out: list[Int32] = []
+    // out: list[int32] = []
     std::vector<int32_t> out = std::vector<int32_t>{};
     // for i in range(n):
     int32_t __stop_0 = n;
@@ -18,15 +18,15 @@ std::vector<int32_t> make_batch(int32_t n) {
     return out;
 }
 
-// def make_pairs() -> Own[dict[str, Int32]]:
+// def make_pairs() -> Own[dict[str, int32]]:
 ::tpy::ordered_map<std::string, int32_t> make_pairs() {
     // return {"a": 1, "b": 2}
     return ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
 }
 
-// def make_uniques() -> Own[set[Int32]]:
+// def make_uniques() -> Own[set[int32]]:
 ::tpy::ordered_set<int32_t> make_uniques() {
-    // return {Int32(10), Int32(20), Int32(30)}
+    // return {int32(10), int32(20), int32(30)}
     return ::tpy::ordered_set<int32_t>({10, 20, 30});
 }
 
@@ -58,7 +58,7 @@ void main() {
     }
     // print("--- dict ---")
     std::cout << "--- dict ---" << "\n";
-    // klen = Int32(0)
+    // klen = int32(0)
     int32_t klen = 0;
     // for k in make_pairs():
     auto __obj_2 = make_pairs();
@@ -73,7 +73,7 @@ void main() {
     std::cout << klen << "\n";
     // print("--- set ---")
     std::cout << "--- set ---" << "\n";
-    // ssum = Int32(0)
+    // ssum = int32(0)
     int32_t ssum = 0;
     // for v in make_uniques():
     auto __obj_3 = make_uniques();
@@ -88,7 +88,7 @@ void main() {
     std::cout << ssum << "\n";
     // print("--- callable var ---")
     std::cout << "--- callable var ---" << "\n";
-    // f: Callable[[Int32], Own[list[Int32]]] = make_batch
+    // f: Callable[[int32], Own[list[int32]]] = make_batch
     std::function<std::vector<int32_t>(int32_t)> f = make_batch;
     // for e in f(2):
     auto __obj_4 = f(2);

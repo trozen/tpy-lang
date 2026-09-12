@@ -24,10 +24,10 @@ def test_native_method_registers_as_native():
     # the linkage predicates correctly, not just a hand-built FunctionInfo.
     src = (
         "from tpy.extern import native\n"
-        "from tpy import Int32\n"
+        "from tpy import int32\n"
         "@native\n"
         "class Cell:\n"
-        "    n: Int32\n"
+        "    n: int32\n"
         "@native\n"
         "class Box:\n"
         "    @native('get')\n"

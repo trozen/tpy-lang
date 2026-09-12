@@ -1,4 +1,4 @@
-from tpy import Int32, String, Own
+from tpy import int32, String, Own
 class S:
     t: String
     def __init__(self) -> None:

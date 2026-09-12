@@ -16,11 +16,11 @@ void main();
 
 // class Res:
 struct Res {
-    // v: Int32
+    // v: int32
     int32_t v;
     bool __tpy_owned_ = true;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     explicit Res(int32_t v);
     Res(const Res&) = delete;
     Res& operator=(const Res&) = delete;
@@ -41,10 +41,10 @@ inline std::ostream& operator<<(std::ostream& os, const Res& obj) {
 struct Wrap {
     // res: Res
     Res res;
-    // tag: Int32
+    // tag: int32
     int32_t tag;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     explicit Wrap(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrap";
 };
@@ -55,7 +55,7 @@ inline std::ostream& operator<<(std::ostream& os, const Wrap& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Res::Res(int32_t v) : v(v) {}
 
 inline Res::Res(Res&& other) noexcept : v(std::move(other.v)) {
@@ -75,7 +75,7 @@ inline Res::~Res() {
     // pass
 }
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Wrap::Wrap(int32_t v) : res(Res(v)), tag((::tpy::mul_check<int32_t>(v, 100))) {}
 void __tpy_init();
 } // namespace tpyapp::main

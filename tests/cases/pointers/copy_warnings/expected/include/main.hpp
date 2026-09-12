@@ -20,9 +20,9 @@ void main();
 
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
-    // y: Int32
+    // y: int32
     int32_t y;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
@@ -37,14 +37,14 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 struct Rect {
     // corner: Point
     Point corner;
-    // width: Int32
+    // width: int32
     int32_t width;
 
 
     // def set_corner(self, p: Point) -> None:
     void set_corner(const Point& p);
 
-    // def set_width(self, w: Int32) -> None:
+    // def set_width(self, w: int32) -> None:
     void set_width(int32_t w);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Rect";
 };
@@ -56,11 +56,11 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
 
 // class Container:
 struct Container {
-    // items: list[Int32]
+    // items: list[int32]
     std::vector<int32_t> items;
 
 
-    // def set_items(self, data: list[Int32]) -> None:
+    // def set_items(self, data: list[int32]) -> None:
     void set_items(const std::vector<int32_t>& data);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
@@ -122,15 +122,15 @@ inline void Rect::set_corner(const Point& p) {
     this->corner = Point();
 }
 
-// def set_width(self, w: Int32) -> None:
+// def set_width(self, w: int32) -> None:
 inline void Rect::set_width(int32_t w) {
     // self.width = w            # tpyc: ok
     this->width = w;
 }
 
-// def set_items(self, data: list[Int32]) -> None:
+// def set_items(self, data: list[int32]) -> None:
 inline void Container::set_items(const std::vector<int32_t>& data) {
-    // self.items = data         # tpyc: warning(/copies list\[Int32\] into field/)
+    // self.items = data         # tpyc: warning(/copies list\[int32\] into field/)
     this->items = data;
     // self.items = copy(data)   # tpyc: ok
     this->items = std::vector<int32_t>(data);

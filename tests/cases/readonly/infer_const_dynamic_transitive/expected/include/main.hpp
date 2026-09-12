@@ -36,14 +36,14 @@ void main();
 
 // class Parent(HasValue):
 struct Parent : HasValue {
-    // _n: Int32
+    // _n: int32
     int32_t _n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Parent() = default;
     explicit Parent(int32_t n);
 
-    // def value(self) -> Int32:           # direct override -- must NOT be const
+    // def value(self) -> int32:           # direct override -- must NOT be const
     int32_t value() override;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Parent";
 };
@@ -56,11 +56,11 @@ inline std::ostream& operator<<(std::ostream& os, const Parent& obj) {
 // class Child(Parent):
 struct Child : Parent {
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Child() = default;
     explicit Child(int32_t n);
 
-    // def value(self) -> Int32:           # transitive override -- must NOT be const
+    // def value(self) -> int32:           # transitive override -- must NOT be const
     int32_t value() override;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
@@ -90,19 +90,19 @@ struct tpy::RefAdapter<tpyapp::main::HasValue, T> : tpyapp::main::HasValue {
 namespace tpyapp::main {
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Parent::Parent(int32_t n) : _n(n) {}
 
-// def value(self) -> Int32:           # direct override -- must NOT be const
+// def value(self) -> int32:           # direct override -- must NOT be const
 inline int32_t Parent::value() {
     // return self._n
     return this->_n;
 }
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Child::Child(int32_t n) : Parent(n) {}
 
-// def value(self) -> Int32:           # transitive override -- must NOT be const
+// def value(self) -> int32:           # transitive override -- must NOT be const
 inline int32_t Child::value() {
     // return self._n * 2
     return (::tpy::mul_check<int32_t>(this->_n, 2));

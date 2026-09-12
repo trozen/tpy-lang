@@ -1,13 +1,13 @@
 # Bound-based subtype coercion Ptr[U] -> Ptr[Animal] via a class bound U: Animal:
 # covers a subclass upcast, the identity case (U == bound), and the readonly form.
-from tpy import Ptr, Int32, readonly, take_ptr
+from tpy import Ptr, int32, readonly, take_ptr
 
 
 class Animal:
-    code: Int32
-    def __init__(self, code: Int32) -> None:
+    code: int32
+    def __init__(self, code: int32) -> None:
         self.code = code
-    def base_code(self) -> Int32:
+    def base_code(self) -> int32:
         return self.code
 
 

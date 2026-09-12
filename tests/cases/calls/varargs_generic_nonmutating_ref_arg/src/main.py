@@ -2,22 +2,22 @@
 # inference branch strips Ref from the arg side before binding T (mirroring
 # how the non-variadic ref-param match works), so T binds to Box, not Ref[Box]
 # -- the latter would render as illegal `varargs<Box&>`.
-from tpy import Int32, nocopy
+from tpy import int32, nocopy
 
 
 @nocopy
 class Box:
-    val: Int32
+    val: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 
-def count[T](*items: T) -> Int32:
+def count[T](*items: T) -> int32:
     return len(items)
 
 
-def via_param(b: Box, c: Box) -> Int32:
+def via_param(b: Box, c: Box) -> int32:
     return count(b, c)  # tpyc: ok
 
 

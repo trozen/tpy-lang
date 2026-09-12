@@ -1,6 +1,6 @@
 # io.StringIO -- write/read/seek/iter + context manager + closed errors.
 import io
-from tpy import Int32
+from tpy import int32
 
 
 def basic_write_read() -> None:
@@ -25,9 +25,9 @@ def initial_value_and_overwrite() -> None:
 
 def seek_then_read() -> None:
     s = io.StringIO("abcdefgh")
-    s.seek(Int32(3))
+    s.seek(int32(3))
     print("read-from-3:", s.read())
-    s.seek(Int32(0))
+    s.seek(int32(0))
     print("read-all:", s.read())
 
 
@@ -64,11 +64,11 @@ def closed_raises() -> None:
 
 def truncate_basic() -> None:
     s = io.StringIO("abcdefgh")
-    s.seek(Int32(3))
+    s.seek(int32(3))
     s.truncate()  # truncate to current position (3)
     print("truncate-default:", s.getvalue())
-    s.seek(Int32(0))
-    s.truncate(Int32(2))
+    s.seek(int32(0))
+    s.truncate(int32(2))
     print("truncate-explicit:", s.getvalue())
 
 

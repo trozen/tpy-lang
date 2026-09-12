@@ -1,1 +1,1 @@
-main.py:15: error: Class 'BadBox' does not conform to protocol 'Measurable': missing method 'def size(self) -> Int32'
+main.py:15: error: Class 'BadBox' does not conform to protocol 'Measurable': missing method 'def size(self) -> int32'

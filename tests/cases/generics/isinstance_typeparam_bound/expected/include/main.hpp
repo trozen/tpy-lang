@@ -23,7 +23,7 @@ struct Animal {
     // self.n = n
     int32_t n;
 
-    // def __init__(self, n: Int32):
+    // def __init__(self, n: int32):
     Animal() = default;
     explicit Animal(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Animal";
@@ -37,7 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const Animal& obj) {
 // class Dog(Animal):
 struct Dog : Animal {
 
-    // def __init__(self, n: Int32):
+    // def __init__(self, n: int32):
     Dog() = default;
     explicit Dog(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
@@ -51,7 +51,7 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 // class Cat(Animal):
 struct Cat : Animal {
 
-    // def __init__(self, n: Int32):
+    // def __init__(self, n: int32):
     Cat() = default;
     explicit Cat(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cat";
@@ -65,7 +65,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 // class Puppy(Dog):
 struct Puppy : Dog {
 
-    // def __init__(self, n: Int32):
+    // def __init__(self, n: int32):
     Puppy() = default;
     explicit Puppy(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Puppy";
@@ -77,27 +77,27 @@ inline std::ostream& operator<<(std::ostream& os, const Puppy& obj) {
 }
 
 
-// def __init__(self, n: Int32):
+// def __init__(self, n: int32):
 inline Animal::Animal(int32_t n) : n(n) {}
 
-// def __init__(self, n: Int32):
+// def __init__(self, n: int32):
 inline Dog::Dog(int32_t n) {
     // self.n = n
     this->n = n;
 }
 
-// def __init__(self, n: Int32):
+// def __init__(self, n: int32):
 inline Cat::Cat(int32_t n) {
     // self.n = n
     this->n = n;
 }
 
-// def __init__(self, n: Int32):
+// def __init__(self, n: int32):
 inline Puppy::Puppy(int32_t n) {
     // self.n = n
     this->n = n;
 }
-// def classify[T: Dog](x: T) -> Int32:
+// def classify[T: Dog](x: T) -> int32:
 template<typename T>
 int32_t classify(::tpy::param_val_or_ref_t<T> x) {
     // code = 0

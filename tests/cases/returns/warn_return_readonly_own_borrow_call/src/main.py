@@ -4,13 +4,13 @@
 # borrow-returning CALL; the FIELD leg is in the container twin. The copy is
 # the ACKNOWLEDGED CPython divergence, so the case prints only what both agree
 # on: `updated()` mutates through the borrow BEFORE the return.
-from tpy import Int32, Own, readonly, copy
+from tpy import int32, Own, readonly, copy
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
     def updated(self) -> 'Point':

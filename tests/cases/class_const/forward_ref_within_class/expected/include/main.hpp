@@ -15,11 +15,11 @@ void main();
 
 // class Limits:
 struct Limits {
-    // BASE: Final[Int32] = 10
+    // BASE: Final[int32] = 10
     static constexpr int32_t BASE = 10;
-    // DOUBLE: Final[Int32] = BASE * 2
+    // DOUBLE: Final[int32] = BASE * 2
     static constexpr int32_t DOUBLE = (::tpy::mul_check<int32_t>(BASE, 2));
-    // TRIPLE: Final[Int32] = BASE + DOUBLE
+    // TRIPLE: Final[int32] = BASE + DOUBLE
     static constexpr int32_t TRIPLE = (::tpy::add_check<int32_t>(BASE, DOUBLE));
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.Limits";

@@ -4,7 +4,7 @@
 # the specific type AND the base, and importable as userexc.<Name>. Message-only
 # exceptions (the message is the only state) cross faithfully. ConfigError tests
 # a user base (chain ConfigError -> AppError -> Exception).
-from tpy import Int64
+from tpy import int64
 from tpy.extern import export
 
 
@@ -29,31 +29,31 @@ class FatalError(BaseException):  # direct BaseException base -> NOT an Exceptio
 
 
 @export
-def lookup(k: Int64) -> Int64:
+def lookup(k: int64) -> int64:
     if k != 1:
         raise NotFound("no such key")
     return 100
 
 
 @export
-def boot(ok: Int64) -> Int64:
+def boot(ok: int64) -> int64:
     if ok == 0:
         raise ConfigError("bad config")
     return 1
 
 
 @export
-def fail_app() -> Int64:
+def fail_app() -> int64:
     raise AppError("app failure")
 
 
 @export
-def abort_now() -> Int64:
+def abort_now() -> int64:
     raise FatalError("fatal")
 
 
 @export
-def must_be_even(n: Int64) -> Int64:
+def must_be_even(n: int64) -> int64:
     # A built-in raised from a module that also defines user excs: set_py_err_from
     # misses the registry (no typeid match) and falls to the built-in cascade.
     if n % 2 != 0:

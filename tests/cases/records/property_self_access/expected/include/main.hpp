@@ -15,35 +15,35 @@ void main();
 
 // class Rect:
 struct Rect {
-    // _w: Int32
+    // _w: int32
     int32_t _w;
-    // _h: Int32
+    // _h: int32
     int32_t _h;
 
-    // def __init__(self, w: Int32, h: Int32) -> None:
+    // def __init__(self, w: int32, h: int32) -> None:
     Rect() = default;
     explicit Rect(int32_t w, int32_t h);
 
     // @property
-    // def width(self) -> Int32:
+    // def width(self) -> int32:
     int32_t width() const;
 
     // @width.setter
-    // def width(self, v: Int32) -> None:
+    // def width(self, v: int32) -> None:
     void set_width(int32_t v);
 
     // @property
-    // def height(self) -> Int32:
+    // def height(self) -> int32:
     int32_t height() const;
 
     // @property
-    // def area(self) -> Int32:
+    // def area(self) -> int32:
     int32_t area() const;
 
     // def describe(self) -> str:
     std::string describe() const;
 
-    // def scale(self, factor: Int32) -> None:
+    // def scale(self, factor: int32) -> None:
     void scale(int32_t factor);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Rect";
 };
@@ -54,32 +54,32 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
 }
 
 
-// def __init__(self, w: Int32, h: Int32) -> None:
+// def __init__(self, w: int32, h: int32) -> None:
 inline Rect::Rect(int32_t w, int32_t h) : _w(w), _h(h) {}
 
 // @property
-// def width(self) -> Int32:
+// def width(self) -> int32:
 inline int32_t Rect::width() const {
     // return self._w
     return this->_w;
 }
 
 // @width.setter
-// def width(self, v: Int32) -> None:
+// def width(self, v: int32) -> None:
 inline void Rect::set_width(int32_t v) {
     // self._w = v
     this->_w = v;
 }
 
 // @property
-// def height(self) -> Int32:
+// def height(self) -> int32:
 inline int32_t Rect::height() const {
     // return self._h
     return this->_h;
 }
 
 // @property
-// def area(self) -> Int32:
+// def area(self) -> int32:
 inline int32_t Rect::area() const {
     // return self.width * self.height
     return (::tpy::mul_check<int32_t>(this->width(), this->height()));
@@ -91,7 +91,7 @@ inline std::string Rect::describe() const {
     return std::format("{}x{}={}", this->width(), this->height(), this->area());
 }
 
-// def scale(self, factor: Int32) -> None:
+// def scale(self, factor: int32) -> None:
 inline void Rect::scale(int32_t factor) {
     // self.width = self._w * factor
     this->set_width((::tpy::mul_check<int32_t>(this->_w, factor)));

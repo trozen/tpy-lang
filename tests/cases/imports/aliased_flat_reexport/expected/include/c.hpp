@@ -13,10 +13,10 @@ inline constexpr std::string_view __name__ = "c";
 
 // class Original:
 struct Original {
-    // val: Int32
+    // val: int32
     int32_t val;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Original() = default;
     explicit Original(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "c.Original";
@@ -28,7 +28,7 @@ inline std::ostream& operator<<(std::ostream& os, const Original& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Original::Original(int32_t v) : val(v) {}
 void __tpy_init();
 } // namespace tpyapp::c

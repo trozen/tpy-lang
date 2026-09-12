@@ -4,9 +4,9 @@
 namespace tpyapp::pkg::consumer {
 
 
-// def compute() -> Int32:
+// def compute() -> int32:
 int32_t compute() {
-    // v = Vec2(Int32(3), Int32(4))
+    // v = Vec2(int32(3), int32(4))
     ::tpyapp::pkg::defs::Vec2 v = ::tpyapp::pkg::defs::Vec2(3, 4);
     // return double(v.x)
     return ::tpyapp::pkg::defs::double_(v.x);

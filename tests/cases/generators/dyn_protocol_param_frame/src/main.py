@@ -1,13 +1,13 @@
 # A @dynamic protocol param on a RESUMABLE generator frame (two yields, so the
 # simple-generator peephole does not apply): the frame field is a `Src&` borrow,
 # so a mutation through the param between the yields is visible to the caller.
-from tpy import Int32, Own, dynamic, readonly
+from tpy import int32, Own, dynamic, readonly
 from typing import Iterator, Protocol
 
 
 @dynamic
 class Src(Protocol):
-    def get(self) -> Int32: ...
+    def get(self) -> int32: ...
 
     def bump(self) -> None: ...
 
@@ -15,7 +15,7 @@ class Src(Protocol):
 @dynamic
 class RoSrc(Protocol):
     @readonly
-    def get(self) -> Int32: ...
+    def get(self) -> int32: ...
 
 
 @dynamic
@@ -26,13 +26,13 @@ class Src2[T](Protocol):
 
 
 class Impl:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     @readonly
-    def get(self) -> Int32:
+    def get(self) -> int32:
         return self.n
 
     def bump(self) -> None:
@@ -42,12 +42,12 @@ class Impl:
 # An INHERITANCE conformer: the call site upcasts directly, with no RefAdapter
 # temp -- the other half of the adapter-vs-upcast split.
 class Inh(Src):
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
-    def get(self) -> Int32:
+    def get(self) -> int32:
         return self.n
 
     def bump(self) -> None:
@@ -55,33 +55,33 @@ class Inh(Src):
 
 
 # free: a bare @dynamic protocol param on a free generator.
-def free_gen(s: Src) -> Iterator[Int32]:  # tpyc: ok
+def free_gen(s: Src) -> Iterator[int32]:  # tpyc: ok
     yield s.get()
     s.bump()
     yield s.get()
 
 
 class Holder:
-    tag: Int32
+    tag: int32
 
-    def __init__(self, tag: Int32) -> None:
+    def __init__(self, tag: int32) -> None:
         self.tag = tag
 
     # method: the same param alongside the `self` receiver capture.
-    def walk(self, s: Src) -> Iterator[Int32]:  # tpyc: ok
+    def walk(self, s: Src) -> Iterator[int32]:  # tpyc: ok
         yield s.get() + self.tag
         s.bump()
         yield s.get() + self.tag
 
 
 # readonly: `readonly[Src]` captures as a `const Src&` frame field.
-def ro_gen(s: readonly[RoSrc]) -> Iterator[Int32]:  # tpyc: ok
+def ro_gen(s: readonly[RoSrc]) -> Iterator[int32]:  # tpyc: ok
     yield s.get()
     yield s.get() * 2
 
 
 # generic: a generic @dynamic protocol behaves like the monomorphic twin.
-def generic_gen(s: Src2[Int32]) -> Iterator[Int32]:  # tpyc: ok
+def generic_gen(s: Src2[int32]) -> Iterator[int32]:  # tpyc: ok
     yield s.get()
     s.bump()
     yield s.get()
@@ -90,7 +90,7 @@ def generic_gen(s: Src2[Int32]) -> Iterator[Int32]:  # tpyc: ok
 # forward: an ALREADY-ERASED `Src` forwarded from one bare-protocol-param
 # generator into another -- no second adapter, the borrow passes straight
 # through, and the inner bump is visible to the outer frame after the yield.
-def forward_gen(s: Src) -> Iterator[Int32]:  # tpyc: ok
+def forward_gen(s: Src) -> Iterator[int32]:  # tpyc: ok
     yield s.get()
     for n in free_gen(s):
         yield n
@@ -104,7 +104,7 @@ GLOBAL_SRC = Impl(80)
 # own: `Own[Src]` was already admitted -- regression guard for the adjacent arm.
 # It warns because a generator cannot consume an Own[@dynamic P]: a protocol is
 # not a valid field or return type, so there is nowhere for it to go.
-def own_gen(s: Own[Src]) -> Iterator[Int32]:  # tpyc: warning(/never consumed/)
+def own_gen(s: Own[Src]) -> Iterator[int32]:  # tpyc: warning(/never consumed/)
     yield s.get()
     s.bump()
     yield s.get()

@@ -1,10 +1,10 @@
 # **kwargs: method call with **expr unpacking
 from typing import TypedDict, Unpack
-from tpy import Int32
+from tpy import int32
 
 class Options(TypedDict):
     host: str
-    port: Int32
+    port: int32
 
 class Client:
     name: str
@@ -17,7 +17,7 @@ class Client:
 
 def main() -> None:
     c = Client(name="MyClient")
-    opts = Options(host="example.com", port=Int32(443))
+    opts = Options(host="example.com", port=int32(443))
     c.connect(**opts)
 
 main()

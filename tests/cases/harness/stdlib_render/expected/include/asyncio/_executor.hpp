@@ -436,7 +436,7 @@ inline std::ostream& operator<<(std::ostream& os, const TimerEntry& obj) {
 struct Slot {
     // box: Box[AnyTask] | None
     std::optional<::tpystd::tplib::box::Box<AnyTask>> box;
-    // generation: Int32
+    // generation: int32
     int32_t generation;
     // runnable: bool
     bool runnable;
@@ -463,9 +463,9 @@ inline std::ostream& operator<<(std::ostream& os, const Slot& obj) {
 // @nocopy
 // class EpollReactor:
 struct EpollReactor {
-    // _epfd: Int32
+    // _epfd: int32
     int32_t _epfd;
-    // _waiters: dict[Int32, Waker]
+    // _waiters: dict[int32, Waker]
     ::tpy::ordered_map<int32_t, ::tpystd::coro::Waker> _waiters;
     // # Raw scratch buffers for epoll_wait output (written via unsafe_ptr, read
     // # back by index). Trivial fixed buffers -> Array (memcpy-movable), not the
@@ -474,9 +474,9 @@ struct EpollReactor {
     // # scratch buffer that's wasted. Switch to an uninitialized-yet-trivially-
     // # movable storage once the TriviallyRelocatable bound lands (see TODO.md).
     // # Negligible today (EpollReactor is constructed lazily, once per run).
-    // _out_fds: Array[Int32, 64]
+    // _out_fds: Array[int32, 64]
     std::array<int32_t, 64> _out_fds;
-    // _out_events: Array[UInt32, 64]
+    // _out_events: Array[uint32, 64]
     std::array<uint32_t, 64> _out_events;
     bool __tpy_owned_ = true;
 
@@ -491,16 +491,16 @@ struct EpollReactor {
     // def __del__(self) -> None:
     ~EpollReactor();
 
-    // def register_fd(self, fd: Int32, events: UInt32, waker: Waker) -> None:
+    // def register_fd(self, fd: int32, events: uint32, waker: Waker) -> None:
     void register_fd(int32_t fd, uint32_t events, ::tpystd::coro::Waker waker);
 
-    // def unregister_fd(self, fd: Int32) -> None:
+    // def unregister_fd(self, fd: int32) -> None:
     void unregister_fd(int32_t fd);
 
-    // def count(self) -> Int32:
+    // def count(self) -> int32:
     int32_t count() const;
 
-    // def poll(self, timeout_ms: Int32) -> None:
+    // def poll(self, timeout_ms: int32) -> None:
     void poll(int32_t timeout_ms);
 
     // def close(self) -> None:
@@ -518,7 +518,7 @@ inline std::ostream& operator<<(std::ostream& os, const EpollReactor& obj) {
 struct Executor : ::tpystd::coro::Awaker {
     // slots: list[Slot]
     std::vector<Slot> slots;
-    // runnable_q: list[Int32]
+    // runnable_q: list[int32]
     std::vector<int32_t> runnable_q;
     // timer_heap: list[TimerEntry]
     std::vector<TimerEntry> timer_heap;
@@ -545,17 +545,17 @@ struct Executor : ::tpystd::coro::Awaker {
 
     // # Lazily opens the reactor on the first fd registration so a pure-timer
     // # / pure-CPU program never allocates an epoll fd.
-    // def register_fd(self, fd: Int32, events: UInt32, waker: Waker) -> None:
+    // def register_fd(self, fd: int32, events: uint32, waker: Waker) -> None:
     void register_fd(int32_t fd, uint32_t events, ::tpystd::coro::Waker waker);
 
-    // def unregister_fd(self, fd: Int32) -> None:
+    // def unregister_fd(self, fd: int32) -> None:
     void unregister_fd(int32_t fd);
 
     // # Milliseconds until the nearest timer fires (the epoll_wait timeout):
     // # -1 (block forever) when no timer is pending, 0 when one is already
-    // # due, else the rounded-up delta. Capped to keep the Int32 from
+    // # due, else the rounded-up delta. Capped to keep the int32 from
     // # overflowing on far-future deadlines.
-    // def _next_timer_timeout_ms(self) -> Int32:
+    // def _next_timer_timeout_ms(self) -> int32:
     int32_t _next_timer_timeout_ms() const;
 
     // # Mint a Waker stamped with the given slot identity. Used by
@@ -564,27 +564,27 @@ struct Executor : ::tpystd::coro::Awaker {
     // # rather than as a free function so the call site can pass a
     // # method receiver instead of trying to coerce `Ptr[Executor]` to
     // # the `Awaker` protocol param of `_make_waker`.
-    // def make_waker_for_slot(self, slot_id: Int32, generation: Int32) -> Waker:
+    // def make_waker_for_slot(self, slot_id: int32, generation: int32) -> Waker:
     ::tpystd::coro::Waker make_waker_for_slot(int32_t slot_id, int32_t generation);
 
-    // def spawn(self, box: Own[Box[AnyTask]]) -> Int32:
+    // def spawn(self, box: Own[Box[AnyTask]]) -> int32:
     int32_t spawn(::tpystd::tplib::box::Box<AnyTask>&& box);
 
-    // def mark_runnable(self, slot_id: Int32, generation: Int32) -> None:
+    // def mark_runnable(self, slot_id: int32, generation: int32) -> None:
     void mark_runnable(int32_t slot_id, int32_t generation) override;
 
-    // def poll_slot(self, slot_id: Int32) -> bool:
+    // def poll_slot(self, slot_id: int32) -> bool:
     bool poll_slot(int32_t slot_id);
 
     // def drain_runnable(self) -> bool:
     bool drain_runnable();
 
     // @readonly
-    // def slot_done(self, slot_id: Int32) -> bool:
+    // def slot_done(self, slot_id: int32) -> bool:
     bool slot_done(int32_t slot_id) const;
 
     // @readonly
-    // def has_live_tasks(self, skip_id: Int32) -> bool:
+    // def has_live_tasks(self, skip_id: int32) -> bool:
     bool has_live_tasks(int32_t skip_id) const;
 
     // def wait_for_event(self) -> bool:
@@ -593,21 +593,21 @@ struct Executor : ::tpystd::coro::Awaker {
     // # Cancel the root task so its CancelledError unwinds normal cleanup
     // # (finally / __aexit__ / wait_closed), then mark it runnable so the next
     // # drain delivers the cancel at its suspension point.
-    // def _cancel_root(self, main_id: Int32) -> None:
+    // def _cancel_root(self, main_id: int32) -> None:
     void _cancel_root(int32_t main_id);
 
     // # True iff a SIGINT has been delivered since the last check; on the first
     // # such observation cancels the root for graceful shutdown.
-    // def _check_shutdown_signal(self, main_id: Int32, already: bool) -> bool:
+    // def _check_shutdown_signal(self, main_id: int32, already: bool) -> bool:
     bool _check_shutdown_signal(int32_t main_id, bool already);
 
     // # Returns True if a SIGINT interrupted the run (root cancelled for graceful
     // # shutdown), False on normal completion.
-    // def run_until(self, main_id: Int32) -> bool:
+    // def run_until(self, main_id: int32) -> bool:
     bool run_until(int32_t main_id);
 
-    // def drain_spawned_with_cancel(self, skip_id: Int32,
-    // max_polls: Int32 = 8) -> None:
+    // def drain_spawned_with_cancel(self, skip_id: int32,
+    // max_polls: int32 = 8) -> None:
     void drain_spawned_with_cancel(int32_t skip_id, int32_t max_polls = 8);
     static constexpr std::string_view __tpy_class_name__ = "asyncio._executor.Executor";
 };
@@ -694,9 +694,9 @@ inline EpollReactor::EpollReactor() {
     this->_epfd = epfd;
     // self._waiters = {}
     this->_waiters = ::tpy::ordered_map<int32_t, ::tpystd::coro::Waker>();
-    // self._out_fds = Array[Int32, 64]()
+    // self._out_fds = Array[int32, 64]()
     this->_out_fds = std::array<int32_t, 64>();
-    // self._out_events = Array[UInt32, 64]()
+    // self._out_events = Array[uint32, 64]()
     this->_out_events = std::array<uint32_t, 64>();
 }
 
@@ -718,7 +718,7 @@ inline EpollReactor::~EpollReactor() {
     this->close();
 }
 
-// def register_fd(self, fd: Int32, events: UInt32, waker: Waker) -> None:
+// def register_fd(self, fd: int32, events: uint32, waker: Waker) -> None:
 inline void EpollReactor::register_fd(int32_t fd, uint32_t events, ::tpystd::coro::Waker waker) {
     // # Re-arm with MOD if the fd is still tracked (a prior would-block
     // # that has not fired yet); ADD otherwise. `_waiters` membership
@@ -736,7 +736,7 @@ inline void EpollReactor::register_fd(int32_t fd, uint32_t events, ::tpystd::cor
     ::tpy::__setitem__(this->_waiters, fd, waker);
 }
 
-// def unregister_fd(self, fd: Int32) -> None:
+// def unregister_fd(self, fd: int32) -> None:
 inline void EpollReactor::unregister_fd(int32_t fd) {
     // if fd in self._waiters:
     if ((this->_waiters.contains(fd))) {
@@ -747,7 +747,7 @@ inline void EpollReactor::unregister_fd(int32_t fd) {
     }
 }
 
-// def count(self) -> Int32:
+// def count(self) -> int32:
 inline int32_t EpollReactor::count() const {
     // return len(self._waiters)
     return ::tpy::__len__(this->_waiters);
@@ -797,7 +797,7 @@ inline void Executor::register_timer(double deadline_seconds, ::tpystd::coro::Wa
 
 // # Lazily opens the reactor on the first fd registration so a pure-timer
 // # / pure-CPU program never allocates an epoll fd.
-// def register_fd(self, fd: Int32, events: UInt32, waker: Waker) -> None:
+// def register_fd(self, fd: int32, events: uint32, waker: Waker) -> None:
 inline void Executor::register_fd(int32_t fd, uint32_t events, ::tpystd::coro::Waker waker) {
     // if self.reactor is None:
     if ((!this->reactor.has_value())) {
@@ -813,7 +813,7 @@ inline void Executor::register_fd(int32_t fd, uint32_t events, ::tpystd::coro::W
     }
 }
 
-// def unregister_fd(self, fd: Int32) -> None:
+// def unregister_fd(self, fd: int32) -> None:
 inline void Executor::unregister_fd(int32_t fd) {
     // reactor = self.reactor
     EpollReactor* reactor = ::tpy::optional_to_ptr(this->reactor);
@@ -830,13 +830,13 @@ inline void Executor::unregister_fd(int32_t fd) {
 // # rather than as a free function so the call site can pass a
 // # method receiver instead of trying to coerce `Ptr[Executor]` to
 // # the `Awaker` protocol param of `_make_waker`.
-// def make_waker_for_slot(self, slot_id: Int32, generation: Int32) -> Waker:
+// def make_waker_for_slot(self, slot_id: int32, generation: int32) -> Waker:
 inline ::tpystd::coro::Waker Executor::make_waker_for_slot(int32_t slot_id, int32_t generation) {
     // return _make_waker(self, slot_id, generation)
     return _make_waker((*this), slot_id, generation);
 }
 
-// def spawn(self, box: Own[Box[AnyTask]]) -> Int32:
+// def spawn(self, box: Own[Box[AnyTask]]) -> int32:
 inline int32_t Executor::spawn(::tpystd::tplib::box::Box<AnyTask>&& box) {
     // new_id = len(self.slots)
     int32_t new_id = ::tpy::__len__(this->slots);
@@ -854,7 +854,7 @@ inline int32_t Executor::spawn(::tpystd::tplib::box::Box<AnyTask>&& box) {
     return new_id;
 }
 
-// def mark_runnable(self, slot_id: Int32, generation: Int32) -> None:
+// def mark_runnable(self, slot_id: int32, generation: int32) -> None:
 inline void Executor::mark_runnable(int32_t slot_id, int32_t generation) {
     // if slot_id >= len(self.slots):
     if ((slot_id >= ::tpy::__len__(this->slots))) {
@@ -879,7 +879,7 @@ inline bool Executor::drain_runnable() {
     // any_polled = False
     bool any_polled = false;
     // # TODO(async-v1.2): `list.pop(0)` is O(n); draining N runnable tasks costs
-    // # O(N^2). Swap `runnable_q` to `collections.deque[Int32]` and use
+    // # O(N^2). Swap `runnable_q` to `collections.deque[int32]` and use
     // # `popleft()` once deque lands in TPy stdlib. See BUGS.md entry on
     // # runnable_q O(n) pop.
     // while len(self.runnable_q) > 0:
@@ -897,7 +897,7 @@ inline bool Executor::drain_runnable() {
 }
 
 // @readonly
-// def slot_done(self, slot_id: Int32) -> bool:
+// def slot_done(self, slot_id: int32) -> bool:
 inline bool Executor::slot_done(int32_t slot_id) const {
     // if slot_id >= len(self.slots):
     if ((slot_id >= ::tpy::__len__(this->slots))) {
@@ -909,11 +909,11 @@ inline bool Executor::slot_done(int32_t slot_id) const {
 }
 
 // @readonly
-// def has_live_tasks(self, skip_id: Int32) -> bool:
+// def has_live_tasks(self, skip_id: int32) -> bool:
 inline bool Executor::has_live_tasks(int32_t skip_id) const {
     // n = len(self.slots)
     int32_t n = ::tpy::__len__(this->slots);
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < n:
     while ((i < n)) {
@@ -932,7 +932,7 @@ inline bool Executor::has_live_tasks(int32_t skip_id) const {
 // # Cancel the root task so its CancelledError unwinds normal cleanup
 // # (finally / __aexit__ / wait_closed), then mark it runnable so the next
 // # drain delivers the cancel at its suspension point.
-// def _cancel_root(self, main_id: Int32) -> None:
+// def _cancel_root(self, main_id: int32) -> None:
 inline void Executor::_cancel_root(int32_t main_id) {
     // if main_id >= len(self.slots) or self.slots[main_id].is_done():
     if (((main_id >= ::tpy::__len__(this->slots)) || ::tpy::__getitem__(this->slots, main_id).is_done())) {
@@ -952,7 +952,7 @@ inline void Executor::_cancel_root(int32_t main_id) {
 
 // # True iff a SIGINT has been delivered since the last check; on the first
 // # such observation cancels the root for graceful shutdown.
-// def _check_shutdown_signal(self, main_id: Int32, already: bool) -> bool:
+// def _check_shutdown_signal(self, main_id: int32, already: bool) -> bool:
 inline bool Executor::_check_shutdown_signal(int32_t main_id, bool already) {
     // if already or not self.shutdown_armed:
     if ((already || (!(this->shutdown_armed)))) {

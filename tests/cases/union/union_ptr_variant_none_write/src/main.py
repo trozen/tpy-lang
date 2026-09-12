@@ -3,18 +3,18 @@
 # `dst.u = src.u` (a storage-to-storage copy). Union field assigns are silent
 # copies in TPy (warned) where CPython aliases; this test only reads values
 # afterwards, so copy semantics are intended at those boundaries.
-from tpy import Int32
+from tpy import int32
 
 
 class A:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
 class B:
-    y: Int32
-    def __init__(self, y: Int32) -> None:
+    y: int32
+    def __init__(self, y: int32) -> None:
         self.y = y
 
 

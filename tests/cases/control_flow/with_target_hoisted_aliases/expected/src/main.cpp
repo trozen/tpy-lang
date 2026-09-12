@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def run(flag: bool) -> Int32:
+// def run(flag: bool) -> int32:
 int32_t run(bool flag) {
     // with Logger(1) as outer:
     Logger* inner;

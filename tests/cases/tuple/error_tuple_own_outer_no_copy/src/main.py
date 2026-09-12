@@ -1,13 +1,13 @@
 # Form B equivalent of error_tuple_own_no_copy: returning a borrowed
 # lvalue as an element of an `Own[tuple[T, T]]` requires explicit copy().
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32) -> None:
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 

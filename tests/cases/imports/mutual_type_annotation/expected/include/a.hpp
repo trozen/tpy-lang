@@ -14,21 +14,21 @@ inline constexpr std::string_view __name__ = "a";
 
 // class A:
 struct A {
-    // val: Int32
+    // val: int32
     int32_t val;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     A() = default;
     explicit A(int32_t v);
 
-    // def go(self) -> Int32:
+    // def go(self) -> int32:
     int32_t go() const;
 
     // # Calls into the cycle peer. b.H takes A by reference (TPy
     // # auto-wraps the non-value record type), so the .hpp can hold
     // # B's fwd-decl while the .cpp body sees full A. This is the
     // # mutual case: a uses H by call, b uses A as a parameter type.
-    // def twice(self) -> Int32:
+    // def twice(self) -> int32:
     int32_t twice();
     static constexpr std::string_view __tpy_class_name__ = "a.A";
 };

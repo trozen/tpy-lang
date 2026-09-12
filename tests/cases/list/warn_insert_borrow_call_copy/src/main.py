@@ -4,13 +4,13 @@
 # copy via the warning and deliberately does not observe it (mutating the
 # source and reading the container back would fail the cpy phase). The
 # explicit spelling the warning names is pinned by list/insert_borrow_call_copy.
-from tpy import Int32
+from tpy import int32
 
 
 class Payload:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 

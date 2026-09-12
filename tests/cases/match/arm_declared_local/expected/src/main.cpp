@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def route(n: Int32) -> Int32:
+// def route(n: int32) -> int32:
 int32_t route(int32_t n) {
     // match n:
     int32_t label;
@@ -27,7 +27,7 @@ int32_t route(int32_t n) {
     return label;
 }
 
-// def pick(n: Int32) -> Int32:
+// def pick(n: int32) -> int32:
 int32_t pick(int32_t n) {
     // match n:
     int32_t seen;

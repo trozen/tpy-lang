@@ -1,4 +1,4 @@
-main.py:10: error: Type argument 'Rc[Int32]' does not satisfy bound 'Send' for type parameter 'T' of 'use'
-Rc[Int32] is not Send
+main.py:10: error: Type argument 'Rc[int32]' does not satisfy bound 'Send' for type parameter 'T' of 'use'
+Rc[int32] is not Send
 +-- field '_cell: Ptr[_RcCellBase]' is not Send (raw pointer, no ownership guarantee)
-+-- field '_payload: Ptr[Int32]' is not Send (raw pointer, no ownership guarantee)
++-- field '_payload: Ptr[int32]' is not Send (raw pointer, no ownership guarantee)

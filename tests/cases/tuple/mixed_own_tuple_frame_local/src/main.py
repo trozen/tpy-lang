@@ -5,13 +5,13 @@
 import asyncio
 from typing import Iterator
 
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Box:
-    val: Int32
+    val: int32
 
-    def __init__(self, val: Int32) -> None:
+    def __init__(self, val: int32) -> None:
         self.val = val
 
 
@@ -19,14 +19,14 @@ def make_mixed(b: Box) -> tuple[Own[Box], Box]:
     return (Box(1), b)
 
 
-def gen(b: Box) -> Iterator[Int32]:
+def gen(b: Box) -> Iterator[int32]:
     p = make_mixed(b)
     p[1].val = 88
     yield p[0].val
     yield p[1].val
 
 
-async def coro(b: Box) -> Int32:
+async def coro(b: Box) -> int32:
     p = make_mixed(b)
     p[1].val = 99
     await asyncio.sleep(0)

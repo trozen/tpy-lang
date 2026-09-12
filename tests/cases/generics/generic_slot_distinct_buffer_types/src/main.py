@@ -1,10 +1,10 @@
 # The INVERSE of generic_slot_view_form_positions: ONE generic instantiated at
-# `str`, `String`, `bytes`, `bytearray` and `list[UInt8]`, each of which renders
+# `str`, `String`, `bytes`, `bytearray` and `list[uint8]`, each of which renders
 # its own C++ type -- so `param_val_or_ref_t<T>` at the slot resolves to the
 # monomorphic twin's own parameter form per instantiation (a view at str/bytes,
-# a reference at String/bytearray/list[UInt8]) and no call site materializes a
+# a reference at String/bytearray/list[uint8]) and no call site materializes a
 # copy. Each section prints the generic's answer beside its twin's on one line.
-from tpy import Int32, String, UInt8, readonly
+from tpy import int32, String, uint8, readonly
 
 
 def has_item[T](xs: list[T], v: T) -> bool:
@@ -37,7 +37,7 @@ def has_item_bytes(xs: list[bytes], v: bytes) -> bool:
     return False
 
 
-def size_of(p: bytes) -> Int32:
+def size_of(p: bytes) -> int32:
     # a BORROWING `bytes` slot: the parameter form is the span, so a bytearray
     # argument is viewed, never copied -- the render carries no copy helper
     return len(p)
@@ -92,7 +92,7 @@ def bytes_family(p: bytes) -> None:
     # references -- mutating through the returned alias and observing it on the
     # original is what proves the generic did not copy. (`list[bytearray]` is a
     # separate pre-existing gap, so the container form of this leg is the
-    # `list[UInt8]` section below.)
+    # `list[uint8]` section below.)
     ba = bytearray(b"a")
     r = echo_ref(ba)  # tpyc: ok
     r.append(9)
@@ -110,14 +110,14 @@ def bytes_family(p: bytes) -> None:
 
 
 def u8_list() -> None:
-    # list[UInt8] keeps the plain buffer spelling and its reference forms
-    v: list[UInt8] = [UInt8(1)]
+    # list[uint8] keeps the plain buffer spelling and its reference forms
+    v: list[uint8] = [uint8(1)]
     # the container literal COPIES its element into the owned slot; the boundary
     # under test is the generic SLOT, whose reference form the alias below proves
-    xs: list[list[UInt8]] = [v]
+    xs: list[list[uint8]] = [v]
     print("list", has_item(xs, v))  # tpyc: ok
     r = echo_ref(v)
-    r.append(UInt8(2))
+    r.append(uint8(2))
     print("list", len(v), len(r))
 
 

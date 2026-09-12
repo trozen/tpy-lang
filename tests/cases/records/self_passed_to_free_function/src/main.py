@@ -1,12 +1,12 @@
 # Const inference when self is passed as argument to free functions.
 # Methods that pass self to non-readonly free functions must not be const.
 from __future__ import annotations
-from tpy import readonly, Int32
+from tpy import readonly, int32
 
 
 class Module:
     _name: str
-    _items: list[Int32]
+    _items: list[int32]
 
     def __init__(self, name: str) -> None:
         self._name = name
@@ -35,7 +35,7 @@ class Module:
 
     # Passes self to a free function that structurally mutates a field
     # -- must NOT be const
-    def add_item(self, val: Int32):
+    def add_item(self, val: int32):
         append_item(self, val)
 
 
@@ -52,7 +52,7 @@ def to_upper(s: str) -> str:
     return s
 
 
-def append_item(mod: Module, val: Int32):
+def append_item(mod: Module, val: int32):
     mod._items.append(val)
 
 

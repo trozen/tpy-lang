@@ -6,21 +6,21 @@ namespace tpyapp::main {
 
 // def test_array_overload() -> None:
 void test_array_overload() {
-    // arr: Array[Int32, 3] = [Int32(10), Int32(20), Int32(30)]
+    // arr: Array[int32, 3] = [int32(10), int32(20), int32(30)]
     std::array<int32_t, 3> arr = {10, 20, 30};
-    // p: Ptr[Int32] = unsafe_ptr(arr)
+    // p: Ptr[int32] = unsafe_ptr(arr)
     int32_t* p = arr.data();
-    // print(unsafe_load(p, UInt32(1)))
+    // print(unsafe_load(p, uint32(1)))
     std::cout << p[1] << "\n";
 }
 
 // def test_list_overload() -> None:
 void test_list_overload() {
-    // lst: list[Int32] = [Int32(40), Int32(50), Int32(60)]
+    // lst: list[int32] = [int32(40), int32(50), int32(60)]
     std::vector<int32_t> lst = {40, 50, 60};
-    // p: Ptr[Int32] = unsafe_ptr(lst)
+    // p: Ptr[int32] = unsafe_ptr(lst)
     int32_t* p = lst.data();
-    // print(unsafe_load(p, UInt32(2)))
+    // print(unsafe_load(p, uint32(2)))
     std::cout << p[2] << "\n";
 }
 
@@ -28,25 +28,25 @@ void test_list_overload() {
 void test_str_overload() {
     // s: str = "abc"
     std::string_view s = "abc";
-    // cp: Ptr[readonly[Char]] = unsafe_ptr(s)
+    // cp: Ptr[readonly[char]] = unsafe_ptr(s)
     const char* cp = s.data();
-    // print(unsafe_load(cp, UInt32(0)))
+    // print(unsafe_load(cp, uint32(0)))
     std::cout << cp[0] << "\n";
 }
 
 // def test_store_and_load() -> None:
 void test_store_and_load() {
-    // arr: Array[Int32, 2] = [Int32(0), Int32(0)]
+    // arr: Array[int32, 2] = [int32(0), int32(0)]
     std::array<int32_t, 2> arr = {0, 0};
-    // p: Ptr[Int32] = unsafe_ptr(arr)
+    // p: Ptr[int32] = unsafe_ptr(arr)
     int32_t* p = arr.data();
-    // unsafe_store(p, UInt32(0), Int32(77))
+    // unsafe_store(p, uint32(0), int32(77))
     p[0] = 77;
-    // unsafe_store(p, UInt32(1), Int32(88))
+    // unsafe_store(p, uint32(1), int32(88))
     p[1] = 88;
-    // print(unsafe_load(p, UInt32(0)))
+    // print(unsafe_load(p, uint32(0)))
     std::cout << p[0] << "\n";
-    // print(unsafe_load(p, UInt32(1)))
+    // print(unsafe_load(p, uint32(1)))
     std::cout << p[1] << "\n";
 }
 

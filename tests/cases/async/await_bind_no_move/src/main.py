@@ -3,11 +3,11 @@
 # move is observable -- a moved-from vector is left empty, and the second read
 # would see 0 instead of 3.
 import asyncio
-from tpy import Own, Int32
+from tpy import Own, int32
 
 
 class Payload:
-    items: list[Int32]
+    items: list[int32]
 
     def __init__(self) -> None:
         self.items = [1, 2, 3]
@@ -17,11 +17,11 @@ async def make() -> Own[Payload]:
     return Payload()
 
 
-def size_of(p: Own[Payload]) -> Int32:
+def size_of(p: Own[Payload]) -> int32:
     return len(p.items)
 
 
-async def used_again() -> Int32:
+async def used_again() -> int32:
     p = await make()
     # NOT the last use of p, so this must copy rather than move -- the copy
     # is what the warning names, and what keeps p.items intact for the read

@@ -1,33 +1,33 @@
 # TypedDict .get() and "key" in td for CPython-compatible access patterns
 from typing import TypedDict, Optional
-from tpy import Int32
+from tpy import int32
 
 class Required(TypedDict):
     name: str
-    age: Int32
+    age: int32
 
 class NullableField(TypedDict):
     name: Optional[str]
-    count: Int32
+    count: int32
 
 class Partial(TypedDict, total=False):
     name: str
-    age: Int32
+    age: int32
 
 def test_in_total_true() -> None:
-    r = Required(name="Alice", age=Int32(30))
+    r = Required(name="Alice", age=int32(30))
     print("name" in r)   # always True for total=True
     print("age" in r)
     print("name" not in r)  # always False
 
 def test_in_nullable_field() -> None:
     # total=True with Optional[T] field -- key is always present
-    n = NullableField(name=None, count=Int32(1))
+    n = NullableField(name=None, count=int32(1))
     print("name" in n)   # True (field present, even though value is None)
     print("count" in n)  # True
 
 def test_in_total_false() -> None:
-    full = Partial(name="Bob", age=Int32(25))
+    full = Partial(name="Bob", age=int32(25))
     empty = Partial()
     partial = Partial(name="Carol")
     print("name" in full)      # True
@@ -39,18 +39,18 @@ def test_in_total_false() -> None:
     print("name" not in empty) # True
 
 def test_get_total_true() -> None:
-    r = Required(name="Alice", age=Int32(30))
+    r = Required(name="Alice", age=int32(30))
     # get without default -> Optional[T]
     v = r.get("name")
     if v is not None:
         print(v)
     # get with default -> T
     print(r.get("name", "default"))
-    print(r.get("age", Int32(0)))
+    print(r.get("age", int32(0)))
 
 def test_get_nullable_field() -> None:
     # total=True with Optional[T] field -- get returns Optional[T]
-    n = NullableField(name=None, count=Int32(1))
+    n = NullableField(name=None, count=int32(1))
     v = n.get("name")
     if v is not None:
         print("unexpected")
@@ -58,10 +58,10 @@ def test_get_nullable_field() -> None:
         print("None")
     # get with default -- field is present with None value, returns None (not default)
     print(n.get("name", "fallback"))
-    print(n.get("count", Int32(0)))
+    print(n.get("count", int32(0)))
 
 def test_get_total_false() -> None:
-    full = Partial(name="Bob", age=Int32(25))
+    full = Partial(name="Bob", age=int32(25))
     empty = Partial()
     # get without default -> Optional[T] (may be None)
     v = full.get("name")
@@ -75,8 +75,8 @@ def test_get_total_false() -> None:
     # get with default -> T
     print(full.get("name", "fallback"))
     print(empty.get("name", "fallback"))
-    print(full.get("age", Int32(99)))
-    print(empty.get("age", Int32(99)))
+    print(full.get("age", int32(99)))
+    print(empty.get("age", int32(99)))
 
 def test_get_str_param_default(s: str) -> None:
     # Ensure string_view default compiles with value_or

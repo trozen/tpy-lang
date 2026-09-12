@@ -5,11 +5,11 @@
 # marker and producing a cryptic C++ aggregate-init error at the first
 # `make_default[Bad]()` call site. Mirrors error_copyable_extends_contradiction;
 # same fix shape (predicate is authoritative for the marker arm).
-from tpy import Int32, Default
+from tpy import int32, Default
 
 
 class Bad(Default):  # tpyc: error(/Class 'Bad' declares implementation of protocol 'Default'/)
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x

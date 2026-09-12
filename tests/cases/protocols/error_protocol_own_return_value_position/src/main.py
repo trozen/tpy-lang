@@ -2,26 +2,26 @@
 # position, which the storage-return admission does not cover.
 from typing import Protocol
 
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
 class Factory(Protocol):
-    def create(self, x: Int32) -> Own[Point]: ...
+    def create(self, x: int32) -> Own[Point]: ...
 
 
 class DefaultFactory:
-    def create(self, x: Int32) -> Own[Point]:
+    def create(self, x: int32) -> Own[Point]:
         return Point(x)
 
 
-def value_pos[T: Factory](f: T, x: Int32) -> Int32:
+def value_pos[T: Factory](f: T, x: int32) -> int32:
     # The Own return is read from, not stored.
     return f.create(x).x  # tpyc: error(/expr\.method_call:method\.protocol\.ret_type/)
 

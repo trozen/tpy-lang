@@ -1,11 +1,11 @@
 # Test set/dict with frozen dataclass as record field (hash specialization ordering)
 from dataclasses import dataclass
-from tpy import Int32
+from tpy import int32
 
 @dataclass(frozen=True)
 class Tag:
     name: str
-    value: Int32
+    value: int32
 
 @dataclass
 class SetItem:

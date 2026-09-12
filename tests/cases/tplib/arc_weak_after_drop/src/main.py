@@ -2,14 +2,14 @@
 # payload has been destroyed, and the Weak handle's cell-memory access stays
 # valid (the atomically-refcounted cell is freed only when the last Weak drops).
 # Mirrors the Rc weak_upgrade_after_drop test on the atomic sibling.
-from tpy import Int32, Own
+from tpy import int32, Own
 from tplib.arc import Arc, Weak
 
 
 class Cell:
-    val: Int32
+    val: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.val = v
 
     def __del__(self) -> None:

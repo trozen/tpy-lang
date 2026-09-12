@@ -1,10 +1,10 @@
-from tpy import Ptr, Int32, readonly, take_ptr
+from tpy import Ptr, int32, readonly, take_ptr
 
 class Counter:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
-    def __len__(self) -> Int32:
+    def __len__(self) -> int32:
         return self.x
 
 def main() -> None:

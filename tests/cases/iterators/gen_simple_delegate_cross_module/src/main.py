@@ -3,11 +3,11 @@
 # The resumable path spells one, and rejects only a SIMPLE callee -- see
 # error_gen_delegate_cross_module_simple.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 from itersrc import walk
 
 
-def g() -> Iterator[Int32]:
+def g() -> Iterator[int32]:
     for x in walk():  # tpyc: ok
         yield x
 

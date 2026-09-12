@@ -6,22 +6,22 @@ namespace tpyapp::main {
 
 // def chain_alias_then_reassign() -> None:
 void chain_alias_then_reassign() {
-    // items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
+    // items: list[Point] = [Point(int32(1), int32(2)), Point(int32(3), int32(4))]
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
-    // s = items[Int32(0)]
+    // s = items[int32(0)]
     Point* s = &(::tpy::__getitem__(items, 0));
     // view = s
     Point& view = (*s);
-    // s = items[Int32(1)]
+    // s = items[int32(1)]
     s = &(::tpy::__getitem__(items, 1));
     // # Mutate THROUGH the rebound alias: 99 proves `s` aliases items[1]; a
     // # silent copy would leave the element at 3. Before the append, while the
     // # borrow is still live.
     // s.x = 99
     s->x = 99;
-    // print(items[Int32(1)].x)
+    // print(items[int32(1)].x)
     std::cout << ::tpy::__getitem__(items, 1).x << "\n";
-    // items.append(Point(Int32(5), Int32(6)))  # tpyc: warning(/Mutation of 'items'.*'append'/)
+    // items.append(Point(int32(5), int32(6)))  # tpyc: warning(/Mutation of 'items'.*'append'/)
     items.push_back(Point(5, 6));
     // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
@@ -29,17 +29,17 @@ void chain_alias_then_reassign() {
 
 // def reassigned_element_borrower_warns() -> None:
 void reassigned_element_borrower_warns() {
-    // items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
+    // items: list[Point] = [Point(int32(1), int32(2)), Point(int32(3), int32(4))]
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
-    // s = items[Int32(0)]
+    // s = items[int32(0)]
     Point* s = &(::tpy::__getitem__(items, 0));
-    // s = items[Int32(1)]
+    // s = items[int32(1)]
     s = &(::tpy::__getitem__(items, 1));
     // s.x = 88
     s->x = 88;
-    // print(items[Int32(1)].x)
+    // print(items[int32(1)].x)
     std::cout << ::tpy::__getitem__(items, 1).x << "\n";
-    // items.append(Point(Int32(5), Int32(6)))  # tpyc: warning(/Mutation of 'items'.*'append'/)
+    // items.append(Point(int32(5), int32(6)))  # tpyc: warning(/Mutation of 'items'.*'append'/)
     items.push_back(Point(5, 6));
     // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
@@ -47,22 +47,22 @@ void reassigned_element_borrower_warns() {
 
 // def chain_promotes_alias_to_element() -> None:
 void chain_promotes_alias_to_element() {
-    // items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
+    // items: list[Point] = [Point(int32(1), int32(2)), Point(int32(3), int32(4))]
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
-    // s = items[Int32(0)]
+    // s = items[int32(0)]
     Point* s = &(::tpy::__getitem__(items, 0));
     // view = s
     Point& view = (*s);
-    // s = items[Int32(1)]
+    // s = items[int32(1)]
     s = &(::tpy::__getitem__(items, 1));
     // # `view` was taken while `s` aliased items[0], so it still aliases items[0]
     // # after `s` was rebound away: 77 proves the chain aliased rather than copied.
     // view.y = 77
     view.y = 77;
-    // print(items[Int32(0)].y)
+    // print(items[int32(0)].y)
     std::cout << ::tpy::__getitem__(items, 0).y << "\n";
     // # view inherited ELEMENT kind from the chain even though `view = s` was ALIAS
-    // items.append(Point(Int32(7), Int32(8)))  # tpyc: warning(/Mutation of 'items'.*'append'/)
+    // items.append(Point(int32(7), int32(8)))  # tpyc: warning(/Mutation of 'items'.*'append'/)
     items.push_back(Point(7, 8));
     // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";

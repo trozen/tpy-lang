@@ -15,11 +15,11 @@ void main();
 
 // class Logged:
 struct Logged {
-    // _id: Int32
+    // _id: int32
     int32_t _id;
     bool __tpy_owned_ = true;
 
-    // def __init__(self, id: Int32):
+    // def __init__(self, id: int32):
     explicit Logged(int32_t id);
     Logged(const Logged&) = delete;
     Logged& operator=(const Logged&) = delete;
@@ -37,7 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const Logged& obj) {
 }
 
 
-// def __init__(self, id: Int32):
+// def __init__(self, id: int32):
 inline Logged::Logged(int32_t id) : _id(id) {}
 
 inline Logged::Logged(Logged&& other) noexcept : _id(std::move(other._id)) {

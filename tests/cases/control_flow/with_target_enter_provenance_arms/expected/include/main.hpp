@@ -19,10 +19,10 @@ void main();
 
 // class Item:
 struct Item {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32):
+    // def __init__(self, n: int32):
     Item() = default;
     explicit Item(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Item";
@@ -76,7 +76,7 @@ inline std::ostream& operator<<(std::ostream& os, const ViaTwoReturns& obj) {
 }
 
 
-// def __init__(self, n: Int32):
+// def __init__(self, n: int32):
 inline Item::Item(int32_t n) : n(n) {}
 
 // def __init__(self):
@@ -84,7 +84,7 @@ inline ViaNestedDef::ViaNestedDef() : inner(Item(3)) {}
 
 // def __enter__(self) -> Item:
 inline Item& ViaNestedDef::__enter__() {
-    // def tag() -> Int32:
+    // def tag() -> int32:
     auto tag = []() -> int32_t {
         // return 7
         return 7;

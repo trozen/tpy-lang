@@ -16,16 +16,16 @@ void main();
 
 // class C:
 struct C {
-    // n: Int32
+    // n: int32
     int32_t n;
 
     // def __init__(self) -> None:
     C();
 
-    // def peek(self, k: Int32) -> Int32:
+    // def peek(self, k: int32) -> int32:
     int32_t peek(int32_t k) const;
 
-    // def scaled(self, k: Int32) -> Int32:
+    // def scaled(self, k: int32) -> int32:
     int32_t scaled(int32_t k) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.C";
 };
@@ -39,9 +39,9 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
 // def __init__(self) -> None:
 inline C::C() : n(42) {}
 
-// def peek(self, k: Int32) -> Int32:
+// def peek(self, k: int32) -> int32:
 inline int32_t C::peek(int32_t k) const {
-    // def get(x: Int32) -> Int32:
+    // def get(x: int32) -> int32:
     auto get = [this](int32_t x) -> int32_t {
         // return x + self.n
         return (::tpy::add_check<int32_t>(x, this->n));
@@ -50,7 +50,7 @@ inline int32_t C::peek(int32_t k) const {
     return get(k);
 }
 
-// def scaled(self, k: Int32) -> Int32:
+// def scaled(self, k: int32) -> int32:
 inline int32_t C::scaled(int32_t k) const {
     // return apply(lambda x: x * self.n, k)
     return apply([this](int32_t x) -> int32_t { return (::tpy::mul_check<int32_t>(x, this->n)); }, k);

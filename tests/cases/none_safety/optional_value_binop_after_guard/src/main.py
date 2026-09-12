@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 
 
-def add_after_guard(x: Int32 | None) -> Int32:
+def add_after_guard(x: int32 | None) -> int32:
     if x is not None:
         return x + 1  # tpyc: ok
     return 0

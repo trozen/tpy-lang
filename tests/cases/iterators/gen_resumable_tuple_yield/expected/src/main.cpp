@@ -8,9 +8,9 @@ namespace tpyapp::main {
 std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __gen_pairs::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // n = Int32(len(items))
+        // n = int32(len(items))
         n = ::tpy::__len__(items);
-        // i: Int32 = 0
+        // i: int32 = 0
         i = 0;
         __state = S_JOIN_0;
         continue;

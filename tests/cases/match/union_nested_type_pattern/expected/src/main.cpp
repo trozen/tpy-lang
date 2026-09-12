@@ -4,8 +4,8 @@
 namespace tpyapp::main {
 
 
-// # Disambiguate Box[str] vs Box[Int32] using field type sub-patterns
-// def unwrap(x: Box[str] | Box[Int32]) -> str:
+// # Disambiguate Box[str] vs Box[int32] using field type sub-patterns
+// def unwrap(x: Box[str] | Box[int32]) -> str:
 std::string unwrap(::tpy::Union<const Box<int32_t>*, const Box<std::string>*> x) {
     // match x:
     auto& __match_subject_1 = x;
@@ -18,7 +18,7 @@ std::string unwrap(::tpy::Union<const Box<int32_t>*, const Box<std::string>*> x)
         return (::tpy::str_concat("string: ", v));
         break;
     }
-    // case Box(value=Int32() as n):
+    // case Box(value=int32() as n):
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject_1);
         auto n = __case_1.value;
@@ -31,7 +31,7 @@ std::string unwrap(::tpy::Union<const Box<int32_t>*, const Box<std::string>*> x)
 }
 
 // # Type pattern without as-binding (just disambiguation)
-// def describe(x: Box[str] | Box[Int32]) -> str:
+// def describe(x: Box[str] | Box[int32]) -> str:
 std::string describe(::tpy::Union<const Box<int32_t>*, const Box<std::string>*> x) {
     // match x:
     auto& __match_subject_1 = x;
@@ -43,7 +43,7 @@ std::string describe(::tpy::Union<const Box<int32_t>*, const Box<std::string>*> 
         return "is string";
         break;
     }
-    // case Box(value=Int32()):
+    // case Box(value=int32()):
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject_1);
         // return "is number"
@@ -54,7 +54,7 @@ std::string describe(::tpy::Union<const Box<int32_t>*, const Box<std::string>*> 
     ::std::unreachable();
 }
 
-// def mixed(x: Pair[str] | Pair[Int32]) -> str:
+// def mixed(x: Pair[str] | Pair[int32]) -> str:
 std::string mixed(::tpy::Union<const Pair<int32_t>*, const Pair<std::string>*> x) {
     // match x:
     auto& __match_subject_1 = x;
@@ -68,7 +68,7 @@ std::string mixed(::tpy::Union<const Pair<int32_t>*, const Pair<std::string>*> x
         return (::tpy::str_concat((::tpy::str_concat(f, " / ")), s));
         break;
     }
-    // case Pair(first=Int32() as n, second=s):
+    // case Pair(first=int32() as n, second=s):
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject_1);
         auto n = __case_1.first;
@@ -83,10 +83,10 @@ std::string mixed(::tpy::Union<const Pair<int32_t>*, const Pair<std::string>*> x
 
 // def main() -> None:
 void main() {
-    // a: Box[str] | Box[Int32] = Box("hello")
+    // a: Box[str] | Box[int32] = Box("hello")
     ::tpy::Union<Box<int32_t>, Box<std::string>> __slot_1 = Box<std::string>("hello");
     ::tpy::Union<Box<int32_t>*, Box<std::string>*> a = ::tpy::to_ptr_variant(__slot_1);
-    // b: Box[str] | Box[Int32] = Box(42)
+    // b: Box[str] | Box[int32] = Box(42)
     ::tpy::Union<Box<int32_t>, Box<std::string>> __slot_2 = Box<int32_t>(42);
     ::tpy::Union<Box<int32_t>*, Box<std::string>*> b = ::tpy::to_ptr_variant(__slot_2);
     // print(unwrap(a))
@@ -97,10 +97,10 @@ void main() {
     std::cout << describe(a.as_const()) << "\n";
     // print(describe(b))
     std::cout << describe(b.as_const()) << "\n";
-    // c: Pair[str] | Pair[Int32] = Pair("abc", "xyz")
+    // c: Pair[str] | Pair[int32] = Pair("abc", "xyz")
     ::tpy::Union<Pair<int32_t>, Pair<std::string>> __slot_3 = Pair<std::string>("abc", "xyz");
     ::tpy::Union<Pair<int32_t>*, Pair<std::string>*> c = ::tpy::to_ptr_variant(__slot_3);
-    // d: Pair[str] | Pair[Int32] = Pair(99, "end")
+    // d: Pair[str] | Pair[int32] = Pair(99, "end")
     ::tpy::Union<Pair<int32_t>, Pair<std::string>> __slot_4 = Pair<int32_t>(99, "end");
     ::tpy::Union<Pair<int32_t>*, Pair<std::string>*> d = ::tpy::to_ptr_variant(__slot_4);
     // print(mixed(c))

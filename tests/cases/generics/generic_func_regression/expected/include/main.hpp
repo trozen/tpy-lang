@@ -28,12 +28,12 @@ template<typename T>
 // # Generic function with record type
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
-    // y: Int32
+    // y: int32
     int32_t y;
 
-    // def __init__(self, x: Int32, y: Int32):
+    // def __init__(self, x: int32, y: int32):
     Point() = default;
     explicit Point(int32_t x, int32_t y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
@@ -45,7 +45,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 }
 
 
-// def __init__(self, x: Int32, y: Int32):
+// def __init__(self, x: int32, y: int32):
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 // # Uppercase generic function (tests routing: function vs type)
 // def First[T](items: list[T]) -> T:
@@ -54,7 +54,7 @@ template<typename T>
     // return items[0]
     return ::tpy::__getitem__(items, 0);
 }
-// def get_item[T](items: list[T], idx: Int32) -> T:
+// def get_item[T](items: list[T], idx: int32) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> get_item(std::vector<T>& items, int32_t idx) {
     // return items[idx]

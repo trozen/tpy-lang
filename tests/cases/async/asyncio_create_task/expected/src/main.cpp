@@ -4,12 +4,12 @@
 namespace tpyapp::main {
 
 
-// async def sub() -> Int32:
+// async def sub() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_sub::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return Int32(42)
+        // return int32(42)
         __state = S_DONE;
         int32_t __tpy_async_ret = 42;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -20,7 +20,7 @@ namespace tpyapp::main {
 }
 
 
-// async def sub() -> Int32:
+// async def sub() -> int32:
 __coro_sub sub() {
     return __coro_sub();
 }
@@ -29,7 +29,7 @@ __coro_sub sub() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // t: Task[Int32] = asyncio.create_task(sub())
+        // t: Task[int32] = asyncio.create_task(sub())
         t.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(sub())));
         // val = await t
         __sub_0 = &((*t));

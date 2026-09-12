@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // @error_return(MyErr)
-// def fallible(x: Int32) -> Int32:
+// def fallible(x: int32) -> int32:
 std::expected<int32_t, MyErr> fallible(int32_t x) {
     // if x < 0:
     if ((x < 0)) {
@@ -16,7 +16,7 @@ std::expected<int32_t, MyErr> fallible(int32_t x) {
     return (::tpy::mul_check<int32_t>(x, 2));
 }
 
-// def run(x: Int32) -> None:
+// def run(x: int32) -> None:
 void run(int32_t x) {
     // try:
     ::tpy::String note;

@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // @probe
-// def free(x: Int32) -> Int32:  # tpyc: warning(/macro on free: no self \(is_method=False\)/)
+// def free(x: int32) -> int32:  # tpyc: warning(/macro on free: no self \(is_method=False\)/)
 int32_t free(int32_t x) {
     // return x + 1
     return (::tpy::add_check<int32_t>(x, 1));

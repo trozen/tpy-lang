@@ -2,17 +2,17 @@
 # __exit__ runs on early return and on a caught exception. If either path leaked
 # the lock, the subsequent same-thread re-lock would deadlock (std::mutex is
 # non-recursive) -- so a clean run that reaches the final print is the guard.
-from tpy import Int32
+from tpy import int32
 from tpy.sync import Mutex
 
 
-def append_then_return(m: Mutex[list[Int32]]) -> None:
+def append_then_return(m: Mutex[list[int32]]) -> None:
     with m.lock() as g:
         g.append(1)
         return  # early return -- __exit__ must still release
 
 
-def append_then_raise(m: Mutex[list[Int32]]) -> None:
+def append_then_raise(m: Mutex[list[int32]]) -> None:
     try:
         with m.lock() as g:
             g.append(2)

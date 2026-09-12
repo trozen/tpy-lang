@@ -15,10 +15,10 @@ std::string name_of(const Foo& x);
 
 // class Foo:
 struct Foo {
-    // val: Int32
+    // val: int32
     int32_t val;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Foo() = default;
     explicit Foo(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "pkg_a.Foo";
@@ -30,7 +30,7 @@ inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Foo::Foo(int32_t v) : val(v) {}
 void __tpy_init();
 } // namespace tpyapp::pkg_a

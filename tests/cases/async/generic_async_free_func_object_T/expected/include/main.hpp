@@ -30,10 +30,10 @@ void main();
 
 // class Counter:
 struct Counter {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Counter() = default;
     explicit Counter(int32_t n);
 
@@ -69,7 +69,7 @@ struct __coro_increment {
         return os << "<coroutine increment>";
     }
 };
-// async def increment[T: Bumpable](x: T) -> Int32:
+// async def increment[T: Bumpable](x: T) -> int32:
 template <typename T>
 ::tpystd::tpy::Poll<int32_t> __coro_increment<T>::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
@@ -77,7 +77,7 @@ template <typename T>
     case S_INITIAL: {
         // x.bump()
         x.bump();
-        // return Int32(0)
+        // return int32(0)
         __state = S_DONE;
         int32_t __tpy_async_ret = 0;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -88,7 +88,7 @@ template <typename T>
 }
 
 
-// async def increment[T: Bumpable](x: T) -> Int32:
+// async def increment[T: Bumpable](x: T) -> int32:
 template <typename T>
 __coro_increment<T> increment(::tpy::param_val_or_ref_t<T> x) {
     return __coro_increment<T>(x);
@@ -120,7 +120,7 @@ struct __coro_main_coro {
 };
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Counter::Counter(int32_t n) : n(n) {}
 
 // def bump(self) -> None:

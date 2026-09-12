@@ -20,9 +20,9 @@ void test_extend_warns() {
 
 // def test_extend_value_type_no_warn() -> None:
 void test_extend_value_type_no_warn() {
-    // a = ArrayList[Int32, 16]()
+    // a = ArrayList[int32, 16]()
     ::tpystd::tplib::array_list::ArrayList<int32_t, 16> a = ::tpystd::tplib::array_list::ArrayList<int32_t, 16>();
-    // b: list[Int32] = [1, 2]
+    // b: list[int32] = [1, 2]
     std::vector<int32_t> b = {1, 2};
     // a.extend(b)  # tpyc: ok
     a.extend(b);

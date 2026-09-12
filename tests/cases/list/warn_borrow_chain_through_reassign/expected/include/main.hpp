@@ -17,12 +17,12 @@ void chain_promotes_alias_to_element();
 
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
-    // y: Int32
+    // y: int32
     int32_t y;
 
-    // def __init__(self, x: Int32 = Int32(0), y: Int32 = Int32(0)) -> None:
+    // def __init__(self, x: int32 = int32(0), y: int32 = int32(0)) -> None:
     explicit Point(int32_t x = 0, int32_t y = 0);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
@@ -33,7 +33,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 }
 
 
-// def __init__(self, x: Int32 = Int32(0), y: Int32 = Int32(0)) -> None:
+// def __init__(self, x: int32 = int32(0), y: int32 = int32(0)) -> None:
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

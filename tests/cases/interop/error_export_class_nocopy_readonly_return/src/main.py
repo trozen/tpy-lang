@@ -3,16 +3,16 @@
 # inner, so every borrow spelling (RefType or ReadonlyType-topped) lands on
 # the one reject.
 # tpy: ext_module
-from tpy import Int64, nocopy, readonly
+from tpy import int64, nocopy, readonly
 from tpy.extern import export
 
 
 @export
 @nocopy
 class Res:
-    n: Int64
+    n: int64
 
-    def __init__(self, n: Int64):
+    def __init__(self, n: int64):
         self.n = n
 
     def peek(self) -> "readonly[Res]":  # tpyc: error(/method 'peek' return is a @nocopy class 'Res' returned by reference/)

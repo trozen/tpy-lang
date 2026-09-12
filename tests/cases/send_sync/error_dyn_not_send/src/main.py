@@ -1,11 +1,11 @@
 # A non-Send conformer (StrView field) is rejected at the conversion that
 # erases it into a Send[Pet] adapter.
-from tpy import Int32, Send, StrView, dynamic
+from tpy import int32, Send, StrView, dynamic
 from typing import Protocol
 
 @dynamic
 class Pet(Protocol):
-    def speak(self) -> Int32: ...
+    def speak(self) -> int32: ...
 
 class ViewPet:
     s: StrView
@@ -13,7 +13,7 @@ class ViewPet:
     def __init__(self, s: StrView) -> None:
         self.s = s
 
-    def speak(self) -> Int32:
+    def speak(self) -> int32:
         return len(self.s)
 
 def greet(p: Send[Pet]) -> None:

@@ -4,7 +4,7 @@
 namespace tpyapp::dialer {
 
 
-// def dial(host: str, timeout: float | None) -> Int32:
+// def dial(host: str, timeout: float | None) -> int32:
 int32_t dial(std::string_view host, std::optional<double> timeout) {
     // return 0 if timeout is None else 1
     return (((!timeout.has_value())) ? (0) : (1));

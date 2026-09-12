@@ -1,3 +1,3 @@
-from tpy import Int32
+from tpy import int32
 
-LIMIT: Int32 = 99
+LIMIT: int32 = 99

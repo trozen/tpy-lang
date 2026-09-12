@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def get_positive_radius(s: Circle | Rect) -> Int32:
+// def get_positive_radius(s: Circle | Rect) -> int32:
 int32_t get_positive_radius(::tpy::Union<const Circle*, const Rect*> s) {
-    // assert isinstance(s, Circle) and s.radius > Int32(0)
+    // assert isinstance(s, Circle) and s.radius > int32(0)
     if (!((std::holds_alternative<const Circle*>(s) && ((*std::get<const Circle*>(s)).radius > 0)))) ::tpy::raise_assertion_error();
     auto& __s = *std::get<const Circle*>(s);
     // return s.radius
@@ -15,7 +15,7 @@ int32_t get_positive_radius(::tpy::Union<const Circle*, const Rect*> s) {
 
 // def main() -> None:
 void main() {
-    // c: Circle | Rect = Circle(Int32(5))
+    // c: Circle | Rect = Circle(int32(5))
     ::tpy::Union<Circle, Rect> __slot_1 = Circle(5);
     ::tpy::Union<Circle*, Rect*> c = ::tpy::to_ptr_variant(__slot_1);
     // print(get_positive_radius(c))

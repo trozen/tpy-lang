@@ -1,1 +1,1 @@
-main.py:12: error: Type mismatch in assignment: expected Int32, got str
+main.py:12: error: Type mismatch in assignment: expected int32, got str

@@ -4,7 +4,7 @@
 # moved from. A FIELD target still receives a warned copy (copy() is the
 # escape hatch), so the field leg only reads -- mutating h.dest would
 # diverge from CPython's aliasing there (tracked acknowledged divergence).
-from tpy import Int32, error_return, ReturnException
+from tpy import int32, error_return, ReturnException
 
 
 class E(Exception, ReturnException):
@@ -12,7 +12,7 @@ class E(Exception, ReturnException):
 
 
 class Source:
-    items: list[Int32]
+    items: list[int32]
 
     def __init__(self) -> None:
         self.items = [1, 2, 3]

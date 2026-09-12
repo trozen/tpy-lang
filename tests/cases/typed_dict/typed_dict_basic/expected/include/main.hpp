@@ -17,7 +17,7 @@ void main();
 struct UserInfo {
     // name: str
     std::string name;
-    // age: Int32
+    // age: int32
     int32_t age;
     // active: bool
     bool active;

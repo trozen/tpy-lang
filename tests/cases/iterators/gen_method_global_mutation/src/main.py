@@ -3,13 +3,13 @@
 # observes it per resume. Multiple yields force the resumable-frame path
 # (where the shadowing frame field would otherwise appear).
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
-emitted: Int32 = 0
+emitted: int32 = 0
 
 
 class Source:
-    def values(self) -> Iterator[Int32]:
+    def values(self) -> Iterator[int32]:
         global emitted
         emitted += 1
         yield 0

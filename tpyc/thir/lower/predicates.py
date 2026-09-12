@@ -260,7 +260,7 @@ _TEMPLATE_COERCIONS: dict[str, str] = {
     "fixed_int_to_bigint": "::tpy::BigInt({0})",
     "bigint_to_float": "static_cast<double>({0})",
     "bigint_to_float32": "static_cast<float>({0})",
-    # Char -> str/String/StrView: position-independent single-arg wraps
+    # char -> str/String/StrView: position-independent single-arg wraps
     # (coercions.py's char_to_* lambdas). The StrView target views the shared
     # buffer, so the coerce arm's str-view-target rule tags it BORROW.
     "char_to_str": "std::string(::tpy::char_to_str({0}))",
@@ -268,9 +268,9 @@ _TEMPLATE_COERCIONS: dict[str, str] = {
     "char_to_strview": "::tpy::char_to_str({0})",
 }
 
-# The Float32-targeted float literal: an identity lambda whose `f`-suffix
+# The float32-targeted float literal: an identity lambda whose `f`-suffix
 # render comes from the literal seeing the coerce TARGET, so lowering retypes
-# the THIRLiteral to Float32.
+# the THIRLiteral to float32.
 _FLOAT32_LIT_COERCION = "float_literal_to_float32"
 
 # Its BigInt twin: `int_literal_to_bigint` is an identity lambda whose
@@ -390,7 +390,7 @@ def _coerce_disposition(e: TpyCoerce, *,
     directly (the lambda's startswith('"') token check made structural:
     cpp_string_literal_expr emits the bare-quote form exactly when the value
     is NUL-free). `strview_to_string` (a `const ::tpy::String&` slot / an owned
-    String target) materializes in every position. The Optional and Char
+    String target) materializes in every position. The Optional and char
     arms have their own renders and reject here."""
     name = e.coercion.name
     if name in (_INT_LIT_COERCION, _FLOAT_LIT_COERCION,
@@ -561,7 +561,7 @@ def _for_each_elem_binding_ok(et: TpyType | None) -> bool:
     not-yet-concretized nested container.
 
     An `Optional` loop var is excluded EXCEPT the value-repr Optional[cheap
-    scalar / Char] family (`std::optional<T> item = *__beg_N;`): a body that
+    scalar / char] family (`std::optional<T> item = *__beg_N;`): a body that
     NARROWS one (`if x is None: continue`) then reads it needs the value-repr
     deref (`(*x)`) that the value-opt param arms render -- the for-each
     lowering registers the loop var's SCALAR value-opt binding so those arms
@@ -593,7 +593,7 @@ def _foreach_storage_opt_elem(et: TpyType | None, analyzer) -> bool:
     return _f1_record(_unwrap_own(unwrap_readonly(t.inner)), analyzer)
 
 def _foreach_value_opt_elem(et: TpyType | None) -> 'OptionalType | None':
-    """The value-repr `Optional[cheap scalar / Char]` loop-var element family
+    """The value-repr `Optional[cheap scalar / char]` loop-var element family
     (the same inner slice `_value_opt_scalar` admits for params, spelled
     locally so this gate does not move if that helper's slice widens). The
     loop var binds as a typed `std::optional<T>` copy and its body reads ride
@@ -615,7 +615,7 @@ def _eligible_scalar(t: TpyType | None) -> bool:
     BigInt (`::tpy::BigInt` -- heap-backed but a value type with overloaded
     operators, so reads/writes/ops render bare like any scalar): borrow/
     storage form never arises and the C++ spelling comes straight from
-    `TpyType.to_cpp()`. Target-typed literal renders (the Float32 `f`
+    `TpyType.to_cpp()`. Target-typed literal renders (the float32 `f`
     suffix, the BigInt ctor wraps) ride `_slot_literal_retype` at the slot
     sites plus the literal coerce arms, which retype the literal so the
     emitter picks the wrapped render. A `LiteralType` over a scalar base
@@ -721,7 +721,7 @@ def _value_record_member(m: 'TpyType') -> bool:
 
 def _builtin_value_member(m: 'TpyType') -> bool:
     """A non-generic BUILTIN value nominal as a union member (`basic_slice`
-    in `Int32 | basic_slice` -> `std::variant<int32_t, ::tpy::BasicSlice>`):
+    in `int32 | basic_slice` -> `std::variant<int32_t, ::tpy::BasicSlice>`):
     same by-value storage as a user value record, spelled via the TypeDef's
     to_cpp. Non-user only -- the user flavor is `_value_record_member`;
     the whole STR/BYTES type CLASSES keep their own rows (an owned-buffer
@@ -828,8 +828,8 @@ def _span_slot(t: 'TpyType | None', analyzer) -> bool:
 
 
 def _eligible_value_union(t: TpyType | None) -> 'UnionType | None':
-    """The F4 U1 slice: a value-form union of scalar / Char / str / StrView /
-    value-record members (`Int32 | Float64 [| None]`, `Int32 | str`,
+    """The F4 U1 slice: a value-form union of scalar / char / str / StrView /
+    value-record members (`int32 | float64 [| None]`, `int32 | str`,
     `Fixed | Zone | None`) -- `std::variant<...>` where every member is stored
     by value (a str member is owned `std::string`, a StrView member a
     `std::string_view`, a ValueType record itself). At the WHOLE-variant
@@ -946,7 +946,7 @@ def _distinct_variant_alternatives(u: 'UnionType') -> bool:
     """Every non-None member of `u` spells a DISTINCT C++ type.
 
     The widened member class holds several TPy types that share one C++
-    spelling (`bytes`, `bytearray` and `list[UInt8]` all render
+    spelling (`bytes`, `bytearray` and `list[uint8]` all render
     `std::vector<uint8_t>`), and every consumer reaches the variant
     through `std::holds_alternative<T>` / `std::get<T>`, which are
     ill-formed when an alternative repeats. Keeping such a union out of
@@ -1045,7 +1045,7 @@ def _wrapper_borrow_return(t: TpyType | None, analyzer) -> 'UnionType | None':
 
 
 def _own_genrec_return(t: TpyType | None) -> 'TpyType | None':
-    """An `Own[Tree[Int32]]` return slot -- the generic-instance sibling of
+    """An `Own[Tree[int32]]` return slot -- the generic-instance sibling of
     `_own_storage_union_return`: the wrapper struct returns by value
     (`Tree<int32_t>`), and the routed sources are the ones whose render the
     wrapper's converting ctor absorbs (a scalar member value returns bare,
@@ -1098,7 +1098,7 @@ def _eligible_ptr_union(t: TpyType | None, analyzer) -> 'UnionType | None':
     type spelling agrees with the resolver; only generics stay off); a None
     member is the monostate slot -- both spellings render it
     `std::monostate`, so it adds no form question.
-    A MIXED union's eligible-scalar members (`Int32 | Dog | None` -> an
+    A MIXED union's eligible-scalar members (`int32 | Dog | None` -> an
     `int32_t*` alternative) render through the same member-shape-blind
     machinery (`m.to_cpp() + "*"` borrow, bare value storage, `*std::get<
     int32_t*>(v)` extraction), so they ride the record rows unchanged; an
@@ -1247,7 +1247,7 @@ def _union_binding_divergent(e: 'TpyName', locals_: dict[str, TpyType],
                              analyzer) -> bool:
     """A union-declared name whose read type is NOT that union: sema's
     assignment narrowing retyped the read to a member (`x: I | F = k; v = x`
-    reads `x` as Int32), which would need a `std::get` the bare variant name
+    reads `x` as int32), which would need a `std::get` the bare variant name
     does not carry (see BUGS.md). No corpus case exercises it, so such a read
     rejects as `name.union_binding_divergent`."""
     bt = locals_.get(e.name)
@@ -1985,7 +1985,7 @@ def _resolved_str_value(t: TpyType | None, analyzer) -> TpyType | None:
     (`std::string` everywhere, including the `const std::string&` param slot
     the SKELETON emitter spells -- no body arm renders it) -- or None outside
     the slice. A str local's binding type stays `PendingStrType` on the
-    sema side; resolve it like `_resolve_pending_view` does. `Char` and the
+    sema side; resolve it like `_resolve_pending_view` does. `char` and the
     bytes family are out of the slice; a str-based `Literal[...]`
     resolves as its base. Callers that key on the FORM axis must treat
     String as owned:
@@ -2097,8 +2097,8 @@ def _str_concat_operand(e: TpyExpr, t: TpyType | None, analyzer) -> bool:
     """A str-concat operand the slice renders bare into the resolved dunder's
     template: a str literal (const char[N]), a str/StrView value (param, local,
     or owned-str call result), or a `String` value (a concat-result local /
-    nested concat). A `Char` operand's overload wraps it in `char_to_str` with
-    its own operand render -- out of the slice (S4 introduces Char values)."""
+    nested concat). A `char` operand's overload wraps it in `char_to_str` with
+    its own operand render -- out of the slice (S4 introduces char values)."""
     if isinstance(e, TpyStrLiteral):
         return True
     return (_resolved_str_value(t, analyzer) is not None
@@ -2195,14 +2195,14 @@ def _bytes_name_form(name: str, resolved: TpyType, param_names: set[str],
     return Form.STORAGE
 
 def _eligible_char(t: TpyType | None) -> bool:
-    """A `Char` value (C++ `char`): value-scalar-like for the shapes this slice
+    """A `char` value (C++ `char`): value-scalar-like for the shapes this slice
     routes -- str subscript results, str-iteration loop vars, params/returns,
-    compare operands, print args (streamed raw; Char has no int_traits, so no
+    compare operands, print args (streamed raw; char has no int_traits, so no
     int8 cast arises). Kept out of `_eligible_scalar` deliberately: a str
-    literal in a Char-typed slot renders as a target-typed C++ char literal
-    (`'x'`), which the scalar positions do not thread -- each Char position
+    literal in a char-typed slot renders as a target-typed C++ char literal
+    (`'x'`), which the scalar positions do not thread -- each char position
     gates its literal shape explicitly (single-char literals route at compare
-    operands, annotated decl inits, and Char-slot call args; the reassign /
+    operands, annotated decl inits, and char-slot call args; the reassign /
     return guards stay as defensive rejects -- sema type-errors those)."""
     if t is None:
         return False
@@ -2213,7 +2213,7 @@ def _readonly_global_type(gt: TpyType | None, analyzer) -> TpyType | None:
     READ renders bare -- exactly a local/param read of the same resolved type
     (value globals are plain namespace-scope objects; only non-value globals
     take the `T*` pointer slot and its `(*g)` / `->` renders). Scalars and
-    Char render bare everywhere their arms admit them; str/bytes globals
+    char render bare everywhere their arms admit them; str/bytes globals
     carry the same view/owned form duality as locals (`_str_name_form` keys
     on the resolved type, and a global is never in `param_names`, so an owned
     `std::string` global is STORAGE and a `StrView` one BORROW, per the
@@ -2320,7 +2320,7 @@ def _pointer_slot_global_type(gt: TpyType | None, analyzer, *,
 
 def _open_value_tuple(t: TpyType | None) -> 'TupleType | None':
     """A tuple carrying an UNBOUND type param alongside value elements
-    (`tuple[T, Int32]` inside a generic body). The C++ spelling is
+    (`tuple[T, int32]` inside a generic body). The C++ spelling is
     `std::tuple<::tpy::val_or_ptr_t<T>, int32_t>`, which the whole family
     passes bare -- there is no borrow/storage duality to resolve until T
     binds. The concrete tuple classifiers all decline it, since none of them
@@ -2345,7 +2345,7 @@ def _value_tuple_global(t: TpyType | None, analyzer) -> 'TupleType | None':
     """The `Final[tuple[...]]` global / class-constant family: scalar, str
     (owned OR view -- a constant's str element is a static string_view,
     which reads bare exactly like a view local), and NESTED such tuples
-    (`NESTED: Final[tuple[tuple[str, Int32], str]]`; a nested element reads
+    (`NESTED: Final[tuple[tuple[str, int32], str]]`; a nested element reads
     as a plain value copy `std::tuple<...> inner = std::get<0>(__tup_N);`).
     Wider than `_value_tuple` on the str-view and nesting axes because no
     tuple-LITERAL render is involved here -- only bare name reads and
@@ -2454,7 +2454,7 @@ def _bigint_index_disposition(index: TpyExpr, obj_type: 'TpyType | None',
 
     The type half keys on the DECLARED type (`_declared_type`), as
     `is_runtime_bigint` does -- a literal-seeded local widened to BigInt by a later
-    assignment still types Int32 at this occurrence."""
+    assignment still types int32 at this occurrence."""
     key = _narrow_key_type(index, declared, analyzer)
     if key is _NARROW_UNMIRRORED:
         return "reject"
@@ -2935,12 +2935,12 @@ def _range_object_value(t: TpyType | None) -> bool:
     return is_range(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t))))
 
 def _char_compare_operand(e: TpyExpr, t: TpyType | None, analyzer) -> bool:
-    """A Char comparison operand: a Char-typed value, or a single-char str
+    """A char comparison operand: a char-typed value, or a single-char str
     literal (a CHAR compare target renders it as `'x'`). A multi-char literal
     never renders as a char literal and rejects. The str-pair arm is checked
     first, so a
     literal-vs-literal compare stays a plain string compare (no char target
-    arises without a Char-typed operand)."""
+    arises without a char-typed operand)."""
     if isinstance(e, TpyStrLiteral):
         return len(e.value) == 1
     return _eligible_char(t)
@@ -3025,7 +3025,7 @@ def _f1_record_type_arg_ok(a: 'TpyType | int', analyzer) -> bool:
         # whose borrow form is a separate question.
         if isinstance(u, NominalType) and is_bytes_type(u):
             return True
-        # A builtin-container arg (`Box[list[Int32]]`): both spellings give
+        # A builtin-container arg (`Box[list[int32]]`): both spellings give
         # the formatter form (`std::vector<...>`) recursing element args through
         # the same slice; union/enum/tuple elements keep their divergent
         # spellings out via the recursion.
@@ -3044,7 +3044,7 @@ def _f1_record_type_arg_ok(a: 'TpyType | int', analyzer) -> bool:
         if isinstance(u, NominalType) and is_enum_type(u):
             spelled = enum_cpp_name(u, analyzer.ctx.module_name)
             return spelled == u.name or spelled == u.to_cpp()
-        # Tuple arg (`Box[tuple[Int32, Point]]`): both spellings give
+        # Tuple arg (`Box[tuple[int32, Point]]`): both spellings give
         # `std::tuple<...>` recursing elements, so the spellings coincide
         # iff every element is itself in the spelling-equal slice (a
         # PendingView element rejects here BEFORE anything can call its
@@ -3182,7 +3182,7 @@ def _f1_container_ref(t: TpyType | None) -> bool:
     straight through a `cpp_formatter`, so a container slot's C++ comes from
     the signature rather than from a lowered type-arg. Imposing `_f1_record`'s
     type-arg check here rejects code that compiles today -- measured on
-    `Own[list[Int32 | str]]` returns and on a `list[Int32 | None]` global,
+    `Own[list[int32 | str]]` returns and on a `list[int32 | None]` global,
     where the union's alias registers only after lowering. The RECORD category
     is excluded even when a formatter is attached (`tpy.coro.Waker`), so the
     record and container halves stay disjoint -- the return ladder runs its
@@ -3579,7 +3579,7 @@ def _record_borrow_return(t: TpyType | None, analyzer) -> 'NominalType | None':
     if isinstance(t, OwnType):
         return None
     if isinstance(t, RecursiveAliasInstanceType):
-        # A bare generic-instance slot (`-> Tree[Int32]`) is the same
+        # A bare generic-instance slot (`-> Tree[int32]`) is the same
         # borrow direction: `Tree<int32_t>&` off owned storage, the field
         # read rendering `return this->t;` like any record member.
         return t
@@ -3591,7 +3591,7 @@ def _eligible_ptr_value(t: 'TpyType | None', analyzer) -> bool:
     """A `Ptr[T]` value (`T*` by value -- copied around like a scalar),
     admitted at the value slots (param / return / field-read result) when the
     pointee spells identically to the resolver: an F1-record (native /
-    cross-module included via native_cpp_names), an eligible scalar, Char,
+    cross-module included via native_cpp_names), an eligible scalar, char,
     void (`Ptr[None]` -> `void*`), or a @dynamic-protocol base (`Ptr[
     _RcCellBase]` -> `_RcCellBase*`); `Ptr[readonly[T]]` -> `const T*` rides
     the same arms. The slice renders only bare passes and field reads -- a
@@ -4163,7 +4163,7 @@ def _opt_pointee_wide(inner: 'TpyType | None', analyzer) -> bool:
         or isinstance(iu, TypeParamRef)
         or (isinstance(iu, NominalType) and is_dyn_protocol(iu))
         or _f1_container_ref(iu)
-        # A CONCRETE scalar/Char pointee (`dict_get(d, k)` -> `int32_t*`):
+        # A CONCRETE scalar/char pointee (`dict_get(d, k)` -> `int32_t*`):
         # the same member-shape-blind renders -- `int32_t*` spellings,
         # nullptr compares, `(*v)` derefs -- with no member machinery at
         # all. The open-T row above already carried instantiated scalars;
@@ -4185,8 +4185,8 @@ def _optional_ptr_borrow_wide(t: TpyType | None,
     if isinstance(inner, OwnType):
         return None
     # A VALUE-scalar pointee is reachable only through force_pointer_repr
-    # (`T | None` instantiated at Int32) -- the uses_pointer_repr guard
-    # above keeps a normal value-repr `Int32 | None` out, so the scalar
+    # (`T | None` instantiated at int32) -- the uses_pointer_repr guard
+    # above keeps a normal value-repr `int32 | None` out, so the scalar
     # class is safe HERE and only here (the storage flavor must leave
     # scalars to the value-opt facts). That admission now rides
     # `_opt_pointee_wide`'s own scalar row, over the same unwrapped inner:
@@ -4213,7 +4213,7 @@ def _storage_optional_return_wide(t: TpyType | None,
     """The storage-form Optional return slot over the F1|wrapper pointee
     pair: the classic `Own[T] | None` nesting (value optional of the Own
     payload) and the REVERSE `Own[Optional[W]]` spelling wrapper returns
-    use (`-> Own[Optional[Tree[Int32]]]` -> `std::optional<Tree<int32_t>>`
+    use (`-> Own[Optional[Tree[int32]]]` -> `std::optional<Tree<int32_t>>`
     -- ownership makes the whole optional a value at the boundary even
     though bare `Optional[W]` is ptr-repr). The pointee is on the reference
     axis: a container inner renders the same `std::optional<T>` slot a record
@@ -4325,10 +4325,10 @@ def _ptr_value_none_name(e: TpyExpr, declared: dict[str, TpyType],
     return _eligible_ptr_value(declared[e.name], analyzer)
 
 def _value_opt_scalar(t: 'TpyType | None', analyzer) -> 'OptionalType | None':
-    """The value-repr `Optional[value scalar]` binding type -- an `Int32 | None`
-    / `bool | None` / `Char | None` / `float | None` / `int | None` param bound
+    """The value-repr `Optional[value scalar]` binding type -- an `int32 | None`
+    / `bool | None` / `char | None` / `float | None` / `int | None` param bound
     `std::optional<T>` by value, or None. The inner is a value scalar: a
-    fixed-int, bool, Char, either float width, BigInt, or a registered enum
+    fixed-int, bool, char, either float width, BigInt, or a registered enum
     (`std::optional<Color>` -- the same bare/un-narrowed and `(*p)`-narrowed
     renders as the fixed-int inners). A BigInt (expensive-
     copy) inner takes a `std::move((*p))` at its last narrowed read (the
@@ -4350,7 +4350,7 @@ def _value_opt_scalar(t: 'TpyType | None', analyzer) -> 'OptionalType | None':
 
 def _value_opt_span(t: 'TpyType | None', analyzer) -> 'OptionalType | None':
     """The value-repr `Optional[Span[...]]` binding type (`values:
-    Span[readonly[Int32]] | None` -> `std::optional<std::span<const T>>`
+    Span[readonly[int32]] | None` -> `std::optional<std::span<const T>>`
     by value), or None. The None test reads has_value over the bare
     binding, like the scalar/view/callable kinds. Only the None test is
     lowered: narrowed READS of the binding carry deref renders no arm
@@ -4365,7 +4365,7 @@ def _value_opt_span(t: 'TpyType | None', analyzer) -> 'OptionalType | None':
 
 def _value_opt_tuple(t: 'TpyType | None', analyzer) -> 'OptionalType | None':
     """The value-repr `Optional[value tuple]` binding type (`tup:
-    tuple[int, Int32] | None` -> `std::optional<std::tuple<...>>` by value),
+    tuple[int, int32] | None` -> `std::optional<std::tuple<...>>` by value),
     or None. Scoped like the Span kind: only the WHOLE-optional read routes
     (the bare binding into a same-optional slot / the has_value None test);
     a narrowed read carries a deref render no arm claims, so name lowering
@@ -4394,7 +4394,7 @@ def _value_opt_value_record(t: 'TpyType | None',
     if not (isinstance(t, OptionalType) and not t.uses_pointer_repr()):
         return None
     inner = unwrap_readonly(t.inner)
-    # USER records only: builtin value nominals (Int32, str, ...) carry
+    # USER records only: builtin value nominals (int32, str, ...) carry
     # record info too but belong to the scalar/view/callable rows.
     if not (isinstance(inner, NominalType) and inner.is_user_record
             and inner.is_value_type()):
@@ -4469,7 +4469,7 @@ def _value_opt_scalar_name(e: TpyExpr, declared: dict[str, TpyType],
 def _none_value_opt_arg(a: TpyExpr, ptype: 'TpyType | None',
                         analyzer) -> 'OptionalType | None':
     """A bare `None` literal into a value-repr Optional param slot
-    (`std::optional<T>` by value -- ANY non-pointer-repr inner: scalar / Char /
+    (`std::optional<T>` by value -- ANY non-pointer-repr inner: scalar / char /
     float / BigInt / str-view / bytes-view / value-tuple). All render
     `std::nullopt` (the STORAGE-form None) whatever the inner, so this one row
     covers every value-optional family -- the value-repr twin of the
@@ -4496,7 +4496,7 @@ def _value_opt_scalar_value_arg(a: TpyExpr, ptype: 'TpyType | None',
     method loop renders numeric literals target-less. The arg's own type
     must be non-Optional (a whole-optional pass is
     the binding row in _lower_call_arg); a `None` literal rides
-    `_none_value_opt_arg`; a str literal is excluded (the Char-literal
+    `_none_value_opt_arg`; a str literal is excluded (the char-literal
     render keys on `_eligible_char(ptype)`, which an Optional slot fails)."""
     if _value_opt_scalar(ptype, analyzer) is None:
         return False
@@ -4569,7 +4569,7 @@ def _value_opt_pass_through_arg(a: TpyExpr, ptype: 'TpyType | None',
                                 locals_: dict[str, TpyType],
                                 narrowed: 'AbstractSet[str]',
                                 analyzer) -> bool:
-    """The SCALAR-inner row (`eq_left(some_a, a)` at a `Char | None` param):
+    """The SCALAR-inner row (`eq_left(some_a, a)` at a `char | None` param):
     scoped so admission matches the lowering row that renders it
     (`_value_opt_scalar_binding` in `_lower_call_arg`); the str/bytes inners
     have their own shim rows and would only be admitted here to reject again
@@ -4722,7 +4722,7 @@ def _unrouted_binding_read(t: 'TpyType | None', analyzer, *,
                 or (is_param and isinstance(inner, NominalType)
                     and inner.is_protocol
                     and not is_dyn_protocol(inner))
-                # Own on a VALUE type is the no-op spelling (`Own[Int32]`
+                # Own on a VALUE type is the no-op spelling (`Own[int32]`
                 # -> `int32_t x` by value): a PARAM's reads render the
                 # bare name. A LOCAL routes only when MOVABLE-SEEDED (an
                 # Own-typed loop var): the last-use read moves at owning
@@ -4874,7 +4874,7 @@ def _open_slot_match(at_open: 'TpyType | None',
 
 def _union_elem_tuple(t: 'TpyType | None', analyzer) -> 'TupleType | None':
     """A tuple whose only non-value slot is a POINTER-VARIANT union element
-    (`tuple[Dog | Cat, Int32]`): borrow form
+    (`tuple[Dog | Cat, int32]`): borrow form
     `std::tuple<::tpy::Union<const Cat*, const Dog*>, int32_t>`, storage form
     `std::tuple<std::variant<Cat, Dog>, int32_t>`. A union element is
     excluded from `_element_is_pointer_repr` BY DESIGN (its borrow form is a
@@ -4993,7 +4993,7 @@ def _value_tuple_element_ok(e: TpyType, analyzer) -> bool:
             # Optionals (`Box | None`) stay out -- their element form is a
             # borrow.
             or _value_opt_scalar(e, analyzer) is not None
-            # An ENUM element (`tuple[Color, Int64]` -> `std::tuple<Color,
+            # An ENUM element (`tuple[Color, int64]` -> `std::tuple<Color,
             # int64_t>`): a value scalar in C++ terms -- borrow and storage
             # forms coincide, so `std::get<N>(t)` reads it bare.
             or _eligible_enum(e, analyzer) is not None
@@ -5009,7 +5009,7 @@ def _value_tuple(t: TpyType | None, analyzer) -> 'TupleType | None':
     bare in every sink). Admitted at the param slot (`const std::tuple<...>&`,
     spelled by the signature emitter), the return slot (a by-value
     `std::tuple<...>`), and the subscript-read gate. A view (`StrView`) /
-    Char / record / nested-tuple element keeps the tuple outside this
+    char / record / nested-tuple element keeps the tuple outside this
     family: views make the literal render pin static storage, non-value
     elements make it pointer-repr (the `_f1_tuple` family)."""
     if t is None:
@@ -5065,7 +5065,7 @@ def _value_tuple_owned_str_elem(e: 'TpyExpr', analyzer) -> bool:
 
 def _open_t_tuple_slot(t: TpyType | None, analyzer) -> 'TupleType | None':
     """A tuple carrying an OPEN type-param element inside a generic body
-    (`tuple[T, Int32]` -> `std::tuple<T, int32_t>`), or None: the decl slot
+    (`tuple[T, int32]` -> `std::tuple<T, int32_t>`), or None: the decl slot
     spells the BARE `T`, so borrow and storage coincide there and the decl
     is the plain spelled copy like a value tuple's.
 
@@ -5461,8 +5461,8 @@ def _storage_opt_ternary_elem(e: TpyExpr, analyzer) -> bool:
 def _decl_tuple_nested(t: TpyType | None, analyzer) -> 'TupleType | None':
     """The tuple-literal DECL sink's widened element family: everything
     `_value_tuple_nested` admits plus plain scalar-read containers
-    (`tuple[dict[str, Int32], Int32]` -- the element literal renders with
-    its typed ctor / brace) and value-form unions (`tuple[Int32 | str,
+    (`tuple[dict[str, int32], int32]` -- the element literal renders with
+    its typed ctor / brace) and value-form unions (`tuple[int32 | str,
     ...]` -- the variant's converting ctor absorbs the bare member).
     Decl-only: the print/subscript sinks keep the narrow family."""
     if t is None:
@@ -5474,7 +5474,7 @@ def _decl_tuple_nested(t: TpyType | None, analyzer) -> 'TupleType | None':
         if not (_value_tuple_element_ok(e, analyzer)
                 or _value_tuple_nested(e, analyzer) is not None
                 or _container_scalar_read(e, analyzer)
-                # A set element (`tuple[set[Int32], str]`): sets have no
+                # A set element (`tuple[set[int32], str]`): sets have no
                 # subscript, but the DECL only renders the literal.
                 or (is_set(_dt_b := unwrap_readonly(unwrap_ref_type(
                         unwrap_send_sync(e))))
@@ -5485,7 +5485,7 @@ def _decl_tuple_nested(t: TpyType | None, analyzer) -> 'TupleType | None':
                     unwrap_readonly(unwrap_ref_type(unwrap_send_sync(e))))
                 is not None
                 # A recursive-union WRAPPER member (`pair = (leaf, 0)` at
-                # `tuple[Own[Tree[Int32]], Int32]`): the storage tuple holds
+                # `tuple[Own[Tree[int32]], int32]`): the storage tuple holds
                 # the wrapper struct by value; the member name copies bare /
                 # moves at its last use through the shared elem move facts.
                 # `_wrapper_union_like` covers the generic instance too.
@@ -5691,7 +5691,7 @@ def _subscript_index_and_tuple(sub: TpySubscript,
 
 def _borrow_tuple_param_elem_subscript(sub: TpyExpr, prescan, analyzer) -> bool:
     """A pointer-repr record element read off a borrow-form tuple PARAM
-    (`b = p[1]` off `readonly[tuple[Int32, Counter]]` -> `const Counter& b =
+    (`b = p[1]` off `readonly[tuple[int32, Counter]]` -> `const Counter& b =
     (*std::get<1>(p));`): `std::get` on the borrow tuple yields the element
     `T*`, so the REF_ALIAS decl binds its referent via the deref-flagged
     subscript render -- the value-context wrap. PARAM receivers only:
@@ -5811,7 +5811,7 @@ def _subscript_recv_tuple(e: TpyExpr, locals_: dict[str, TpyType],
             # Own-record-element tuples store by value: `std::get<N>(t)`
             # yields the record lvalue, `.` member access.
             or _own_record_tuple(recv_t, analyzer) is not None
-            # The NESTED-storage family (`tuple[Int32, tuple[Int32, P]]`
+            # The NESTED-storage family (`tuple[int32, tuple[int32, P]]`
             # -- no direct pointer-repr element, so no borrow form; the
             # get chain reads `.` all the way down).
             or _nested_storage_tuple(recv_t, analyzer) is not None):
@@ -5905,7 +5905,7 @@ def _container_record_elem_style_tuple_read(recv: 'TpySubscript',
                                 analyzer.ctx.default_int_for_literal)
     if _value_tuple_nested(elem, analyzer) is not None:
         return True
-    # A tuple with CONTAINER elements (`list[tuple[Int32, list[Int32]]]`):
+    # A tuple with CONTAINER elements (`list[tuple[int32, list[int32]]]`):
     # stored inline in the list, so `__getitem__` yields the same lvalue
     # the value flavor gets -- the outer container-element read
     # (`_tuple_subscript_container_elem_read`) consumes it.
@@ -5950,7 +5950,7 @@ def _genfac_like_call(a: TpyExpr, analyzer) -> bool:
 def _tuple_subscript_container_elem_read(
         e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
     """A CONTAINER-element tuple read chain (`print(pairs[1][1])` on
-    `list[tuple[Int32, list[Int32]]]`): the outer `std::get<N>` over the
+    `list[tuple[int32, list[int32]]]`): the outer `std::get<N>` over the
     inner `__getitem__` lvalue yields the container element (`T&`,
     BORROW) -- ListPrinter's operand / a REF_ALIAS bind. Int-literal
     index; the inner read is the container-element tuple shape."""
@@ -6033,7 +6033,7 @@ def _tuple_subscript_value_read(e: TpyExpr, locals_: dict[str, TpyType],
         # A literal-init walrus type carries IntLiteral elements
         # (`(t := (1, b))` -> tuple[IntLiteral(1), Box]), and a
         # container-element read off a literal-seeded list does too
-        # (`pairs[1][0]` on `[(1, 2), (Int32(3), 4)]`); `get_resolved_type`
+        # (`pairs[1][0]` on `[(1, 2), (int32(3), 4)]`); `get_resolved_type`
         # collapses them, so resolve before the family check.
         recv_t = resolve_int_literals(recv_t,
                                       analyzer.ctx.default_int_for_literal)
@@ -6045,7 +6045,7 @@ def _tuple_subscript_value_read(e: TpyExpr, locals_: dict[str, TpyType],
             # actually read is still gated below.
             and _value_tuple_global(recv_t, analyzer) is None
             and _f1_tuple(recv_t, analyzer) is None
-            # A per-element-Own record tuple (`tuple[Own[A], Int32]` ->
+            # A per-element-Own record tuple (`tuple[Own[A], int32]` ->
             # `std::tuple<A, int32_t>`): borrow and storage coincide, so
             # element reads spell the same bare `std::get<N>(p)`.
             and _own_record_tuple(recv_t, analyzer) is None
@@ -6354,7 +6354,7 @@ def _dict_key_shape_ok(key: 'TpyType', analyzer) -> bool:
             or _owned_str_slot(key, analyzer)
             or _f1_record(kb, analyzer)
             or isinstance(kb, AnyType)
-            # A VALUE-TUPLE key (`dict[tuple[Int32, Int32], str]`): the
+            # A VALUE-TUPLE key (`dict[tuple[int32, int32], str]`): the
             # literal key renders its spelled `std::tuple<...>{...}` and
             # the membership/subscript renders are key-type-neutral.
             or _value_tuple(kb, analyzer) is not None
@@ -6368,7 +6368,7 @@ def _dict_key_shape_ok(key: 'TpyType', analyzer) -> bool:
             # literal key keeps the default owned spelling
             # (`bytes_literal_owned`) -- key-type-neutral renders.
             or is_bytes_type(kb)
-            # An ENUM key (`dict[Color, Int64]` / `set[Color]`): the enum
+            # An ENUM key (`dict[Color, int64]` / `set[Color]`): the enum
             # value renders bare like a scalar in every key position (a
             # member spelling `Color::RED` from the shared `enum_cpp_name`,
             # a variable bare), so the key-type-neutral renders hold.
@@ -6501,7 +6501,7 @@ def _bytes_elem_container(t: TpyType | None, analyzer) -> bool:
 
 def _container_value_opt_scalar_elem(t: TpyType | None, analyzer) -> bool:
     """A container whose element/value is a value-repr `Optional[scalar]`
-    (`list[Int32 | None]`, `dict[str, int | None]`): the subscript read yields
+    (`list[int32 | None]`, `dict[str, int | None]`): the subscript read yields
     the whole `std::optional<T>` element bare. Kept OFF `_container_value_leaf_read`
     (its docstring excludes composite Optional elements) because the bare
     optional lands only in a WHOLE-optional sink -- the read arm admits it solely
@@ -6511,7 +6511,7 @@ def _container_value_opt_scalar_elem(t: TpyType | None, analyzer) -> bool:
 
 def _container_value_tuple_elem(t: TpyType | None, analyzer) -> bool:
     """A container whose element/value is a VALUE tuple
-    (`list[tuple[str, Int32]]`): the element is a self-contained
+    (`list[tuple[str, int32]]`): the element is a self-contained
     `std::tuple<...>`, so the subscript read hands out the whole tuple bare
     exactly like a scalar element. Pointer-repr (reference-element) tuples
     stay out -- their reads carry the borrow/storage lift."""
@@ -6523,7 +6523,7 @@ def _container_value_leaf_read(t: TpyType | None, analyzer) -> bool:
     """A container whose element/value subscript READ renders bare in a value
     position -- the compositional replacement for the enumerated
     `_container_scalar_read` / `_bytes_elem_container` split. The read emit is a
-    pure function of the element type: a value scalar / Char / enum / `Ptr`
+    pure function of the element type: a value scalar / char / enum / `Ptr`
     value is VALUE, an owned `str` / `bytes` element a bare-landing STORAGE
     lvalue -- all land bare in every value sink. This is exactly the value-leaf
     read set the field-read arm admits, so a subscript and a field read of the
@@ -6549,7 +6549,7 @@ def _container_value_leaf_read(t: TpyType | None, analyzer) -> bool:
                 # An open-T element inside the generic body: the bare
                 # checked-dunder read, form-neutral per instantiation.
                 or _is_type_param_slot(a)
-                # A `Callable` element (`list[Callable[[Int32], Int32]]`):
+                # A `Callable` element (`list[Callable[[int32], int32]]`):
                 # the `std::function` value lands bare like a scalar.
                 or _callable_value(a)
                 or (bt is not None and is_bytes_type(bt)))
@@ -6597,7 +6597,7 @@ def _container_ref_alias_elem(t: TpyType | None, analyzer) -> bool:
         # value (`{1:[1,2],2:[3,4]}` -> dict[int, Array[int,2]]).
         return is_list(a) or is_dict(a) or is_set(a) or is_array(a)
     # span_elem_ok: a Span-of-container receiver (`s[0][0]` on
-    # `Span[Array[Int32, 2]]`) reads the same checked `__getitem__`
+    # `Span[Array[int32, 2]]`) reads the same checked `__getitem__`
     # element lvalue -- the render is receiver-family-blind.
     return _container_elem_family(t, analyzer, container_elem,
                                   span_elem_ok=container_elem)
@@ -7407,8 +7407,8 @@ def _tuple_literal_has_ref_elements(e: TpyTupleLiteral,
 
 def _wrapper_ref_tuple_return(rt: 'TpyType | None',
                               analyzer) -> 'TupleType | None':
-    """The REFERENCE-element tuple RETURN slot (`-> tuple[Tree[Int32],
-    Int32]` -> `std::tuple<Tree<int32_t>&, int32_t>`): a wrapper-union
+    """The REFERENCE-element tuple RETURN slot (`-> tuple[Tree[int32],
+    int32]` -> `std::tuple<Tree<int32_t>&, int32_t>`): a wrapper-union
     element with NO Own marker borrows by C++ reference (`&`, not `T*` --
     wrapper structs store by value, so the borrow form is a reference
     member). Every element must be such a wrapper or a value scalar; the
@@ -7472,7 +7472,7 @@ def _own_storage_tuple_return(rt: 'TpyType | None',
     rules returns the spelled brace-init
     (`return std::tuple<std::string, Resource>{...};`). None otherwise;
     all-value tuples keep the `ret_value_tuple` family. The per-element-own
-    sibling (`-> tuple[Own[P | None], Int32]`) rides too: the Own element
+    sibling (`-> tuple[Own[P | None], int32]`) rides too: the Own element
     pushes the whole tuple to storage form (`own_tuple_target`), so
     the return renders the same spelled storage brace-init
     (`std::tuple<std::optional<P>, int32_t>{P(42), 99}`)."""
@@ -8239,7 +8239,7 @@ def _declared_type(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> TpyType
     # sema's per-occurrence cache. ctx.var_types holds a retro-widened
     # literal-seeded local's FINAL type (a later `p = <int>` widens `p = 0` to
     # BigInt), whereas analyzer.get_expr_type returns the pre-widen seed
-    # (Int32). Every render keyed on the declared type must read this: the
+    # (int32). Every render keyed on the declared type must read this: the
     # mixed-sign comparison gate would over-exclude same-sign-after-widen
     # loops, and the checked-narrow family (`.to_fixed_check<T>()`) would DROP
     # a required narrow -- ill-formed C++ at a BigInt subscript index.
@@ -8448,7 +8448,7 @@ def _record_dunder_operand_slot(
     compare gate's family predicates for the operand's renderability. A record
     compared to something no dunder declares, or to an operand that dunder's
     slot does not accept, therefore rejects HERE with a located diagnostic
-    instead of narrowing silently in C++ (`t == 2.5` against an `Int32` slot
+    instead of narrowing silently in C++ (`t == 2.5` against an `int32` slot
     prints True where CPython prints False).
 
     The REFLECTED spelling (`s == t`) rides C++20's reversed candidate, which
@@ -8538,7 +8538,7 @@ def _value_opt_rvalue(e: TpyExpr, analyzer) -> 'OptionalType | None':
     value-opt NAME/FIELD rows key. No narrowing applies to an rvalue,
     so the RESOLVED type is authoritative (unlike the name rows, which key the
     declared binding). A container-ELEMENT subscript read of a value-opt
-    element (`items[1] is None` on `list[Int32 | None]`) takes the same
+    element (`items[1] is None` on `list[int32 | None]`) takes the same
     `.has_value()` over the read (`::tpy::__getitem__(items, 1).has_value()`);
     the subscript arm re-validates receiver/index under allow_whole_optional.
     Names / fields / None-literals are handled by the other operand rows; a
@@ -8696,7 +8696,7 @@ def _own_opt_storage_binding(t: 'TpyType | None') -> bool:
     if not (isinstance(tu, OptionalType) and not tu.uses_pointer_repr()):
         return False
     ou = unwrap_readonly(tu.inner)
-    # A value-type Own is a no-op spelling (`Own[Int32] | None` is the
+    # A value-type Own is a no-op spelling (`Own[int32] | None` is the
     # plain value-opt SCALAR family) -- only a reference-type payload
     # makes this the storage-form record binding.
     return isinstance(ou, OwnType) and not ou.wrapped.is_value_type()
@@ -8836,7 +8836,7 @@ def _is_none_compare_operand(e: TpyBinOp, locals_: dict[str, TpyType],
 def _union_none_name(e: TpyExpr, locals_: dict[str, TpyType],
                      analyzer) -> 'UnionType | None':
     """A union-typed NAME subject of an `is [not] None` test (`v is None` on
-    `v: Int32 | Dog | None`): the monostate arm renders
+    `v: int32 | Dog | None`): the monostate arm renders
     `std::holds_alternative<std::monostate>(v)` over the bare binding --
     identical for value- and pointer-variant reprs (monostate is a value
     member in both). Keyed on the DECLARED type, as
@@ -9085,7 +9085,7 @@ def _storage_call_ret(ret: TpyType | None, analyzer) -> TpyType | None:
                         unwrap_send_sync(args[0]))), analyzer) is not None):
                 return t
         # A dict whose VALUE is itself an admitted scalar-read container
-        # (`d = asdict(line)` -> `dict[str, dict[str, Int32]]`): the bare
+        # (`d = asdict(line)` -> `dict[str, dict[str, int32]]`): the bare
         # rvalue copy is element-blind like the rows above; element reads
         # gate their own consumers.
         if is_dict(t):
@@ -9101,7 +9101,7 @@ def _storage_call_ret(ret: TpyType | None, analyzer) -> TpyType | None:
         return None
     if _bytes_family_ref(t):
         # `ba = bytearray(...)` -- the bytes family's reference member is a
-        # scalar container (`std::vector<uint8_t>`, element fixed at `UInt8`),
+        # scalar container (`std::vector<uint8_t>`, element fixed at `uint8`),
         # so it takes the same plain-copy decl render a scalar list does. It
         # is a row of its own rather than part of `_container_scalar_read`
         # because that family keys on the receiver's `__getitem__` resolving
@@ -9181,7 +9181,7 @@ def _owned_tuple_call_ret(ret: TpyType | None, analyzer) -> 'TupleType | None':
             if not (_f1_record(e.wrapped, analyzer)
                     or isinstance(ew, RecursiveAliasInstanceType)
                     # The Own[P | None] element (`pair() ->
-                    # tuple[Own[P|None], Int32]`): a storage-optional
+                    # tuple[Own[P|None], int32]`): a storage-optional
                     # element the pointer-lift unpack consumes (opt_ptr
                     # targets off the tuple_to_pointer'd capture).
                     or (isinstance(ew, OptionalType)
@@ -9189,7 +9189,7 @@ def _owned_tuple_call_ret(ret: TpyType | None, analyzer) -> 'TupleType | None':
                         and _f1_record(unwrap_readonly(ew.inner),
                                        analyzer))
                     # The Own[A | B] element (`pair() -> tuple[Own[A|B],
-                    # Int32]`): the capture holds the VALUE variant, and
+                    # int32]`): the capture holds the VALUE variant, and
                     # the target lifts it per element via to_ptr_variant.
                     or _eligible_ptr_union(ew, analyzer) is not None
                     # The Own[list/dict/set] element: the capture holds the
@@ -9201,7 +9201,7 @@ def _owned_tuple_call_ret(ret: TpyType | None, analyzer) -> 'TupleType | None':
                   or _resolved_str_value(unwrap_ref_type(e), analyzer)
                   is not None
                   # A nested VALUE-tuple element (`accept() ->
-                  # tuple[Own[socket], tuple[str, Int32]]`): the capture
+                  # tuple[Own[socket], tuple[str, int32]]`): the capture
                   # holds it by value; a kept target copies it out like a
                   # scalar, a discarded one emits nothing.
                   or _value_tuple_nested(
@@ -9906,7 +9906,7 @@ def _ru_elem_ok(x: TpyExpr, analyzer) -> bool:
     if isinstance(x, TpyFloatLiteral):
         return math.isfinite(x.value)
     if isinstance(x, TpyCall):
-        # A fixed-int ctor element (`Int32(1)`) folds to its bare token
+        # A fixed-int ctor element (`int32(1)`) folds to its bare token
         # (the scalar-ctor literal fold), same bounds as the raw literal.
         v = fixed_int_literal_value_from_expr(x)
         if v is not None:
@@ -10283,7 +10283,7 @@ def _own_lvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
     if _eligible_char(w):
         # A `char` payload takes the plain `auto` copy temp like a fixed-int
         # one; it is not an `_eligible_scalar` member only because a str
-        # literal in a Char slot renders as a target-typed char literal, and
+        # literal in a char slot renders as a target-typed char literal, and
         # this row admits no literal source.
         return w if _eligible_char(at) else None
     if is_str_type(w):
@@ -10331,7 +10331,7 @@ def _own_lvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
         return w if at == w else None
     if isinstance(w, RecursiveAliasInstanceType):
         # A generic-instance wrapper payload (`Holder(seed)` at
-        # `Own[Tree[Int32]]`): the same copy+move cascade as the record
+        # `Own[Tree[int32]]`): the same copy+move cascade as the record
         # payload -- a movable name's last use renders the temp-free
         # `std::move(seed)`, everything else hoists the copy temp.
         return w if at == w else None
@@ -10498,7 +10498,7 @@ def _optional_ptr_arg_face(a: TpyExpr, ptype: TpyType | None,
             at_u = unwrap_readonly(at) if at is not None else None
             if at_u == ot and _ptr_opt_borrow_call_ret(a, at_u):
                 return 'call_pass'
-            # A resolved-SCALAR call rvalue (`c.set(Int32(99))`) at a scalar
+            # A resolved-SCALAR call rvalue (`c.set(int32(99))`) at a scalar
             # pointee: the ctor face's scalar sibling -- the render is
             # pointee-blind and hoists the same `int32_t __tmp_N = 99;` +
             # `&(__tmp_N)`. Flushable positions only.
@@ -10685,7 +10685,7 @@ def _arg_ptr_union_slot(ptype: TpyType | None, analyzer,
     The member class comes from `_eligible_ptr_union_either`, the one
     `_union_pass_through_arg` admits on. Keying the const bridge on the
     narrow class alone left a union with a zero-type-arg container member
-    (`bytearray | Int32`) admitted at the pass-through row and skipped at
+    (`bytearray | int32`) admitted at the pass-through row and skipped at
     the wrap, so the argument reached a const-pointee slot un-wrapped."""
     pt = ptype if isinstance(ptype, TpyType) else None
     if pt is None:
@@ -10868,7 +10868,7 @@ def _value_opt_member_arg(a: TpyExpr, ptype: 'TpyType | None',
         return False
     _vom_inner = unwrap_readonly(unwrap_send_sync(u.inner))
     if isinstance(_vom_inner, OwnType):
-        # Own on a VALUE payload is a no-op spelling (`Own[Int32] | None`
+        # Own on a VALUE payload is a no-op spelling (`Own[int32] | None`
         # is the same by-value `std::optional<int32_t>` slot), so the bare
         # member render stands (`Container.wrap_optional(99)`); a non-value
         # payload keeps the Own cascade.
@@ -11057,7 +11057,7 @@ def _ctor_arg_slot_ok(ptype: TpyType | None, analyzer) -> bool:
     unwrap (the stub stores the generic param as `Ref(TypeParamRef)`)."""
     if _is_type_param_slot(ptype):
         return True
-    # A Char slot (`int(chr(65))` -- the int(Char) overload): the ctor's
+    # A char slot (`int(chr(65))` -- the int(char) overload): the ctor's
     # cast template consumes the char arg bare, like any scalar slot.
     if _eligible_char(ptype):
         return True
@@ -11347,7 +11347,7 @@ def _instantiation_call_fi(e: TpyCall) -> 'FunctionInfo | None':
     emit is the resolved `@cpp_template` ctor expanded over per-slot args:
     the `call_type` branch's resolved-template arm (sema already
     substituted the class type params, e.g. `::tpy::construct<std::vector<
-    int32_t>>({0})`), or None. The subscript-spelled form (`Stack[Int32]()`,
+    int32_t>>({0})`), or None. The subscript-spelled form (`Stack[int32]()`,
     `subscript_callee` set), the Ptr null ctor, the list-repeat and
     array-literal arms, native ctors, and the float-str constant fold all
     take different renders and reject here."""
@@ -11357,7 +11357,7 @@ def _instantiation_call_fi(e: TpyCall) -> 'FunctionInfo | None':
         return None
     if e.call_type is None or isinstance(e.call_type, PtrType):
         return None
-    # `e.type_args` is NOT excluded: an explicitly spelled `list[Int32](it)`
+    # `e.type_args` is NOT excluded: an explicitly spelled `list[int32](it)`
     # renders exactly like the inferred `list(it)` -- sema folds the spelling
     # into `call_type` and into the ctor template, and no call branch reads
     # the node's own type args.
@@ -11511,7 +11511,7 @@ def _dict_view_iterable_ok(e: TpyMethodCall, locals_: dict[str, TpyType],
     # Record-VALUE dicts admit too (`[p for _, p in point_map.items()]`):
     # the caller's element/unpack-target gates decide what the loop var can
     # bind; the view call render is value-family-blind. Optional-record
-    # and CONTAINER values (`dict[str, list[Int32]]` -- the items/values
+    # and CONTAINER values (`dict[str, list[int32]]` -- the items/values
     # element aliases the live container) ride the same blind render.
     return (_container_scalar_read(recv_t, analyzer)
             or _container_record_elem(recv_t, analyzer)
@@ -11520,7 +11520,7 @@ def _dict_view_iterable_ok(e: TpyMethodCall, locals_: dict[str, TpyType],
             # A genrec-element dict (`dict[K, DictTree[K, V]]`): the view
             # render is element-family-blind; the loop var binds `auto&&`.
             or _container_genrec_elem(recv_t, analyzer)
-            # A value-opt-scalar-valued dict (`dict[str, Int32 | None]`):
+            # A value-opt-scalar-valued dict (`dict[str, int32 | None]`):
             # the loop var binds the storage optional by value
             # (`std::optional<int32_t> val = *__beg_N;`).
             or _container_value_opt_scalar_elem(recv_t, analyzer)
@@ -11564,7 +11564,7 @@ def _is_bytes_family(t: TpyType | None) -> bool:
 def _var_decl_type(stmt: TpyVarDecl, analyzer) -> TpyType | None:
     # The decl target type (value-scalar subset): the binding
     # type captures sema's local deduction -- e.g. a literal-seeded local that
-    # retro-widens to UInt64 from later usage -- which the init's type alone
+    # retro-widens to uint64 from later usage -- which the init's type alone
     # (IntLiteralType) does not. Fall back to the init type, then resolve any
     # remaining int literal to the module default int.
     target = resolve_stmt_binding_type(stmt, analyzer, include_global_binding=False)

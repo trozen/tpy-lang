@@ -7,13 +7,13 @@
 # necessarily copyable (a @nocopy source reused after the unpack would be a
 # build error on the correct copy path), and moving a copyable Box leaves its
 # int field intact -- so the snapshot is the real check, not the 3/3 output.
-from tpy import Own, Int32
+from tpy import Own, int32
 
 
 class Box:
-    val: Int32
+    val: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 

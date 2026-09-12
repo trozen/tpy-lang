@@ -2,12 +2,12 @@
 # call a method that locks it. Regression guard for the builtin-index ordering
 # bug (see achan.py) -- fails to compile ("Cannot access field 'storage'")
 # before the post-finalize builtin re-index fix.
-from tpy import Int32
+from tpy import int32
 from achan import make_producer
 
 
 def main() -> None:
-    p = make_producer[Int32]()
+    p = make_producer[int32]()
     print(p.capacity())
 
 

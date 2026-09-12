@@ -8,7 +8,7 @@ namespace tpyapp::main {
 void main() {
     // p = Pile()
     Pile p = Pile();
-    // items: list[Box[Int32]] = []
+    // items: list[Box[int32]] = []
     std::vector<Box<int32_t>> items = std::vector<Box<int32_t>>{};
     // items.append(Box(1))
     items.push_back(Box<int32_t>(1));

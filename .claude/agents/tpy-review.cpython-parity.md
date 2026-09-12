@@ -66,7 +66,7 @@ You may NOT run `uv run pytest` or `tests/update_snapshots.py`. Probing individu
 - Is the divergence *exercised*? When the change adds or moves such a boundary, the test must mutate through the alias or use a `@nocopy` type so a silent copy actually shows up (see Process step 5). Read-only coverage hides the bug.
 
 **Numbers**
-- Fixed-width int (`Int32`, etc.) overflow wraps or panics; CPython `int` is arbitrary-precision. Silent wrap on a value that fits CPython but not the chosen width is a divergence.
+- Fixed-width int (`int32`, etc.) overflow wraps or panics; CPython `int` is arbitrary-precision. Silent wrap on a value that fits CPython but not the chosen width is a divergence.
 - `//` floor division and `%` modulo sign on negatives; float formatting / `repr`.
 
 **Identity & equality**
@@ -82,7 +82,7 @@ You may NOT run `uv run pytest` or `tests/update_snapshots.py`. Probing individu
 - Truthiness of user types (`__bool__` / `__len__`), default-argument evaluation timing, short-circuit semantics.
 
 **Strings**
-- `str` indexing yields a length-1 `str` in CPython; TPy `Char` vs `str` distinctions.
+- `str` indexing yields a length-1 `str` in CPython; TPy `char` vs `str` distinctions.
 
 ## Pitfalls you own
 

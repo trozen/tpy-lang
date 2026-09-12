@@ -881,9 +881,9 @@ class TypeResolver:
         elif module == "tpy":
             if (fixed_int := _FIXED_INT_MAP.get(original)) is not None:
                 return fixed_int
-            elif original == "Char":
+            elif original == "char":
                 return CHAR
-            elif original == "Float32":
+            elif original == "float32":
                 return FLOAT32
             elif original == "String":
                 return STRING

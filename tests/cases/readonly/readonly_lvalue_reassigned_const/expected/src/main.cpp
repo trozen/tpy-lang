@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // @readonly
-// def pick(a: Box, b: Box, flag: bool) -> Int32:
+// def pick(a: Box, b: Box, flag: bool) -> int32:
 int32_t pick(const Box& a, const Box& b, bool flag) {
     // x = a
     const Box* x = &(a);
@@ -20,9 +20,9 @@ int32_t pick(const Box& a, const Box& b, bool flag) {
 
 // def main() -> None:
 void main() {
-    // a = Box(Int32(10))
+    // a = Box(int32(10))
     Box a = Box(10);
-    // b = Box(Int32(20))
+    // b = Box(int32(20))
     Box b = Box(20);
     // print(pick(a, b, True))
     std::cout << pick(a, b, true) << "\n";

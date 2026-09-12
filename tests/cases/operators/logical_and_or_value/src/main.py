@@ -1,26 +1,26 @@
 # Test and/or returning operand values (Python semantics), not bool.
-from tpy import Int32
+from tpy import int32
 
 def test_or_int() -> None:
-    a: Int32 = 0
-    b: Int32 = 42
-    x = a or b  # tpyc: type(Int32)
+    a: int32 = 0
+    b: int32 = 42
+    x = a or b  # tpyc: type(int32)
     print(x)
 
-    c: Int32 = 1
-    d: Int32 = 2
-    y = c or d  # tpyc: type(Int32)
+    c: int32 = 1
+    d: int32 = 2
+    y = c or d  # tpyc: type(int32)
     print(y)
 
 def test_and_int() -> None:
-    a: Int32 = 0
-    b: Int32 = 42
-    x = a and b  # tpyc: type(Int32)
+    a: int32 = 0
+    b: int32 = 42
+    x = a and b  # tpyc: type(int32)
     print(x)
 
-    c: Int32 = 1
-    d: Int32 = 2
-    y = c and d  # tpyc: type(Int32)
+    c: int32 = 1
+    d: int32 = 2
+    y = c and d  # tpyc: type(int32)
     print(y)
 
 def test_or_str() -> None:
@@ -72,32 +72,32 @@ def test_or_bigint() -> None:
     print(x)
 
 def test_chained() -> None:
-    a: Int32 = 0
-    b: Int32 = 0
-    c: Int32 = 3
-    x = a or b or c  # tpyc: type(Int32)
+    a: int32 = 0
+    b: int32 = 0
+    c: int32 = 3
+    x = a or b or c  # tpyc: type(int32)
     print(x)
 
-    d: Int32 = 1
-    e: Int32 = 2
-    f: Int32 = 3
-    y = d and e and f  # tpyc: type(Int32)
+    d: int32 = 1
+    e: int32 = 2
+    f: int32 = 3
+    y = d and e and f  # tpyc: type(int32)
     print(y)
 
 def test_or_with_literal() -> None:
-    a: Int32 = 0
-    x = a or 99  # tpyc: type(Int32)
+    a: int32 = 0
+    x = a or 99  # tpyc: type(int32)
     print(x)
 
-def accepts_int(v: Int32) -> None:
+def accepts_int(v: int32) -> None:
     print(v)
 
-def returns_int(a: Int32, b: Int32) -> Int32:
+def returns_int(a: int32, b: int32) -> int32:
     return a or b
 
 def test_as_arg_and_return() -> None:
-    a: Int32 = 0
-    b: Int32 = 7
+    a: int32 = 0
+    b: int32 = 7
     accepts_int(a or b)
     print(returns_int(0, 5))
 
@@ -107,30 +107,30 @@ def test_bool_operands(flag: bool, other: bool) -> bool:
 
 def test_mixed_returns_bool() -> None:
     """Mixed types fall back to bool (condition context unaffected)."""
-    a: Int32 = 1
+    a: int32 = 1
     b: float = 2.0
     if a and b:  # tpyc: ok
         print("mixed condition ok")
 
 def test_condition_context() -> None:
-    a: Int32 = 1
-    b: Int32 = 2
+    a: int32 = 1
+    b: int32 = 2
     if a and b:
         print("both truthy")
     if a or b:
         print("at least one truthy")
 
 class Counter:
-    count: Int32
-    def __init__(self, n: Int32) -> None:
+    count: int32
+    def __init__(self, n: int32) -> None:
         self.count = n
     def __bool__(self) -> bool:
         return self.count != 0
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32) -> None:
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 
@@ -171,14 +171,14 @@ def test_record_or_constructor() -> None:
     print(y.count)
 
 def test_annotated() -> None:
-    a: Int32 = 0
-    b: Int32 = 42
-    x: Int32 = a or b  # tpyc: type(Int32)
+    a: int32 = 0
+    b: int32 = 42
+    x: int32 = a or b  # tpyc: type(int32)
     print(x)
 
-    c: Int32 = 1
-    d: Int32 = 2
-    y: Int32 = c and d  # tpyc: type(Int32)
+    c: int32 = 1
+    d: int32 = 2
+    y: int32 = c and d  # tpyc: type(int32)
     print(y)
 
     empty: str = ""
@@ -192,9 +192,9 @@ def test_annotated() -> None:
     print(f)
 
 def test_literal_or_literal() -> None:
-    x = 0 or 1  # tpyc: type(Int32)
+    x = 0 or 1  # tpyc: type(int32)
     print(x)
-    y = 3 and 0  # tpyc: type(Int32)
+    y = 3 and 0  # tpyc: type(int32)
     print(y)
 
     # Annotated as int (BigInt) -- annotation drives the type

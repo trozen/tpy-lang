@@ -1,1 +1,1 @@
-main.py:10: error: __getattr__ return type must be a value type, Any, or Own[T]; got Span[Int32] (bare reference / view types are not allowed)
+main.py:10: error: __getattr__ return type must be a value type, Any, or Own[T]; got Span[int32] (bare reference / view types are not allowed)

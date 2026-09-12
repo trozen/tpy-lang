@@ -2,16 +2,16 @@
 # Verifies that overload resolution unwraps Own for protocol matching.
 from __future__ import annotations
 from typing import Self
-from tpy import Int32, Own, auto_own
+from tpy import int32, Own, auto_own
 
 class Stack:
-    items: list[Int32]
+    items: list[int32]
     def __init__(self) -> None:
         self.items = [1, 2, 3]
 
-    def consume(self: auto_own[Self]) -> auto_own[Int32]:
+    def consume(self: auto_own[Self]) -> auto_own[int32]:
         it = iter(self.items)
-        total: Int32 = 0
+        total: int32 = 0
         for x in it:
             total += x
         return total

@@ -1,12 +1,12 @@
 # Tuple unpacking into existing variables (reassignment)
-from tpy import Int32
+from tpy import int32
 
-def get_pair() -> tuple[Int32, Int32]:
-    return (Int32(10), Int32(20))
+def get_pair() -> tuple[int32, int32]:
+    return (int32(10), int32(20))
 
 def main() -> None:
-    a: Int32 = 0
-    b: Int32 = 0
+    a: int32 = 0
+    b: int32 = 0
     print(a)
     print(b)
     a, b = get_pair()

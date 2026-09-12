@@ -5,7 +5,7 @@
 | Phase | Scope | Status |
 |-------|-------|--------|
 | 1 | Unify infrastructure: replace ListLiteralTracker, StrVarTracker, and deduction parts of ReassignmentInference with single LocalTypeDeduction class. Preserve existing behavior. | Done |
-| 2a | Numeric widening across assignments (int->float, Int32->Int64, unsigned->wider signed). | Done |
+| 2a | Numeric widening across assignments (int->float, int32->int64, unsigned->wider signed). | Done |
 | 2b | Different-size list reassignment, return-type-driven deduction, alias propagation for lists. | Done |
 | 2c | Cross-variable list reassignment (`a = [1,2,3]; b = [4,5]; a = b` -- both should become list). | Done |
 | 3 | Narrowing integration: deduced `Optional[T]` variables work with `if x is not None` narrowing. | Done |
@@ -14,19 +14,19 @@
 | 5b | Empty dict inference: `d = {}; d[k] = v` and `d = dict()` infer key/value types from subsequent subscript assignment. | Done |
 | 5c | Empty set inference: `s = set(); s.add(v)` infers element type from subsequent `.add()` calls. | Done |
 | 5d | Unify empty container inference: extract shared helpers for list/dict/set (PENDING_CONTAINER_TYPES constant, unified container lookup, shared resolution epilogue, merged param context tracking). Single code paths prevent forgetting one container type. | Done |
-| 6 | List element-type widening: `.append(Int64)` on `[1,2]` widens element type from Int32 to Int64. Already handled by `_widen_inferred_type` in Phase 5a infrastructure; added test coverage. | Done |
+| 6 | List element-type widening: `.append(int64)` on `[1,2]` widens element type from int32 to int64. Already handled by `_widen_inferred_type` in Phase 5a infrastructure; added test coverage. | Done |
 | 7a.1 | Deferred generic instance inference (MVP): `x = GenericType()` with unresolved type params, resolved from subsequent method calls via constraint unification. Eager resolution once all params known. Reuses `match_type_with_inference` from bidirectional inference. See `BIDIRECTIONAL_CALL_INFERENCE_DESIGN.md`. | Done |
-| 7a.2 | Expected-type constraint sources: resolve pending generic from function parameter type (`f(x)` where param is `Container[Int32]`) and return type (`return x` where function returns `Container[Int32]`). Same eager resolution as 7a.1. | Done |
-| 7b | `_` wildcard for partial type args in all generic calls (functions, constructors, methods). `ArrayList[_, 1024]()`, `f[_, Int32](x)`, etc. Remaining constructor params deferred via 7a. | Done |
+| 7a.2 | Expected-type constraint sources: resolve pending generic from function parameter type (`f(x)` where param is `Container[int32]`) and return type (`return x` where function returns `Container[int32]`). Same eager resolution as 7a.1. | Done |
+| 7b | `_` wildcard for partial type args in all generic calls (functions, constructors, methods). `ArrayList[_, 1024]()`, `f[_, int32](x)`, etc. Remaining constructor params deferred via 7a. | Done |
 
 ## Future Extensions (post-1.0)
 
 | Extension | Description |
 |-----------|-------------|
 | Per-assignment-segment typing | SSA-style reasoning: each assignment to a variable creates a new "version" with its own type. Enables narrower types per segment (e.g. StrView before reassignment, str after), avoiding unnecessary allocations. Requires liveness/escape analysis. See details at end of document. |
-| Empty list to Array promotion | `xs = []; xs.append(1); xs.append(2)` could resolve to `Array[Int32, 2]` if the final size is statically known (no dynamic mutations like loop appends or pop/remove). Would need to compute max required size from constant append/insert/extend counts. Likely low priority -- in hot paths users would declare `Array` explicitly with a known max size. |
-| Union expected-type resolution | `f(x)` where param is `Container[Int32] | str` -- try each union member as a candidate for resolving pending generic instances. Currently only plain `NominalType` and `Optional[NominalType]` are tried. |
-| Extended constraint sources | Field access as constraint (`v: Int32 = c.val` resolves T), cascading pending types (`x = s.items` where both pending). Niche -- existing sources (method calls, parameter passing, return types) cover practical cases. |
+| Empty list to Array promotion | `xs = []; xs.append(1); xs.append(2)` could resolve to `Array[int32, 2]` if the final size is statically known (no dynamic mutations like loop appends or pop/remove). Would need to compute max required size from constant append/insert/extend counts. Likely low priority -- in hot paths users would declare `Array` explicitly with a known max size. |
+| Union expected-type resolution | `f(x)` where param is `Container[int32] | str` -- try each union member as a candidate for resolving pending generic instances. Currently only plain `NominalType` and `Optional[NominalType]` are tried. |
+| Extended constraint sources | Field access as constraint (`v: int32 = c.val` resolves T), cascading pending types (`x = s.items` where both pending). Niche -- existing sources (method calls, parameter passing, return types) cover practical cases. |
 
 ## Motivation
 
@@ -160,7 +160,7 @@ and the candidate type is pending/ambiguous:
   (Span accepts both, Array is cheaper)
 - List literal passed to both `list[T]` and `Span[U]` -> `list[T]`
 - String passed to `String` param -> `str` (owned)
-- Int literal passed to `Int64` param -> candidate narrows to `Int64`
+- Int literal passed to `int64` param -> candidate narrows to `int64`
 
 **Return type:** If the variable is returned and the function has a
 declared return type, use it to inform deduction (list / dict / set alike):
@@ -235,26 +235,26 @@ three separate passes.
 | Scenario | Deduced |
 |----------|---------|
 | `x = 0; x = 1_000_000_000_000` | BigInt |
-| `x = 0; x = some_int32` | Int32 |
+| `x = 0; x = some_int32` | int32 |
 | `x = None; x = User()` | Optional[User] |
 | `x = "hello"; print(x)` | StrView |
 | `x = "hello"; x += " world"` | str |
-| `x = [1,2,3]; for i in x: ...` | Array[Int32, 3] |
-| `x = [1,2,3]; x.append(4)` | list[Int32] |
+| `x = [1,2,3]; for i in x: ...` | Array[int32, 3] |
+| `x = [1,2,3]; x.append(4)` | list[int32] |
 
 ### New (enabled by unified pass)
 
 | Scenario | Deduced |
 |----------|---------|
 | `x = 0; x = 3.14` | float |
-| `x = get_int32(); x = get_int64()` | Int64 |
+| `x = get_int32(); x = get_int64()` | int64 |
 | `x = 3.14; x = 42` | float |
-| `x = [1,2,3]; x = [4,5]` (different sizes) | list[Int32] |
-| `x = [1,2]; x.append(big_int64)` | list[Int64] |
+| `x = [1,2,3]; x = [4,5]` (different sizes) | list[int32] |
+| `x = [1,2]; x.append(big_int64)` | list[int64] |
 | `x = [1,2,3]; return x` (return type `list[T]`) | list[T] |
 | `d = {}; return d` (return type `dict[K, V]`) | dict[K, V] |
 | `s = set(); return s` (return type `set[T]`) | set[T] |
-| `a = [1,2,3]; b = a; b.append(4)` -> a also list | list[Int32] |
+| `a = [1,2,3]; b = a; b.append(4)` -> a also list | list[int32] |
 
 ### Errors (by design)
 
@@ -302,7 +302,7 @@ three separate passes.
 
 - **Multiple param passes with different element types:** Error. In the
   face of ambiguity, refuse the temptation to guess. If `xs` is passed
-  to both `f(list[Int32])` and `g(list[Int64])`, the user must annotate.
+  to both `f(list[int32])` and `g(list[int64])`, the user must annotate.
 
 - **Interaction with narrowing:** Deduced `Optional[T]` should work
   with narrowing (`if x is not None`). Deferred to Phase 3 if the
@@ -327,8 +327,8 @@ class Stack[T]:
         return self.items.pop()
 
 s = Stack()        # T unknown -- defer
-s.push(42)         # match T against Int32 -> T = Int32, all resolved -> eager resolve
-x = s.pop()        # s is now Stack[Int32], normal resolution -> x: Int32
+s.push(42)         # match T against int32 -> T = int32, all resolved -> eager resolve
+x = s.pop()        # s is now Stack[int32], normal resolution -> x: int32
 ```
 
 This applies to all generic records (user-defined and library types like
@@ -354,7 +354,7 @@ PendingGenericInstanceInfo:
     variable_name: str
     record_info: RecordInfo
     type_params: list[str]          # ["T"]
-    inferred: dict[str, TpyType]    # grows: {} -> {"T": Int32}
+    inferred: dict[str, TpyType]    # grows: {} -> {"T": int32}
     expr: TpyCall                   # for diagnostics
     decl_line: int | None
 ```
@@ -434,12 +434,12 @@ be inferred".
 
 | Code | Result |
 |------|--------|
-| `s = Stack(); s.push(42)` | `s: Stack[Int32]` (eager after push) |
-| `s = Stack(); s.push(42); x = s.pop()` | `s: Stack[Int32]`, `x: Int32` |
-| `s = Stack(); s.push(42); s.push(Int64(0))` | Error: conflicting constraints for T (Int32 vs Int64) |
+| `s = Stack(); s.push(42)` | `s: Stack[int32]` (eager after push) |
+| `s = Stack(); s.push(42); x = s.pop()` | `s: Stack[int32]`, `x: int32` |
+| `s = Stack(); s.push(42); s.push(int64(0))` | Error: conflicting constraints for T (int32 vs int64) |
 | `s = Stack(); x = s.pop()` | Error: cannot determine return type, T unresolved |
-| `s = Stack(); consume_stack(s)` where `consume_stack(s: Stack[Int32])` | `s: Stack[Int32]` (resolved from param type) |
-| `s = Stack(); return s` where return type is `Stack[Int32]` | `s: Stack[Int32]` (resolved from return type) |
+| `s = Stack(); consume_stack(s)` where `consume_stack(s: Stack[int32])` | `s: Stack[int32]` (resolved from param type) |
+| `s = Stack(); return s` where return type is `Stack[int32]` | `s: Stack[int32]` (resolved from return type) |
 | `s = Stack(); print(s)` | Error: pending type cannot be passed as parameter |
 | `s = Stack()` (no constraining calls) | Error in resolve_all(): cannot infer T |
 
@@ -450,13 +450,13 @@ parameter and return sites. Same eager resolution mechanism as 7a.1,
 different integration points.
 
 ```python
-def consume(c: Container[Int32]) -> None: ...
-def make() -> Container[Int32]:
+def consume(c: Container[int32]) -> None: ...
+def make() -> Container[int32]:
     c = Container()
-    return c        # return type constrains T = Int32
+    return c        # return type constrains T = int32
 
 c = Container()
-consume(c)          # parameter type constrains T = Int32
+consume(c)          # parameter type constrains T = int32
 ```
 
 Both use `match_type_with_inference(record_pattern, expected_type, inferred)`
@@ -483,7 +483,7 @@ wrapping for Optional return types).
 The `methods` reference is wired to `TypeCompatibility` via `set_methods()`
 after construction (same pattern as `type_ops`/`protocols`).
 
-**Limitation**: Union expected types (e.g., `Container[Int32] | str`) are not
+**Limitation**: Union expected types (e.g., `Container[int32] | str`) are not
 tried as constraint sources. `T | None` works (normalized to `Optional[T]`),
 but multi-member unions fall through to the "unresolved" error.
 
@@ -495,15 +495,15 @@ to `f()` (full inference).
 
 ```python
 # Functions -- _ in any position
-pair_func[_, Int64](Int32(5), Int64(20))  # T inferred from arg, U = Int64
-triple[Int32, _, Int64](a, b, c)          # B inferred from arg
+pair_func[_, int64](int32(5), int64(20))  # T inferred from arg, U = int64
+triple[int32, _, int64](a, b, c)          # B inferred from arg
 
 # Constructors -- remaining params deferred (reuses 7a)
-b = Box[_](Int32(42))                     # T = Int32 from arg
-p = Pair[_, Int64](Int32(10), Int64(20))  # T = Int32, U = Int64
+b = Box[_](int32(42))                     # T = int32 from arg
+p = Pair[_, int64](int32(10), int64(20))  # T = int32, U = int64
 
 # Methods -- wildcards on method-level type params
-m.transform[_, Int64](x, Int64(100))      # U inferred, V = Int64
+m.transform[_, int64](x, int64(100))      # U inferred, V = int64
 ```
 
 Implementation:

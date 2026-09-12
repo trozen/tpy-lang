@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def pairs(items: list[P]) -> Iterator[tuple[Int32, P]]:
+// def pairs(items: list[P]) -> Iterator[tuple[int32, P]]:
 std::expected<std::tuple<int32_t, P*>, ::tpy::StopIteration> __gen_pairs::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // n = Int32(len(items))
+        // n = int32(len(items))
         n = ::tpy::__len__(items);
-        // i: Int32 = 0
+        // i: int32 = 0
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -51,7 +51,7 @@ std::expected<std::tuple<int32_t, P*>, ::tpy::StopIteration> __gen_pairs::__next
 }
 
 
-// def pairs(items: list[P]) -> Iterator[tuple[Int32, P]]:
+// def pairs(items: list[P]) -> Iterator[tuple[int32, P]]:
 __gen_pairs pairs(std::vector<P>& items) {
     return __gen_pairs(items);
 }

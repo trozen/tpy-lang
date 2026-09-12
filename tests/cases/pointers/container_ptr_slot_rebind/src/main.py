@@ -2,18 +2,18 @@
 # later rebound by name, or hoisted out of a try, takes the same pointer-slot
 # decl a record local takes -- `T __slot_N = init;` + `T* x = &__slot_N;`, or
 # `T* x = &*(__slot_N = init);` for the hoisted flavour.
-from tpy import Int32, Own, Array
+from tpy import int32, Own, Array
 
 
-def mk_list() -> Own[list[Int32]]:
+def mk_list() -> Own[list[int32]]:
     return [1]
 
 
-def mk_dict() -> Own[dict[str, Int32]]:
+def mk_dict() -> Own[dict[str, int32]]:
     return {"a": 1}
 
 
-def mk_set() -> Own[set[Int32]]:
+def mk_set() -> Own[set[int32]]:
     return {1}
 
 
@@ -21,11 +21,11 @@ def mk_bytes() -> Own[bytearray]:
     return bytearray(b"a")
 
 
-def mk_array() -> Own[Array[Int32, 2]]:
+def mk_array() -> Own[Array[int32, 2]]:
     return [1, 2]
 
 
-def rebound_list(other: list[Int32]) -> None:
+def rebound_list(other: list[int32]) -> None:
     # The rebind aliases `other`, so the append after the boundary is visible
     # through the caller's own binding.
     xs = mk_list()
@@ -33,13 +33,13 @@ def rebound_list(other: list[Int32]) -> None:
     xs.append(9)
 
 
-def rebound_dict(other: dict[str, Int32]) -> None:
+def rebound_dict(other: dict[str, int32]) -> None:
     d = mk_dict()
     d = other
     d["z"] = 9
 
 
-def rebound_set(other: set[Int32]) -> None:
+def rebound_set(other: set[int32]) -> None:
     s = mk_set()
     s = other
     s.add(9)
@@ -51,13 +51,13 @@ def rebound_bytes(other: bytearray) -> None:
     b.append(9)
 
 
-def rebound_array(other: Array[Int32, 2]) -> None:
+def rebound_array(other: Array[int32, 2]) -> None:
     a = mk_array()
     a = other
     a[0] = 9
 
 
-def hoisted() -> Int32:
+def hoisted() -> int32:
     # The try-block decl hoists to a function-top `std::optional<T>` slot; the
     # later same-name decl fills a second one.
     i = 0
@@ -83,7 +83,7 @@ def main() -> None:
     rebound_set(s)
     b = bytearray(b"ab")
     rebound_bytes(b)
-    a: Array[Int32, 2] = [1, 2]
+    a: Array[int32, 2] = [1, 2]
     rebound_array(a)
     print(len(xs), len(d), len(s), len(b), a[0])
     print(hoisted())

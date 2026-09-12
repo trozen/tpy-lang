@@ -20,10 +20,10 @@ void main();
 
 // class Counter:
 struct Counter {
-    // value: Int32
+    // value: int32
     int32_t value;
 
-    // def __init__(self, start: Int32):
+    // def __init__(self, start: int32):
     Counter() = default;
     explicit Counter(int32_t start);
 
@@ -33,10 +33,10 @@ struct Counter {
     // def add_from(self, other: "Counter") -> None:
     void add_from(const Counter& other);
 
-    // def diff(self, other: "Counter") -> Int32:
+    // def diff(self, other: "Counter") -> int32:
     int32_t diff(const Counter& other) const;
 
-    // def get(self) -> Int32:
+    // def get(self) -> int32:
     int32_t get() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
@@ -65,7 +65,7 @@ inline std::ostream& operator<<(std::ostream& os, const Label& obj) {
 // class FancyCounter(Counter):
 struct FancyCounter : Counter {
 
-    // def __init__(self, start: Int32):
+    // def __init__(self, start: int32):
     FancyCounter() = default;
     explicit FancyCounter(int32_t start);
     static constexpr std::string_view __tpy_class_name__ = "__main__.FancyCounter";
@@ -77,7 +77,7 @@ inline std::ostream& operator<<(std::ostream& os, const FancyCounter& obj) {
 }
 
 
-// def __init__(self, start: Int32):
+// def __init__(self, start: int32):
 inline Counter::Counter(int32_t start) : value(start) {}
 
 // def bump(self) -> None:
@@ -92,13 +92,13 @@ inline void Counter::add_from(const Counter& other) {
     this->value = ::tpy::add_check<int32_t>(this->value, other.value);
 }
 
-// def diff(self, other: "Counter") -> Int32:
+// def diff(self, other: "Counter") -> int32:
 inline int32_t Counter::diff(const Counter& other) const {
     // return self.value - other.value
     return (::tpy::sub_check<int32_t>(this->value, other.value));
 }
 
-// def get(self) -> Int32:
+// def get(self) -> int32:
 inline int32_t Counter::get() const {
     // return self.value
     return this->value;
@@ -107,7 +107,7 @@ inline int32_t Counter::get() const {
 // def __init__(self, name: str):
 inline Label::Label(std::string_view name) : name(name) {}
 
-// def __init__(self, start: Int32):
+// def __init__(self, start: int32):
 inline FancyCounter::FancyCounter(int32_t start) : Counter(start) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -12,7 +12,7 @@ void main() {
     // print(n1.sum())  # 15
     std::cout << n1.sum() << "\n";
     // # Constructor with variable
-    // items: list[Int32] = [10, 20, 30]
+    // items: list[int32] = [10, 20, 30]
     std::vector<int32_t> items = {10, 20, 30};
     // n2: Numbers = Numbers(items)
     Numbers n2 = Numbers(items);

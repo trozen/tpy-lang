@@ -3,10 +3,10 @@
 
 namespace tpyapp::config {
 
-// MAX_VALUE: Int32 = Int32(100)
+// MAX_VALUE: int32 = int32(100)
 int32_t MAX_VALUE{};
 
-// def get_max() -> Int32:
+// def get_max() -> int32:
 int32_t get_max() {
     // return MAX_VALUE
     return MAX_VALUE;
@@ -17,7 +17,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // MAX_VALUE: Int32 = Int32(100)
+    // MAX_VALUE: int32 = int32(100)
     MAX_VALUE = 100;
 }
 

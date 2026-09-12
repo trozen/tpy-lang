@@ -1,10 +1,10 @@
 # Default parameter values for free functions: int, str, bool, float
-from tpy import Int32
+from tpy import int32
 
 def greet(name: str, greeting: str = "Hello") -> None:
     print(f"{greeting}, {name}!")
 
-def add(a: Int32, b: Int32 = Int32(0)) -> Int32:
+def add(a: int32, b: int32 = int32(0)) -> int32:
     return a + b
 
 def scale(value: float, factor: float = 1.0) -> float:
@@ -20,8 +20,8 @@ def main() -> None:
     greet("World")
     greet("World", "Hi")
 
-    print(add(Int32(5)))
-    print(add(Int32(5), Int32(3)))
+    print(add(int32(5)))
+    print(add(int32(5), int32(3)))
 
     print(scale(2.5))
     print(scale(2.5, 3.0))

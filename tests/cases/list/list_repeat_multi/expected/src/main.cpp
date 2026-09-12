@@ -4,16 +4,16 @@
 namespace tpyapp::main {
 
 // # Multi-element list repetition
-// repeated: list[Int32] = [1, 2] * 3
+// repeated: list[int32] = [1, 2] * 3
 std::vector<int32_t>* repeated{};
 // # Multi-element with list
-// nums: list[Int32] = [10, 20] * 2
+// nums: list[int32] = [10, 20] * 2
 std::vector<int32_t>* nums{};
 // # Empty list repetition (always produces empty list)
-// empty: list[Int32] = [] * 100
+// empty: list[int32] = [] * 100
 std::vector<int32_t>* empty{};
 // # Negative repeat count (Python semantics: produces empty list)
-// neg: list[Int32] = [1, 2, 3] * -5
+// neg: list[int32] = [1, 2, 3] * -5
 std::vector<int32_t>* neg{};
 
 void __tpy_init() {
@@ -22,7 +22,7 @@ void __tpy_init() {
     initialized = true;
 
     // # Multi-element list repetition
-    // repeated: list[Int32] = [1, 2] * 3
+    // repeated: list[int32] = [1, 2] * 3
     static std::vector<int32_t> __global_slot_1 = ::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(3, {1, 2}));
     repeated = &__global_slot_1;
     // print(len(repeated))
@@ -34,7 +34,7 @@ void __tpy_init() {
         std::cout << (*repeated)[static_cast<std::size_t>(i)] << "\n";
     }
     // # Multi-element with list
-    // nums: list[Int32] = [10, 20] * 2
+    // nums: list[int32] = [10, 20] * 2
     static std::vector<int32_t> __global_slot_2 = ::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(2, {10, 20}));
     nums = &__global_slot_2;
     // print(len(nums))
@@ -46,13 +46,13 @@ void __tpy_init() {
         std::cout << (*nums)[static_cast<std::size_t>(i)] << "\n";
     }
     // # Empty list repetition (always produces empty list)
-    // empty: list[Int32] = [] * 100
+    // empty: list[int32] = [] * 100
     static std::vector<int32_t> __global_slot_3 = std::vector<int32_t>{};
     empty = &__global_slot_3;
     // print(len(empty))
     std::cout << ::tpy::__len__((*empty)) << "\n";
     // # Negative repeat count (Python semantics: produces empty list)
-    // neg: list[Int32] = [1, 2, 3] * -5
+    // neg: list[int32] = [1, 2, 3] * -5
     static std::vector<int32_t> __global_slot_4 = ::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(-5, {1, 2, 3}));
     neg = &__global_slot_4;
     // print(len(neg))

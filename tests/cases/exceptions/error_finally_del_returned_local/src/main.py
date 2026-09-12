@@ -1,10 +1,10 @@
 # del of a local borrowed by a finally-deferred return is rejected: the
 # pending return materializes from that storage after the finally runs.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Box:
-    n: Int32
+    n: int32
 
     def __init__(self) -> None:
         self.n = 10

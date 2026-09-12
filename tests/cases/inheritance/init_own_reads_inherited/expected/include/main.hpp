@@ -32,7 +32,7 @@ inline std::ostream& operator<<(std::ostream& os, const Animal& obj) {
 
 // class Tagged(Animal):
 struct Tagged : Animal {
-    // name_len: Int32
+    // name_len: int32
     int32_t name_len;
 
     // def __init__(self, name: str) -> None:
@@ -54,7 +54,7 @@ inline Animal::Animal(std::string_view name) : name(name) {}
 inline Tagged::Tagged(std::string_view name) {
     // self.name = name              # inherited; goes to body
     this->name = name;
-    // self.name_len = Int32(len(self.name))  # own; RHS reads self.name -- must demote
+    // self.name_len = int32(len(self.name))  # own; RHS reads self.name -- must demote
     this->name_len = ::tpy::__len__(this->name);
 }
 void __tpy_init();

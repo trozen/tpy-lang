@@ -15,10 +15,10 @@ void main();
 
 // class Box:
 struct Box {
-    // items: Array[Int32, 3]
+    // items: Array[int32, 3]
     std::array<int32_t, 3> items;
 
-    // def __init__(self, items: Array[Int32, 3]) -> None:
+    // def __init__(self, items: Array[int32, 3]) -> None:
     Box() = default;
     explicit Box(const std::array<int32_t, 3>& items);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
@@ -30,7 +30,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 }
 
 
-// def __init__(self, items: Array[Int32, 3]) -> None:
+// def __init__(self, items: Array[int32, 3]) -> None:
 inline Box::Box(const std::array<int32_t, 3>& items) : items(items) {}
 void __tpy_init();
 } // namespace tpyapp::main

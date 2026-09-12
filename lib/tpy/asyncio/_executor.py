@@ -17,7 +17,7 @@ import heapq
 from typing import Final, Protocol
 from builtins import BaseException
 from time import monotonic, sleep_until_steady
-from tpy import Int32, UInt32, Own, Ptr, Array, Throwable, dynamic, nocopy, readonly
+from tpy import int32, uint32, Own, Ptr, Array, Throwable, dynamic, nocopy, readonly
 from tpy.extern import builtin_type, cpp_template
 from tpy.coro import Awaker, Cancellable, Poll, Waker, poll_ready, poll_pending
 from tpy.mem import UninitStorage
@@ -259,8 +259,8 @@ def task_to_any_box[T](task: Task[T]) -> Own[Box[AnyTask]]:
 # --- Awaker-side helpers (call sites inside Executor) -------------------
 
 
-def _make_waker(handle: Awaker, task_id: Int32,
-                generation: Int32) -> Waker:
+def _make_waker(handle: Awaker, task_id: int32,
+                generation: int32) -> Waker:
     return Waker(handle, task_id, generation)
 
 
@@ -294,7 +294,7 @@ class Slot:
     """
 
     box: Box[AnyTask] | None
-    generation: Int32
+    generation: int32
     runnable: bool
 
     def __init__(self) -> None:
@@ -312,10 +312,10 @@ class Slot:
 # the AF_* wire values. The EPOLLIN / EPOLLOUT interest masks live in
 # `asyncio/__init__.py` next to the fd-awaitable that passes them. The
 # batch size must equal kMaxBatch in runtime/cpp/src/stdlib/epoll_impl.cpp.
-_EPOLL_CTL_ADD: Final[Int32] = 1
-_EPOLL_CTL_DEL: Final[Int32] = 2
-_EPOLL_CTL_MOD: Final[Int32] = 3
-_REACTOR_BATCH: Final[Int32] = 64
+_EPOLL_CTL_ADD: Final[int32] = 1
+_EPOLL_CTL_DEL: Final[int32] = 2
+_EPOLL_CTL_MOD: Final[int32] = 3
+_REACTOR_BATCH: Final[int32] = 64
 
 
 class Reactor(Protocol):
@@ -337,10 +337,10 @@ class Reactor(Protocol):
     user can swap a backend into `asyncio.run` is a deferred follow-up
     (see TODO.md); the executor holds the concrete `EpollReactor` today.
     """
-    def register_fd(self, fd: Int32, events: UInt32, waker: Waker) -> None: ...
-    def unregister_fd(self, fd: Int32) -> None: ...
-    def poll(self, timeout_ms: Int32) -> None: ...
-    def count(self) -> Int32: ...
+    def register_fd(self, fd: int32, events: uint32, waker: Waker) -> None: ...
+    def unregister_fd(self, fd: int32) -> None: ...
+    def poll(self, timeout_ms: int32) -> None: ...
+    def count(self) -> int32: ...
     def close(self) -> None: ...
 
 
@@ -356,8 +356,8 @@ class EpollReactor:
     time. Independent read+write waiters on one fd is a deferred follow-up.
     """
 
-    _epfd: Int32
-    _waiters: dict[Int32, Waker]
+    _epfd: int32
+    _waiters: dict[int32, Waker]
     # Raw scratch buffers for epoll_wait output (written via unsafe_ptr, read
     # back by index). Trivial fixed buffers -> Array (memcpy-movable), not the
     # @nomove UninitArrayStorage, so EpollReactor stays movable member-wise.
@@ -365,8 +365,8 @@ class EpollReactor:
     # scratch buffer that's wasted. Switch to an uninitialized-yet-trivially-
     # movable storage once the TriviallyRelocatable bound lands (see TODO.md).
     # Negligible today (EpollReactor is constructed lazily, once per run).
-    _out_fds: Array[Int32, 64]
-    _out_events: Array[UInt32, 64]
+    _out_fds: Array[int32, 64]
+    _out_events: Array[uint32, 64]
 
     def __init__(self) -> None:
         epfd = posix_epoll.epoll_create()
@@ -374,13 +374,13 @@ class EpollReactor:
             raise RuntimeError("asyncio reactor: epoll_create failed")
         self._epfd = epfd
         self._waiters = {}
-        self._out_fds = Array[Int32, 64]()
-        self._out_events = Array[UInt32, 64]()
+        self._out_fds = Array[int32, 64]()
+        self._out_events = Array[uint32, 64]()
 
     def __del__(self) -> None:
         self.close()
 
-    def register_fd(self, fd: Int32, events: UInt32, waker: Waker) -> None:
+    def register_fd(self, fd: int32, events: uint32, waker: Waker) -> None:
         # Re-arm with MOD if the fd is still tracked (a prior would-block
         # that has not fired yet); ADD otherwise. `_waiters` membership
         # mirrors epoll membership because `poll` removes both together.
@@ -390,23 +390,23 @@ class EpollReactor:
             posix_epoll.epoll_ctl(self._epfd, _EPOLL_CTL_ADD, fd, events)
         self._waiters[fd] = waker
 
-    def unregister_fd(self, fd: Int32) -> None:
+    def unregister_fd(self, fd: int32) -> None:
         if fd in self._waiters:
             posix_epoll.epoll_ctl(self._epfd, _EPOLL_CTL_DEL, fd, 0)
             del self._waiters[fd]
 
-    def count(self) -> Int32:
+    def count(self) -> int32:
         return len(self._waiters)
 
-    def poll(self, timeout_ms: Int32) -> None:
+    def poll(self, timeout_ms: int32) -> None:
         if len(self._waiters) == 0:
             return
         n = posix_epoll.epoll_wait(self._epfd, unsafe_ptr(self._out_fds),
                                    unsafe_ptr(self._out_events),
                                    _REACTOR_BATCH, timeout_ms)
-        i: Int32 = 0
+        i: int32 = 0
         while i < n:
-            fd = unsafe_load(unsafe_ptr(self._out_fds), UInt32(i))
+            fd = unsafe_load(unsafe_ptr(self._out_fds), uint32(i))
             # Disarm before waking (one-shot): the awaitable re-registers
             # on its next would-block.
             posix_epoll.epoll_ctl(self._epfd, _EPOLL_CTL_DEL, fd, 0)
@@ -438,7 +438,7 @@ class Executor(Awaker):
     """
 
     slots: list[Slot]
-    runnable_q: list[Int32]
+    runnable_q: list[int32]
     timer_heap: list[TimerEntry]
     # Lazily created on the first fd registration: a pure-timer / pure-CPU
     # program never opens an epoll fd. The second wake source alongside the
@@ -468,23 +468,23 @@ class Executor(Awaker):
 
     # Lazily opens the reactor on the first fd registration so a pure-timer
     # / pure-CPU program never allocates an epoll fd.
-    def register_fd(self, fd: Int32, events: UInt32, waker: Waker) -> None:
+    def register_fd(self, fd: int32, events: uint32, waker: Waker) -> None:
         if self.reactor is None:
             self.reactor = EpollReactor()
         reactor = self.reactor
         if reactor is not None:
             reactor.register_fd(fd, events, waker)
 
-    def unregister_fd(self, fd: Int32) -> None:
+    def unregister_fd(self, fd: int32) -> None:
         reactor = self.reactor
         if reactor is not None:
             reactor.unregister_fd(fd)
 
     # Milliseconds until the nearest timer fires (the epoll_wait timeout):
     # -1 (block forever) when no timer is pending, 0 when one is already
-    # due, else the rounded-up delta. Capped to keep the Int32 from
+    # due, else the rounded-up delta. Capped to keep the int32 from
     # overflowing on far-future deadlines.
-    def _next_timer_timeout_ms(self) -> Int32:
+    def _next_timer_timeout_ms(self) -> int32:
         if len(self.timer_heap) == 0:
             return -1
         delta = self.timer_heap[0].deadline - monotonic()
@@ -493,7 +493,7 @@ class Executor(Awaker):
         ms = delta * 1000.0
         if ms >= 2000000000.0:
             return 2000000000
-        return Int32(ms) + 1
+        return int32(ms) + 1
 
     # Mint a Waker stamped with the given slot identity. Used by
     # `asyncio.create_task` to stash a wake-handle on the Task so its
@@ -501,10 +501,10 @@ class Executor(Awaker):
     # rather than as a free function so the call site can pass a
     # method receiver instead of trying to coerce `Ptr[Executor]` to
     # the `Awaker` protocol param of `_make_waker`.
-    def make_waker_for_slot(self, slot_id: Int32, generation: Int32) -> Waker:
+    def make_waker_for_slot(self, slot_id: int32, generation: int32) -> Waker:
         return _make_waker(self, slot_id, generation)
 
-    def spawn(self, box: Own[Box[AnyTask]]) -> Int32:
+    def spawn(self, box: Own[Box[AnyTask]]) -> int32:
         new_id = len(self.slots)
         slot = Slot()
         slot.box = box
@@ -513,7 +513,7 @@ class Executor(Awaker):
         self.runnable_q.append(new_id)
         return new_id
 
-    def mark_runnable(self, slot_id: Int32, generation: Int32) -> None:
+    def mark_runnable(self, slot_id: int32, generation: int32) -> None:
         if slot_id >= len(self.slots):
             return
         slot = self.slots[slot_id]
@@ -522,7 +522,7 @@ class Executor(Awaker):
         slot.runnable = True
         self.runnable_q.append(slot_id)
 
-    def poll_slot(self, slot_id: Int32) -> bool:
+    def poll_slot(self, slot_id: int32) -> bool:
         if slot_id >= len(self.slots):
             return False
         if not self.slots[slot_id].runnable or self.slots[slot_id].is_done():
@@ -545,7 +545,7 @@ class Executor(Awaker):
     def drain_runnable(self) -> bool:
         any_polled = False
         # TODO(async-v1.2): `list.pop(0)` is O(n); draining N runnable tasks costs
-        # O(N^2). Swap `runnable_q` to `collections.deque[Int32]` and use
+        # O(N^2). Swap `runnable_q` to `collections.deque[int32]` and use
         # `popleft()` once deque lands in TPy stdlib. See BUGS.md entry on
         # runnable_q O(n) pop.
         while len(self.runnable_q) > 0:
@@ -555,15 +555,15 @@ class Executor(Awaker):
         return any_polled
 
     @readonly
-    def slot_done(self, slot_id: Int32) -> bool:
+    def slot_done(self, slot_id: int32) -> bool:
         if slot_id >= len(self.slots):
             return False
         return self.slots[slot_id].is_done()
 
     @readonly
-    def has_live_tasks(self, skip_id: Int32) -> bool:
+    def has_live_tasks(self, skip_id: int32) -> bool:
         n = len(self.slots)
-        i: Int32 = 0
+        i: int32 = 0
         while i < n:
             if i != skip_id and not self.slots[i].is_done():
                 return True
@@ -573,7 +573,7 @@ class Executor(Awaker):
     def wait_for_event(self) -> bool:
         has_timer = len(self.timer_heap) > 0
         reactor = self.reactor
-        fd_count: Int32 = 0
+        fd_count: int32 = 0
         if reactor is not None:
             fd_count = reactor.count()
         if not has_timer and fd_count == 0:
@@ -595,7 +595,7 @@ class Executor(Awaker):
     # Cancel the root task so its CancelledError unwinds normal cleanup
     # (finally / __aexit__ / wait_closed), then mark it runnable so the next
     # drain delivers the cancel at its suspension point.
-    def _cancel_root(self, main_id: Int32) -> None:
+    def _cancel_root(self, main_id: int32) -> None:
         if main_id >= len(self.slots) or self.slots[main_id].is_done():
             return
         box = self.slots[main_id].box
@@ -605,7 +605,7 @@ class Executor(Awaker):
 
     # True iff a SIGINT has been delivered since the last check; on the first
     # such observation cancels the root for graceful shutdown.
-    def _check_shutdown_signal(self, main_id: Int32, already: bool) -> bool:
+    def _check_shutdown_signal(self, main_id: int32, already: bool) -> bool:
         if already or not self.shutdown_armed:
             return already
         if posix_signal.consume() == 0:
@@ -615,7 +615,7 @@ class Executor(Awaker):
 
     # Returns True if a SIGINT interrupted the run (root cancelled for graceful
     # shutdown), False on normal completion.
-    def run_until(self, main_id: Int32) -> bool:
+    def run_until(self, main_id: int32) -> bool:
         interrupted = False
         while True:
             if self.slot_done(main_id):
@@ -632,19 +632,19 @@ class Executor(Awaker):
                     "registered I/O)")
             interrupted = self._check_shutdown_signal(main_id, interrupted)
 
-    def drain_spawned_with_cancel(self, skip_id: Int32,
-                                  max_polls: Int32 = 8) -> None:
+    def drain_spawned_with_cancel(self, skip_id: int32,
+                                  max_polls: int32 = 8) -> None:
         n = len(self.slots)
-        i: Int32 = 0
+        i: int32 = 0
         while i < n:
             if i != skip_id and not self.slots[i].is_done():
                 box = self.slots[i].box
                 if box is not None:
                     box.get().cancel_any()
             i += 1
-        attempt: Int32 = 0
+        attempt: int32 = 0
         while attempt < max_polls and self.has_live_tasks(skip_id):
-            j: Int32 = 0
+            j: int32 = 0
             n2 = len(self.slots)
             while j < n2:
                 if j != skip_id and not self.slots[j].is_done():

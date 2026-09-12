@@ -1355,7 +1355,7 @@ class CodeGenerator:
     ) -> None:
         """Generate forward declarations for prereq/bound/protocol-referenced records and concepts."""
         # A protocol method signature can reference a recursive-union wrapper
-        # (`def m(self, t: Tree[Int32])` / `def m(self, e: Expr)`), which
+        # (`def m(self, t: Tree[int32])` / `def m(self, e: Expr)`), which
         # renders inside the concept body as `Tree<int32_t>` / `Expr` -- so the
         # wrapper must be forward-declared before any concept. Covers both
         # generic (template) and non-generic wrappers. Only needed when
@@ -1674,7 +1674,7 @@ class CodeGenerator:
         # Generic recursive-alias wrapper structs are templates: member
         # completeness is required only at instantiation, not at the template
         # definition, so they precede records that embed them by value (a
-        # `Tree[Int32]` field needs `Tree` complete). Non-generic wrappers stay
+        # `Tree[int32]` field needs `Tree` complete). Non-generic wrappers stay
         # after records -- their variant stores the member records by value, so
         # those must be complete first.
         emitted_generic_wrapper = False

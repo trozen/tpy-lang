@@ -1,19 +1,19 @@
 # A walrus target hoisted out of a `try` keeps the forward-declared hoist model,
 # which the walrus lowering does not mirror.
-from tpy import Int32
+from tpy import int32
 
 
 class Holder:
-    items: list[Int32]
+    items: list[int32]
 
     def __init__(self) -> None:
         self.items = [1, 2]
 
-    def view(self) -> list[Int32]:
+    def view(self) -> list[int32]:
         return self.items
 
 
-def use(h: Holder) -> Int32:
+def use(h: Holder) -> int32:
     try:
         if len(v := h.view()) > 0:  # tpyc: error(/expr.walrus/)
             v.append(9)

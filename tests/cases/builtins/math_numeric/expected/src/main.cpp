@@ -124,7 +124,7 @@ void main() {
     // print(math.isqrt(1000))
     std::cout << ::tpystd::math::isqrt(::tpy::BigInt(1000)) << "\n";
     // # Large n: bit_length > 32 forces the BigInt shift path that
-    // # `int(1) <<` enables; a bare `1 <<` would overflow-panic at Int32.
+    // # `int(1) <<` enables; a bare `1 <<` would overflow-panic at int32.
     // print(math.isqrt(int(10) ** int(40)) == int(10) ** int(20))
     std::cout << ::tpy::print_bool((::tpystd::math::isqrt(((::tpy::BigInt(10)).pow(::tpy::BigInt(40)))) == ((::tpy::BigInt(10)).pow(::tpy::BigInt(20))))) << "\n";
     // print(math.isqrt((int(1) << int(200)) - int(1)).bit_length())  # 100

@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // @error_return(NotFound)
-// def lookup(items: list[Int32], target: Int32) -> Int32:
+// def lookup(items: list[int32], target: int32) -> int32:
 std::expected<int32_t, NotFound> lookup(const std::vector<int32_t>& items, int32_t target) {
     // for i in range(len(items)):
     int32_t __stop_0 = ::tpy::__len__(items);
@@ -21,7 +21,7 @@ std::expected<int32_t, NotFound> lookup(const std::vector<int32_t>& items, int32
 }
 
 // @error_return(NotFound)
-// def lookup_twice(items: list[Int32], a: Int32, b: Int32) -> Int32:
+// def lookup_twice(items: list[int32], a: int32, b: int32) -> int32:
 std::expected<int32_t, NotFound> lookup_twice(const std::vector<int32_t>& items, int32_t a, int32_t b) {
     // ia = lookup(items, a)
     int32_t ia;
@@ -42,9 +42,9 @@ std::expected<int32_t, NotFound> lookup_twice(const std::vector<int32_t>& items,
 }
 
 // @error_return(NotFound)
-// def lookup_sum(items: list[Int32], targets: list[Int32]) -> Int32:
+// def lookup_sum(items: list[int32], targets: list[int32]) -> int32:
 std::expected<int32_t, NotFound> lookup_sum(const std::vector<int32_t>& items, const std::vector<int32_t>& targets) {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for t in targets:
     auto& __obj_0 = targets;
@@ -68,7 +68,7 @@ std::expected<int32_t, NotFound> lookup_sum(const std::vector<int32_t>& items, c
 
 // def main() -> None:
 void main() {
-    // items: list[Int32] = [10, 20, 30]
+    // items: list[int32] = [10, 20, 30]
     std::vector<int32_t> items = {10, 20, 30};
     // # All found
     // try:

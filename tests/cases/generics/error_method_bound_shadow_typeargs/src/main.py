@@ -2,7 +2,7 @@
 # param is bound by the class instantiation) must be rejected loudly, not
 # silently discarded -- through a subclass receiver the args would otherwise
 # be name-captured by the composed class subst and ignored.
-from tpy import Int32, StrView, Equatable
+from tpy import int32, StrView, Equatable
 
 
 class Bag[T, N: int]:
@@ -21,7 +21,7 @@ class Bag[T, N: int]:
         return False
 
 
-class IntBag(Bag[Int32, 4]):
+class IntBag(Bag[int32, 4]):
     pass
 
 

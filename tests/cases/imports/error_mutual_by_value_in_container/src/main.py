@@ -2,9 +2,9 @@
 # (`list[B]`). The container stores elements by value internally,
 # so this is a complete-type-required position the gate rejects.
 from a import A
-from tpy import Int32
+from tpy import int32
 
-def main() -> Int32:
+def main() -> int32:
     return 0
 
 main()

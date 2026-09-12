@@ -7,9 +7,9 @@ namespace tpystd::re {
 // # Convert a PCRE2 negative error code into a human-readable message via
 // # pcre2_get_error_message. Buffer is stack-allocated 256 bytes via
 // # UninitArrayStorage -- RAII, no manual free.
-// def _pcre2_error_msg(errcode: Int32) -> str:
+// def _pcre2_error_msg(errcode: int32) -> str:
 std::string _pcre2_error_msg(int32_t errcode) {
-    // buf = UninitArrayStorage[UInt8, 256]()
+    // buf = UninitArrayStorage[uint8, 256]()
     ::tpy::UninitArrayStorage<uint8_t, 256> buf = ::tpy::UninitArrayStorage<uint8_t, 256>();
     // n = pcre2.get_error_message(errcode, buf.ptr(), 256)
     int32_t n = ::pcre2_get_error_message_8(errcode, buf.ptr(), 256);
@@ -18,19 +18,19 @@ std::string _pcre2_error_msg(int32_t errcode) {
         // return "unknown error"
         return "unknown error";
     }
-    // return unsafe_str_from_buf(unsafe_cast(buf.ptr()), UInt64(n))
+    // return unsafe_str_from_buf(unsafe_cast(buf.ptr()), uint64(n))
     return std::string(reinterpret_cast<const char*>(reinterpret_cast<const uint8_t*>(buf.ptr())), static_cast<size_t>(static_cast<uint64_t>(n)));
 }
 
-// def _utf8_advance(data: Ptr[readonly[UInt8]], offset: UInt64,
-// length: UInt64) -> UInt64:
+// def _utf8_advance(data: Ptr[readonly[uint8]], offset: uint64,
+// length: uint64) -> uint64:
 uint64_t _utf8_advance(const uint8_t* data, uint64_t offset, uint64_t length) {
     // if offset >= length:
     if ((offset >= length)) {
         // return offset + 1
         return (::tpy::add_check<uint64_t>(offset, 1));
     }
-    // lead = unsafe_load(data, UInt32.trunc(offset))
+    // lead = unsafe_load(data, uint32.trunc(offset))
     uint8_t lead = data[static_cast<uint32_t>(offset)];
     // if lead < 0xC0:        # ASCII (< 0x80) or a stray continuation byte
     if ((lead < 192)) {
@@ -56,9 +56,9 @@ uint64_t _utf8_advance(const uint8_t* data, uint64_t offset, uint64_t length) {
     return (::tpy::add_check<uint64_t>(offset, 1));
 }
 
-// def _to_pcre2_opts(flags: Int32) -> UInt32:
+// def _to_pcre2_opts(flags: int32) -> uint32:
 uint32_t _to_pcre2_opts(int32_t flags) {
-    // opts: UInt32 = pcre2.PCRE2_UTF | pcre2.PCRE2_UCP
+    // opts: uint32 = pcre2.PCRE2_UTF | pcre2.PCRE2_UCP
     uint32_t opts = (static_cast<uint32_t>(::tpystd::_bindings::pcre2::PCRE2_UTF | ::tpystd::_bindings::pcre2::PCRE2_UCP));
     // if (flags & IGNORECASE) != 0:
     if (((static_cast<int32_t>(flags & IGNORECASE)) != 0)) {
@@ -93,49 +93,49 @@ uint32_t _to_pcre2_opts(int32_t flags) {
 // # CPython's `re.compile` returns a Pattern; we do the same.
 // # `re.search("...", subj)` etc. compile-and-throw-away -- the compile cache
 // # that CPython has needs module-level mutable state, deferred.
-// def compile(pattern: str, flags: Int32 = NOFLAG) -> Own[Pattern]:
+// def compile(pattern: str, flags: int32 = NOFLAG) -> Own[Pattern]:
 Pattern compile(std::string_view pattern, int32_t flags) {
     // return Pattern(pattern, flags)
     return Pattern(pattern, flags);
 }
 
 // def search(pattern: str, subject: str,
-// flags: Int32 = NOFLAG) -> Optional[Own[Match]]:
+// flags: int32 = NOFLAG) -> Optional[Own[Match]]:
 std::optional<Match> search(std::string_view pattern, std::string_view subject, int32_t flags) {
     // return Pattern(pattern, flags).search(subject)
     return Pattern(pattern, flags).search(subject);
 }
 
 // def match(pattern: str, subject: str,
-// flags: Int32 = NOFLAG) -> Optional[Own[Match]]:
+// flags: int32 = NOFLAG) -> Optional[Own[Match]]:
 std::optional<Match> match(std::string_view pattern, std::string_view subject, int32_t flags) {
     // return Pattern(pattern, flags).match(subject)
     return Pattern(pattern, flags).match(subject);
 }
 
 // def fullmatch(pattern: str, subject: str,
-// flags: Int32 = NOFLAG) -> Optional[Own[Match]]:
+// flags: int32 = NOFLAG) -> Optional[Own[Match]]:
 std::optional<Match> fullmatch(std::string_view pattern, std::string_view subject, int32_t flags) {
     // return Pattern(pattern, flags).fullmatch(subject)
     return Pattern(pattern, flags).fullmatch(subject);
 }
 
 // def findall(pattern: str, subject: str,
-// flags: Int32 = NOFLAG) -> Own[list[str]]:
+// flags: int32 = NOFLAG) -> Own[list[str]]:
 std::vector<std::string> findall(std::string_view pattern, std::string_view subject, int32_t flags) {
     // return Pattern(pattern, flags).findall(subject)
     return Pattern(pattern, flags).findall(subject);
 }
 
-// def sub(pattern: str, repl: str, subject: str, count: Int32 = 0,
-// flags: Int32 = NOFLAG) -> str:
+// def sub(pattern: str, repl: str, subject: str, count: int32 = 0,
+// flags: int32 = NOFLAG) -> str:
 std::string sub(std::string_view pattern, std::string_view repl, std::string_view subject, int32_t count, int32_t flags) {
     // return Pattern(pattern, flags).sub(repl, subject, count)
     return Pattern(pattern, flags).sub(repl, subject, count);
 }
 
-// def split(pattern: str, subject: str, maxsplit: Int32 = Int32(0),
-// flags: Int32 = NOFLAG) -> Own[list[str]]:
+// def split(pattern: str, subject: str, maxsplit: int32 = int32(0),
+// flags: int32 = NOFLAG) -> Own[list[str]]:
 std::vector<std::string> split(std::string_view pattern, std::string_view subject, int32_t maxsplit, int32_t flags) {
     // return Pattern(pattern, flags).split(subject, maxsplit)
     return Pattern(pattern, flags).split(subject, maxsplit);
@@ -143,17 +143,17 @@ std::vector<std::string> split(std::string_view pattern, std::string_view subjec
 
 
 // @staticmethod
-// def _compile(pattern: str, flags: Int32) -> Ptr[pcre2.Code]:
+// def _compile(pattern: str, flags: int32) -> Ptr[pcre2.Code]:
 ::pcre2_code_8* _OwnedCode::_compile(std::string_view pattern, int32_t flags) {
-    // errcode: Int32 = 0
+    // errcode: int32 = 0
     int32_t errcode = 0;
-    // erroff: UInt64 = 0
+    // erroff: uint64 = 0
     uint64_t erroff = 0;
     // opts = _to_pcre2_opts(flags)
     uint32_t opts = _to_pcre2_opts(flags);
-    // p_data: Ptr[readonly[UInt8]] = unsafe_cast(unsafe_ptr(pattern))
+    // p_data: Ptr[readonly[uint8]] = unsafe_cast(unsafe_ptr(pattern))
     const uint8_t* p_data = reinterpret_cast<const uint8_t*>(pattern.data());
-    // code = pcre2.compile(p_data, UInt64(len(pattern)),
+    // code = pcre2.compile(p_data, uint64(len(pattern)),
     // opts, take_ptr(errcode), take_ptr(erroff),
     // None)
     ::pcre2_code_8* code = ::pcre2_compile_8(p_data, ::tpy::int_cast_check<uint64_t>(::tpy::__len__(pattern)), opts, &errcode, &erroff, nullptr);
@@ -168,8 +168,8 @@ std::vector<std::string> split(std::string_view pattern, std::string_view subjec
     return code;
 }
 
-// def _do_match(self, subject: str, start_offset: UInt64,
-// opts: UInt32) -> Optional[Own[Match]]:
+// def _do_match(self, subject: str, start_offset: uint64,
+// opts: uint32) -> Optional[Own[Match]]:
 std::optional<Match> Pattern::_do_match(std::string_view subject, uint64_t start_offset, uint32_t opts) const {
     // md_raw = pcre2.match_data_create_from_pattern(self._code.get(), None)
     ::pcre2_match_data_8* md_raw = ::pcre2_match_data_create_from_pattern_8(this->_code.get(), nullptr);
@@ -180,9 +180,9 @@ std::optional<Match> Pattern::_do_match(std::string_view subject, uint64_t start
     }
     // md = _OwnedMatchData(md_raw)
     _OwnedMatchData md = _OwnedMatchData(md_raw);
-    // s_data: Ptr[readonly[UInt8]] = unsafe_cast(unsafe_ptr(subject))
+    // s_data: Ptr[readonly[uint8]] = unsafe_cast(unsafe_ptr(subject))
     const uint8_t* s_data = reinterpret_cast<const uint8_t*>(subject.data());
-    // rc = pcre2.match(self._code.get(), s_data, UInt64(len(subject)),
+    // rc = pcre2.match(self._code.get(), s_data, uint64(len(subject)),
     // start_offset, opts, md.get(), self._mctx.get())
     int32_t rc = ::pcre2_match_8(this->_code.get(), s_data, ::tpy::int_cast_check<uint64_t>(::tpy::__len__(subject)), start_offset, opts, md.get(), this->_mctx.get());
     // if rc < 0:
@@ -199,33 +199,33 @@ std::optional<Match> Pattern::_do_match(std::string_view subject, uint64_t start
     return Match(std::move(md), subject, rc);
 }
 
-// def _substitute(self, repl: str, subject: str, opts: UInt32,
+// def _substitute(self, repl: str, subject: str, opts: uint32,
 // md: Ptr[pcre2.MatchData]) -> str:
 std::string Pattern::_substitute(std::string_view repl, std::string_view subject, uint32_t opts, ::pcre2_match_data_8* md) const {
     std::optional<::tpy::UninitHeapStorage<uint8_t>> __slot_2;
-    // sub_data: Ptr[readonly[UInt8]] = unsafe_cast(unsafe_ptr(subject))
+    // sub_data: Ptr[readonly[uint8]] = unsafe_cast(unsafe_ptr(subject))
     const uint8_t* sub_data = reinterpret_cast<const uint8_t*>(subject.data());
-    // repl_data: Ptr[readonly[UInt8]] = unsafe_cast(unsafe_ptr(repl))
+    // repl_data: Ptr[readonly[uint8]] = unsafe_cast(unsafe_ptr(repl))
     const uint8_t* repl_data = reinterpret_cast<const uint8_t*>(repl.data());
     // # `outlen` is both input (buffer capacity PCRE2 reads on entry) and
     // # output (actual bytes written / bytes needed). A plain local +
     // # take_ptr avoids needing a separate single-cell storage object.
     // # `outbuf` is heap-allocated via UninitHeapStorage -- freed on
     // # scope exit, including the raise path and on retry-reassignment.
-    // # `cap` stays as an explicit UInt64(...) cast because len() returns
-    // # Int32; the signed->unsigned conversion isn't automatic in TPy
+    // # `cap` stays as an explicit uint64(...) cast because len() returns
+    // # int32; the signed->unsigned conversion isn't automatic in TPy
     // # (cross-sign widening is unsigned->signed-only). See BUGS.md.
-    // cap = UInt64(len(subject) * 2 + len(repl) + 16)
+    // cap = uint64(len(subject) * 2 + len(repl) + 16)
     uint64_t cap = ::tpy::int_cast_check<uint64_t>((::tpy::add_check<int32_t>((::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(::tpy::__len__(subject), 2)), ::tpy::__len__(repl))), 16)));
-    // outlen: UInt64 = cap
+    // outlen: uint64 = cap
     uint64_t outlen = cap;
-    // outbuf = UninitHeapStorage[UInt8](UInt32.trunc(cap))
+    // outbuf = UninitHeapStorage[uint8](uint32.trunc(cap))
     ::tpy::UninitHeapStorage<uint8_t> __slot_1 = ::tpy::UninitHeapStorage<uint8_t>(static_cast<uint32_t>(cap));
     ::tpy::UninitHeapStorage<uint8_t>* outbuf = &__slot_1;
     // rc = pcre2.substitute(
-    // self._code.get(), sub_data, UInt64(len(subject)),
+    // self._code.get(), sub_data, uint64(len(subject)),
     // 0, opts | pcre2.PCRE2_SUBSTITUTE_OVERFLOW_LENGTH, md,
-    // self._mctx.get(), repl_data, UInt64(len(repl)),
+    // self._mctx.get(), repl_data, uint64(len(repl)),
     // outbuf.ptr(), take_ptr(outlen),
     // )
     int32_t rc = ::pcre2_substitute_8(this->_code.get(), sub_data, ::tpy::int_cast_check<uint64_t>(::tpy::__len__(subject)), 0, (static_cast<uint32_t>(opts | ::tpystd::_bindings::pcre2::PCRE2_SUBSTITUTE_OVERFLOW_LENGTH)), md, this->_mctx.get(), repl_data, ::tpy::int_cast_check<uint64_t>(::tpy::__len__(repl)), outbuf->ptr(), &outlen);
@@ -236,12 +236,12 @@ std::string Pattern::_substitute(std::string_view repl, std::string_view subject
         // # Drop OVERFLOW_LENGTH on retry: buffer is now correctly sized,
         // # and asking for overflow-length again would make PCRE2 redo
         // # the sizing pass for nothing.
-        // outbuf = UninitHeapStorage[UInt8](UInt32.trunc(outlen))
+        // outbuf = UninitHeapStorage[uint8](uint32.trunc(outlen))
         outbuf = &*(__slot_2 = ::tpy::UninitHeapStorage<uint8_t>(static_cast<uint32_t>(outlen)));
         // rc = pcre2.substitute(
-        // self._code.get(), sub_data, UInt64(len(subject)),
+        // self._code.get(), sub_data, uint64(len(subject)),
         // 0, opts, md,
-        // self._mctx.get(), repl_data, UInt64(len(repl)),
+        // self._mctx.get(), repl_data, uint64(len(repl)),
         // outbuf.ptr(), take_ptr(outlen),
         // )
         rc = ::pcre2_substitute_8(this->_code.get(), sub_data, ::tpy::int_cast_check<uint64_t>(::tpy::__len__(subject)), 0, opts, md, this->_mctx.get(), repl_data, ::tpy::int_cast_check<uint64_t>(::tpy::__len__(repl)), outbuf->ptr(), &outlen);
@@ -255,7 +255,7 @@ std::string Pattern::_substitute(std::string_view repl, std::string_view subject
     return std::string(reinterpret_cast<const char*>(reinterpret_cast<const uint8_t*>(outbuf->ptr())), static_cast<size_t>(outlen));
 }
 
-// def sub(self, repl: str, subject: str, count: Int32 = 0) -> str:
+// def sub(self, repl: str, subject: str, count: int32 = 0) -> str:
 std::string Pattern::sub(std::string_view repl, std::string_view subject, int32_t count) const {
     // if count == 0:
     if ((count == 0)) {
@@ -285,7 +285,7 @@ std::string Pattern::sub(std::string_view repl, std::string_view subject, int32_
     // # character forward.
     // result: str = subject
     std::string result = std::string(subject);
-    // offset: UInt64 = 0
+    // offset: uint64 = 0
     uint64_t offset = 0;
     // remaining = count
     int32_t remaining = count;
@@ -293,16 +293,16 @@ std::string Pattern::sub(std::string_view repl, std::string_view subject, int32_
     bool prev_empty = false;
     // while remaining > 0:
     while ((remaining > 0)) {
-        // s_len = UInt64(len(result))
+        // s_len = uint64(len(result))
         uint64_t s_len = ::tpy::int_cast_check<uint64_t>(::tpy::__len__(result));
         // if offset > s_len:
         if ((offset > s_len)) {
             // break
             break;
         }
-        // s_data: Ptr[readonly[UInt8]] = unsafe_cast(unsafe_ptr(result))
+        // s_data: Ptr[readonly[uint8]] = unsafe_cast(unsafe_ptr(result))
         const uint8_t* s_data = reinterpret_cast<const uint8_t*>(result.data());
-        // mopts: UInt32 = 0
+        // mopts: uint32 = 0
         uint32_t mopts = 0;
         // if prev_empty:
         if (prev_empty) {
@@ -345,7 +345,7 @@ std::string Pattern::sub(std::string_view repl, std::string_view subject, int32_
         // # Next attempt starts right after the replacement text. The
         // # add-before-subtract order keeps the unsigned arithmetic
         // # non-negative when the replacement shrinks the string.
-        // offset = mend + UInt64(len(result)) - old_len
+        // offset = mend + uint64(len(result)) - old_len
         offset = (::tpy::sub_check<uint64_t>((::tpy::add_check<uint64_t>(mend, ::tpy::int_cast_check<uint64_t>(::tpy::__len__(result)))), old_len));
         // prev_empty = mend == mstart
         prev_empty = (mend == mstart);
@@ -356,13 +356,13 @@ std::string Pattern::sub(std::string_view repl, std::string_view subject, int32_
     return result;
 }
 
-// def split(self, subject: str, maxsplit: Int32 = 0) -> Own[list[str]]:
+// def split(self, subject: str, maxsplit: int32 = 0) -> Own[list[str]]:
 std::vector<std::string> Pattern::split(std::string_view subject, int32_t maxsplit) const {
     // out: list[str] = []
     std::vector<std::string> out = std::vector<std::string>{};
-    // last: Int32 = 0
+    // last: int32 = 0
     int32_t last = 0;
-    // splits: Int32 = 0
+    // splits: int32 = 0
     int32_t splits = 0;
     // for m in self.finditer(subject):
     {
@@ -372,7 +372,7 @@ std::vector<std::string> Pattern::split(std::string_view subject, int32_t maxspl
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& m = ::tpy::unwrap_ref(*__r_1);
-        // if maxsplit > Int32(0) and splits >= maxsplit:
+        // if maxsplit > int32(0) and splits >= maxsplit:
         if (((maxsplit > 0) && (splits >= maxsplit))) {
             // break
             break;
@@ -381,7 +381,7 @@ std::vector<std::string> Pattern::split(std::string_view subject, int32_t maxspl
         out.push_back(std::string(::tpy::str_slice(subject, ::tpy::BasicSlice{last, m.start()})));
         // last = m.end()
         last = m.end();
-        // splits += Int32(1)
+        // splits += int32(1)
         splits = ::tpy::add_check<int32_t>(splits, 1);
         }
     }
@@ -402,15 +402,15 @@ void __tpy_init() {
     // # Bare `0`/`1` flow through to `size_t` / `uint32_t` PCRE2 args because the
     // # compiler treats integer literals (and literal-seeded locals like
     // # `offset = 0`) as polymorphic enough to retro-fit unsigned targets when
-    // # the value provably fits. The remaining `UInt64(...)` / `UInt32(...)`
+    // # the value provably fits. The remaining `uint64(...)` / `uint32(...)`
     // # casts in this file are on `len(...)` results (BigInt) and other typed
     // # sources, where a runtime narrowing check is intentional.
     // from _bindings import pcre2
     ::tpystd::_bindings::pcre2::__tpy_init();
-    // # User-facing flags are `Int32`: the total bit surface is tiny (max 256),
-    // # negative values are never valid, and Int32 is TPy's DefaultInt so users
-    // # don't need to write `UInt32(...)` when mixing flags with bare literals.
-    // # Internally `_to_pcre2_opts` translates to PCRE2's `UInt32` flag space
+    // # User-facing flags are `int32`: the total bit surface is tiny (max 256),
+    // # negative values are never valid, and int32 is TPy's DefaultInt so users
+    // # don't need to write `uint32(...)` when mixing flags with bare literals.
+    // # Internally `_to_pcre2_opts` translates to PCRE2's `uint32` flag space
     // # where top-bit values like pcre2.PCRE2_ANCHORED require the wider unsigned range.
     // # Short aliases (CPython exposes both forms).
 }

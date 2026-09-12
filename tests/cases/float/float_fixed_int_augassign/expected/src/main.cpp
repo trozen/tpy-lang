@@ -8,13 +8,13 @@ namespace tpyapp::main {
 void main() {
     // x = 10.0
     double x = 10.0;
-    // x += Int8(5)
+    // x += int8(5)
     x = (x) + static_cast<double>(5);
-    // x -= Int32(3)
+    // x -= int32(3)
     x = (x) - static_cast<double>(3);
-    // x *= UInt16(2)
+    // x *= uint16(2)
     x = (x) * static_cast<double>(2);
-    // x /= Int64(4)
+    // x /= int64(4)
     x = ::tpy::truediv(x, static_cast<double>(4));
     // print(x)
     std::cout << ::tpy::print_float(x) << "\n";

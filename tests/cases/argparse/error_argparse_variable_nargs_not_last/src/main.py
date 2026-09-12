@@ -1,10 +1,10 @@
 # Variable-length nargs ('*' / '+' / '?') on a positional must be the
 # last positional, otherwise consumption is ambiguous.
-from tpy import Int32
+from tpy import int32
 from argparse import ArgumentParser
 
 
-def main() -> Int32:
+def main() -> int32:
     parser = ArgumentParser()
     parser.add_argument("files", nargs="+")
     parser.add_argument("dest")  # the '+' positional must be last

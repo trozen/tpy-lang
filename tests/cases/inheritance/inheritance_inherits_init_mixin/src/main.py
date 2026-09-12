@@ -1,13 +1,13 @@
 # Empty subclass with multi-base where only one parent has __init__.
 # Mirrors CPython's MRO ctor lookup: the single init-bearing parent supplies
 # the constructor; the mixin parent default-constructs.
-from tpy import Int32
+from tpy import int32
 
 
 class Base:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
@@ -26,11 +26,11 @@ class WithMixinReversed(Greeter, Base):
 
 
 def main() -> None:
-    a = WithMixin(Int32(7))
+    a = WithMixin(int32(7))
     print(a.x)
     print(a.hello())
 
-    b = WithMixinReversed(Int32(13))
+    b = WithMixinReversed(int32(13))
     print(b.x)
     print(b.hello())
 

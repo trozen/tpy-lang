@@ -14,10 +14,10 @@ void connect(const Options& kwargs) {
 
 // def main() -> None:
 void main() {
-    // connect(host="localhost", port=Int32(8080))
+    // connect(host="localhost", port=int32(8080))
     Options __tmp_1 = Options("localhost", 8080);
     connect(__tmp_1);
-    // connect(host="example.com", port=Int32(443))
+    // connect(host="example.com", port=int32(443))
     Options __tmp_2 = Options("example.com", 443);
     connect(__tmp_2);
 }

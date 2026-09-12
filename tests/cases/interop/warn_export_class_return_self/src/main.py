@@ -7,25 +7,25 @@
 # with value-specific wording; a setitem return is discarded by the slot
 # (nothing crosses), so it never warns.
 # tpy: ext_module
-from tpy import Int64, Own, ValueType, readonly
+from tpy import int64, Own, ValueType, readonly
 from tpy.extern import export
 
 
 @export
 class Inner:
-    x: Int64
+    x: int64
 
-    def __init__(self, x: Int64):
+    def __init__(self, x: int64):
         self.x = x
 
 
 @export
 class Box:
-    v: Int64
+    v: int64
     _inner: Inner
     _alt: Inner
 
-    def __init__(self, v: Int64):
+    def __init__(self, v: int64):
         self.v = v
         self._inner = Inner(v)
         self._alt = Inner(v)
@@ -60,12 +60,12 @@ class Box:
         # return-self iterator crosses by identity and doesn't warn.
         return self  # tpyc: ok
 
-    def __getitem__(self, i: Int64) -> "Box":
+    def __getitem__(self, i: int64) -> "Box":
         # The mp_subscript slot threads the receiver candidate like a
         # method wrapper: a bare `self` return crosses by identity.
         return self  # tpyc: ok
 
-    def __next__(self) -> Int64:
+    def __next__(self) -> int64:
         if self.v <= 0:
             raise StopIteration
         self.v -= 1
@@ -95,13 +95,13 @@ class Rebound:
     def reset(self) -> None:
         self._alt = Inner(1)
 
-    def __getitem__(self, i: Int64) -> Inner:
+    def __getitem__(self, i: int64) -> Inner:
         # Dunder-slot RESIDUE witness: a reassignable-field source has no
         # identity/view path, so dunder slots warn exactly like method
         # wrappers.
         return self._alt  # tpyc: warning(/no live object behind it/)
 
-    def __setitem__(self, i: Int64, v: Int64) -> Inner:
+    def __setitem__(self, i: int64, v: int64) -> Inner:
         # The mp_ass_subscript slot discards the method's return (CPython
         # does too), so even a would-warn source never crosses here.
         return self._alt  # tpyc: ok
@@ -109,9 +109,9 @@ class Rebound:
 
 @export
 class Flat(ValueType):
-    n: Int64
+    n: int64
 
-    def __init__(self, n: Int64):
+    def __init__(self, n: int64):
         self.n = n
 
     def itself(self) -> "readonly[Flat]":
@@ -120,7 +120,7 @@ class Flat(ValueType):
         # value-specific wording fires.
         return self  # tpyc: warning(/value-type class 'Flat' by reference, and a value class always crosses the CPython boundary as a copy/)
 
-    def __getitem__(self, i: Int64) -> "readonly[Flat]":
+    def __getitem__(self, i: int64) -> "readonly[Flat]":
         return self  # tpyc: warning(/value-type class 'Flat' by reference, and a value class always crosses/)
 
 
@@ -147,5 +147,5 @@ def get_global() -> Box:
 
 
 @export
-def fresh(v: Int64) -> Own[Box]:
+def fresh(v: int64) -> Own[Box]:
     return Box(v)  # tpyc: ok

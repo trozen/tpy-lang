@@ -3,11 +3,11 @@
 # wrapper, and the pre-scan that promotes such a callee to a named struct
 # only sees this module. Rejected rather than emitting ill-formed C++.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 from gensrc import walk
 
 
-def gen() -> Iterator[Int32]:
+def gen() -> Iterator[int32]:
     yield 100
     for x in walk():  # tpyc: error(/single yield in a loop/)
         yield x

@@ -3,7 +3,7 @@
 # movability trait recognizes the escape, and the forced (non-elided) move
 # `relocated = pool` runs __move__ and relocates the live elements.
 from __future__ import annotations
-from tpy import Int32, UInt32, Own, readonly
+from tpy import int32, uint32, Own, readonly
 from tpy.mem import UninitArrayStorage
 
 
@@ -16,14 +16,14 @@ class Item:
 
 class Pool[T, N: int]:
     _storage: UninitArrayStorage[T, N]
-    _size: UInt32
+    _size: uint32
 
     def __init__(self) -> None:
         self._storage = UninitArrayStorage[T, N]()
-        self._size = UInt32(0)
+        self._size = uint32(0)
 
     def __del__(self) -> None:
-        self._storage.drop_n(UInt32(0), self._size)
+        self._storage.drop_n(uint32(0), self._size)
 
     def __move__(self, other: Own[Pool[T, N]]) -> None:
         for ui in range(other._size):
@@ -35,14 +35,14 @@ class Pool[T, N: int]:
         self._size += 1
 
     @readonly
-    def get(self, i: Int32) -> readonly[T]:
-        return self._storage.load(UInt32.trunc(i))
+    def get(self, i: int32) -> readonly[T]:
+        return self._storage.load(uint32.trunc(i))
 
 
 class Tagged:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def __del__(self) -> None:

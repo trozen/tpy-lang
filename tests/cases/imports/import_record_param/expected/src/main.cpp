@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def get_radius(c: Circle) -> Int32:
+// def get_radius(c: Circle) -> int32:
 int32_t get_radius(const ::tpyapp::shapes::Circle& c) {
     // return c.radius
     return c.radius;
@@ -12,7 +12,7 @@ int32_t get_radius(const ::tpyapp::shapes::Circle& c) {
 
 // def main() -> None:
 void main() {
-    // c = Circle(Int32(10))
+    // c = Circle(int32(10))
     ::tpyapp::shapes::Circle c = ::tpyapp::shapes::Circle(10);
     // print(get_radius(c))
     std::cout << get_radius(c) << "\n";

@@ -4,14 +4,14 @@
 # rejected by C++ as "assignment of member in read-only object". Tests that
 # the implicit path produces both mutable and const overloads so field
 # mutation through the wrapper works.
-from tpy import Int32, copy
+from tpy import int32, copy
 
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32) -> None:
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 
@@ -29,7 +29,7 @@ class Ref:
         return self._target
 
 
-def read_only(r: Ref) -> Int32:
+def read_only(r: Ref) -> int32:
     # Const path: Ref is a borrow; __deref__() const overload is used.
     return r.x + r.y
 
@@ -43,8 +43,8 @@ def main() -> None:
     print(r.y)            # 20
 
     # Mutate through mutable __deref__ -- requires the non-const overload.
-    r.x = Int32(99)
-    r.y = Int32(88)
+    r.x = int32(99)
+    r.y = int32(88)
     print(r.x)            # 99
     print(r.y)            # 88
 

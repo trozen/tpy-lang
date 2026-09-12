@@ -1,7 +1,7 @@
 # A forward-referenced generator: frame borrow facts are stamped at
 # registration, so the consume of xs is demoted (copy + warning).
 from typing import Iterator
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 def main():
@@ -12,13 +12,13 @@ def main():
         print(v)
 
 
-def gen(xs: list[Int32]) -> Iterator[Int32]:
+def gen(xs: list[int32]) -> Iterator[int32]:
     for x in xs:
         yield x
 
 
-def drop(xs: Own[list[Int32]]) -> Int32:
-    store: list[list[Int32]] = []
+def drop(xs: Own[list[int32]]) -> int32:
+    store: list[list[int32]] = []
     store.append(xs)
     return len(store)
 

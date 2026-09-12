@@ -3,12 +3,12 @@
 # @nocopy can't force the move; a frozen @dataclass (hashable, copyable)
 # exercises the path with a real reference-type element.
 from dataclasses import dataclass
-from tpy import Int32
+from tpy import int32
 
 
 @dataclass(frozen=True)
 class P:
-    x: Int32
+    x: int32
 
 
 def main() -> None:

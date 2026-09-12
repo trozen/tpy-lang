@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def search_break(items: list[Int32], target: Int32) -> None:
+// def search_break(items: list[int32], target: int32) -> None:
 void search_break(const std::vector<int32_t>& items, int32_t target) {
     // for item in items:
     auto& __obj_1 = items;
@@ -30,7 +30,7 @@ void search_break(const std::vector<int32_t>& items, int32_t target) {
 
 // def no_break() -> None:
 void no_break() {
-    // for i in range(Int32(3)):
+    // for i in range(int32(3)):
     for (int32_t i = 0; i < 3; ++i) {
         // print(i)
         std::cout << i << "\n";
@@ -45,7 +45,7 @@ void no_break() {
 
 // def with_continue() -> None:
 void with_continue() {
-    // items: list[Int32] = [Int32(1), Int32(2), Int32(3)]
+    // items: list[int32] = [int32(1), int32(2), int32(3)]
     std::vector<int32_t> items = {1, 2, 3};
     // for x in items:
     auto& __obj_1 = items;
@@ -53,7 +53,7 @@ void with_continue() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t x = *__beg_1;
-        // if x == Int32(2):
+        // if x == int32(2):
         if ((x == 2)) {
             // continue
             continue;
@@ -71,11 +71,11 @@ void with_continue() {
 
 // def nested_inner_else() -> None:
 void nested_inner_else() {
-    // for i in range(Int32(3)):
+    // for i in range(int32(3)):
     for (int32_t i = 0; i < 3; ++i) {
-        // for j in range(Int32(3)):
+        // for j in range(int32(3)):
         for (int32_t j = 0; j < 3; ++j) {
-            // if j == Int32(1):
+            // if j == int32(1):
             if ((j == 1)) {
                 // break
                 goto __after_else_1;
@@ -94,11 +94,11 @@ void nested_inner_else() {
 
 // def nested_outer_else() -> None:
 void nested_outer_else() {
-    // for i in range(Int32(3)):
+    // for i in range(int32(3)):
     for (int32_t i = 0; i < 3; ++i) {
-        // for j in range(Int32(3)):
+        // for j in range(int32(3)):
         for (int32_t j = 0; j < 3; ++j) {
-            // if j == Int32(1):
+            // if j == int32(1):
             if ((j == 1)) {
                 // break
                 break;
@@ -117,11 +117,11 @@ void nested_outer_else() {
 
 // def nested_both_else() -> None:
 void nested_both_else() {
-    // for i in range(Int32(3)):
+    // for i in range(int32(3)):
     for (int32_t i = 0; i < 3; ++i) {
-        // for j in range(Int32(3)):
+        // for j in range(int32(3)):
         for (int32_t j = 0; j < 3; ++j) {
-            // if j == Int32(1):
+            // if j == int32(1):
             if ((j == 1)) {
                 // break
                 goto __after_else_2;
@@ -146,7 +146,7 @@ void nested_both_else() {
 
 // def empty_iterable() -> None:
 void empty_iterable() {
-    // items: list[Int32] = []
+    // items: list[int32] = []
     std::vector<int32_t> items = std::vector<int32_t>{};
     // for x in items:
     auto& __obj_1 = items;
@@ -167,7 +167,7 @@ void empty_iterable() {
 
 // def var_decl_in_else() -> None:
 void var_decl_in_else() {
-    // items: list[Int32] = [Int32(1), Int32(2), Int32(3)]
+    // items: list[int32] = [int32(1), int32(2), int32(3)]
     std::vector<int32_t> items = {1, 2, 3};
     // for item in items:
     auto& __obj_1 = items;
@@ -175,7 +175,7 @@ void var_decl_in_else() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t item = *__beg_1;
-        // if item == Int32(99):
+        // if item == int32(99):
         if ((item == 99)) {
             // break
             goto __after_else_0;
@@ -193,11 +193,11 @@ void var_decl_in_else() {
 
 // def main() -> None:
 void main() {
-    // nums: list[Int32] = [Int32(1), Int32(2), Int32(3)]
+    // nums: list[int32] = [int32(1), int32(2), int32(3)]
     std::vector<int32_t> nums = {1, 2, 3};
-    // search_break(nums, Int32(2))
+    // search_break(nums, int32(2))
     search_break(nums, 2);
-    // search_break(nums, Int32(99))
+    // search_break(nums, int32(99))
     search_break(nums, 99);
     // no_break()
     no_break();

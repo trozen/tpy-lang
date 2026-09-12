@@ -3,11 +3,11 @@
 # `_handle`. Companion to destructor_hazardous_field_no_init -- that
 # test guards the codegen suppression (snapshot); this one guards the
 # sema diagnostic at the call site.
-from tpy import Int32, Ptr
+from tpy import int32, Ptr
 
 
 class Hazard:
-    _handle: Ptr[Int32]
+    _handle: Ptr[int32]
 
     def __del__(self) -> None:
         print("dropping hazard")

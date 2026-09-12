@@ -1,9 +1,9 @@
-# UInt64 cannot widen to Int64 (same width, mixed sign)
-from tpy import UInt64, Int64
+# uint64 cannot widen to int64 (same width, mixed sign)
+from tpy import uint64, int64
 
 def main() -> None:
-    x = UInt64(1)
-    x = Int64(2)  # tpyc: error(/Type mismatch/)
+    x = uint64(1)
+    x = int64(2)  # tpyc: error(/Type mismatch/)
     print(x)
 
 main()

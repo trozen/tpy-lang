@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def take_mut(*items: Box) -> Int32:
+// def take_mut(*items: Box) -> int32:
 int32_t take_mut(::tpy::varargs<const Box> items) {
-    // n: Int32 = 0
+    // n: int32 = 0
     int32_t n = 0;
     // for b in items:
     auto& __obj_0 = items;
@@ -21,9 +21,9 @@ int32_t take_mut(::tpy::varargs<const Box> items) {
     return n;
 }
 
-// def via_loop(xs: list[Box]) -> Int32:
+// def via_loop(xs: list[Box]) -> int32:
 int32_t via_loop(const std::vector<Box>& xs) {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for b in xs:
     auto& __obj_0 = xs;

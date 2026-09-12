@@ -19,10 +19,10 @@ struct Outer {
     struct Mid {
         // class Deep:
         struct Deep {
-            // val: Int32
+            // val: int32
             int32_t val;
 
-            // def __init__(self, val: Int32) -> None:
+            // def __init__(self, val: int32) -> None:
             Deep() = default;
             explicit Deep(int32_t val);
             static constexpr std::string_view __tpy_class_name__ = "__main__.Outer.Mid.Deep";
@@ -37,10 +37,10 @@ struct Outer {
         static constexpr std::string_view __tpy_class_name__ = "__main__.Outer.Mid";
     };
 
-    // x: Int32
+    // x: int32
     int32_t x;
 
-    // def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: int32) -> None:
     Outer() = default;
     explicit Outer(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Outer";
@@ -62,13 +62,13 @@ inline std::ostream& operator<<(std::ostream& os, const Outer::Mid::Deep& obj) {
 }
 
 
-// def __init__(self, val: Int32) -> None:
+// def __init__(self, val: int32) -> None:
 inline Outer::Mid::Deep::Deep(int32_t val) : val(val) {}
 
 // def __init__(self, name: str) -> None:
 inline Outer::Mid::Mid(std::string_view name) : name(name) {}
 
-// def __init__(self, x: Int32) -> None:
+// def __init__(self, x: int32) -> None:
 inline Outer::Outer(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

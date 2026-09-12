@@ -10,15 +10,15 @@
 # `_frame_view_backing_arg` in thir/lower/expressions.py).
 from typing import Iterator
 
-from tpy import Int32, Span
+from tpy import int32, Span
 
 
-def gen(s: Span[Int32]) -> Iterator[Int32]:
+def gen(s: Span[int32]) -> Iterator[int32]:
     yield s[0]
     yield s[1]
 
 
-def drive(xs: list[Int32]) -> None:
+def drive(xs: list[int32]) -> None:
     # The subject: the slice's span has no hoistable source, and the frame
     # would hold it past the statement.
     for v in gen(xs[1:4]):  # tpyc: error(/not yet supported/)

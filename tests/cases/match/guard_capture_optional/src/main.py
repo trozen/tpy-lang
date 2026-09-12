@@ -1,10 +1,10 @@
 # Optional subject: guarded capture binds the full T | None before the guard
 # runs (guard may read and narrow it); a failed guard falls through to the
 # None arm and the wildcard.
-from tpy import Int32
+from tpy import int32
 
 
-def classify(v: Int32 | None) -> None:
+def classify(v: int32 | None) -> None:
     match v:
         case x if x is not None and x > 5:
             print("big", x)

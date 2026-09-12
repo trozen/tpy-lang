@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def make_dict() -> Own[dict[str, Int32]]:
+// def make_dict() -> Own[dict[str, int32]]:
 ::tpy::ordered_map<std::string, int32_t> make_dict() {
     // d = {"x": 1, "y": 2}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"x", 1}, {"y", 2}});
@@ -12,7 +12,7 @@ namespace tpyapp::main {
     return d;
 }
 
-// def sum_values(d: dict[str, Int32]) -> Int32:
+// def sum_values(d: dict[str, int32]) -> int32:
 int32_t sum_values(const ::tpy::ordered_map<std::string, int32_t>& d) {
     // total = 0
     int32_t total = 0;

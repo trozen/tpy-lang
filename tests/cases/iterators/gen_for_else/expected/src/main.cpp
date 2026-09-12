@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def gen(items: list[Int32], limit: Int32) -> Iterator[Int32]:
+// def gen(items: list[int32], limit: int32) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -57,7 +57,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
 }
 
 
-// def gen(items: list[Int32], limit: Int32) -> Iterator[Int32]:
+// def gen(items: list[int32], limit: int32) -> Iterator[int32]:
 __gen_gen gen(std::vector<int32_t>& items, int32_t limit) {
     return __gen_gen(items, limit);
 }

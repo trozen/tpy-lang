@@ -21,10 +21,10 @@ void main();
 
 // class Item:
 struct Item {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32):
+    // def __init__(self, n: int32):
     Item() = default;
     explicit Item(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Item";
@@ -40,7 +40,7 @@ struct Owner {
     // item: Item
     Item item;
 
-    // def __init__(self, n: Int32):
+    // def __init__(self, n: int32):
     Owner() = default;
     explicit Owner(int32_t n);
 
@@ -110,10 +110,10 @@ struct __gen_steps : public ::tpy::next_iter_mixin<__gen_steps, int32_t> {
 };
 
 
-// def __init__(self, n: Int32):
+// def __init__(self, n: int32):
 inline Item::Item(int32_t n) : n(n) {}
 
-// def __init__(self, n: Int32):
+// def __init__(self, n: int32):
 inline Owner::Owner(int32_t n) : item(Item(n)) {}
 
 // def __enter__(self) -> Item:

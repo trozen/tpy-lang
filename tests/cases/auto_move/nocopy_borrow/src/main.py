@@ -1,17 +1,17 @@
 # Non-consuming uses (borrow by ref) before consuming move
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 
 
 @nocopy
 class Handle:
-    fd: Int32
+    fd: int32
 
 
-def inspect(h: Handle) -> Int32:
+def inspect(h: Handle) -> int32:
     return h.fd
 
 
-def close(h: Own[Handle]) -> Int32:
+def close(h: Own[Handle]) -> int32:
     return h.fd
 
 

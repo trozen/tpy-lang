@@ -1,13 +1,13 @@
 # A FIELD read of a value record at an `Optional[value record]` parameter:
 # neither the constructor rvalue nor the bare name the argument rows admit.
 # `h.m(w.v)` still rejects.
-from tpy import Int32, ValueType
+from tpy import int32, ValueType
 
 
 class Vec(ValueType):
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
@@ -22,7 +22,7 @@ class H:
     def __init__(self) -> None:
         pass
 
-    def m(self, v: Vec | None = None) -> Int32:
+    def m(self, v: Vec | None = None) -> int32:
         if v is None:
             return -1
         return v.n

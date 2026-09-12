@@ -5,13 +5,13 @@
 #
 # __del__ writes a sentinel, so a target left pointing at a destroyed manager
 # reads -999 instead of the value.
-from tpy import Int32
+from tpy import int32
 
 
 class Reg:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def __enter__(self) -> "Reg":

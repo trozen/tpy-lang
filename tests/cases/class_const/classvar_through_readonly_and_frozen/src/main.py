@@ -2,12 +2,12 @@
 # to the instance. So a readonly receiver and a frozen dataclass instance
 # both let the write through -- the instance isn't being mutated.
 from typing import ClassVar
-from tpy import Int32, readonly
+from tpy import int32, readonly
 from dataclasses import dataclass
 
 
 class Counter:
-    instances: ClassVar[Int32] = 0
+    instances: ClassVar[int32] = 0
 
     def __init__(self) -> None:
         pass
@@ -16,7 +16,7 @@ class Counter:
 @dataclass(frozen=True)
 class FrozenCounter:
     name: str
-    instances: ClassVar[Int32] = 0
+    instances: ClassVar[int32] = 0
 
 
 def bump(c: readonly[Counter]) -> None:

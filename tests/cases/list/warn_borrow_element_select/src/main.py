@@ -1,12 +1,12 @@
 # A select of container-element arms hands out the SAME element borrow the
 # plain `r = rs[0]` decl does, so a later structural mutation must warn too.
-from tpy import Int32
+from tpy import int32
 
 
 class Rec:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
@@ -45,7 +45,7 @@ def alias_arms(xs: list[Rec], ys: list[Rec], c: bool) -> None:
     print(len(picked))
 
 
-def value_elements(ns: list[Int32], c: bool) -> None:
+def value_elements(ns: list[int32], c: bool) -> None:
     """A value element is copied out, so no borrow and no warning."""
     v = ns[0] if c else ns[1]
     ns.append(6)                   # tpyc: ok

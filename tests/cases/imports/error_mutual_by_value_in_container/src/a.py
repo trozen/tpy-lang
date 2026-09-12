@@ -1,5 +1,5 @@
 from b import B
-from tpy import Int32
+from tpy import int32
 
 class A:
     children: list[B]  # tpyc: error(/Cyclic import/)

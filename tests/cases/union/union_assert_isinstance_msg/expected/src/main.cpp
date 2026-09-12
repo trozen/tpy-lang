@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def get_radius(s: Circle | Rect) -> Int32:
+// def get_radius(s: Circle | Rect) -> int32:
 int32_t get_radius(::tpy::Union<const Circle*, const Rect*> s) {
     // assert isinstance(s, Circle), "expected a Circle"
     if (!(std::holds_alternative<const Circle*>(s))) ::tpy::raise_assertion_error("expected a Circle");
@@ -15,7 +15,7 @@ int32_t get_radius(::tpy::Union<const Circle*, const Rect*> s) {
 
 // def main() -> None:
 void main() {
-    // c: Circle | Rect = Circle(Int32(7))
+    // c: Circle | Rect = Circle(int32(7))
     ::tpy::Union<Circle, Rect> __slot_1 = Circle(7);
     ::tpy::Union<Circle*, Rect*> c = ::tpy::to_ptr_variant(__slot_1);
     // print(get_radius(c))

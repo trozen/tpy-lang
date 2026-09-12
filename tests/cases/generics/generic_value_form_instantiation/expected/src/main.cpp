@@ -44,12 +44,12 @@ namespace tpyapp::main {
 
 // def free_function() -> None:
 void free_function() {
-    // fs: list[Float32] = [0.5, 1.5]
+    // fs: list[float32] = [0.5, 1.5]
     std::vector<float> fs = {0.5, 1.5};
-    // k: Float32 = 1.5
+    // k: float32 = 1.5
     float k = 1.5f;
-    // # The T param slot at Float32, reached by an lvalue and by an rvalue.
-    // print("free_function:", has_item(fs, k), has_item(fs, Float32(2.25)))
+    // # The T param slot at float32, reached by an lvalue and by an rvalue.
+    // print("free_function:", has_item(fs, k), has_item(fs, float32(2.25)))
     std::cout << "free_function:" << " " << ::tpy::print_bool(has_item<float>(fs, k)) << " " << ::tpy::print_bool(has_item<float>(fs, 2.25f)) << "\n";
     // print("free_function:", echo(k))  # tpyc: ok
     std::cout << "free_function:" << " " << ::tpy::print_float(static_cast<double>(echo<float>(k))) << "\n";
@@ -57,13 +57,13 @@ void free_function() {
 
 // def method() -> None:
 void method() {
-    // c = Cell(Float32(1.5))
+    // c = Cell(float32(1.5))
     Cell<float> c = Cell<float>(1.5f);
-    // hit = c.find(Float32(1.5))
+    // hit = c.find(float32(1.5))
     float* hit = c.find(1.5f);
-    // miss = c.find(Float32(2.25))
+    // miss = c.find(float32(2.25))
     float* miss = c.find(2.25f);
-    // # The val_or_ref_t<T> field read at Float32. `find`'s `T | None` renders a
+    // # The val_or_ref_t<T> field read at float32. `find`'s `T | None` renders a
     // # pointer for every T (decided per declaration, not by the trait); it is
     // # pinned here as today's render, not as a value-form subject.
     // print("method:", c.get(), hit is not None, miss is None)
@@ -81,7 +81,7 @@ void enum_instantiation() {
 
 // def generator_frame() -> None:
 void generator_frame() {
-    // v: Float32 = 1.5
+    // v: float32 = 1.5
     float v = 1.5f;
     // it = hold(v)
     auto it = hold<float>(v);
@@ -99,7 +99,7 @@ void generator_frame() {
         v = 2.5f;
         // # The resumable frame's val_or_ref_t<T> field held a COPY of the caller's
         // # local, so the second yield is still 1.5 -- it aliased `v` before the
-        // # runtime called Float32 a value type.
+        // # runtime called float32 a value type.
         // second = next(it)
         {
             auto __try_tmp_3 = ::tpy::next(it);
@@ -121,7 +121,7 @@ void generator_frame() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_async_frame::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // v: Float32 = 1.5
+        // v: float32 = 1.5
         v = 1.5;
         // c = held(v)
         c.emplace(held<float>(v));
@@ -172,7 +172,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Pins the value form of a generic instantiation at Float32 and at an enum: a T
+    // # Pins the value form of a generic instantiation at float32 and at an enum: a T
     // # slot borrows a value, and a generator / coroutine frame COPIES it rather than
     // # aliasing the caller's local across a suspension.
     // # BytesView cannot appear here -- BUGS.md#generic-slot-view-enum-arg-rejects.

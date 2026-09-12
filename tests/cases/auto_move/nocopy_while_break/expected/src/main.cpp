@@ -4,21 +4,21 @@
 namespace tpyapp::main {
 
 
-// def close(h: Own[Handle]) -> Int32:
+// def close(h: Own[Handle]) -> int32:
 int32_t close(Handle&& h) {
     // return h.fd
     return h.fd;
 }
 
-// def test() -> Int32:
+// def test() -> int32:
 int32_t test() {
     // h = Handle()
     Handle h = Handle();
     // h.fd = 42
     h.fd = 42;
-    // result = Int32(0)
+    // result = int32(0)
     int32_t result = 0;
-    // i = Int32(0)
+    // i = int32(0)
     int32_t i = 0;
     // while i < 3:
     while ((i < 3)) {

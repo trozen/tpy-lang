@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def read_rec(a: A) -> Int32:
+// def read_rec(a: A) -> int32:
 int32_t read_rec(const A& a) {
     // return a.x
     return a.x;
@@ -16,7 +16,7 @@ void mutate_rec(A& a) {
     a.x = ::tpy::add_check<int32_t>(a.x, 10);
 }
 
-// def pass_both(a: A, b: A) -> Int32:
+// def pass_both(a: A, b: A) -> int32:
 int32_t pass_both(const A& a, A& b) {
     // mutate_rec(b)
     mutate_rec(b);
@@ -24,7 +24,7 @@ int32_t pass_both(const A& a, A& b) {
     return (::tpy::add_check<int32_t>(read_rec(a), read_rec(b)));
 }
 
-// def through_pointer(h: Holder, flag: bool) -> Int32:
+// def through_pointer(h: Holder, flag: bool) -> int32:
 int32_t through_pointer(Holder& h, bool flag) {
     // p = h.a
     A* p = &(h.a);
@@ -39,7 +39,7 @@ int32_t through_pointer(Holder& h, bool flag) {
     return read_rec((*p));
 }
 
-// def through_narrowing(v: A | B) -> Int32:
+// def through_narrowing(v: A | B) -> int32:
 int32_t through_narrowing(::tpy::Union<A*, B*> v) {
     // if isinstance(v, A):
     if (std::holds_alternative<A*>(v)) {

@@ -3,8 +3,8 @@
 
 namespace tpyapp::main {
 
-// # From Char (static lookup - safe)
-// c: Char = "A"
+// # From char (static lookup - safe)
+// c: char = "A"
 char c{};
 // # From float (inline usage - safe)
 // # Note: exact output format may vary
@@ -27,17 +27,17 @@ void __tpy_init() {
     std::cout << std::string(::tpy::bool_to_str(true)) << "\n";
     // print(str(False))  # False
     std::cout << std::string(::tpy::bool_to_str(false)) << "\n";
-    // # From Char (static lookup - safe)
-    // c: Char = "A"
+    // # From char (static lookup - safe)
+    // c: char = "A"
     c = 'A';
     // print(str(c))  # A
     std::cout << std::string(::tpy::char_to_str(c)) << "\n";
-    // # From Int32 (inline usage - safe)
-    // print(str(Int32(42)))    # 42
+    // # From int32 (inline usage - safe)
+    // print(str(int32(42)))    # 42
     std::cout << ::tpy::fixed_to_str<int32_t>(42) << "\n";
-    // print(str(Int32(-123)))  # -123
+    // print(str(int32(-123)))  # -123
     std::cout << ::tpy::fixed_to_str<int32_t>(-123) << "\n";
-    // print(str(Int32(0)))     # 0
+    // print(str(int32(0)))     # 0
     std::cout << ::tpy::fixed_to_str<int32_t>(0) << "\n";
     // # From int/BigInt (inline usage - safe)
     // print(str(12345))         # 12345

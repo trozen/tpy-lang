@@ -4,20 +4,20 @@
 namespace tpyapp::main {
 
 // # Test 2: Array literal assigned to variable with explicit type, then passed
-// nums: Array[Int32, 3] = [10, 20, 30]
+// nums: Array[int32, 3] = [10, 20, 30]
 std::array<int32_t, 3>* nums{};
 // # Test 3: Array with explicit type annotation
-// arr: Array[Int32, 3] = [100, 200, 300]
+// arr: Array[int32, 3] = [100, 200, 300]
 std::array<int32_t, 3>* arr{};
 // # Test 4: list -> Span conversion
-// items: list[Int32] = [1000, 2000, 3000, 4000]
+// items: list[int32] = [1000, 2000, 3000, 4000]
 std::vector<int32_t>* items{};
 
-// def sum_span(values: Span[Int32]) -> Int32:
+// def sum_span(values: Span[int32]) -> int32:
 int32_t sum_span(std::span<int32_t> values) {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < len(values):
     while ((i < ::tpy::__len__(values))) {
@@ -39,19 +39,19 @@ void __tpy_init() {
     // print(sum_span([1, 2, 3, 4, 5]))
     std::cout << sum_span(::tpy::as_mut_span(std::array<int32_t, 5>{1, 2, 3, 4, 5})) << "\n";
     // # Test 2: Array literal assigned to variable with explicit type, then passed
-    // nums: Array[Int32, 3] = [10, 20, 30]
+    // nums: Array[int32, 3] = [10, 20, 30]
     static std::array<int32_t, 3> __global_slot_1 = {10, 20, 30};
     nums = &__global_slot_1;
     // print(sum_span(nums))
     std::cout << sum_span(::tpy::as_mut_span((*nums))) << "\n";
     // # Test 3: Array with explicit type annotation
-    // arr: Array[Int32, 3] = [100, 200, 300]
+    // arr: Array[int32, 3] = [100, 200, 300]
     static std::array<int32_t, 3> __global_slot_2 = {100, 200, 300};
     arr = &__global_slot_2;
     // print(sum_span(arr))
     std::cout << sum_span(::tpy::as_mut_span((*arr))) << "\n";
     // # Test 4: list -> Span conversion
-    // items: list[Int32] = [1000, 2000, 3000, 4000]
+    // items: list[int32] = [1000, 2000, 3000, 4000]
     static std::vector<int32_t> __global_slot_3 = {1000, 2000, 3000, 4000};
     items = &__global_slot_3;
     // print(sum_span(items))

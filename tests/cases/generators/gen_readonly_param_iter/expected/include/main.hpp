@@ -24,7 +24,7 @@ void main();
 
 // class Holder:
 struct Holder {
-    // lst: list[Int32] | None
+    // lst: list[int32] | None
     std::optional<std::vector<int32_t>> lst;
 
     // def __init__(self):

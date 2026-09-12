@@ -8,7 +8,7 @@ namespace tpyapp::main {
 Holder* h{};
 
 // # Own[T] | None returns std::optional<T> by value — no aliasing concern
-// def maybe_make(x: Int32) -> Own[Point] | None:
+// def maybe_make(x: int32) -> Own[Point] | None:
 std::optional<Point> maybe_make(int32_t x) {
     // if x > 0:
     if ((x > 0)) {

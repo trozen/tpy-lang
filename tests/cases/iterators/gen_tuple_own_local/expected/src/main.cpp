@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def make_pair(n: Int32) -> Own[tuple[Int32, Box]]:
+// def make_pair(n: int32) -> Own[tuple[int32, Box]]:
 std::tuple<int32_t, Box> make_pair(int32_t n) {
     // return (n, Box(n))
     return std::tuple<int32_t, Box>{n, Box(n)};
 }
 
-// def gen() -> Iterator[Int32]:
+// def gen() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -37,7 +37,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
 }
 
 
-// def gen() -> Iterator[Int32]:
+// def gen() -> Iterator[int32]:
 __gen_gen gen() {
     return __gen_gen();
 }

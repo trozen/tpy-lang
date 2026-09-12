@@ -1,8 +1,8 @@
 # Test Span and Span[readonly[T]] constructors from pointer + length.
-from tpy import Int32, Ptr, Span, Array, readonly, take_ptr
+from tpy import int32, Ptr, Span, Array, readonly, take_ptr
 
 def main() -> None:
-    arr = Array[Int32, 3]([10, 20, 30])
+    arr = Array[int32, 3]([10, 20, 30])
 
     # Mutable span from Ptr
     p = take_ptr(arr[0])
@@ -12,7 +12,7 @@ def main() -> None:
     print(s[2])
 
     # Read-only span from Ptr[readonly[...]]
-    rp: Ptr[readonly[Int32]] = take_ptr(arr[0])
+    rp: Ptr[readonly[int32]] = take_ptr(arr[0])
     rs = Span(rp, 3)
     print(rs[0])
     print(rs[1])

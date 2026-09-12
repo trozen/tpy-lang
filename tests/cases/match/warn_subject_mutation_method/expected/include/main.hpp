@@ -19,7 +19,7 @@ void main();
 
 // class Dog:
 struct Dog {
-    // items: list[Int32]
+    // items: list[int32]
     std::vector<int32_t> items;
 
     // def __init__(self) -> None:
@@ -34,10 +34,10 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 
 // class Cat:
 struct Cat {
-    // age: Int32
+    // age: int32
     int32_t age;
 
-    // def __init__(self, age: Int32) -> None:
+    // def __init__(self, age: int32) -> None:
     Cat() = default;
     explicit Cat(int32_t age);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cat";
@@ -60,7 +60,7 @@ struct Holder {
     void swap();
 
     // @readonly
-    // def peek(self) -> Int32:
+    // def peek(self) -> int32:
     int32_t peek() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
@@ -74,7 +74,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 // def __init__(self) -> None:
 inline Dog::Dog() : items(std::vector<int32_t>{1, 2, 3}) {}
 
-// def __init__(self, age: Int32) -> None:
+// def __init__(self, age: int32) -> None:
 inline Cat::Cat(int32_t age) : age(age) {}
 
 // def __init__(self) -> None:
@@ -87,7 +87,7 @@ inline void Holder::swap() {
 }
 
 // @readonly
-// def peek(self) -> Int32:
+// def peek(self) -> int32:
 inline int32_t Holder::peek() const {
     // return 1
     return 1;

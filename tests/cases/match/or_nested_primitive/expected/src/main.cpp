@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def classify(n: Int32) -> str:
+// def classify(n: int32) -> str:
 std::string classify(int32_t n) {
     // match n:
     auto& __match_subject_1 = n;

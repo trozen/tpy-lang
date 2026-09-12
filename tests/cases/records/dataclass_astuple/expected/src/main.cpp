@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // p = Point(Int32(1), Int32(2))
+    // p = Point(int32(1), int32(2))
     Point p = Point(1, 2);
     // t = astuple(p)
     std::tuple<int32_t, int32_t> t = std::tuple<int32_t, int32_t>{p.x, p.y};

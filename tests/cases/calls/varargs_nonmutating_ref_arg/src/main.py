@@ -3,25 +3,25 @@
 # a T* array for varargs<T>), so the source must stay a non-const lvalue even
 # though it's never actually mutated -- previously this miscompiled with
 # "invalid conversion from 'const Box*' to 'Box*'".
-from tpy import Int32, nocopy
+from tpy import int32, nocopy
 
 
 @nocopy
 class Box:
-    val: Int32
+    val: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 
-def sum_all(*items: Box) -> Int32:
-    n: Int32 = 0
+def sum_all(*items: Box) -> int32:
+    n: int32 = 0
     for b in items:
         n += b.val
     return n
 
 
-def via_param(b: Box, c: Box) -> Int32:
+def via_param(b: Box, c: Box) -> int32:
     return sum_all(b, c)  # tpyc: ok
 
 

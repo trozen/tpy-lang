@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def pair() -> tuple[Own[A | B], Int32]:
+// def pair() -> tuple[Own[A | B], int32]:
 std::tuple<::tpy::Union<A, B>, int32_t> pair() {
-    // return (A(42), Int32(99))
+    // return (A(42), int32(99))
     return std::tuple<::tpy::Union<A, B>, int32_t>{A(42), 99};
 }
 
-// def borrow(u: A | B) -> Int32:
+// def borrow(u: A | B) -> int32:
 int32_t borrow(::tpy::Union<const A*, const B*> u) {
     // if isinstance(u, A):
     if (std::holds_alternative<const A*>(u)) {
@@ -25,7 +25,7 @@ int32_t borrow(::tpy::Union<const A*, const B*> u) {
         // return u.y
         return __u.y;
     }
-    // return Int32(0)
+    // return int32(0)
     return 0;
 }
 

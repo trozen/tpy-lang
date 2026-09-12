@@ -1,7 +1,7 @@
 import asyncio
-from tpy import Int32, Own
+from tpy import int32, Own
 
-async def f() -> Own[list[Int32]]:
+async def f() -> Own[list[int32]]:
     await asyncio.sleep(0)
     return []
 

@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // stack: Stack[Int32] = Stack[Int32]()
+    // stack: Stack[int32] = Stack[int32]()
     Stack<int32_t> stack = Stack<int32_t>();
     // print(stack.is_empty())  # True
     std::cout << ::tpy::print_bool(stack.is_empty()) << "\n";

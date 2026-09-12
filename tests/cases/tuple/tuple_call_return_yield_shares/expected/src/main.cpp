@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def make(b: Box) -> tuple[Int32, Box]:
+// def make(b: Box) -> tuple[int32, Box]:
 std::tuple<int32_t, Box*> make(Box& b) {
     // return (1, b)
     return std::tuple<int32_t, Box*>{1, &(b)};
 }
 
-// def gen(b: Box) -> Iterator[tuple[Int32, Box]]:
+// def gen(b: Box) -> Iterator[tuple[int32, Box]]:
 std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -30,7 +30,7 @@ std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_gen::__next
 }
 
 
-// def gen(b: Box) -> Iterator[tuple[Int32, Box]]:
+// def gen(b: Box) -> Iterator[tuple[int32, Box]]:
 __gen_gen gen(Box& b) {
     return __gen_gen(b);
 }

@@ -1,7 +1,7 @@
 # Lambda with multiple parameters via Fn type.
-from tpy import Fn, Int32
+from tpy import Fn, int32
 
-def combine(f: Fn[[Int32, Int32], Int32], a: Int32, b: Int32) -> Int32:
+def combine(f: Fn[[int32, int32], int32], a: int32, b: int32) -> int32:
     return f(a, b)
 
 def main() -> None:

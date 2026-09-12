@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def sum_boxes(*items: readonly[Box]) -> Int32:
+// def sum_boxes(*items: readonly[Box]) -> int32:
 int32_t sum_boxes(::tpy::varargs<const Box> items) {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for b in items:
     auto& __obj_0 = items;
@@ -21,9 +21,9 @@ int32_t sum_boxes(::tpy::varargs<const Box> items) {
     return total;
 }
 
-// def sum_ints(*nums: readonly[Int32]) -> Int32:
+// def sum_ints(*nums: readonly[int32]) -> int32:
 int32_t sum_ints(::tpy::varargs<const int32_t> nums) {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for x in nums:
     auto& __obj_0 = nums;

@@ -6,7 +6,7 @@ namespace tpyapp::main {
 // q: Point | None = Point(7)
 Point* q{};
 
-// def get_x(p: Point | None) -> Int32:
+// def get_x(p: Point | None) -> int32:
 int32_t get_x(const Point* p) {
     // assert p is not None
     if (!((p != nullptr))) ::tpy::raise_assertion_error();
@@ -14,7 +14,7 @@ int32_t get_x(const Point* p) {
     return p->x;
 }
 
-// def get_mag(p: Point | None) -> Int32:
+// def get_mag(p: Point | None) -> int32:
 int32_t get_mag(Point* p) {
     // assert p is not None, "point required"
     if (!((p != nullptr))) ::tpy::raise_assertion_error("point required");

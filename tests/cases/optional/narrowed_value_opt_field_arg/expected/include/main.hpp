@@ -25,10 +25,10 @@ struct Conn {
     Conn() = default;
     explicit Conn(std::string_view h, std::optional<double> t);
 
-    // def whole(self) -> Int32:
+    // def whole(self) -> int32:
     int32_t whole() const;
 
-    // def narrowed(self) -> Int32:
+    // def narrowed(self) -> int32:
     int32_t narrowed() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Conn";
 };
@@ -42,13 +42,13 @@ inline std::ostream& operator<<(std::ostream& os, const Conn& obj) {
 // def __init__(self, h: str, t: float | None) -> None:
 inline Conn::Conn(std::string_view h, std::optional<double> t) : host(h), timeout(t) {}
 
-// def whole(self) -> Int32:
+// def whole(self) -> int32:
 inline int32_t Conn::whole() const {
     // return dialer.dial(self.host, self.timeout)
     return ::tpyapp::dialer::dial(this->host, this->timeout);
 }
 
-// def narrowed(self) -> Int32:
+// def narrowed(self) -> int32:
 inline int32_t Conn::narrowed() const {
     // if self.timeout is None:
     if ((!this->timeout.has_value())) {

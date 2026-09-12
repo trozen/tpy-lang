@@ -13,20 +13,20 @@ from typing import Iterator
 
 import asyncio
 
-from tpy import BytesView, Int32, Span, StrView, readonly
+from tpy import BytesView, int32, Span, StrView, readonly
 
 
 class P:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
 # free two-yield generator (off the simple-generator peephole): the frame field
 # is the same view the sync signature spells, so writes through it land in the
 # caller's storage instead of in a buffer copied into the frame.
-def bump_scalars(s: Span[Int32]) -> Iterator[Int32]:  # tpyc: ok
+def bump_scalars(s: Span[int32]) -> Iterator[int32]:  # tpyc: ok
     s[0] += 10
     yield s[0]
     s[1] += 10
@@ -35,7 +35,7 @@ def bump_scalars(s: Span[Int32]) -> Iterator[Int32]:  # tpyc: ok
 
 # free generator / record element: the element is mutated through the view
 # after a suspension.
-def bump_records(s: Span[P]) -> Iterator[Int32]:  # tpyc: ok
+def bump_records(s: Span[P]) -> Iterator[int32]:  # tpyc: ok
     yield s[0].n
     s[0].n += 10
     yield s[0].n
@@ -43,46 +43,46 @@ def bump_records(s: Span[P]) -> Iterator[Int32]:  # tpyc: ok
 
 # generator METHOD: the view rides beside the `self` capture.
 class Scaler:
-    factor: Int32
+    factor: int32
 
-    def __init__(self, factor: Int32) -> None:
+    def __init__(self, factor: int32) -> None:
         self.factor = factor
 
-    def scale(self, s: Span[Int32]) -> Iterator[Int32]:  # tpyc: ok
+    def scale(self, s: Span[int32]) -> Iterator[int32]:  # tpyc: ok
         s[0] *= self.factor
         yield s[0]
         s[1] *= self.factor
         yield s[1]
 
 
-# `Span[readonly[Int32]]` (const element): reading the same slot either side of
+# `Span[readonly[int32]]` (const element): reading the same slot either side of
 # a suspension observes a source mutated in between. A frame that copied the
 # buffer would repeat the first read.
-def read_ro_elems(s: Span[readonly[Int32]]) -> Iterator[Int32]:  # tpyc: ok
+def read_ro_elems(s: Span[readonly[int32]]) -> Iterator[int32]:  # tpyc: ok
     yield s[0]
     yield s[0]
 
 
-# `readonly[Span[Int32]]` -- the const sits on the view rather than the
+# `readonly[Span[int32]]` -- the const sits on the view rather than the
 # element, and the sync param spells the same `std::span<int32_t>`.
-def read_ro_span(s: readonly[Span[Int32]]) -> Iterator[Int32]:  # tpyc: ok
+def read_ro_span(s: readonly[Span[int32]]) -> Iterator[int32]:  # tpyc: ok
     yield s[1]
     yield s[1]
 
 
 # Reads BOTH slots across the suspension: the second pull needs the whole
 # backing array alive, not just the first element.
-def read_pair(s: Span[readonly[Int32]]) -> Iterator[Int32]:  # tpyc: ok
+def read_pair(s: Span[readonly[int32]]) -> Iterator[int32]:  # tpyc: ok
     yield s[0]
     yield s[1]
 
 
-def make_str(n: Int32) -> str:
+def make_str(n: int32) -> str:
     # An OWNED str whose buffer dies at the end of the calling statement.
     return "abcdefghij" * n
 
 
-def make_bytes(n: Int32) -> bytes:
+def make_bytes(n: int32) -> bytes:
     return b"0123456789" * n
 
 
@@ -93,7 +93,7 @@ def head_tail(t: StrView) -> Iterator[str]:  # tpyc: ok
     yield t[len(t) - 4:len(t)]
 
 
-def byte_ends(b: BytesView) -> Iterator[Int32]:  # tpyc: ok
+def byte_ends(b: BytesView) -> Iterator[int32]:  # tpyc: ok
     yield b[0]
     yield b[len(b) - 1]
 
@@ -118,14 +118,14 @@ async def run_head() -> str:
     return await async_head(make_str(2))  # tpyc: ok
 
 
-def count_view(it: Iterator[str]) -> Int32:
+def count_view(it: Iterator[str]) -> int32:
     n = 0
     for v in it:
         n += len(v)
     return n
 
 
-def total(it: Iterator[Int32]) -> Int32:
+def total(it: Iterator[int32]) -> int32:
     n = 0
     for v in it:
         n += v
@@ -134,13 +134,13 @@ def total(it: Iterator[Int32]) -> Int32:
 
 # The str/bytes VIEWS ride the same admission and stay borrowed, unlike the
 # `str`/`bytes` params the frame copies into owned storage.
-def view_lens(t: StrView, b: BytesView) -> Iterator[Int32]:  # tpyc: ok
+def view_lens(t: StrView, b: BytesView) -> Iterator[int32]:  # tpyc: ok
     yield len(t)
     yield len(b)
 
 
 # async def: the write lands across a real suspension.
-async def bump_async(s: Span[Int32]) -> Int32:  # tpyc: ok
+async def bump_async(s: Span[int32]) -> int32:  # tpyc: ok
     s[0] += 1
     await asyncio.sleep(0.0)
     s[1] += 1
@@ -149,12 +149,12 @@ async def bump_async(s: Span[Int32]) -> Int32:  # tpyc: ok
 
 # async METHOD flavour of the same capture.
 class Adder:
-    step: Int32
+    step: int32
 
-    def __init__(self, step: Int32) -> None:
+    def __init__(self, step: int32) -> None:
         self.step = step
 
-    async def add(self, s: Span[Int32]) -> Int32:  # tpyc: ok
+    async def add(self, s: Span[int32]) -> int32:  # tpyc: ok
         s[0] += self.step
         await asyncio.sleep(0.0)
         s[1] += self.step
@@ -164,7 +164,7 @@ class Adder:
 # INLINE await inside a coroutine: the literal's storage is hoisted into THIS
 # frame, not into the suspending block, so the sub-coroutine's view survives
 # the resume.
-async def run_bump() -> Int32:
+async def run_bump() -> int32:
     return await bump_async([7, 8])  # tpyc: ok
 
 
@@ -175,18 +175,18 @@ async def run_bump() -> Int32:
 # end of the calling statement is a wrong answer rather than a stale length.
 
 
-def ends(xs: list[Int32]) -> Iterator[Int32]:  # tpyc: ok
+def ends(xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
     yield xs[0]
     yield xs[len(xs) - 1]
 
 
 class Summer:
-    base: Int32
+    base: int32
 
-    def __init__(self, base: Int32) -> None:
+    def __init__(self, base: int32) -> None:
         self.base = base
 
-    def pair(self, xs: list[Int32]) -> Iterator[Int32]:  # tpyc: ok
+    def pair(self, xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
         yield self.base + xs[0]
         yield self.base + xs[len(xs) - 1]
 
@@ -205,7 +205,7 @@ def outer_for() -> Iterator[str]:
 
 
 # enclosing generator, `for` head, container literal at a `Span` param
-def outer_span() -> Iterator[Int32]:
+def outer_span() -> Iterator[int32]:
     yield 0
     for v in read_pair([5, 6]):  # tpyc: ok
         yield v
@@ -213,7 +213,7 @@ def outer_span() -> Iterator[Int32]:
 
 # enclosing generator, `for` head, comprehension at a FREE generator's
 # container slot: the vector is seated on a field of THIS frame.
-def outer_comp(src: list[Int32]) -> Iterator[Int32]:
+def outer_comp(src: list[int32]) -> Iterator[int32]:
     yield 0
     for v in ends([x * 3 for x in src]):  # tpyc: ok
         yield v
@@ -225,14 +225,14 @@ def outer_comp(src: list[Int32]) -> Iterator[Int32]:
 # second one. The RECEIVER is an rvalue and takes a field of this frame too:
 # `pair` reads `self.base` after each suspension, so a receiver left in the
 # state's `case` block would print garbage from the second pull on.
-def outer_comp_method(src: list[Int32]) -> Iterator[Int32]:
+def outer_comp_method(src: list[int32]) -> Iterator[int32]:
     yield 1
     for v in Summer(100).pair([x * 2 for x in src]):  # tpyc: ok
         yield v
 
 
 # enclosing generator, `for` head, f-string source
-def outer_fstring(n: Int32) -> Iterator[str]:
+def outer_fstring(n: int32) -> Iterator[str]:
     yield "n"
     for v in head_tail(f"val-{n}-tail-pad"):  # tpyc: ok
         yield v
@@ -252,7 +252,7 @@ class Outer:
 
     # enclosing generator METHOD, rvalue RECEIVER: the receiver's own frame
     # field rides beside the `self` capture.
-    def run_recv(self, xs: list[Int32]) -> Iterator[Int32]:
+    def run_recv(self, xs: list[int32]) -> Iterator[int32]:
         yield len(self.prefix)
         for v in Summer(100).pair(xs):  # tpyc: ok
             yield v + len(self.prefix)
@@ -284,7 +284,7 @@ async def outer_task() -> str:
 # destroys its iterator, so the field is free to take the next iteration's
 # argument. Each pull must read THIS iteration's list, across the outer yield
 # in between.
-def outer_loop_for(n: Int32) -> Iterator[Int32]:
+def outer_loop_for(n: int32) -> Iterator[int32]:
     for i in range(n):
         for v in read_pair([i, i + 10]):  # tpyc: ok
             yield v
@@ -293,7 +293,7 @@ def outer_loop_for(n: Int32) -> Iterator[Int32]:
 # enclosing async def, a coroutine handle bound inside a loop and awaited in
 # the same iteration: one name is one slot, so at most one handle is live and
 # the per-site field serves every iteration. The bind crosses a suspension.
-async def outer_loop_bind(n: Int32) -> str:
+async def outer_loop_bind(n: int32) -> str:
     out = ""
     for i in range(n):
         c = async_head(f"val{i}-tailpad{i}")  # tpyc: ok
@@ -314,7 +314,7 @@ async def outer_loop_bind(n: Int32) -> str:
 
 # enclosing async def, `for` head over a generator method: the receiver
 # outlives the outer coroutine's own suspension inside the loop body.
-async def outer_async_recv(src: list[Int32]) -> Int32:
+async def outer_async_recv(src: list[int32]) -> int32:
     await asyncio.sleep(0.0)
     n = 0
     for v in Summer(100).pair(src):  # tpyc: ok
@@ -325,7 +325,7 @@ async def outer_async_recv(src: list[Int32]) -> Int32:
 
 # enclosing async def, the escaping-Task form: the receiver AND the argument of
 # one call each take a field of this frame.
-async def outer_task_recv() -> Int32:
+async def outer_task_recv() -> int32:
     t = asyncio.create_task(Adder(5).add([7, 8]))  # tpyc: ok
     await asyncio.sleep(0.0)
     return await t

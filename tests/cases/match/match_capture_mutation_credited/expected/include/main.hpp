@@ -65,12 +65,12 @@ void main();
 
 // class Cat:
 struct Cat {
-    // hunger: Int32
+    // hunger: int32
     int32_t hunger;
     // tags: list[str]
     std::vector<std::string> tags;
 
-    // def __init__(self, hunger: Int32) -> None:
+    // def __init__(self, hunger: int32) -> None:
     Cat() = default;
     explicit Cat(int32_t hunger);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cat";
@@ -83,12 +83,12 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 
 // class Dog:
 struct Dog {
-    // bones: Int32
+    // bones: int32
     int32_t bones;
     // tags: list[str]
     std::vector<std::string> tags;
 
-    // def __init__(self, bones: Int32) -> None:
+    // def __init__(self, bones: int32) -> None:
     Dog() = default;
     explicit Dog(int32_t bones);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
@@ -101,10 +101,10 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 
 // class Counter:
 struct Counter {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Counter() = default;
     explicit Counter(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
@@ -120,7 +120,7 @@ struct Bag {
     // c: Counter
     Counter c;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Bag() = default;
     explicit Bag(int32_t n);
 
@@ -129,7 +129,7 @@ struct Bag {
     // def bump(self) -> None:
     void bump();
 
-    // def value(self) -> Int32:
+    // def value(self) -> int32:
     int32_t value() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";
 };
@@ -144,7 +144,7 @@ struct Owner {
     // mine: Bag
     Bag mine;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Owner() = default;
     explicit Owner(int32_t n);
 
@@ -157,7 +157,7 @@ struct Owner {
     // def touch(self, other: Bag) -> None:
     void touch(Bag& other);
 
-    // def value(self) -> Int32:
+    // def value(self) -> int32:
     int32_t value() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Owner";
 };
@@ -170,7 +170,7 @@ inline std::ostream& operator<<(std::ostream& os, const Owner& obj) {
 // @dataclass
 // class Slot:
 struct Slot {
-    // n: Int32
+    // n: int32
     int32_t n;
 
     Slot() = default;
@@ -222,16 +222,16 @@ struct UnionHolder {
     // payload: Counter | Cat
     ::tpy::Union<Cat, Counter> payload;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     explicit UnionHolder(int32_t n);
 
     // # the literal BUGS shape: a UNION-typed `self.field` matched with an
     // # `as`-capture whose write is the method's only mutation, so it alone
     // # decides the method's const qualifier
-    // def bump(self, v: Int32) -> None:
+    // def bump(self, v: int32) -> None:
     void bump(int32_t v);
 
-    // def value(self) -> Int32:
+    // def value(self) -> int32:
     int32_t value() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.UnionHolder";
 };
@@ -243,10 +243,10 @@ inline std::ostream& operator<<(std::ostream& os, const UnionHolder& obj) {
 
 // class Kitty(Pet):
 struct Kitty : Pet {
-    // lives: Int32
+    // lives: int32
     int32_t lives;
 
-    // def __init__(self, lives: Int32) -> None:
+    // def __init__(self, lives: int32) -> None:
     Kitty() = default;
     explicit Kitty(int32_t lives);
 
@@ -324,16 +324,16 @@ struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, int32_t> {
 };
 
 
-// def __init__(self, hunger: Int32) -> None:
+// def __init__(self, hunger: int32) -> None:
 inline Cat::Cat(int32_t hunger) : hunger(hunger), tags(std::vector<std::string>{}) {}
 
-// def __init__(self, bones: Int32) -> None:
+// def __init__(self, bones: int32) -> None:
 inline Dog::Dog(int32_t bones) : bones(bones), tags(std::vector<std::string>{}) {}
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Counter::Counter(int32_t n) : n(n) {}
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Bag::Bag(int32_t n) : c(Counter(n)) {}
 
 // # method, `self.field` subject: the write is the method's only mutation,
@@ -351,13 +351,13 @@ inline void Bag::bump() {
     }
 }
 
-// def value(self) -> Int32:
+// def value(self) -> int32:
 inline int32_t Bag::value() const {
     // return self.c.n
     return this->c.n;
 }
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Owner::Owner(int32_t n) : mine(Bag(n)) {}
 
 // # the capture is re-seated between a `self.field` subject and a PARAM
@@ -385,7 +385,7 @@ inline void Owner::touch(Bag& other) {
     }
 }
 
-// def value(self) -> Int32:
+// def value(self) -> int32:
 inline int32_t Owner::value() const {
     // return self.mine.c.n
     return this->mine.c.n;
@@ -411,13 +411,13 @@ inline std::string Pair::__repr__() const {
     return std::format("Pair(left={}, right={})", ::tpy::repr_of(this->left), ::tpy::repr_of(this->right));
 }
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline UnionHolder::UnionHolder(int32_t n) : payload(Counter(n)) {}
 
 // # the literal BUGS shape: a UNION-typed `self.field` matched with an
 // # `as`-capture whose write is the method's only mutation, so it alone
 // # decides the method's const qualifier
-// def bump(self, v: Int32) -> None:
+// def bump(self, v: int32) -> None:
 inline void UnionHolder::bump(int32_t v) {
     // match self.payload:
     auto& __match_subject_1 = this->payload;
@@ -439,7 +439,7 @@ inline void UnionHolder::bump(int32_t v) {
     }
 }
 
-// def value(self) -> Int32:
+// def value(self) -> int32:
 inline int32_t UnionHolder::value() const {
     // match self.payload:
     auto& __match_subject_1 = this->payload;
@@ -462,7 +462,7 @@ inline int32_t UnionHolder::value() const {
     ::std::unreachable();
 }
 
-// def __init__(self, lives: Int32) -> None:
+// def __init__(self, lives: int32) -> None:
 inline Kitty::Kitty(int32_t lives) : lives(lives) {}
 
 // def bump(self) -> None:

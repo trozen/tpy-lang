@@ -1,8 +1,8 @@
 from typing import Any
-from tpy import Int32
+from tpy import int32
 class Node:
-    v: Int32
-    def __init__(self, v: Int32) -> None:
+    v: int32
+    def __init__(self, v: int32) -> None:
         self.v = v
 def a1() -> None:
     xs = [1, 2]
@@ -20,6 +20,6 @@ def a4() -> None:
     print(a is None)
 def a5() -> None:
     a: Any = [1, 2]
-    xs: list[Int32] = a
+    xs: list[int32] = a
     print(len(xs))
 a1(); a2(); a3(); a4(); a5()

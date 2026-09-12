@@ -1,1 +1,1 @@
-main.py:8: error: parameter 'xs': type 'list[Int32]' is not representable in the C ABI; use Ptr[T] plus an explicit length parameter
+main.py:8: error: parameter 'xs': type 'list[int32]' is not representable in the C ABI; use Ptr[T] plus an explicit length parameter

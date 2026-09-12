@@ -1,12 +1,12 @@
 import asyncio
-from tpy import Int32
+from tpy import int32
 from asyncio import Task
 
-async def sub() -> Int32:
-    return Int32(42)
+async def sub() -> int32:
+    return int32(42)
 
 async def main_coro() -> None:
-    t: Task[Int32] = asyncio.create_task(sub())
+    t: Task[int32] = asyncio.create_task(sub())
     val = await t
     print(val)
 

@@ -4,16 +4,16 @@
 # never MOVE through the borrow pointer and gut the caller's object: b reading
 # 5 after the call is the regression lock (a destructive move would leave it
 # moved-from/empty).
-from tpy import Int32, Own, copy
+from tpy import int32, Own, copy
 
 
 class Box:
-    val: Int32
-    def __init__(self, v: Int32) -> None:
+    val: int32
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 
-def f(b: Box) -> tuple[Own[Box], Int32]:
+def f(b: Box) -> tuple[Own[Box], int32]:
     pair = (copy(b), 0)   # tpyc: ok
     return pair
 

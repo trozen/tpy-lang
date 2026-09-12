@@ -2,21 +2,21 @@
 # `this` pointer (an alias into the origin thread's object), never a copy,
 # so it must not pass a Send[Callable] boundary.
 from typing import Callable
-from tpy import Int32, Send
+from tpy import int32, Send
 
 
-def take(f: Send[Callable[[], Int32]]) -> Int32:
+def take(f: Send[Callable[[], int32]]) -> int32:
     return f()
 
 
 class C:
-    n: Int32
+    n: int32
 
     def __init__(self) -> None:
         self.n = 3
 
-    def leak(self) -> Int32:
-        return take(lambda: self.n)  # tpyc: error(/'Callable\[\[\], Int32\]' is not Send/)
+    def leak(self) -> int32:
+        return take(lambda: self.n)  # tpyc: error(/'Callable\[\[\], int32\]' is not Send/)
 
 
 def main() -> None:

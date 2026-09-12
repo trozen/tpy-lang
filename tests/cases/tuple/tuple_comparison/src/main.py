@@ -1,10 +1,10 @@
 # Tuple equality and inequality comparison
-from tpy import Int32
+from tpy import int32
 
 def main() -> None:
-    a = (Int32(1), "hello")
-    b = (Int32(1), "hello")
-    c = (Int32(2), "world")
+    a = (int32(1), "hello")
+    b = (int32(1), "hello")
+    c = (int32(2), "world")
 
     print(a == b)
     print(a != b)

@@ -20,15 +20,15 @@ void main();
 
 // class Adder:
 struct Adder {
-    // base: Int32
+    // base: int32
     int32_t base;
 
-    // def __init__(self, base: Int32) -> None:
+    // def __init__(self, base: int32) -> None:
     Adder() = default;
     explicit Adder(int32_t base);
 
     // @overload
-    // def __call__(self, x: Int32) -> Int32: ...
+    // def __call__(self, x: int32) -> int32: ...
     int32_t __call__(int32_t x) {
         int32_t y = 0;
         // return self.base + x + y
@@ -36,7 +36,7 @@ struct Adder {
     }
 
     // @overload
-    // def __call__(self, x: Int32, y: Int32) -> Int32: ...
+    // def __call__(self, x: int32, y: int32) -> int32: ...
     int32_t __call__(int32_t x, int32_t y) {
         // return self.base + x + y
         return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(this->base, x)), y));
@@ -58,9 +58,9 @@ inline std::ostream& operator<<(std::ostream& os, const Adder& obj) {
 }
 
 
-// def __init__(self, base: Int32) -> None:
+// def __init__(self, base: int32) -> None:
 inline Adder::Adder(int32_t base) : base(base) {}
-// def use(f: Fn[[Int32], Int32]) -> None:
+// def use(f: Fn[[int32], int32]) -> None:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<int32_t>;

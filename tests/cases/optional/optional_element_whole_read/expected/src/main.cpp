@@ -4,23 +4,23 @@
 namespace tpyapp::main {
 
 
-// def scalars(x: Int32 | None) -> Int32:
+// def scalars(x: int32 | None) -> int32:
 int32_t scalars(std::optional<int32_t> x) {
-    // xs = [x]                # tpyc: ok -- an `Int32 | None` element
+    // xs = [x]                # tpyc: ok -- an `int32 | None` element
     std::array<std::optional<int32_t>, 1> xs = {x};
     // return len(xs)
     return ::tpy::__len__(xs);
 }
 
-// def spans(sp: Span[Int32] | None) -> Int32:
+// def spans(sp: Span[int32] | None) -> int32:
 int32_t spans(std::optional<std::span<int32_t>> sp) {
-    // xs = [sp]               # tpyc: ok -- a `Span[Int32] | None` element
+    // xs = [sp]               # tpyc: ok -- a `Span[int32] | None` element
     std::array<std::optional<std::span<int32_t>>, 1> xs = {sp};
     // return len(xs)
     return ::tpy::__len__(xs);
 }
 
-// def pairs(tp: tuple[Int32, Int32] | None) -> Int32:
+// def pairs(tp: tuple[int32, int32] | None) -> int32:
 int32_t pairs(std::optional<std::tuple<int32_t, int32_t>> tp) {
     // xs = [tp]               # tpyc: ok -- a value-tuple Optional element
     std::array<std::optional<std::tuple<int32_t, int32_t>>, 1> xs = {tp};
@@ -30,9 +30,9 @@ int32_t pairs(std::optional<std::tuple<int32_t, int32_t>> tp) {
 
 // def main() -> None:
 void main() {
-    // data: list[Int32] = [1, 2, 3]
+    // data: list[int32] = [1, 2, 3]
     std::vector<int32_t> data = {1, 2, 3};
-    // sp: Span[Int32] = data
+    // sp: Span[int32] = data
     std::span<int32_t> sp = ::tpy::as_mut_span(data);
     // print(scalars(7), scalars(None))
     std::cout << scalars(7) << " " << scalars(std::nullopt) << "\n";

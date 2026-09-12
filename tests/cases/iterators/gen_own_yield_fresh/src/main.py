@@ -6,7 +6,7 @@
 # Copy semantics are the point of those sections, so each mutates its source
 # after the yield and shows the yielded value unchanged.
 from typing import Iterator
-from tpy import Own, Int32, copy
+from tpy import Own, int32, copy
 
 
 class Node:
@@ -21,11 +21,11 @@ def boxes(n: int) -> Iterator[Own[Node]]:
         yield Node(i)
 
 
-def mk(v: Int32) -> Own[Node]:
+def mk(v: int32) -> Own[Node]:
     return Node(v)
 
 
-def mk_row(v: Int32) -> Own[list[Int32]]:
+def mk_row(v: int32) -> Own[list[int32]]:
     return [v]
 
 
@@ -39,7 +39,7 @@ def fresh_records(src: list[Node]) -> Iterator[Own[Node]]:
 
 # `Own[CONTAINER]` slot -- the same admission over the reference axis's
 # container half, not just records.
-def fresh_rows(src: list[list[Int32]]) -> Iterator[Own[list[Int32]]]:
+def fresh_rows(src: list[list[int32]]) -> Iterator[Own[list[int32]]]:
     for r in src:
         yield copy(r)  # tpyc: ok
         yield mk_row(len(r))  # tpyc: ok
@@ -73,7 +73,7 @@ def main() -> None:
     src[0].val = 100
     print("free", kept, src[0].val)
 
-    rows: list[list[Int32]] = [[1, 2]]
+    rows: list[list[int32]] = [[1, 2]]
     kept_rows = []
     for r in fresh_rows(rows):
         kept_rows.append(len(r))

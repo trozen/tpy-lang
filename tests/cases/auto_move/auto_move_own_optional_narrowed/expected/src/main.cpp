@@ -4,14 +4,14 @@
 namespace tpyapp::main {
 
 
-// def use_optional(p: Own[Point] | None) -> Int32:
+// def use_optional(p: Own[Point] | None) -> int32:
 int32_t use_optional(std::optional<Point> p) {
     // if p is not None:
     if ((p.has_value())) {
         // return p.x
         return (*p).x;
     }
-    // return Int32(0)
+    // return int32(0)
     return 0;
 }
 
@@ -19,9 +19,9 @@ int32_t use_optional(std::optional<Point> p) {
 void main() {
     // pt = Point()
     Point pt = Point();
-    // pt.x = Int32(42)
+    // pt.x = int32(42)
     pt.x = 42;
-    // pt.y = Int32(7)
+    // pt.y = int32(7)
     pt.y = 7;
     // print(use_optional(pt))
     std::cout << use_optional(std::move(pt)) << "\n";

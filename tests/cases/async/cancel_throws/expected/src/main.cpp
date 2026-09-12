@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def yield_once() -> Int32:
+// async def yield_once() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_yield_once::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -18,7 +18,7 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return Int32(99)
+        // return int32(99)
         __state = S_DONE;
         int32_t __tpy_async_ret = 99;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -29,14 +29,14 @@ namespace tpyapp::main {
 }
 
 
-// async def yield_once() -> Int32:
+// async def yield_once() -> int32:
 __coro_yield_once yield_once() {
     return __coro_yield_once();
 }
 
 // def main() -> None:
 void main() {
-    // t: Task[Int32] = task_from_coro(yield_once())
+    // t: Task[int32] = task_from_coro(yield_once())
     ::tpystd::asyncio::_executor::Task<int32_t> t = ::tpystd::asyncio::_executor::task_from_coro<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(yield_once()));
     // if poll_once(t).is_pending():
     if (::tpystd::coro::poll_once<int32_t>(t).is_pending()) {

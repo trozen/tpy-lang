@@ -40,7 +40,7 @@ void main() {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
-    // counter = Mutex.new(Int32(5))
+    // counter = Mutex.new(int32(5))
     ::tpystd::tpy::sync::Mutex<int32_t> counter = ::tpystd::tpy::sync::Mutex<int32_t>::new_(5);
     // with counter.lock() as c:
     auto __ctx_3 = counter.lock();

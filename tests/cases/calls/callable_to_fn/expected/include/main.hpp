@@ -21,10 +21,10 @@ void main();
 
 // class Handler:
 struct Handler {
-    // cb: Callable[[Int32], Int32]
+    // cb: Callable[[int32], int32]
     std::function<int32_t(int32_t)> cb;
 
-    // def __init__(self, cb: Callable[[Int32], Int32]) -> None:
+    // def __init__(self, cb: Callable[[int32], int32]) -> None:
     explicit Handler(std::function<int32_t(int32_t)> cb);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Handler";
 };
@@ -35,9 +35,9 @@ inline std::ostream& operator<<(std::ostream& os, const Handler& obj) {
 }
 
 
-// def __init__(self, cb: Callable[[Int32], Int32]) -> None:
+// def __init__(self, cb: Callable[[int32], int32]) -> None:
 inline Handler::Handler(std::function<int32_t(int32_t)> cb) : cb(cb) {}
-// def apply(f: Fn[[Int32], Int32], x: Int32) -> Int32:
+// def apply(f: Fn[[int32], int32], x: int32) -> int32:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<int32_t>;

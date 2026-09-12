@@ -3,10 +3,10 @@
 # the same clean diagnostic as mutual recursion (the topo sort keeps the
 # self-edge, so the cycle is detected) rather than a raw incomplete-type error.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
-async def f(n: Int32) -> Int32:  # tpyc: error(/recursive coroutine embedding/)
+async def f(n: int32) -> int32:  # tpyc: error(/recursive coroutine embedding/)
     if n <= 0:
         return 0
     await asyncio.sleep(0)

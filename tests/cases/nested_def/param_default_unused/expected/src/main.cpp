@@ -6,12 +6,12 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // def scale(x: Int32 = 1) -> Int32:  # tpyc: warning(/default value for parameter 'x'.*is ignored/)
+    // def scale(x: int32 = 1) -> int32:  # tpyc: warning(/default value for parameter 'x'.*is ignored/)
     auto scale = [](int32_t x) -> int32_t {
         // return x * 3
         return (::tpy::mul_check<int32_t>(x, 3));
     };
-    // def label(prefix: str, n: Int32 = 0) -> str:  # tpyc: warning(/default value for parameter 'n'.*is ignored/)
+    // def label(prefix: str, n: int32 = 0) -> str:  # tpyc: warning(/default value for parameter 'n'.*is ignored/)
     auto label = [](std::string_view prefix, int32_t n) -> std::string {
         // return prefix + str(n)
         return (::tpy::str_concat(prefix, ::tpy::fixed_to_str<int32_t>(n)));

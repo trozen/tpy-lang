@@ -19,7 +19,7 @@ void main();
 struct Buf {
     // data: bytearray
     ::tpy::ByteArray data;
-    // nums: list[Int32]
+    // nums: list[int32]
     std::vector<int32_t> nums;
 
     // def __init__(self, data: Own[bytearray]) -> None:
@@ -34,11 +34,11 @@ struct Buf {
     const ::tpy::ByteArray& view() const;
 
     // @property
-    // def rows(self) -> list[Int32]:
+    // def rows(self) -> list[int32]:
     std::vector<int32_t>& rows();
 
     // @property
-    // def rows(self) -> list[Int32]:
+    // def rows(self) -> list[int32]:
     const std::vector<int32_t>& rows() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Buf";
 };
@@ -50,7 +50,7 @@ inline std::ostream& operator<<(std::ostream& os, const Buf& obj) {
 
 // class Tagged(bytearray):
 struct Tagged : ::tpy::ByteArray {
-    // tag: Int32
+    // tag: int32
     int32_t tag;
 
     // def __init__(self) -> None:
@@ -63,9 +63,9 @@ inline std::ostream& operator<<(std::ostream& os, const Tagged& obj) {
     return os;
 }
 
-// class TaggedList(list[Int32]):
+// class TaggedList(list[int32]):
 struct TaggedList : std::vector<int32_t> {
-    // tag: Int32
+    // tag: int32
     int32_t tag;
 
     // def __init__(self) -> None:
@@ -97,14 +97,14 @@ inline const ::tpy::ByteArray& Buf::view() const {
 }
 
 // @property
-// def rows(self) -> list[Int32]:
+// def rows(self) -> list[int32]:
 inline std::vector<int32_t>& Buf::rows() {
     // return self.nums
     return this->nums;
 }
 
 // @property
-// def rows(self) -> list[Int32]:
+// def rows(self) -> list[int32]:
 inline const std::vector<int32_t>& Buf::rows() const {
     // return self.nums
     return this->nums;

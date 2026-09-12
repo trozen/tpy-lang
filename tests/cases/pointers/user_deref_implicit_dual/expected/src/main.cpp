@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def read_only(r: Ref) -> Int32:
+// def read_only(r: Ref) -> int32:
 int32_t read_only(const Ref& r) {
     // # Const path: Ref is a borrow; __deref__() const overload is used.
     // return r.x + r.y
@@ -23,9 +23,9 @@ void main() {
     // print(r.y)            # 20
     std::cout << r.__deref__().y << "\n";
     // # Mutate through mutable __deref__ -- requires the non-const overload.
-    // r.x = Int32(99)
+    // r.x = int32(99)
     r.__deref__().x = 99;
-    // r.y = Int32(88)
+    // r.y = int32(88)
     r.__deref__().y = 88;
     // print(r.x)            # 99
     std::cout << r.__deref__().x << "\n";

@@ -3,7 +3,7 @@
 # lives in the defining module's glue, so the setter here has nothing to
 # reference.
 # tpy: ext_module
-from tpy import Int64
+from tpy import int64
 from tpy.extern import export
 from enum_mod import Color
 
@@ -17,5 +17,5 @@ class Bad(Exception):
 
 
 @export
-def f(n: Int64) -> Int64:
+def f(n: int64) -> int64:
     return n

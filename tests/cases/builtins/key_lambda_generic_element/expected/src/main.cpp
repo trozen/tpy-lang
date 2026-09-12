@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // ps: list[tuple[str, Int32]] = [("a", 3), ("b", 1), ("c", 2)]
+    // ps: list[tuple[str, int32]] = [("a", 3), ("b", 1), ("c", 2)]
     std::vector<std::tuple<std::string, int32_t>> ps = {std::tuple<std::string, int32_t>{"a", 3}, std::tuple<std::string, int32_t>{"b", 1}, std::tuple<std::string, int32_t>{"c", 2}};
     // for k, n in ranked(ps):
     auto __obj_0 = ranked<std::string>(ps);
@@ -21,7 +21,7 @@ void main() {
         // print(k, n)
         std::cout << k << " " << n << "\n";
     }
-    // ns: list[tuple[Int32, str]] = [(1, "c"), (2, "a"), (3, "b")]
+    // ns: list[tuple[int32, str]] = [(1, "c"), (2, "a"), (3, "b")]
     std::vector<std::tuple<int32_t, std::string>> ns = {std::tuple<int32_t, std::string>{1, "c"}, std::tuple<int32_t, std::string>{2, "a"}, std::tuple<int32_t, std::string>{3, "b"}};
     // for nm, s in by_name(ns):
     auto __obj_1 = by_name<int32_t>(ns);

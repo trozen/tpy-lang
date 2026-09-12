@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def process(rows: list[tuple[Int32, Item]]) -> Iterator[Int32]:  # tpyc: ok
+// def process(rows: list[tuple[int32, Item]]) -> Iterator[int32]:  # tpyc: ok
 std::expected<int32_t, ::tpy::StopIteration> __gen_process::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -41,14 +41,14 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_process::__next__() {
 }
 
 
-// def process(rows: list[tuple[Int32, Item]]) -> Iterator[Int32]:  # tpyc: ok
+// def process(rows: list[tuple[int32, Item]]) -> Iterator[int32]:  # tpyc: ok
 __gen_process process(std::vector<std::tuple<int32_t, Item>>& rows) {
     return __gen_process(rows);
 }
 
 // def main() -> None:
 void main() {
-    // rows: list[tuple[Int32, Item]] = [(1, Item(0)), (2, Item(0))]
+    // rows: list[tuple[int32, Item]] = [(1, Item(0)), (2, Item(0))]
     std::vector<std::tuple<int32_t, Item>> rows = {::tpy::tuple_to_storage<std::tuple<int32_t, Item>>(std::tuple<int32_t, Item>{1, Item(0)}), ::tpy::tuple_to_storage<std::tuple<int32_t, Item>>(std::tuple<int32_t, Item>{2, Item(0)})};
     // for v in process(rows):
     {

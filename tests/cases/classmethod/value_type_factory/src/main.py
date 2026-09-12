@@ -2,14 +2,14 @@
 # is copied out like any other value type.
 from typing import Self
 
-from tpy import Int32, ValueType
+from tpy import int32, ValueType
 
 
 class Vec2(ValueType):
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32):
+    def __init__(self, x: int32, y: int32):
         self.x = x
         self.y = y
 
@@ -18,7 +18,7 @@ class Vec2(ValueType):
         return cls(0, 0)
 
     @classmethod
-    def diagonal(cls, n: Int32) -> Self:
+    def diagonal(cls, n: int32) -> Self:
         return cls(n, n)
 
 

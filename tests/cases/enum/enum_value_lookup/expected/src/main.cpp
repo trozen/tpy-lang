@@ -46,7 +46,7 @@ std::optional<::tpyapp::main::Color> EnumUtil<::tpyapp::main::Color>::try_parse(
 namespace tpyapp::main {
 
 
-// def lookup(v: Int32) -> Color:
+// def lookup(v: int32) -> Color:
 Color lookup(int32_t v) {
     // return Color(v)
     return ::tpy::EnumUtil<Color>::from_value(v);

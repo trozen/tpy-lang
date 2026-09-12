@@ -1,11 +1,11 @@
 # Negative test: when the body mutates through the slot, inference does
 # not fire and slots stay non-const so the mutation compiles.
-from tpy import Int32
+from tpy import int32
 
 
 class T:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def make(val: Int32) -> Own[Handle]:
+// def make(val: int32) -> Own[Handle]:
 Handle make(int32_t val) {
     // h = Handle()
     Handle h = Handle();

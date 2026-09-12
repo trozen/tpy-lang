@@ -48,7 +48,7 @@ void main();
 struct Shape {
     // tint: Color = Color.RED
     Color tint = Color::RED;
-    // count: Int32 = 0
+    // count: int32 = 0
     int32_t count = 0;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.Shape";

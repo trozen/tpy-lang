@@ -97,10 +97,10 @@ void main();
 
 // class Cell:
 struct Cell {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Cell() = default;
     explicit Cell(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cell";
@@ -113,10 +113,10 @@ inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
 
 // class Tag:
 struct Tag {
-    // t: Int32
+    // t: int32
     int32_t t;
 
-    // def __init__(self, t: Int32) -> None:
+    // def __init__(self, t: int32) -> None:
     Tag() = default;
     explicit Tag(int32_t t);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Tag";
@@ -191,7 +191,7 @@ inline std::ostream& operator<<(std::ostream& os, const HolderTwin& obj) {
 struct Guard {
 
 
-    // def __enter__(self) -> Int32:
+    // def __enter__(self) -> int32:
     int32_t __enter__() const;
 
     // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
@@ -283,7 +283,7 @@ struct Shadowed {
     Shadowed() = default;
     explicit Shadowed(::tpy::readonly_form_t<T> v) : item(v) {}
 
-    // def keep[T: ValueType](self, v: T) -> Int32:
+    // def keep[T: ValueType](self, v: T) -> int32:
     int32_t keep(::tpy::readonly_form_t<T> v) const
       requires ::tpy::ValueType<T> {
         // xs: list[T] = []
@@ -355,7 +355,7 @@ struct __coro_async_slot {
         return os << "<coroutine async_slot>";
     }
 };
-// async def async_slot[T](v: T) -> Int32:
+// async def async_slot[T](v: T) -> int32:
 template <typename T>
 ::tpystd::tpy::Poll<int32_t> __coro_async_slot<T>::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
@@ -376,7 +376,7 @@ template <typename T>
 }
 
 
-// async def async_slot[T](v: T) -> Int32:
+// async def async_slot[T](v: T) -> int32:
 template <typename T>
 __coro_async_slot<T> async_slot(::tpy::param_val_or_ref_t<T> v) {
     return __coro_async_slot<T>(v);
@@ -433,7 +433,7 @@ struct __gen_gen_slot : public ::tpy::next_iter_mixin<__gen_gen_slot<T>, int32_t
         return os << "<generator gen_slot>";
     }
 };
-// def gen_slot[T](v: T) -> Iterator[Int32]:
+// def gen_slot[T](v: T) -> Iterator[int32]:
 template <typename T>
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_slot<T>::__next__() {
     while (true) switch (__state) {
@@ -456,17 +456,17 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_slot<T>::__next__() {
 }
 
 
-// def gen_slot[T](v: T) -> Iterator[Int32]:
+// def gen_slot[T](v: T) -> Iterator[int32]:
 template <typename T>
 __gen_gen_slot<T> gen_slot(::tpy::param_val_or_ref_t<T> v) {
     return __gen_gen_slot<T>(v);
 }
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Cell::Cell(int32_t n) : n(n) {}
 
-// def __init__(self, t: Int32) -> None:
+// def __init__(self, t: int32) -> None:
 inline Tag::Tag(int32_t t) : t(t) {}
 
 // def __init__(self, v: Cell) -> None:
@@ -478,7 +478,7 @@ inline void HolderTwin::store(const Cell& v) {
     this->item = v;
 }
 
-// def __enter__(self) -> Int32:
+// def __enter__(self) -> int32:
 inline int32_t Guard::__enter__() const {
     // return 1
     return 1;
@@ -494,7 +494,7 @@ inline GenLeaf::GenLeaf(const Cell& v) : GenMid<Cell>(v) {}
 // # free function, container-element slot. `diag.txt` is the subject of every
 // # section: nothing for the value instantiation, `copies X into <sink>` for the
 // # reference one, on the BODY line rather than at the call that decided it.
-// def free_slot[T](v: T) -> Int32:
+// def free_slot[T](v: T) -> int32:
 template<typename T>
 int32_t free_slot(::tpy::param_val_or_ref_t<T> v) {
     // xs: list[T] = []
@@ -513,7 +513,7 @@ template<typename T>
 }
 // # two distinct reference instantiations of ONE body: still ONE line, because
 // # the contract is the declaration's and not any call's
-// def two_instantiations[T](v: T) -> Int32:
+// def two_instantiations[T](v: T) -> int32:
 template<typename T>
 int32_t two_instantiations(::tpy::param_val_or_ref_t<T> v) {
     // xs: list[T] = []
@@ -524,7 +524,7 @@ int32_t two_instantiations(::tpy::param_val_or_ref_t<T> v) {
     return ::tpy::__len__(xs);
 }
 // # closure body
-// def closure_slot[T](v: T) -> Int32:
+// def closure_slot[T](v: T) -> int32:
 template<typename T>
 int32_t closure_slot(::tpy::param_val_or_ref_t<T> v) {
     // xs: list[T] = []
@@ -540,7 +540,7 @@ int32_t closure_slot(::tpy::param_val_or_ref_t<T> v) {
     return ::tpy::__len__(xs);
 }
 // # context-manager body
-// def with_slot[T](v: T) -> Int32:
+// def with_slot[T](v: T) -> int32:
 template<typename T>
 int32_t with_slot(::tpy::param_val_or_ref_t<T> v) {
     // xs: list[T] = []
@@ -565,7 +565,7 @@ int32_t with_slot(::tpy::param_val_or_ref_t<T> v) {
     return (::tpy::add_check<int32_t>(::tpy::__len__(xs), g));
 }
 // # try / finally body
-// def try_slot[T](v: T) -> Int32:
+// def try_slot[T](v: T) -> int32:
 template<typename T>
 int32_t try_slot(::tpy::param_val_or_ref_t<T> v) {
     // xs: list[T] = []
@@ -587,7 +587,7 @@ int32_t try_slot(::tpy::param_val_or_ref_t<T> v) {
     return ::tpy::__len__(xs);
 }
 // # match arm
-// def match_slot[T](v: T, tag: Int32) -> Int32:
+// def match_slot[T](v: T, tag: int32) -> int32:
 template<typename T>
 int32_t match_slot(::tpy::param_val_or_ref_t<T> v, int32_t tag) {
     // xs: list[T] = []
@@ -612,7 +612,7 @@ int32_t match_slot(::tpy::param_val_or_ref_t<T> v, int32_t tag) {
 }
 // # @error_return body
 // @error_return(Missing)
-// def er_slot[T](v: T) -> Int32:
+// def er_slot[T](v: T) -> int32:
 template<typename T>
 std::expected<int32_t, Missing> er_slot(::tpy::param_val_or_ref_t<T> v) {
     // xs: list[T] = []
@@ -623,7 +623,7 @@ std::expected<int32_t, Missing> er_slot(::tpy::param_val_or_ref_t<T> v) {
     return ::tpy::__len__(xs);
 }
 // # transitive forward: only `outer` knows U, only `inner` carries the obligation
-// def inner_fwd[T](v: T) -> Int32:
+// def inner_fwd[T](v: T) -> int32:
 template<typename T>
 int32_t inner_fwd(::tpy::param_val_or_ref_t<T> v) {
     // xs: list[T] = []
@@ -633,7 +633,7 @@ int32_t inner_fwd(::tpy::param_val_or_ref_t<T> v) {
     // return len(xs)
     return ::tpy::__len__(xs);
 }
-// def outer_fwd[U](v: U) -> Int32:
+// def outer_fwd[U](v: U) -> int32:
 template<typename U>
 int32_t outer_fwd(::tpy::param_val_or_ref_t<U> v) {
     // return inner_fwd(v)  # tpyc: ok
@@ -642,7 +642,7 @@ int32_t outer_fwd(::tpy::param_val_or_ref_t<U> v) {
 // # SILENCER 1: `T: ValueType` -- a reference-type copy cannot happen there, so
 // # there is nothing to declare. (A `T | None` field under the same bound would
 // # say the same thing, but its member write is a lowering reject.)
-// def value_bound[T: ValueType](v: T) -> Int32:
+// def value_bound[T: ValueType](v: T) -> int32:
 template<::tpy::ValueType T>
 int32_t value_bound(::tpy::param_val_or_ref_t<T> v) {
     // xs: list[T] = []
@@ -658,7 +658,7 @@ int32_t value_bound(::tpy::param_val_or_ref_t<T> v) {
 // # lowers at an owning slot: a `T | None` field write rejects at
 // # `assign.field_write_shape` and a `tuple[.., T]` one at
 // # `ctor.mil_field.tuple.name`, so the case pins the shape that does.)
-// def value_bound_readonly[T: ValueType](v: readonly[T]) -> Int32:
+// def value_bound_readonly[T: ValueType](v: readonly[T]) -> int32:
 template<::tpy::ValueType T>
 int32_t value_bound_readonly(::tpy::readonly_form_t<T> v) {
     // xs: list[T] = []
@@ -668,7 +668,7 @@ int32_t value_bound_readonly(::tpy::readonly_form_t<T> v) {
     // return len(xs)
     return ::tpy::__len__(xs);
 }
-// def boxed_bound[T: ValueType](v: GBox[T]) -> Int32:
+// def boxed_bound[T: ValueType](v: GBox[T]) -> int32:
 template<::tpy::ValueType T>
 int32_t boxed_bound(const GBox<T>& v) {
     // xs: list[GBox[T]] = []
@@ -681,7 +681,7 @@ int32_t boxed_bound(const GBox<T>& v) {
 // # container-conversion ELEMENTS, tuple-nested: `tuple[str, T]` is a value type
 // # whose T is not, so the copy question has to be asked recursively -- the
 // # whole-shape `is_value_type()` would call this silent.
-// def elems_ctor[T](pairs: list[tuple[str, T]]) -> Int32:
+// def elems_ctor[T](pairs: list[tuple[str, T]]) -> int32:
 template<typename T>
 int32_t elems_ctor(const std::vector<std::tuple<std::string, T>>& pairs) {
     // d = dict(pairs)  # tpyc: warning(/may copy tuple\[str, T\] elements/)
@@ -690,7 +690,7 @@ int32_t elems_ctor(const std::vector<std::tuple<std::string, T>>& pairs) {
     return ::tpy::__len__(d);
 }
 // # the same element sink at the other three spellings
-// def elems_list[T](xs: list[T]) -> Int32:
+// def elems_list[T](xs: list[T]) -> int32:
 template<typename T>
 int32_t elems_list(const std::vector<T>& xs) {
     // ys = list(xs)  # tpyc: warning(/may copy T elements/)
@@ -698,7 +698,7 @@ int32_t elems_list(const std::vector<T>& xs) {
     // return len(ys)
     return ::tpy::__len__(ys);
 }
-// def elems_iadd[T](xs: list[T], ys: list[T]) -> Int32:
+// def elems_iadd[T](xs: list[T], ys: list[T]) -> int32:
 template<typename T>
 int32_t elems_iadd(std::vector<T>& xs, const std::vector<T>& ys) {
     // xs += ys  # tpyc: warning(/may copy T elements/)
@@ -706,7 +706,7 @@ int32_t elems_iadd(std::vector<T>& xs, const std::vector<T>& ys) {
     // return len(xs)
     return ::tpy::__len__(xs);
 }
-// def elems_update[T](a: dict[str, T], b: dict[str, T]) -> Int32:
+// def elems_update[T](a: dict[str, T], b: dict[str, T]) -> int32:
 template<typename T>
 int32_t elems_update(::tpy::ordered_map<std::string, T>& a, ::tpy::ordered_map<std::string, T>& b) {
     // a.update(b)  # tpyc: warning(/may copy T elements/)
@@ -715,7 +715,7 @@ int32_t elems_update(::tpy::ordered_map<std::string, T>& a, ::tpy::ordered_map<s
     return ::tpy::__len__(a);
 }
 // # subscript assign: the container dest, distinct from the field one
-// def subscript_slot[T](xs: list[T], v: T) -> Int32:
+// def subscript_slot[T](xs: list[T], v: T) -> int32:
 template<typename T>
 int32_t subscript_slot(std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v) {
     // xs[0] = v  # tpyc: warning(/may copy T into container/)
@@ -726,7 +726,7 @@ int32_t subscript_slot(std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v) {
 // # instantiated ONLY at a value type: the contract is the body's, so the line
 // # stands -- this is the accepted divergence from the monomorphic twin, which
 // # would report nothing at all here
-// def value_only[T](v: T) -> Int32:
+// def value_only[T](v: T) -> int32:
 template<typename T>
 int32_t value_only(::tpy::param_val_or_ref_t<T> v) {
     // xs: list[T] = []
@@ -738,7 +738,7 @@ int32_t value_only(::tpy::param_val_or_ref_t<T> v) {
 }
 // # never instantiated: the point of a DECLARATION-time contract -- a library
 // # generic warns its author with no call site anywhere
-// def never_used[T](v: T) -> Int32:
+// def never_used[T](v: T) -> int32:
 template<typename T>
 int32_t never_used(::tpy::param_val_or_ref_t<T> v) {
     // xs: list[T] = []
@@ -750,7 +750,7 @@ int32_t never_used(::tpy::param_val_or_ref_t<T> v) {
 }
 // # `T: Copyable` does NOT silence: copyable is TPy's default, so the bound only
 // # rules out a non-copyable payload -- it does not say a copy was intended
-// def bounded_copyable[T: Copyable](v: T) -> Int32:
+// def bounded_copyable[T: Copyable](v: T) -> int32:
 template<::tpy::Copyable T>
 int32_t bounded_copyable(::tpy::param_val_or_ref_t<T> v) {
     // xs: list[T] = []
@@ -761,7 +761,7 @@ int32_t bounded_copyable(::tpy::param_val_or_ref_t<T> v) {
     return ::tpy::__len__(xs);
 }
 // # SILENCER 2: `copy()` at the slot is the author saying the copy is intended
-// def hatched[T](v: T) -> Int32:
+// def hatched[T](v: T) -> int32:
 template<typename T>
 int32_t hatched(::tpy::param_val_or_ref_t<T> v) {
     // xs: list[T] = []

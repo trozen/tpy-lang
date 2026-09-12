@@ -2,41 +2,41 @@
 # `return None` (materialized by sema), in sync, owned-record, and
 # async forms alike.
 import asyncio
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
-def find(n: Int32) -> Int32 | None:
+def find(n: int32) -> int32 | None:
     if n > 0:
         return n * 2
 
 
-def pick(n: Int32) -> Own[Point | None]:
+def pick(n: int32) -> Own[Point | None]:
     if n > 0:
         return Point(n)
 
 
 class Tag:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
-def choose(p: Point, t: Tag, flag: Int32) -> Point | Tag | None:
+def choose(p: Point, t: Tag, flag: int32) -> Point | Tag | None:
     if flag == 1:
         return p
     if flag == 2:
         return t
 
 
-async def afind(n: Int32) -> Int32 | None:
+async def afind(n: int32) -> int32 | None:
     await asyncio.sleep(0)
     if n > 0:
         return n * 3

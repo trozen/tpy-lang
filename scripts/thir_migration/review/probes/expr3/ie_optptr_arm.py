@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 class N:
-    v: Int32
-    def __init__(self, v: Int32) -> None:
+    v: int32
+    def __init__(self, v: int32) -> None:
         self.v = v
 def main() -> None:
     ns = [N(1), N(2)]

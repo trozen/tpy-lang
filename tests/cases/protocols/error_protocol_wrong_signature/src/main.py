@@ -1,13 +1,13 @@
 from typing import Sized
-from tpy import Int32
+from tpy import int32
 
 class WrongReturn:
     value: str
 
-    def __len__(self) -> str:  # Returns str instead of Int32
+    def __len__(self) -> str:  # Returns str instead of int32
         return self.value
 
-def count(items: Sized) -> Int32:
+def count(items: Sized) -> int32:
     return len(items)
 
 def main() -> None:

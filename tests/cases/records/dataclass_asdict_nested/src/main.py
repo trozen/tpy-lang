@@ -1,11 +1,11 @@
 # Test asdict() with nested dataclass fields
 from dataclasses import dataclass, asdict, astuple
-from tpy import Int32
+from tpy import int32
 
 @dataclass
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 @dataclass
 class Line:
@@ -13,7 +13,7 @@ class Line:
     end: Point
 
 def main() -> None:
-    line = Line(Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4)))
+    line = Line(Point(int32(1), int32(2)), Point(int32(3), int32(4)))
     d = asdict(line)
     print(d)
     t = astuple(line)

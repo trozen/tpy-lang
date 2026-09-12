@@ -108,7 +108,7 @@ class THIRLiteral(THIRExpr):
 @dataclass(frozen=True)
 class THIRDefaultConstruct(THIRExpr):
     """A `T()` default-construction filling an omitted generic param
-    (`three_params[Int32](10, c=5)` -> `int32_t{}`): the resolved type's
+    (`three_params[int32](10, c=5)` -> `int32_t{}`): the resolved type's
     brace-init, rendered at the arg position."""
     cpp_type: str = ""
 
@@ -147,7 +147,7 @@ class THIRFStringArg:
     resolved type and conversion (`!r` carries `::tpy::repr_of({0})`; a
     format spec flips the bool row to `static_cast<int>` and the float rows
     to bare). None passes the arg through unwrapped (str-family values, plain
-    fixed ints, Char). `format_spec` is the parser-validated constant spec
+    fixed ints, char). `format_spec` is the parser-validated constant spec
     text, spliced verbatim into the `{:spec}` placeholder."""
     expr: THIRExpr
     wrap: str | None = None
@@ -172,14 +172,14 @@ class THIRFString(THIRExpr):
 @dataclass(frozen=True)
 class THIRCharLiteral(THIRExpr):
     """A single-char str literal rendered as a C++ char literal (`'x'`, via
-    `escape_cpp_char`). Arises only where a `Char` target is threaded into
+    `escape_cpp_char`). Arises only where a `char` target is threaded into
     the literal render: a comparison operand
-    opposite a Char-typed value, a
-    Char-annotated decl init (`c: Char = 'x'` -> `char c = 'x';`), or a call
-    arg into a Char param slot (`take('a')` -> `take('a')`). Every other str
-    literal stays a `THIRStrLiteral`. Char-targeted literal reassigns and
+    opposite a char-typed value, a
+    char-annotated decl init (`c: char = 'x'` -> `char c = 'x';`), or a call
+    arg into a char param slot (`take('a')` -> `take('a')`). Every other str
+    literal stays a `THIRStrLiteral`. char-targeted literal reassigns and
     returns cannot reach lowering -- sema rejects them (`c = 'y'` /
-    `return 'q'` at a Char slot are type errors; only the annotated decl form
+    `return 'q'` at a char slot are type errors; only the annotated decl form
     converts) -- so their gate rejects are defensive."""
     value: str
 
@@ -600,7 +600,7 @@ class THIRCall(THIRExpr):
     call).
 
     `cpp_template` (when set) is a scalar type-constructor call's resolved
-    `__init__` template (`Int32(x)` -> `::tpy::int_cast_check<int32_t>({0})`),
+    `__init__` template (`int32(x)` -> `::tpy::int_cast_check<int32_t>({0})`),
     already fully substituted by sema ({cpp} / class type params) so only
     positional `{0}, {1}, ...` placeholders remain -- lowering enforces that.
     The emitter expands it over the args with no receiver; `callee` is the
@@ -1031,7 +1031,7 @@ class THIRTupleLiteral(THIRExpr):
     the spelled type is the target's resolved element list. Elements are
     value scalars
     or owned-str values, lowered per element slot (`_lower_container_elem`:
-    target-typed literal retypes -- the BigInt ctor wraps / Float32 `f`
+    target-typed literal retypes -- the BigInt ctor wraps / float32 `f`
     suffix -- and the S1 view->owned `std::string(x)` wrap for view-form str
     sources). Ref/const-ref element captures, borrow element slots
     (pointer-repr Optional / record refs), TypeParamRef elements, and
@@ -1398,9 +1398,9 @@ class THIRSubscript(THIRExpr):
     (a `std::optional<T>` lifted to a borrow via `THIRFormConvert`/`optional_to_ptr`
     at the consuming `deref_check`).
 
-    Container (list / dict), str-family (`s[i]` -> Char), or bytes-family
-    (`b[i]` -> UInt8) -- a runtime
-    index/key lookup, `form` VALUE (a value-scalar / Char element). A str
+    Container (list / dict), str-family (`s[i]` -> char), or bytes-family
+    (`b[i]` -> uint8) -- a runtime
+    index/key lookup, `form` VALUE (a value-scalar / char element). A str
     element/value read (`xs[i]` on `list[str]`, `d[k]` on a str-valued dict,
     S5) carries its resolved shape instead: BORROW when the read's view var
     resolved `StrView` (drives the S1 owned-sink `std::string(x)` copy),
@@ -1412,7 +1412,7 @@ class THIRSubscript(THIRExpr):
     `::tpy::__getitem__(receiver, index)` (str's `__getitem__` @cpp_template
     spells the same dunder, so one emit covers both; a BYTES receiver instead
     dispatches to `::tpy::bytes_getitem(receiver, index)` -- bytes'
-    `__getitem__(Int32)` is a @native free-function dunder). The index is a
+    `__getitem__(int32)` is a @native free-function dunder). The index is a
     value
     scalar (a runtime-BigInt one arrives pre-wrapped in its
     `.to_fixed_check<int32_t>()` THIRCoerce from lowering) or, for an
@@ -1741,7 +1741,7 @@ class PtrSlotKind(Enum):
     # block-scoped slot inside a branch/loop is not this slice).
     INLINE_RVALUE = auto()
     # Module-init initializing write of a NON-VALUE global (`items:
-    # list[Int32] = [...]` at top level). The name is already declared at
+    # list[int32] = [...]` at top level). The name is already declared at
     # namespace scope (`std::vector<int32_t>* items{};`), so only the slot
     # carries a type: `static T __global_slot_N = init;` + `items =
     # &__global_slot_N;` -- the "first rvalue assignment (e.g. global
@@ -2533,15 +2533,15 @@ class THIRForEach(THIRStmt):
             // body
         }
 
-    `elem_type` is the loop var's type -- a value scalar, Char, or str (a typed copy;
+    `elem_type` is the loop var's type -- a value scalar, char, or str (a typed copy;
     a str loop var is usage-resolved at lowering to `std::string_view` or an owned
     `std::string` copy, both spelled by `loop_var_binding`) or an
     F1-record (a borrow alias: `auto&&`, or `const auto&` when `const_loop_var`). For
     list/set/Span/Array it is the element; for dict the key (`for k in d` -- a
     scalar, or a str for an owned-str-keyed dict, S5); for a str-family iterable
-    (str/StrView, NativeIterable[Char]) it is Char
+    (str/StrView, NativeIterable[char]) it is char
     (`char c = *__beg_N;`); for a bytes-family iterable (bytes/BytesView,
-    NativeIterable[UInt8]) it is UInt8 (`uint8_t x = *__beg_N;`, the same
+    NativeIterable[uint8]) it is uint8 (`uint8_t x = *__beg_N;`, the same
     value-scalar typed copy). `N` is the
     per-function loop index (off `ctx.iter_counter`). `const_loop_var` carries
     sema's flag; it is inert for a cheap value scalar (the typed copy drops const either
@@ -3170,7 +3170,7 @@ class PrintForm(Enum):
       * `LIST`/`SET`/`DICT` -- the container-printer wraps; currently only
         comprehension args take these.
       * `OPT_VAL` -- `::tpy::print_optional_val(...)` on the whole (bare,
-        un-narrowed) value-repr `Optional[int/Char/str]` (the value-repr
+        un-narrowed) value-repr `Optional[int/char/str]` (the value-repr
         Optional arm, plain form).
       * `OPT_VAL_BOOL`/`OPT_VAL_FLOAT` -- the same on `Optional[bool]` /
         `Optional[float]`, taking an explicit Formatter + inner-type template

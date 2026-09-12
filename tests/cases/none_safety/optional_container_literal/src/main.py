@@ -5,7 +5,7 @@
 # - Call-arg: `f({k: v})` for `f: dict[K, V] | None` lowered to
 #   `f(&(ordered_map{...}))` (taking address of rvalue).
 # Both now hoist the literal into a named slot, then take its address.
-from tpy import Int32
+from tpy import int32
 
 
 def take_list(lst: list[int] | None) -> None:
@@ -15,14 +15,14 @@ def take_list(lst: list[int] | None) -> None:
         print("None list")
 
 
-def take_dict(d: dict[str, Int32] | None) -> None:
+def take_dict(d: dict[str, int32] | None) -> None:
     if d is not None:
         print(len(d))
     else:
         print("None dict")
 
 
-def take_set(s: set[Int32] | None) -> None:
+def take_set(s: set[int32] | None) -> None:
     if s is not None:
         print(len(s))
     else:
@@ -31,15 +31,15 @@ def take_set(s: set[Int32] | None) -> None:
 
 def local_init() -> None:
     lst: list[int] | None = [1, 2, 3]
-    d: dict[str, Int32] | None = {"a": 7}
-    s: set[Int32] | None = {1}
+    d: dict[str, int32] | None = {"a": 7}
+    s: set[int32] | None = {1}
     if lst is not None and d is not None and s is not None:
         print(lst[0], len(d), len(s))
 
 
 class Bag:
     items: list[int] | None
-    by_key: dict[str, Int32] | None
+    by_key: dict[str, int32] | None
 
     def __init__(self) -> None:
         self.items = None

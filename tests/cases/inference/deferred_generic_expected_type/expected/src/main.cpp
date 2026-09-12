@@ -4,34 +4,34 @@
 namespace tpyapp::main {
 
 
-// def consume(c: Container[Int32]) -> None:
+// def consume(c: Container[int32]) -> None:
 void consume(Container<int32_t>& c) {
-    // c.set(Int32(99))
+    // c.set(int32(99))
     c.set(99);
     // print(c.get())
     std::cout << c.get() << "\n";
 }
 
-// def make_container() -> Own[Container[Int64]]:
+// def make_container() -> Own[Container[int64]]:
 Container<int64_t> make_container() {
-    // c = Container()  # tpyc: type(/Container\[Int64\]/)
+    // c = Container()  # tpyc: type(/Container\[int64\]/)
     Container<int64_t> c = Container<int64_t>();
     // return c
     return c;
 }
 
-// def setup_pair(p: Pair[Int32, Int64]) -> None:
+// def setup_pair(p: Pair[int32, int64]) -> None:
 void setup_pair(Pair<int32_t, int64_t>& p) {
-    // p.a = Int32(10)
+    // p.a = int32(10)
     p.a = 10;
-    // p.b = Int64(20)
+    // p.b = int64(20)
     p.b = 20;
 }
 
 // def main() -> None:
 void main() {
     // # Parameter passing resolves T
-    // c = Container()  # tpyc: type(/Container\[Int32\]/)
+    // c = Container()  # tpyc: type(/Container\[int32\]/)
     Container<int32_t> c = Container<int32_t>();
     // consume(c)
     consume(c);
@@ -40,12 +40,12 @@ void main() {
     // # Return type resolves T
     // c2 = make_container()
     Container<int64_t> c2 = make_container();
-    // c2.set(Int64(42))
+    // c2.set(int64(42))
     c2.set(42);
     // print(c2.get())
     std::cout << c2.get() << "\n";
     // # Multi-param: parameter passing resolves T and U
-    // p = Pair()  # tpyc: type(/Pair\[Int32, Int64\]/)
+    // p = Pair()  # tpyc: type(/Pair\[int32, int64\]/)
     Pair<int32_t, int64_t> p = Pair<int32_t, int64_t>();
     // setup_pair(p)
     setup_pair(p);
@@ -54,9 +54,9 @@ void main() {
     // print(p.get_b())
     std::cout << p.get_b() << "\n";
     // # Method calls before param passing (partial + expected-type)
-    // c3 = Container()  # tpyc: type(/Container\[Int32\]/)
+    // c3 = Container()  # tpyc: type(/Container\[int32\]/)
     Container<int32_t> c3 = Container<int32_t>();
-    // c3.set(Int32(7))
+    // c3.set(int32(7))
     c3.set(7);
     // consume(c3)
     consume(c3);

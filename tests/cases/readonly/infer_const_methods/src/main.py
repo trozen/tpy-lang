@@ -1,11 +1,11 @@
 # Auto-infer const for methods that never mutate self (no explicit @readonly needed).
 # Covers: pure readers, self-delegation chains, inherited protocols, dynamic vtable guard,
 # field.method() deferred inference, Optional field const propagation.
-from tpy import Int32, dynamic
+from tpy import int32, dynamic
 from typing import Optional, Protocol
 
 class Counter:
-    count: Int32
+    count: int32
 
     def __init__(self) -> None:
         self.count = 0
@@ -17,7 +17,7 @@ class Counter:
         self.increment()
         self.increment()
 
-    def get(self) -> Int32:             # only reads -- inferred const
+    def get(self) -> int32:             # only reads -- inferred const
         return self.count
 
     def is_zero(self) -> bool:          # only reads -- inferred const
@@ -25,18 +25,18 @@ class Counter:
 
 
 class Box:
-    items: list[Int32]
+    items: list[int32]
 
     def __init__(self) -> None:
         self.items = []
 
-    def push(self, x: Int32) -> None:  # mutates self -- must NOT be const
+    def push(self, x: int32) -> None:  # mutates self -- must NOT be const
         self.items.append(x)
 
     def push_default(self) -> None:    # calls self.push() -- must NOT be const
         self.push(0)
 
-    def size(self) -> Int32:           # only reads -- inferred const
+    def size(self) -> int32:           # only reads -- inferred const
         return len(self.items)
 
 
@@ -44,19 +44,19 @@ class Box:
 # Deferred to Phase 2 via receiver_is_self call edge; Phase 2 marks self as
 # mutated because list.sort/append have unknown (conservative) mutation status.
 class SortableBox:
-    items: list[Int32]
+    items: list[int32]
 
     def __init__(self) -> None:
         self.items = []
 
-    def fill(self, a: Int32, b: Int32) -> None:   # mutates self.items -- must NOT be const
+    def fill(self, a: int32, b: int32) -> None:   # mutates self.items -- must NOT be const
         self.items.append(a)
         self.items.append(b)
 
     def sort_items(self) -> None:                  # self.field.method() -- must NOT be const
         self.items.sort()
 
-    def get_first(self) -> Int32:                  # only reads -- inferred const
+    def get_first(self) -> int32:                  # only reads -- inferred const
         return self.items[0]
 
 
@@ -64,12 +64,12 @@ class SortableBox:
 # and correctly resolved as non-mutating. Both direct field access and
 # for-each iteration over fields are covered.
 class Inner:
-    value: Int32
+    value: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.value = v
 
-    def get(self) -> Int32:
+    def get(self) -> int32:
         return self.value
 
 class Outer:
@@ -80,13 +80,13 @@ class Outer:
         self.items = [Inner(1), Inner(2)]
         self.extra = Inner(3)
 
-    def sum_items(self) -> Int32:                  # for-each + readonly method -- inferred const
+    def sum_items(self) -> int32:                  # for-each + readonly method -- inferred const
         total = 0
         for item in self.items:
             total += item.get()
         return total
 
-    def get_extra(self) -> Int32:                  # field.method() readonly -- inferred const
+    def get_extra(self) -> int32:                  # field.method() readonly -- inferred const
         return self.extra.get()
 
     def mutate_extra(self) -> None:                # field.method() mutating -- must NOT be const
@@ -101,7 +101,7 @@ class WithOpt:
     def __init__(self) -> None:
         self.child = Inner(5)
 
-    def get_child_value(self) -> Int32:            # Optional field + readonly -- inferred const
+    def get_child_value(self) -> int32:            # Optional field + readonly -- inferred const
         c = self.child
         if c is not None:
             return c.get()
@@ -113,19 +113,19 @@ class WithOpt:
 # Without the recursive ancestor walk in _dynamic_proto_requires_nonconst, value()
 # would be incorrectly inferred as const, making Valued abstract.
 class HasValue(Protocol):
-    def value(self) -> Int32: ...
+    def value(self) -> int32: ...
 
 @dynamic
 class DynValued(HasValue, Protocol):
     pass
 
 class Valued(DynValued):
-    _n: Int32
+    _n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self._n = n
 
-    def value(self) -> Int32:           # must NOT be const (pure virtual override)
+    def value(self) -> int32:           # must NOT be const (pure virtual override)
         return self._n
 
 

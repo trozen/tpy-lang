@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // @readonly
-// def maybe_read(b: Box, flag: bool) -> Int32:
+// def maybe_read(b: Box, flag: bool) -> int32:
 int32_t maybe_read(const Box& b, bool flag) {
     // x: Box | None = None
     const Box* x = nullptr;
@@ -19,13 +19,13 @@ int32_t maybe_read(const Box& b, bool flag) {
         // return x.get_value()
         return x->get_value();
     }
-    // return Int32(0)
+    // return int32(0)
     return 0;
 }
 
 // def main() -> None:
 void main() {
-    // b = Box(Int32(42))
+    // b = Box(int32(42))
     Box b = Box(42);
     // print(maybe_read(b, True))
     std::cout << maybe_read(b, true) << "\n";

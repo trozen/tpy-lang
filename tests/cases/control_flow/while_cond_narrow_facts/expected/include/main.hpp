@@ -21,10 +21,10 @@ void main();
 
 // class A(ValueType):
 struct A {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     A() = default;
     explicit A(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.A";
@@ -43,10 +43,10 @@ namespace tpyapp::main {
 
 // class B(ValueType):
 struct B {
-    // m: Int32
+    // m: int32
     int32_t m;
 
-    // def __init__(self, m: Int32) -> None:
+    // def __init__(self, m: int32) -> None:
     B() = default;
     explicit B(int32_t m);
     static constexpr std::string_view __tpy_class_name__ = "__main__.B";
@@ -65,10 +65,10 @@ namespace tpyapp::main {
 
 // class Node:
 struct Node {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Node() = default;
     explicit Node(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Node";
@@ -81,10 +81,10 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 
 // class Leaf:
 struct Leaf {
-    // w: Int32
+    // w: int32
     int32_t w;
 
-    // def __init__(self, w: Int32) -> None:
+    // def __init__(self, w: int32) -> None:
     Leaf() = default;
     explicit Leaf(int32_t w);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Leaf";
@@ -96,16 +96,16 @@ inline std::ostream& operator<<(std::ostream& os, const Leaf& obj) {
 }
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline A::A(int32_t n) : n(n) {}
 
-// def __init__(self, m: Int32) -> None:
+// def __init__(self, m: int32) -> None:
 inline B::B(int32_t m) : m(m) {}
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Node::Node(int32_t v) : v(v) {}
 
-// def __init__(self, w: Int32) -> None:
+// def __init__(self, w: int32) -> None:
 inline Leaf::Leaf(int32_t w) : w(w) {}
 void __tpy_init();
 } // namespace tpyapp::main

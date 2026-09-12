@@ -1,13 +1,13 @@
-from tpy import Int32
+from tpy import int32
 
 class Public:
-    val: Int32
+    val: int32
     def __init__(self) -> None:
-        self.val = Int32(1)
+        self.val = int32(1)
 
 class Hidden:
-    val: Int32
+    val: int32
     def __init__(self) -> None:
-        self.val = Int32(2)
+        self.val = int32(2)
 
 __all__ = ["Public"]

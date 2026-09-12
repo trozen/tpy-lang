@@ -1,14 +1,14 @@
 # Writes into a value-storage Optional[record] field: an Own[Inner] NAME moved
 # in at last use, and a record RVALUE. @nocopy Inner makes a silent copy a
 # compile error, so the move is enforced; get() reads the moved-in value back.
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 
 
 @nocopy
 class Inner:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 
@@ -21,10 +21,10 @@ class Holder:
     def set_name(self, p: Own[Inner]) -> None:
         self.opt = p
 
-    def set_rvalue(self, v: Int32) -> None:
+    def set_rvalue(self, v: int32) -> None:
         self.opt = Inner(v)
 
-    def get(self) -> Int32:
+    def get(self) -> int32:
         if self.opt is not None:
             return self.opt.v
         return -1

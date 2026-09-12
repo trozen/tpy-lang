@@ -1,17 +1,17 @@
 """Module that exports a non-value-type global."""
-from tpy import Int32
+from tpy import int32
 
 
 class Settings:
-    width: Int32
-    height: Int32
+    width: int32
+    height: int32
 
-    def __init__(self, width: Int32, height: Int32) -> None:
+    def __init__(self, width: int32, height: int32) -> None:
         self.width = width
         self.height = height
 
-    def area(self) -> Int32:
+    def area(self) -> int32:
         return self.width * self.height
 
 
-DEFAULT: Settings = Settings(Int32(800), Int32(600))
+DEFAULT: Settings = Settings(int32(800), int32(600))

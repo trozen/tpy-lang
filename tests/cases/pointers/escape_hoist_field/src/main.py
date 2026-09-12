@@ -1,8 +1,8 @@
-from tpy import Int32
+from tpy import int32
 
 class Inner:
-    value: Int32
-    def __init__(self, value: Int32):
+    value: int32
+    def __init__(self, value: int32):
         self.value = value
 
 class Outer:

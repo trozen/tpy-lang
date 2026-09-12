@@ -6,30 +6,30 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // a: Int32 = Int32(10)
+    // a: int32 = int32(10)
     int32_t a = 10;
-    // b: Int32 = Int32(3)
+    // b: int32 = int32(3)
     int32_t b = 3;
     // r1: float = a / b  # tpyc: type(float)
     double r1 = (::tpy::truediv(static_cast<int64_t>(a), static_cast<int64_t>(b)));
     // print(r1)
     std::cout << ::tpy::print_float(r1) << "\n";
-    // c: Int64 = Int64(100)
+    // c: int64 = int64(100)
     int64_t c = 100;
-    // d: Int64 = Int64(7)
+    // d: int64 = int64(7)
     int64_t d = 7;
     // print(c / d)
     std::cout << ::tpy::print_float((::tpy::truediv(c, d))) << "\n";
-    // e: UInt32 = UInt32(15)
+    // e: uint32 = uint32(15)
     uint32_t e = 15;
-    // f: UInt32 = UInt32(4)
+    // f: uint32 = uint32(4)
     uint32_t f = 4;
     // print(e / f)
     std::cout << ::tpy::print_float((::tpy::truediv(static_cast<int64_t>(e), static_cast<int64_t>(f)))) << "\n";
     // # Exact division
-    // g: Int32 = Int32(10)
+    // g: int32 = int32(10)
     int32_t g = 10;
-    // h: Int32 = Int32(5)
+    // h: int32 = int32(5)
     int32_t h = 5;
     // print(g / h)
     std::cout << ::tpy::print_float((::tpy::truediv(static_cast<int64_t>(g), static_cast<int64_t>(h)))) << "\n";

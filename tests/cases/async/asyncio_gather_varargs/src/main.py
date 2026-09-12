@@ -4,10 +4,10 @@
 # engine as gather_list. The empty case (n == 0) is covered separately
 # by `asyncio_gather_empty` (which uses gather_list).
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
-async def fetch(n: Int32) -> Int32:
+async def fetch(n: int32) -> int32:
     await asyncio.sleep(0.001)
     return n * 2
 
@@ -30,7 +30,7 @@ async def main_coro() -> None:
         print(r)
 
     # *unpack: build a list of tasks and unpack it at the call site.
-    pending: list[asyncio.Task[Int32]] = []
+    pending: list[asyncio.Task[int32]] = []
     pending.append(asyncio.create_task(fetch(4)))
     pending.append(asyncio.create_task(fetch(5)))
     unpacked_results = await asyncio.gather(*pending)

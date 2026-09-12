@@ -4,14 +4,14 @@
 import asyncio
 from typing import Iterator
 
-from tpy import Int64
+from tpy import int64
 
 
-async def scaled(a: Int64, b: Int64 = 10, *, c: Int64) -> Int64:
+async def scaled(a: int64, b: int64 = 10, *, c: int64) -> int64:
     return a * 100 + b * 10 + c
 
 
-def counted(n: Int64 = 2, *, step: Int64) -> Iterator[Int64]:
+def counted(n: int64 = 2, *, step: int64) -> Iterator[int64]:
     # A generator factory shares the async factory's params emitter, so it
     # needs the same gate.
     for i in range(n):

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def add(a: Int32, b: Int32) -> Int32:
+// def add(a: int32, b: int32) -> int32:
 int32_t add(int32_t a, int32_t b) {
     // return a + b
     return (::tpy::add_check<int32_t>(a, b));
@@ -12,35 +12,35 @@ int32_t add(int32_t a, int32_t b) {
 
 // def main() -> None:
 void main() {
-    // xs: list[Int32] = [1, 2, 3, 4, 5]
+    // xs: list[int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> xs = {1, 2, 3, 4, 5};
     // # Named function
-    // print(reduce(add, xs, Int32(0)))       # 15
+    // print(reduce(add, xs, int32(0)))       # 15
     std::cout << ::tpystd::functools::reduce<int32_t, int32_t>(add, xs, 0) << "\n";
-    // print(reduce(add, xs, Int32(100)))     # 115
+    // print(reduce(add, xs, int32(100)))     # 115
     std::cout << ::tpystd::functools::reduce<int32_t, int32_t>(add, xs, 100) << "\n";
     // # Lambda
-    // print(reduce(lambda a, b: a * b, xs, Int32(1)))   # 120
+    // print(reduce(lambda a, b: a * b, xs, int32(1)))   # 120
     std::cout << ::tpystd::functools::reduce<int32_t, int32_t>([](int32_t a, int32_t b) -> int32_t { return (::tpy::mul_check<int32_t>(a, b)); }, xs, 1) << "\n";
-    // print(reduce(lambda a, b: max(a, b), xs, Int32(0)))  # 5
+    // print(reduce(lambda a, b: max(a, b), xs, int32(0)))  # 5
     std::cout << ::tpystd::functools::reduce<int32_t, int32_t>([](int32_t a, int32_t b) -> int32_t { return ::std::max(a, b); }, xs, 0) << "\n";
     // # Empty list + initial returns the seed unchanged
-    // empty: list[Int32] = []
+    // empty: list[int32] = []
     std::vector<int32_t> empty = std::vector<int32_t>{};
-    // print(reduce(add, empty, Int32(42)))   # 42
+    // print(reduce(add, empty, int32(42)))   # 42
     std::cout << ::tpystd::functools::reduce<int32_t, int32_t>(add, empty, 42) << "\n";
-    // # Cross-type T != U: U=Int32 accumulator, T=str element
+    // # Cross-type T != U: U=int32 accumulator, T=str element
     // words: list[str] = ["hi", "hello", "world"]
     std::vector<std::string> words = {"hi", "hello", "world"};
-    // total_len = reduce(lambda acc, w: acc + Int32(len(w)), words, Int32(0))
+    // total_len = reduce(lambda acc, w: acc + int32(len(w)), words, int32(0))
     int32_t total_len = ::tpystd::functools::reduce<std::string, int32_t>([](int32_t acc, std::string_view w) -> int32_t { return (::tpy::add_check<int32_t>(acc, ::tpy::__len__(w))); }, words, 0);
     // print(total_len)   # 12
     std::cout << total_len << "\n";
     // # Reference-type accumulator: reduce must copy(initial) so the caller's
     // # seed is not aliased into the return value.
-    // init: list[Int32] = [100]
+    // init: list[int32] = [100]
     std::vector<int32_t> init = {100};
-    // nums: list[Int32] = [1, 2, 3]
+    // nums: list[int32] = [1, 2, 3]
     std::vector<int32_t> nums = {1, 2, 3};
     // built = reduce(lambda acc, x: acc + [x], nums, init)
     std::vector<int32_t> built = ::tpystd::functools::reduce<int32_t, std::vector<int32_t>>([](std::vector<int32_t>& acc, int32_t x) -> std::vector<int32_t> { return (::tpy::list_concat(acc, std::vector<int32_t>{x})); }, nums, init);
@@ -71,9 +71,9 @@ void __tpy_init() {
     initialized = true;
 
     // # functools.reduce -- 3-arg form. Covers lambda and named-function callables,
-    // # cross-type T/U (summing str lengths into Int32), the empty-input + initial
+    // # cross-type T/U (summing str lengths into int32), the empty-input + initial
     // # case that just returns the seed, and a reference-type accumulator
-    // # (list[Int32]) that verifies copy(initial) actually copies rather than
+    // # (list[int32]) that verifies copy(initial) actually copies rather than
     // # aliasing the caller's seed. Also exercises non-list iterables: literal
     // # list, range(), empty list literal -- unblocked by the
     // # list-literal-vs-Iterable[T] conformance work and the

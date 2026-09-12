@@ -1,8 +1,8 @@
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
-def counts(n: Int32) -> Iterator[Int32]:
+def counts(n: int32) -> Iterator[int32]:
     i = 0
     while i < n:
         yield i

@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 
 
-def eq_proven(x: Int32 | None, y: Int32) -> bool:
+def eq_proven(x: int32 | None, y: int32) -> bool:
     assert x is not None
     return x == y  # tpyc: ok
 

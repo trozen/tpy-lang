@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def make_adder(n: Int32) -> Callable[[Int32], Int32]:
+// def make_adder(n: int32) -> Callable[[int32], int32]:
 std::function<int32_t(int32_t)> make_adder(int32_t n) {
-    // def add(x: Int32) -> Int32:
+    // def add(x: int32) -> int32:
     auto add = [n](int32_t x) -> int32_t {
         // return x + n
         return (::tpy::add_check<int32_t>(x, n));
@@ -15,9 +15,9 @@ std::function<int32_t(int32_t)> make_adder(int32_t n) {
     return add;
 }
 
-// def make_negator() -> Callable[[Int32], Int32]:
+// def make_negator() -> Callable[[int32], int32]:
 std::function<int32_t(int32_t)> make_negator() {
-    // def negate(x: Int32) -> Int32:
+    // def negate(x: int32) -> int32:
     auto negate = [](int32_t x) -> int32_t {
         // return -x
         return ::tpy::neg_check<int32_t>(x);
@@ -34,7 +34,7 @@ void main() {
     // print(result)
     std::cout << result << "\n";
     // # Store and chain
-    // fns: list[Callable[[Int32], Int32]] = [make_adder(1), make_adder(2), make_negator()]
+    // fns: list[Callable[[int32], int32]] = [make_adder(1), make_adder(2), make_negator()]
     std::vector<std::function<int32_t(int32_t)>> fns = {make_adder(1), make_adder(2), make_negator()};
     // # Subscript call via local variable: list[index](args)
     // # (fns is resolved as a name, fns[i] is a subscript expression)
@@ -45,7 +45,7 @@ void main() {
     // print(fns[2](100))
     std::cout << (::tpy::__getitem__(fns, 2))(100) << "\n";
     // # Uppercase variable name -- must not be confused with generic type call
-    // Handlers: list[Callable[[Int32], Int32]] = [make_adder(100)]
+    // Handlers: list[Callable[[int32], int32]] = [make_adder(100)]
     std::vector<std::function<int32_t(int32_t)>> Handlers = {make_adder(100)};
     // print(Handlers[0](5))
     std::cout << (::tpy::__getitem__(Handlers, 0))(5) << "\n";

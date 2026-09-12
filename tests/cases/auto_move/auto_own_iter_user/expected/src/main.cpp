@@ -9,7 +9,7 @@ void main() {
     // xs = IntList([10, 20, 30])
     IntList xs = IntList({10, 20, 30});
     // # Borrowing iteration (xs still alive after)
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for x in xs:
     auto& __src_0 = xs;

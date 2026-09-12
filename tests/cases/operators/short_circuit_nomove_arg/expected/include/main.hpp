@@ -34,11 +34,11 @@ void main();
 // @nomove
 // class Pinned:
 struct Pinned {
-    // n: Int32
+    // n: int32
     int32_t n;
     bool __tpy_owned_ = true;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     explicit Pinned(int32_t n);
     Pinned(const Pinned&) = delete;
     Pinned& operator=(const Pinned&) = delete;
@@ -58,11 +58,11 @@ inline std::ostream& operator<<(std::ostream& os, const Pinned& obj) {
 // @nomove
 // class Noisy:
 struct Noisy {
-    // n: Int32
+    // n: int32
     int32_t n;
     bool __tpy_owned_ = true;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     explicit Noisy(int32_t n);
     Noisy(const Noisy&) = delete;
     Noisy& operator=(const Noisy&) = delete;
@@ -80,7 +80,7 @@ inline std::ostream& operator<<(std::ostream& os, const Noisy& obj) {
 }
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Pinned::Pinned(int32_t n) : n(n) {}
 
 // def __del__(self) -> None:
@@ -92,7 +92,7 @@ inline Pinned::~Pinned() {
     this->n = 0;
 }
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Noisy::Noisy(int32_t n) {
     // # Prints from the CONSTRUCTION itself, so a temp hoisted ahead of the
     // # guard would show as a "built" line under the SKIPPED call.

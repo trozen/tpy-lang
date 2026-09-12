@@ -1,5 +1,5 @@
 """Regression tests for generic functions with various edge cases."""
-from tpy import Int32, Array
+from tpy import int32, Array
 
 # Uppercase generic function (tests routing: function vs type)
 def First[T](items: list[T]) -> T:
@@ -7,13 +7,13 @@ def First[T](items: list[T]) -> T:
 
 # Generic function with record type
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32):
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32):
         self.x = x
         self.y = y
 
-def get_item[T](items: list[T], idx: Int32) -> T:
+def get_item[T](items: list[T], idx: int32) -> T:
     return items[idx]
 
 # Test 1: Uppercase generic function (inferred) - critical for routing test
@@ -21,11 +21,11 @@ nums = [10, 20, 30]
 print(First(nums))
 
 # Test 2: list constructor in same file (tests routing still works)
-nums2: list[Int32] = [1, 2, 3]
+nums2: list[int32] = [1, 2, 3]
 print(len(nums2))
 
 # Test 3: list constructor in same file
-items = list[Int32]()
+items = list[int32]()
 items.append(100)
 print(len(items))
 
@@ -35,7 +35,7 @@ print(First(strs))
 
 # Test 5: Generic function with record type (inferred)
 points = [Point(1, 2), Point(3, 4)]
-p = get_item(points, Int32(0))
+p = get_item(points, int32(0))
 print(p.x)
 
 # Test 6: Chained generic calls

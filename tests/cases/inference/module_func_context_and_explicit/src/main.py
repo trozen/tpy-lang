@@ -1,18 +1,18 @@
 # Module.func with context-only inference vs explicit type args.
-from tpy import Int32, UInt32, Ptr, Array
+from tpy import int32, uint32, Ptr, Array
 import tpy.unsafe as m
 
 def main() -> None:
-    arr: Array[Int32, 2] = [Int32(1), Int32(2)]
-    p: Ptr[Int32] = m.unsafe_ptr(arr)
+    arr: Array[int32, 2] = [int32(1), int32(2)]
+    p: Ptr[int32] = m.unsafe_ptr(arr)
 
-    # Context-only: T=UInt32 inferred from assignment target
-    q1: Ptr[UInt32] = m.unsafe_cast(p)
-    print(m.unsafe_load(q1, UInt32(0)))
+    # Context-only: T=uint32 inferred from assignment target
+    q1: Ptr[uint32] = m.unsafe_cast(p)
+    print(m.unsafe_load(q1, uint32(0)))
 
-    # Explicit type arg: T=UInt32, U=Int32 inferred from arg
-    q2: Ptr[UInt32] = m.unsafe_cast[UInt32](p)
-    print(m.unsafe_load(q2, UInt32(0)))
+    # Explicit type arg: T=uint32, U=int32 inferred from arg
+    q2: Ptr[uint32] = m.unsafe_cast[uint32](p)
+    print(m.unsafe_load(q2, uint32(0)))
 
     print("done")
 

@@ -1,26 +1,26 @@
-from tpy import Char
+from tpy import char
 
 
-def eq_left(o: Char | None, c: Char) -> bool:
+def eq_left(o: char | None, c: char) -> bool:
     return o == c  # tpyc: ok
 
 
-def eq_right(c: Char, o: Char | None) -> bool:
+def eq_right(c: char, o: char | None) -> bool:
     return c == o  # tpyc: ok
 
 
-def ne_left(o: Char | None, c: Char) -> bool:
+def ne_left(o: char | None, c: char) -> bool:
     return o != c  # tpyc: ok
 
 
-def ne_right(c: Char, o: Char | None) -> bool:
+def ne_right(c: char, o: char | None) -> bool:
     return c != o  # tpyc: ok
 
 
-a: Char = "a"
-b: Char = "b"
-none_char: Char | None = None
-some_a: Char | None = a
+a: char = "a"
+b: char = "b"
+none_char: char | None = None
+some_a: char | None = a
 
 print(eq_left(some_a, a))
 print(eq_left(some_a, b))

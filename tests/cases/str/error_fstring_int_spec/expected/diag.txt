@@ -1,1 +1,1 @@
-main.py:5: error: Format specs on int are not yet supported (use a fixed-width type like Int32)
+main.py:5: error: Format specs on int are not yet supported (use a fixed-width type like int32)

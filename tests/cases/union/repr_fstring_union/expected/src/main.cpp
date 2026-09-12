@@ -4,20 +4,20 @@
 namespace tpyapp::main {
 
 
-// def make_iu() -> Int32 | str:
+// def make_iu() -> int32 | str:
 ::tpy::Union<int32_t, std::string> make_iu() {
-    // return Int32(42)
+    // return int32(42)
     return 42;
 }
 
-// def make_su() -> Int32 | str:
+// def make_su() -> int32 | str:
 ::tpy::Union<int32_t, std::string> make_su() {
     // return "hello"
     return "hello";
 }
 
-// def make_3u() -> Own[Int32 | str | Point]:
-::tpy::Union<int32_t, Point, std::string> make_3u() {
+// def make_3u() -> Own[int32 | str | Point]:
+::tpy::Union<Point, int32_t, std::string> make_3u() {
     // return Point(7)
     return Point(7);
 }
@@ -29,8 +29,8 @@ void main() {
     // b = make_su()
     ::tpy::Union<int32_t, std::string> b = make_su();
     // c = make_3u()
-    ::tpy::Union<int32_t, Point, std::string> __slot_1 = make_3u();
-    ::tpy::Union<int32_t*, Point*, std::string*> c = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<Point, int32_t, std::string> __slot_1 = make_3u();
+    ::tpy::Union<Point*, int32_t*, std::string*> c = ::tpy::to_ptr_variant(__slot_1);
     // print(repr(a))
     std::cout << ::tpy::repr_of(a) << "\n";
     // print(repr(b))
@@ -53,7 +53,7 @@ void main() {
     std::cout << std::format("{}", ::tpy::repr_of(c)) << "\n";
     // # Formattable type reaches __repr__ via runtime fallback; previously
     // # rejected at sema, now accepted.
-    // n: Int32 = 99
+    // n: int32 = 99
     int32_t n = 99;
     // print(f"{n!r}")
     std::cout << std::format("{}", ::tpy::repr_of(n)) << "\n";

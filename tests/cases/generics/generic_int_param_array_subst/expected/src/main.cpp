@@ -3,10 +3,10 @@
 
 namespace tpyapp::main {
 
-// arr_global: Array[Int32, 3] = [Int32(10), Int32(20), Int32(30)]
+// arr_global: Array[int32, 3] = [int32(10), int32(20), int32(30)]
 std::array<int32_t, 3>* arr_global{};
 
-// def use_array(arr: Array[Int32, 3]) -> None:
+// def use_array(arr: Array[int32, 3]) -> None:
 void use_array(const std::array<int32_t, 3>& arr) {
     // print(arr[0])
     std::cout << ::tpy::__getitem__(arr, 0) << "\n";
@@ -16,7 +16,7 @@ void use_array(const std::array<int32_t, 3>& arr) {
     std::cout << ::tpy::__getitem__(arr, 2) << "\n";
 }
 
-// def get_global_array() -> Array[Int32, 3]:
+// def get_global_array() -> Array[int32, 3]:
 std::array<int32_t, 3>& get_global_array() {
     // return arr_global
     return (*arr_global);
@@ -24,15 +24,15 @@ std::array<int32_t, 3>& get_global_array() {
 
 // def main() -> None:
 void main() {
-    // b: Buffer[Int32, 3] = Buffer[Int32, 3]()
+    // b: Buffer[int32, 3] = Buffer[int32, 3]()
     Buffer<int32_t, 3> b = Buffer<int32_t, 3>();
     // # Test 1: Pass concrete array to generic method
-    // concrete: Array[Int32, 3] = [Int32(1), Int32(2), Int32(3)]
+    // concrete: Array[int32, 3] = [int32(1), int32(2), int32(3)]
     std::array<int32_t, 3> concrete = {1, 2, 3};
     // b.set_data(concrete)
     b.set_data(concrete);
     // # Test 2: Pass generic return type to concrete function
-    // # get_data() returns Array[T, N], which should substitute to Array[Int32, 3]
+    // # get_data() returns Array[T, N], which should substitute to Array[int32, 3]
     // use_array(b.get_data())
     use_array(b.get_data());
     // # Test 3: Assign concrete return to generic field via method
@@ -47,7 +47,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // arr_global: Array[Int32, 3] = [Int32(10), Int32(20), Int32(30)]
+    // arr_global: Array[int32, 3] = [int32(10), int32(20), int32(30)]
     static std::array<int32_t, 3> __global_slot_1 = {10, 20, 30};
     arr_global = &__global_slot_1;
     // main()

@@ -2,17 +2,17 @@
 # t[1].n where t[1] is `Leaf | None`. Codegen adds a runtime null check
 # (deref_check); here the element is Some, so the check passes and the field
 # reads through. Read-focused (the deref_check path), not an aliasing test.
-from tpy import Int32
+from tpy import int32
 
 
 class Leaf:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
-def first_n(t: tuple[Int32, Leaf | None]) -> Int32:
+def first_n(t: tuple[int32, Leaf | None]) -> int32:
     return t[1].n  # tpyc: warning(/Potential None access/)
 
 

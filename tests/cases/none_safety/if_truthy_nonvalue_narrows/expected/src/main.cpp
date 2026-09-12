@@ -6,7 +6,7 @@ namespace tpyapp::main {
 // pt: Point = Point(2)
 Point* pt{};
 
-// def score(p: Point | None) -> Int32:
+// def score(p: Point | None) -> int32:
 int32_t score(const Point* p) {
     // if p:  # tpyc: ok
     if (p) {

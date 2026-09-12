@@ -2,7 +2,7 @@
 # union across a suspension: there is no single extraction local to resume
 # under, so this rejects.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
 class Dog:
@@ -20,11 +20,11 @@ class Bird:
         return "tweet"
 
 
-async def step(n: Int32) -> Int32:
+async def step(n: int32) -> int32:
     return n + 1
 
 
-async def pick(a: Dog | Cat | Bird) -> Int32:  # tpyc: error(/res\.narrowed_resume/)
+async def pick(a: Dog | Cat | Bird) -> int32:  # tpyc: error(/res\.narrowed_resume/)
     # The narrowed subject is still a union when the await resumes.
     if isinstance(a, (Dog, Cat)):
         await step(0)

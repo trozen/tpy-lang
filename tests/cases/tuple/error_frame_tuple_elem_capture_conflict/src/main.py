@@ -4,17 +4,17 @@
 # the decl is declined rather than picking one and copying or dangling.
 from typing import Iterator
 
-from tpy import Int32
+from tpy import int32
 
 
 class A:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 
-def g(a: A, c: bool) -> Iterator[Int32]:
+def g(a: A, c: bool) -> Iterator[int32]:
     t = (a, 2)
     if c:
         t = (A(9), 3)  # tpyc: error(/need different storage/)

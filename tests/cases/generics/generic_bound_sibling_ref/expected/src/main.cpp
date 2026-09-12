@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // print(pick[Int32, IntBox](IntBox(42)))       # tpyc: ok
+    // print(pick[int32, IntBox](IntBox(42)))       # tpyc: ok
     IntBox __tmp_1 = IntBox(42);
     std::cout << pick<int32_t, IntBox>(__tmp_1) << "\n";
     // print(pick[StrView, StrBox](StrBox("hi")))   # tpyc: ok

@@ -1,9 +1,9 @@
-from tpy import Int32
+from tpy import int32
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32):
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32):
         self.x = x
         self.y = y
 
@@ -18,7 +18,7 @@ def param_use(p: Point) -> None:
 
 # Value type with init — OK
 def value_init() -> None:
-    x: Int32 = 42
+    x: int32 = 42
     print(x)  # tpyc: ok
 
 # Assign before if, use after — OK
@@ -36,16 +36,16 @@ def then_returns(cond: bool) -> None:
     print(x.x, x.y)  # tpyc: ok
 
 # Both branches return — dead code after is fine
-def both_return(cond: bool) -> Int32:
+def both_return(cond: bool) -> int32:
     if cond:
-        x: Int32 = 1
+        x: int32 = 1
         return x
     else:
         return 0
 
 # Both branches assign (value type) — OK after if
 def both_branches_assign(cond: bool) -> None:
-    x: Int32
+    x: int32
     if cond:
         x = 1
     else:
@@ -54,7 +54,7 @@ def both_branches_assign(cond: bool) -> None:
 
 # Else-branch returns, then assigns — OK after if
 def else_returns(cond: bool) -> None:
-    x: Int32
+    x: int32
     if cond:
         x = 10
     else:
@@ -63,14 +63,14 @@ def else_returns(cond: bool) -> None:
 
 # Bare decl then unconditional assign — OK
 def decl_then_assign() -> None:
-    x: Int32
+    x: int32
     x = 42
     print(x)  # tpyc: ok
 
 # Loop var shadows assigned outer var — outer stays assigned after loop
 def loop_shadow_outer() -> None:
-    items: list[Int32] = [10, 20, 30]
-    x: Int32 = 99
+    items: list[int32] = [10, 20, 30]
+    x: int32 = 99
     for x in items:
         pass
     print(x)  # tpyc: ok

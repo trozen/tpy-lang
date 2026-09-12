@@ -1,11 +1,11 @@
 # Consuming a @nocopy local, then reading it in a `raise` argument, must be
 # rejected: the raise read keeps the var live, so the consume is not last-use.
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 
 
 @nocopy
 class Handle:
-    fd: Int32
+    fd: int32
 
 
 def consume(h: Own[Handle]) -> None:

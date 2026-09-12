@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def leaf_count(t: Tree[Int32]) -> Int32:
+// def leaf_count(t: Tree[int32]) -> int32:
 int32_t leaf_count(const Tree<int32_t>& t) {
     // match t:
     auto& __match_subject_1 = t;
@@ -41,7 +41,7 @@ int32_t leaf_count(const Tree<int32_t>& t) {
 void main() {
     // c = Counter()
     Counter c = Counter();
-    // seed: Tree[Int32] = [1, [2, 3], 4]
+    // seed: Tree[int32] = [1, [2, 3], 4]
     Tree<int32_t> seed = std::vector<Tree<int32_t>>{1, std::vector<Tree<int32_t>>{2, 3}, 4};
     // print(use(c, seed))
     std::cout << use(c, seed) << "\n";

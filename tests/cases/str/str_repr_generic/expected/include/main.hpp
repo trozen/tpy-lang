@@ -16,12 +16,12 @@ void main();
 
 // class Pair:
 struct Pair {
-    // x: Int32
+    // x: int32
     int32_t x;
-    // y: Int32
+    // y: int32
     int32_t y;
 
-    // def __init__(self, x: Int32, y: Int32) -> None:
+    // def __init__(self, x: int32, y: int32) -> None:
     Pair() = default;
     explicit Pair(int32_t x, int32_t y);
 
@@ -66,7 +66,7 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper<T>& obj) {
 }
 
 
-// def __init__(self, x: Int32, y: Int32) -> None:
+// def __init__(self, x: int32, y: int32) -> None:
 inline Pair::Pair(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __str__(self) -> str:

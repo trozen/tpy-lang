@@ -3,10 +3,10 @@
 # generator return-lowering (_make_generator_resumable_return), distinct
 # from the fall-off-end path.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
-def g() -> Iterator[Int32]:
+def g() -> Iterator[int32]:
     yield 1
     yield 2
     return

@@ -4,19 +4,19 @@
 namespace tpyapp::main {
 
 
-// def abs_val(x: Int32) -> Int32:
+// def abs_val(x: int32) -> int32:
 int32_t abs_val(int32_t x) {
     // return x if x >= 0 else -x
     return (((x >= 0)) ? (x) : (::tpy::neg_check<int32_t>(x)));
 }
 
-// def max_val(a: Int32, b: Int32) -> Int32:
+// def max_val(a: int32, b: int32) -> int32:
 int32_t max_val(int32_t a, int32_t b) {
     // return a if a > b else b
     return (((a > b)) ? (a) : (b));
 }
 
-// def clamp(x: Int32, lo: Int32, hi: Int32) -> Int32:
+// def clamp(x: int32, lo: int32, hi: int32) -> int32:
 int32_t clamp(int32_t x, int32_t lo, int32_t hi) {
     // # Nested ternary
     // return lo if x < lo else (hi if x > hi else x)
@@ -29,7 +29,7 @@ std::string greet(bool formal) {
     return std::string(((formal) ? ("Good day") : ("Hey")));
 }
 
-// def describe(x: Int32) -> str:
+// def describe(x: int32) -> str:
 std::string describe(int32_t x) {
     // label: str = "positive" if x > 0 else "non-positive"
     std::string_view label = (((x > 0)) ? ("positive") : ("non-positive"));
@@ -67,14 +67,14 @@ void main() {
     // print(describe(-1))
     std::cout << describe(-1) << "\n";
     // # Ternary as function argument
-    // x: Int32 = 7
+    // x: int32 = 7
     int32_t x = 7;
     // print(x if x > 5 else 0)
     std::cout << (((x > 5)) ? (x) : (0)) << "\n";
     // # Ternary with bool condition variable
     // flag: bool = True
     bool flag = true;
-    // val: Int32 = 100 if flag else 200
+    // val: int32 = 100 if flag else 200
     int32_t val = ((flag) ? (100) : (200));
     // print(val)
     std::cout << val << "\n";

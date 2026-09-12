@@ -1,12 +1,12 @@
 # Optional[non-value-type] field narrowing: dereference std::optional after is-not-None check
 from typing import Optional
-from tpy import Int32
+from tpy import int32
 
 class Node:
-    val: Int32
-    def __init__(self, v: Int32) -> None:
+    val: int32
+    def __init__(self, v: int32) -> None:
         self.val = v
-    def doubled(self) -> Int32:
+    def doubled(self) -> int32:
         return self.val * 2
 
 class Wrapper:

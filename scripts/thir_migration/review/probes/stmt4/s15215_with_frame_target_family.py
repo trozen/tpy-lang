@@ -1,15 +1,15 @@
-from tpy import Int32
+from tpy import int32
 class OCM:
-    n: Int32
-    def __init__(self, n: Int32) -> None:
+    n: int32
+    def __init__(self, n: int32) -> None:
         self.n = n
-    def __enter__(self) -> Int32 | None:
+    def __enter__(self) -> int32 | None:
         return self.n
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         pass
 
 from typing import Iterator
-def gen() -> Iterator[Int32]:
+def gen() -> Iterator[int32]:
     with OCM(5) as x:
         pass
     yield 1

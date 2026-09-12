@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def from_list() -> None:
 void from_list() {
-    // data: list[Int32] = [1, 2, 3]
+    // data: list[int32] = [1, 2, 3]
     std::vector<int32_t> data = {1, 2, 3};
     // s = data.__span__()
     std::span<const int32_t> s = ::tpy::as_span(data);
@@ -16,7 +16,7 @@ void from_list() {
 
 // def from_array() -> None:
 void from_array() {
-    // a: Array[Int32, 3] = [10, 20, 30]
+    // a: Array[int32, 3] = [10, 20, 30]
     std::array<int32_t, 3> a = {10, 20, 30};
     // s = a.__span__()
     std::span<const int32_t> s = ::tpy::as_span(a);
@@ -26,9 +26,9 @@ void from_array() {
 
 // def from_span() -> None:
 void from_span() {
-    // a: Array[Int32, 3] = [4, 5, 6]
+    // a: Array[int32, 3] = [4, 5, 6]
     std::array<int32_t, 3> a = {4, 5, 6};
-    // sp: Span[Int32] = a
+    // sp: Span[int32] = a
     std::span<int32_t> sp = ::tpy::as_mut_span(a);
     // s = sp.__span__()
     std::span<const int32_t> s = ::tpy::as_span(sp);
@@ -38,9 +38,9 @@ void from_span() {
 
 // def from_readonly_span() -> None:
 void from_readonly_span() {
-    // a: Array[Int32, 3] = [7, 8, 9]
+    // a: Array[int32, 3] = [7, 8, 9]
     std::array<int32_t, 3> a = {7, 8, 9};
-    // ro: Span[readonly[Int32]] = a
+    // ro: Span[readonly[int32]] = a
     std::span<const int32_t> ro = ::tpy::as_span(a);
     // s = ro.__span__()
     std::span<const int32_t> s = ::tpy::as_span(ro);
@@ -50,7 +50,7 @@ void from_readonly_span() {
 
 // def from_arraylist() -> None:
 void from_arraylist() {
-    // al = ArrayList[Int32, 4]()
+    // al = ArrayList[int32, 4]()
     ::tpystd::tplib::array_list::ArrayList<int32_t, 4> al = ::tpystd::tplib::array_list::ArrayList<int32_t, 4>();
     // al.append(100)
     al.append(100);

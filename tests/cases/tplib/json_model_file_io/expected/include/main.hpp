@@ -33,7 +33,7 @@ void test_try_load_bad();
 struct Item {
     // name: str
     std::string name;
-    // count: Int32
+    // count: int32
     int32_t count;
     // active: bool
     bool active;
@@ -124,7 +124,7 @@ inline void Item::save_json(std::string_view __path, int32_t indent) const {
     auto& __f = __ctx_1.__enter__();
     try {
         // # Test @model file I/O: save_json, load_json, try_load_json.
-        // from tpy import Int32
+        // from tpy import int32
         __f.write(this->to_json(indent));
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -145,7 +145,7 @@ inline Item Item::load_json(std::string_view __path) {
     auto& __f = __ctx_2.__enter__();
     try {
         // # Test @model file I/O: save_json, load_json, try_load_json.
-        // from tpy import Int32
+        // from tpy import int32
         __data = __f.read();
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
@@ -168,7 +168,7 @@ inline std::expected<Item, ::tpystd::tplib::json::parser::JsonError> Item::try_l
     auto& __f = __ctx_3.__enter__();
     try {
         // # Test @model file I/O: save_json, load_json, try_load_json.
-        // from tpy import Int32
+        // from tpy import int32
         __data = __f.read();
         goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {

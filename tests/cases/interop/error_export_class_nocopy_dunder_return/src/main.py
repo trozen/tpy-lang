@@ -4,16 +4,16 @@
 # enablement (a provable `return self`) is a deferred decision tracked in
 # TODO.md.
 # tpy: ext_module
-from tpy import Int64, nocopy
+from tpy import int64, nocopy
 from tpy.extern import export
 
 
 @export
 @nocopy
 class Cur:
-    n: Int64
+    n: int64
 
-    def __init__(self, n: Int64):
+    def __init__(self, n: int64):
         self.n = n
 
     def __iter__(self) -> "Cur":  # tpyc: error(/'__iter__' return is a @nocopy class 'Cur' returned by reference/)

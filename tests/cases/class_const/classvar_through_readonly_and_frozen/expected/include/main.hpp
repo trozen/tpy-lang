@@ -17,7 +17,7 @@ void main();
 
 // class Counter:
 struct Counter {
-    // instances: ClassVar[Int32] = 0
+    // instances: ClassVar[int32] = 0
     static inline int32_t instances = 0;
 
     // def __init__(self) -> None:
@@ -35,7 +35,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 struct FrozenCounter {
     // name: str
     std::string name;
-    // instances: ClassVar[Int32] = 0
+    // instances: ClassVar[int32] = 0
     static inline int32_t instances = 0;
 
     FrozenCounter() = default;

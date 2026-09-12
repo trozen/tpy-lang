@@ -36,10 +36,10 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
 
 // class Holder:
 struct Holder {
-    // box: Box[Int32]
+    // box: Box[int32]
     Box<int32_t> box;
 
-    // def __init__(self, box: Own[Box[Int32]]) -> None:
+    // def __init__(self, box: Own[Box[int32]]) -> None:
     Holder() = default;
     explicit Holder(Box<int32_t>&& box);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
@@ -51,7 +51,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 }
 
 
-// def __init__(self, box: Own[Box[Int32]]) -> None:
+// def __init__(self, box: Own[Box[int32]]) -> None:
 inline Holder::Holder(Box<int32_t>&& box) : box(std::move(box)) {}
 // def wrap[T](v: T) -> Own[Box[T]]:
 template<typename T>

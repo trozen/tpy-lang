@@ -22,10 +22,10 @@ void main();
 
 // class Box:
 struct Box {
-    // val: Int32
+    // val: int32
     int32_t val;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Box() = default;
     explicit Box(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
@@ -133,7 +133,7 @@ inline __gen_Hub_relay Hub::relay() const {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Box::Box(int32_t v) : val(v) {}
 inline auto relay() {
     return ::tpy::make_generator<std::tuple<int32_t, Box*>>(

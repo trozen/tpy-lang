@@ -6,24 +6,24 @@
 # the whole select to `bool` in sema
 # (BUGS.md#container-select-mutation-retypes-bool), so the mutating spelling
 # does not compile.
-from tpy import Int32, Span
+from tpy import int32, Span
 
 
-def pick(a: bytes, b: bytes) -> Int32:
+def pick(a: bytes, b: bytes) -> int32:
     # Both operands are PARAMS, so both spell `std::span<const uint8_t>` at
     # runtime although their resolved type is the owned `bytes`; the select
     # compares the runtime spellings, not the resolved ones.
     return len(a or b)
 
 
-def pick_local(a: bytes, b: bytes) -> Int32:
+def pick_local(a: bytes, b: bytes) -> int32:
     # The same span-spelled select at a LOCAL sink: the local keeps the view,
     # so no owning conversion is taken here.
     v = a or b  # tpyc: ok
     return len(v)
 
 
-def pick_rebound(a: bytes, b: bytes) -> Int32:
+def pick_rebound(a: bytes, b: bytes) -> int32:
     # A REBOUND `bytes` param is still a view for the select's purposes, so
     # the pair stays same-spelling and the span composes over the live owned
     # local (BUGS.md#bytes-select-mixed-runtime-spelling).
@@ -69,9 +69,9 @@ def main() -> None:
     print(pick_owned(b"", b"ab"))
 
     xs = [1, 2, 3]
-    ys: list[Int32] = []
-    s = Span[Int32](xs)
-    t = Span[Int32](ys)
+    ys: list[int32] = []
+    s = Span[int32](xs)
+    t = Span[int32](ys)
     # Span: the same select, tested with __len__ rather than .empty().
     u = t or s  # tpyc: ok
     print(len(u))

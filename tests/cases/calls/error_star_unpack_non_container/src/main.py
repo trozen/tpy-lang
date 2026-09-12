@@ -2,7 +2,7 @@
 # The diagnostic fires from `_unpack_star_element_type` in
 # `tpyc/sema/expressions.py` (reached via `analyze_call_arg` on the
 # generic-call inference path).
-from tpy import Int32, nocopy
+from tpy import int32, nocopy
 
 
 @nocopy
@@ -13,8 +13,8 @@ class Box[T]:
         self.val = v
 
 
-def take_all[T](*boxes: Box[T]) -> Int32:
-    n: Int32 = 0
+def take_all[T](*boxes: Box[T]) -> int32:
+    n: int32 = 0
     for b in boxes:
         n += 1
     return n

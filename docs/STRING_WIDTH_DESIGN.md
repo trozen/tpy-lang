@@ -20,7 +20,7 @@ design change.
 |--------|-------|
 | `str` = Python code-point semantics within the width's representable range | Decided |
 | Single build knob "string width" in {1, 2, 4, PEP-393}, default 4 | Decided |
-| `Char` = a representable code point, type derived from the width (not a separate knob) | Decided |
+| `char` = a representable code point, type derived from the width (not a separate knob) | Decided |
 | Width is a whole-artifact ABI property | Decided |
 | Blessed default (4) + opt-out; precompiled libs require width match | Decided |
 | Width-agnostic library contract (sema-enforced core + lint/test obligations) | Decided |
@@ -28,7 +28,7 @@ design change.
 | Methods: ASCII+Latin-1 first pass, full UCD tables as a named follow-up | Decided |
 | Build widths 1 (ATS) and 4 (extensions) | Not started -- first impl |
 | Width 2 (UCS-2) and PEP-393 dynamic | Deferred -- documented future modes |
-| Current `str` (`std::string`, byte-indexed, `Char`=`char`, ASCII-only methods) | Shipped; superseded by this design |
+| Current `str` (`std::string`, byte-indexed, `char`=`char`, ASCII-only methods) | Shipped; superseded by this design |
 
 ## Motivation
 
@@ -42,7 +42,7 @@ Two real, near-term use cases pull `str` in different directions:
   fidelity.
 
 Today TPy's `str` is effectively an 8-bit string: `std::string` storage,
-`len(s)` = byte count, `s[i]` -> `Char` = `char` (one byte), and the
+`len(s)` = byte count, `s[i]` -> `char` = `char` (one byte), and the
 case/`is*` methods are ASCII-only. This matches CPython only for ASCII and
 silently diverges on non-ASCII. The design below keeps one code-point-semantic
 `str` (Python-correct within each width's representable range) while letting the
@@ -51,27 +51,27 @@ build pick the character width.
 ## Core decision: one "string width" knob
 
 There is exactly ONE build setting -- the **string width** -- chosen from
-{1, 2, 4, PEP-393}, default 4. It drives `str` storage, the `Char` type, the
+{1, 2, 4, PEP-393}, default 4. It drives `str` storage, the `char` type, the
 C++ interop container, and the representable code-point range together:
 
-| Width | `str` storage | `Char` | Range | Indexing | Zero-copy C++ `std::string` interop |
+| Width | `str` storage | `char` | Range | Indexing | Zero-copy C++ `std::string` interop |
 |-------|---------------|--------|-------|----------|-------------------------------------|
 | 1 | `std::string` (Latin-1, 1 byte/char) | `char` | U+0000..U+00FF | O(1) | Yes (length-aware Latin-1 only) |
 | 2 | `std::u16string` (UCS-2) | `char16_t` | U+0000..U+FFFF (BMP) | O(1) | No (convert) |
 | 4 | `std::u32string` (UCS-4) | `char32_t` | U+0000..U+10FFFF | O(1) | No (convert) |
 | PEP-393 | per-string tagged 1/2/4 | `char32_t` | full | O(1) | No (convert) |
 
-`Char` is **derived** from the width, never an independent option: `Char` must
-hold any code point `str` can produce, so a narrower `Char` than the width
+`char` is **derived** from the width, never an independent option: `char` must
+hold any code point `str` can produce, so a narrower `char` than the width
 would truncate (unsound) and a wider one is redundant. A 1-byte build gets a
-compact `char` `Char` that also matches the C++ side's `char`; a 4-byte build
+compact `char` `char` that also matches the C++ side's `char`; a 4-byte build
 gets `char32_t`.
 
-Precisely, `Char` is **one representable code point for the active width**, not
+Precisely, `char` is **one representable code point for the active width**, not
 "any Unicode code point." A `chr(n)`, character literal, or `str` index that
 would yield a code point outside the width is a width-overflow (see
 "Representable range and overflow"). Note the type asymmetry with Python:
-Python's `s[i]` yields a one-character `str`, whereas TPy's `Char` is a distinct
+Python's `s[i]` yields a one-character `str`, whereas TPy's `char` is a distinct
 value type bounded by the build width.
 
 `str` storage is **not UTF-8**, and that is a forced move, not a preference: the
@@ -87,7 +87,7 @@ encoding only, exactly as in CPython (fixed-width internally, UTF-8 at I/O).
 
 Regardless of width, `str` observes Python semantics **for every code point the
 width can represent**: `len(s)` is the code-point count, `s[i]`/iteration/slicing
-operate on code points, `Char` is a code-point value. Width changes the
+operate on code points, `char` is a code-point value. Width changes the
 *representation* (storage size, representable range, interop container), never
 the observable behavior within its range.
 
@@ -141,22 +141,22 @@ For libraries (the stdlib included) to compile at *any* width -- which is what
 makes the opt-out distribution model below possible -- all portable code must be
 written width-agnostic. The contract is essentially "behave like Python `str`":
 
-- `Char` is an **opaque code-point value**. It converts to/from `int` only via
+- `char` is an **opaque code-point value**. It converts to/from `int` only via
   `ord`/`chr` (Unicode scalar values, width-independent) and compares against
-  character literals. No raw byte arithmetic on `Char`, no reinterpreting its
+  character literals. No raw byte arithmetic on `char`, no reinterpreting its
   storage as bytes.
 - `str` exposes **no raw fixed-width buffer** to portable code. Index, iterate,
   slice, and the string methods are the only sanctioned access. Raw-byte work
   goes through `bytes` / `.encode()` / `.decode()`.
 
 This is Python's own model (Python has no raw-buffer access to `str`; you
-`.encode()`). The only things today's TPy does that violate it are `Char` =
+`.encode()`). The only things today's TPy does that violate it are `char` =
 `char` and `str.data()`-style C++ interop.
 
 Enforcement is layered -- sema is necessary but not sufficient:
 
-- **Sema-enforced (mechanical):** no raw byte arithmetic on `Char`, no
-  reinterpreting `Char`/`str` storage as bytes, no raw fixed-width buffer access,
+- **Sema-enforced (mechanical):** no raw byte arithmetic on `char`, no
+  reinterpreting `char`/`str` storage as bytes, no raw fixed-width buffer access,
   and width-gated native signatures (a `@native` grabbing a raw `str` buffer in a
   width != 1 build is a compile error). These are the violations that compile at
   width 1 but break at width 4, so they must be caught at the source.
@@ -254,31 +254,31 @@ change to add later):
   branchy `s[i]` decode), roughly doubling the string runtime surface. It is
   **source-compatible** with the fixed-width modes (same `str` interface, no
   user-code change to add it) but **ABI- and performance-distinct**: its runtime
-  layout, `Char`-extraction path, native ABI, and cache keys differ, so it is its
+  layout, `char`-extraction path, native ABI, and cache keys differ, so it is its
   own build target with its own test matrix, not a drop-in behind the existing
   machinery. Add only when one app must be full-range AND compact AND O(1) at
   once; a width-4 build already gives full-range + O(1) at 4x memory, covering
-  most of that need. `Char` is already `char32_t` in this mode, so no `Char`
+  most of that need. `char` is already `char32_t` in this mode, so no `char`
   change is needed to add it.
 
-The contract (`Char` = code point, opaque `str`) and the width machinery should
-land **together** in the first pass: the migration cost is changing `Char` from
+The contract (`char` = code point, opaque `str`) and the width machinery should
+land **together** in the first pass: the migration cost is changing `char` from
 `char` to a code-point type, worth paying once, when there is payoff.
 
 ## Migration from today
 
 Changes from the current model (`docs/STRING_HANDLING.md`):
 
-- `Char` changes from `char` to the width-derived code-point type (`char` at
-  width 1, `char32_t` at width 4). Touches every `s[i]`, char literal, `Char`
-  field, and the `Char`/`bytes` boundary.
+- `char` changes from `char` to the width-derived code-point type (`char` at
+  width 1, `char32_t` at width 4). Touches every `s[i]`, char literal, `char`
+  field, and the `char`/`bytes` boundary.
 - `s[i]` / `len` / iteration become code-point operations (a no-op for ASCII;
   correct for Latin-1 at width 1; correct for all of Unicode at width 4).
 - String methods become code-point-aware -- but this is the largest hidden work
   item, not a mechanical widening. Python's `upper`/`lower`/`is*` are driven by
   the Unicode character database and are sometimes **length-changing** (German
-  sharp-s upper-cases to `"SS"`), so a `Char -> Char` mapping is insufficient;
-  case conversion returns a `str`, not a `Char`. **Scoped (see "Method fidelity"
+  sharp-s upper-cases to `"SS"`), so a `char -> char` mapping is insufficient;
+  case conversion returns a `str`, not a `char`. **Scoped (see "Method fidelity"
   below):** the first pass ships ASCII + Latin-1-correct methods (a small fixed
   256-entry table, which closes the BUGS.md Latin-1 case gap at width 1); full
   UCD tables are a named follow-up. Even the Latin-1 table is not trivial -- its
@@ -311,7 +311,7 @@ Changes from the current model (`docs/STRING_HANDLING.md`):
   planes, full case folding, all scripts), generated from the UCD (the source
   CPython's `unicodedata` uses), are a **bounded follow-up milestone** and a
   prerequisite for claiming width-4 CPython *method* parity. The width machinery
-  (representation, `Char`, O(1) index/`len`/iteration/slicing) does not depend on
+  (representation, `char`, O(1) index/`len`/iteration/slicing) does not depend on
   it and ships first.
   - **Coherence caveat (default vs first-complete target):** the blessed default
     (width 4) is exactly the width whose first pass ships *incomplete* methods
@@ -340,7 +340,7 @@ Changes from the current model (`docs/STRING_HANDLING.md`):
 ## Relationship to existing docs
 
 - `docs/STRING_HANDLING.md` -- current `str`/`StrView`/`String` model this
-  design supersedes for the representation/`Char` axis.
+  design supersedes for the representation/`char` axis.
 - `docs/OWNERSHIP_DESIGN.md` -- `str` as an immutable value type (copy-on-store,
   move-when-dead); unchanged by this design.
 - CPython interop (`docs/CPYTHON_INTEROP.md`) -- the `str` boundary marshalling

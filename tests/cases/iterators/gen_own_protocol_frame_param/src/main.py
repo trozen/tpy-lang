@@ -1,22 +1,22 @@
 # An `Own[<static protocol>]` param on a resumable body: the frame captures the
 # moved-in conformer by value, so the body is admitted at the frame-param gate.
 import asyncio
-from tpy import Own, Int32
+from tpy import Own, int32
 from typing import Iterable, Iterator
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
 # free generic generator: the admitted `Own[static P]` frame param. Two yields
 # per element keep every generator here off the simple-generator lambda
 # peephole, so the frame is the thing under test.
-def each[T](items: Own[Iterable[T]]) -> Iterator[tuple[Int32, T]]:  # tpyc: warning(/never consumed/)
-    i: Int32 = 0
+def each[T](items: Own[Iterable[T]]) -> Iterator[tuple[int32, T]]:  # tpyc: warning(/never consumed/)
+    i: int32 = 0
     for item in items:
         yield (i, item)
         yield (i, item)
@@ -26,8 +26,8 @@ def each[T](items: Own[Iterable[T]]) -> Iterator[tuple[Int32, T]]:  # tpyc: warn
 # monomorphic twin: the same body at a concrete element type. NOT called -- its
 # call site still rejects at the untouched call-arg gate
 # (call.arg_shape.own_protocol.static), so only the body is exercised here.
-def each_mono(items: Own[Iterable[Int32]]) -> Iterator[tuple[Int32, Int32]]:  # tpyc: warning(/never consumed/)
-    i: Int32 = 0
+def each_mono(items: Own[Iterable[int32]]) -> Iterator[tuple[int32, int32]]:  # tpyc: warning(/never consumed/)
+    i: int32 = 0
     for item in items:
         yield (i, item)
         yield (i, item)
@@ -38,8 +38,8 @@ def each_mono(items: Own[Iterable[Int32]]) -> Iterator[tuple[Int32, Int32]]:  # 
 # awaited -- every drive shape for such a coroutine still rejects elsewhere
 # (inline await at res.await_param_type:own_protocol.static, create_task /
 # asyncio.run at method.qualcall.arg.own).
-async def count_mono(items: Own[Iterable[Int32]]) -> Int32:  # tpyc: warning(/never consumed/)
-    s: Int32 = 0
+async def count_mono(items: Own[Iterable[int32]]) -> int32:  # tpyc: warning(/never consumed/)
+    s: int32 = 0
     for _item in items:
         s += 1
     return s
@@ -47,10 +47,10 @@ async def count_mono(items: Own[Iterable[Int32]]) -> Int32:  # tpyc: warning(/ne
 
 def reference_element() -> None:
     pts = [Point(1), Point(2)]
-    seen: Int32 = 0
+    seen: int32 = 0
     # The bare-`T` yield slot hands a reference element out BY VALUE on both
     # emit paths (the generic-yield copy tracked in BUGS.md), so the witness
-    # yields `tuple[Int32, T]`, whose slot is pointer-formed and does alias:
+    # yields `tuple[int32, T]`, whose slot is pointer-formed and does alias:
     # mutate the element on its first yield, read it back on its second.
     for i, p in each(pts):
         if seen % 2 == 0:

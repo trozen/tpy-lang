@@ -2,11 +2,11 @@
 # ``prog`` replaces the default ``"prog"`` placeholder in the usage
 # line and the ``<prog>: error: ...`` parse-error prefix; ``epilog``
 # is appended after the options block in --help output.
-from tpy import Int32
+from tpy import int32
 from argparse import ArgumentParser
 
 
-def main() -> Int32:
+def main() -> int32:
     parser = ArgumentParser(
         prog="myapp",
         description="Frobnicate widgets.",

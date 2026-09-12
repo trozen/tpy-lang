@@ -42,7 +42,7 @@ void test_set_element() {
 void test_bytes_view_hash() {
     // items: list[bytes] = [b"hello", b"world"]
     std::vector<::tpy::Bytes> items = {::tpy::bytes_literal_owned("hello", 5), ::tpy::bytes_literal_owned("world", 5)};
-    // v = items[Int32(0)]  # tpyc: type(BytesView)
+    // v = items[int32(0)]  # tpyc: type(BytesView)
     ::tpy::BytesView v = ::tpy::__getitem__(items, 0);
     // h1 = hash(v)
     uint64_t h1 = ::tpy::__hash__(v);

@@ -5,15 +5,15 @@
 # with async_await_proto_param, which covers the lvalue (borrow) branch.
 import asyncio
 from typing import Iterable
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
-def make_it() -> Own[list[Int32]]:
-    xs: list[Int32] = [1, 2, 3]
+def make_it() -> Own[list[int32]]:
+    xs: list[int32] = [1, 2, 3]
     return xs
 
 
-async def consume(it: Iterable[Int32]) -> None:
+async def consume(it: Iterable[int32]) -> None:
     for x in it:
         await asyncio.sleep(0)
         print(x)

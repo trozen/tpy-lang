@@ -3,16 +3,16 @@
 
 namespace tpyapp::main {
 
-// # 7. Literal arithmetic: BigInt result assigned to Int32
-// a: Int32 = 1 + 2           # addition
+// # 7. Literal arithmetic: BigInt result assigned to int32
+// a: int32 = 1 + 2           # addition
 int32_t a{};
-// b: Int32 = 10 - 3          # subtraction
+// b: int32 = 10 - 3          # subtraction
 int32_t b{};
-// c: Int32 = 4 * 5           # multiplication
+// c: int32 = 4 * 5           # multiplication
 int32_t c{};
-// d: Int32 = 17 // 3         # division
+// d: int32 = 17 // 3         # division
 int32_t d{};
-// e: Int32 = 2 ** 10         # power
+// e: int32 = 2 ** 10         # power
 int32_t e{};
 // # Test all conversions
 // n = 5
@@ -20,7 +20,7 @@ int32_t n{};
 // # Function param
 // result1 = takes_int32(n)
 int32_t result1{};
-// # Return as Int32
+// # Return as int32
 // result2 = return_as_int32(10)
 int32_t result2{};
 // # Variable declaration
@@ -32,37 +32,37 @@ int32_t result4{};
 // # For loop
 // result5 = loop_test(3)
 int32_t result5{};
-// # Int32() constructor
+// # int32() constructor
 // result6 = constructor_test(25)
 int32_t result6{};
 
-// # 1. Function parameter: BigInt passed to Int32 param
-// def takes_int32(x: Int32) -> Int32:
+// # 1. Function parameter: BigInt passed to int32 param
+// def takes_int32(x: int32) -> int32:
 int32_t takes_int32(int32_t x) {
     // return x
     return x;
 }
 
-// # 2. Return statement: BigInt returned as Int32
-// def return_as_int32(x: int) -> Int32:
+// # 2. Return statement: BigInt returned as int32
+// def return_as_int32(x: int) -> int32:
 int32_t return_as_int32(const ::tpy::BigInt& x) {
     // return x
     return (x).to_fixed_check<int32_t>();
 }
 
-// # 3. Variable declaration: BigInt assigned to Int32 var
-// def var_decl_test(x: int) -> Int32:
+// # 3. Variable declaration: BigInt assigned to int32 var
+// def var_decl_test(x: int) -> int32:
 int32_t var_decl_test(const ::tpy::BigInt& x) {
-    // result: Int32 = x
+    // result: int32 = x
     int32_t result = (x).to_fixed_check<int32_t>();
     // return result
     return result;
 }
 
-// # 4. Assignment: BigInt assigned to Int32 var
-// def assign_test(x: int) -> Int32:
+// # 4. Assignment: BigInt assigned to int32 var
+// def assign_test(x: int) -> int32:
 int32_t assign_test(const ::tpy::BigInt& x) {
-    // result: Int32 = 0
+    // result: int32 = 0
     int32_t result = 0;
     // result = x
     result = (x).to_fixed_check<int32_t>();
@@ -71,9 +71,9 @@ int32_t assign_test(const ::tpy::BigInt& x) {
 }
 
 // # 5. For loop with BigInt bound
-// def loop_test(n: int) -> Int32:
+// def loop_test(n: int) -> int32:
 int32_t loop_test(const ::tpy::BigInt& n) {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for i in range(n):
     ::tpy::BigInt __stop_0 = n;
@@ -85,16 +85,16 @@ int32_t loop_test(const ::tpy::BigInt& n) {
     return total;
 }
 
-// # 6. Int32() constructor from BigInt
-// def constructor_test(x: int) -> Int32:
+// # 6. int32() constructor from BigInt
+// def constructor_test(x: int) -> int32:
 int32_t constructor_test(const ::tpy::BigInt& x) {
-    // return Int32(x)
+    // return int32(x)
     return (x).to_fixed_check<int32_t>();
 }
 
-// def literal_ops_local() -> Int32:
+// def literal_ops_local() -> int32:
 int32_t literal_ops_local() {
-    // x: Int32 = 100 + 200
+    // x: int32 = 100 + 200
     int32_t x = ::tpy::add_check<int32_t>(100, 200);
     // return x
     return x;
@@ -105,16 +105,16 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # 7. Literal arithmetic: BigInt result assigned to Int32
-    // a: Int32 = 1 + 2           # addition
+    // # 7. Literal arithmetic: BigInt result assigned to int32
+    // a: int32 = 1 + 2           # addition
     a = ::tpy::add_check<int32_t>(1, 2);
-    // b: Int32 = 10 - 3          # subtraction
+    // b: int32 = 10 - 3          # subtraction
     b = ::tpy::sub_check<int32_t>(10, 3);
-    // c: Int32 = 4 * 5           # multiplication
+    // c: int32 = 4 * 5           # multiplication
     c = ::tpy::mul_check<int32_t>(4, 5);
-    // d: Int32 = 17 // 3         # division
+    // d: int32 = 17 // 3         # division
     d = ::tpy::div_check<int32_t>(17, 3);
-    // e: Int32 = 2 ** 10         # power
+    // e: int32 = 2 ** 10         # power
     e = ::tpy::pow_check<int32_t>(2, 10);
     // # Test all conversions
     // n = 5
@@ -124,7 +124,7 @@ void __tpy_init() {
     result1 = takes_int32(n);
     // print(result1)
     std::cout << result1 << "\n";
-    // # Return as Int32
+    // # Return as int32
     // result2 = return_as_int32(10)
     result2 = return_as_int32(::tpy::BigInt(10));
     // print(result2)
@@ -144,7 +144,7 @@ void __tpy_init() {
     result5 = loop_test(::tpy::BigInt(3));
     // print(result5)
     std::cout << result5 << "\n";
-    // # Int32() constructor
+    // # int32() constructor
     // result6 = constructor_test(25)
     result6 = constructor_test(::tpy::BigInt(25));
     // print(result6)

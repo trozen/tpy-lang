@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // r = Rect(Int32(10), Int32(20), Int32(100), Int32(50))
+    // r = Rect(int32(10), int32(20), int32(100), int32(50))
     ::c_rect r = ::c_rect{10, 20, 100, 50};
     // print(r.w)
     std::cout << r.w << "\n";

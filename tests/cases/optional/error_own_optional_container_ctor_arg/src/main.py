@@ -1,14 +1,14 @@
 # An `Own[list | None]` constructor argument: the narrowed-field element write
 # routes, but the ctor argument slot itself has no row. Concretely,
 # `Args([5, 6])` passes a fresh list where the ctor param is
-# `Own[list[Int32] | None]`; TPy rejects that call today.
-from tpy import Int32, Own
+# `Own[list[int32] | None]`; TPy rejects that call today.
+from tpy import int32, Own
 
 
 class Args:
-    coord: list[Int32] | None
+    coord: list[int32] | None
 
-    def __init__(self, c: Own[list[Int32] | None]) -> None:
+    def __init__(self, c: Own[list[int32] | None]) -> None:
         self.coord = c
 
 

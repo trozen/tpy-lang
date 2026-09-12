@@ -20,7 +20,7 @@ __coro_main_coro main_coro();
 
 // class Counter:
 struct Counter {
-    // count: Int32
+    // count: int32
     int32_t count;
 
     // def __init__(self) -> None:

@@ -2,7 +2,7 @@
 # both the frame-param family and the yield slot read the reference axis, so
 # bytearray and Array ride the same reference frame field list/dict/set do.
 from typing import Iterator
-from tpy import Int32, Array
+from tpy import int32, Array
 
 
 def twice_buf(b: bytearray) -> Iterator[bytearray]:  # tpyc: ok
@@ -10,12 +10,12 @@ def twice_buf(b: bytearray) -> Iterator[bytearray]:  # tpyc: ok
     yield b
 
 
-def twice_arr(a: Array[Int32, 2]) -> Iterator[Array[Int32, 2]]:  # tpyc: ok
+def twice_arr(a: Array[int32, 2]) -> Iterator[Array[int32, 2]]:  # tpyc: ok
     yield a  # tpyc: ok
     yield a
 
 
-def twice_list(xs: list[Int32]) -> Iterator[list[Int32]]:  # tpyc: ok
+def twice_list(xs: list[int32]) -> Iterator[list[int32]]:  # tpyc: ok
     yield xs
     yield xs
 
@@ -28,7 +28,7 @@ def main() -> None:
         got.append(66)
     print(len(b))
 
-    a = Array[Int32, 2]()
+    a = Array[int32, 2]()
     for ga in twice_arr(a):
         ga[0] = ga[0] + 1
     print(a[0])

@@ -19,15 +19,15 @@
 # tpy: cpp_namespace("tpystd::urllib::request")
 from __future__ import annotations
 from typing import Final
-from tpy import Int32, Own, String
+from tpy import int32, Own, String
 from tplib import Box
 import ssl
 from http.client import HTTPConnection, HTTPSConnection, HTTPResponse, _Connection
 from urllib.parse import urlsplit
 
 
-HTTP_PORT: Final[Int32] = 80
-HTTPS_PORT: Final[Int32] = 443
+HTTP_PORT: Final[int32] = 80
+HTTPS_PORT: Final[int32] = 443
 
 
 # Subclasses OSError like CPython's URLError, so `except OSError` catches it.
@@ -86,14 +86,14 @@ def _urlopen(url: str, data: bytes | None, timeout: float | None,
     pnum = parts.port
     # Box[_Connection] so http and https share request()/getresponse().
     if scheme == "https":
-        hport: Int32 = HTTPS_PORT
+        hport: int32 = HTTPS_PORT
         if pnum is not None:
-            hport = Int32(pnum)
+            hport = int32(pnum)
         conn: Box[_Connection] = Box(HTTPSConnection(host, hport, timeout, context))
     else:
-        port: Int32 = HTTP_PORT
+        port: int32 = HTTP_PORT
         if pnum is not None:
-            port = Int32(pnum)
+            port = int32(pnum)
         conn = Box(HTTPConnection(host, port, timeout))
     conn.request(method, target, data, None)
     return conn.getresponse()

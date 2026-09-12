@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def read_through(c: readonly[Container]) -> Int32:
+// def read_through(c: readonly[Container]) -> int32:
 int32_t read_through(const Container& c) {
     // return c.ptr.__deref__().value
     return ::tpy::deref_check(c.ptr).value;
@@ -12,7 +12,7 @@ int32_t read_through(const Container& c) {
 
 // def main() -> None:
 void main() {
-    // d = Data(Int32(42))
+    // d = Data(int32(42))
     Data d = Data(42);
     // c = Container()
     Container c = Container();

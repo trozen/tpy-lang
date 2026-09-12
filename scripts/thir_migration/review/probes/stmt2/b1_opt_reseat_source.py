@@ -1,13 +1,13 @@
-from tpy import Int32, readonly
+from tpy import int32, readonly
 class Inner:
-    v: Int32
-    def __init__(self, v: Int32) -> None:
+    v: int32
+    def __init__(self, v: int32) -> None:
         self.v = v
 class Slot:
     opt: Inner | None
     def __init__(self) -> None:
         self.opt = None
-def peek(slots: list[Slot], i: Int32) -> Int32:
+def peek(slots: list[Slot], i: int32) -> int32:
     box = slots[i].opt
     box = slots[0].opt
     if box is None:

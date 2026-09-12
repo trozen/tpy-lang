@@ -1,10 +1,10 @@
-from tpy import Int32, Array, Span
+from tpy import int32, Array, Span
 
 # Test 'in' and 'not in' operators for different container types
 
 def test_list_membership() -> None:
-    """Test membership for list[Int32]."""
-    nums: list[Int32] = [10, 20, 30, 40, 50]
+    """Test membership for list[int32]."""
+    nums: list[int32] = [10, 20, 30, 40, 50]
 
     # 'in' operator
     if 30 in nums:
@@ -23,8 +23,8 @@ def test_list_membership() -> None:
         print("30 not in list: no")
 
 def test_array_membership() -> None:
-    """Test membership for Array[Int32, N]."""
-    arr: Array[Int32, 4] = [1, 2, 3, 4]
+    """Test membership for Array[int32, N]."""
+    arr: Array[int32, 4] = [1, 2, 3, 4]
 
     if 3 in arr:
         print("3 in array: yes")
@@ -36,13 +36,13 @@ def test_array_membership() -> None:
     if 5 not in arr:
         print("5 not in array: yes")
 
-def check_span_contains(data: Span[Int32], value: Int32) -> bool:
-    """Test membership for Span[Int32]."""
+def check_span_contains(data: Span[int32], value: int32) -> bool:
+    """Test membership for Span[int32]."""
     return value in data
 
 def test_span_membership() -> None:
     """Test membership via Span parameter."""
-    nums: Array[Int32, 5] = [100, 200, 300, 400, 500]
+    nums: Array[int32, 5] = [100, 200, 300, 400, 500]
 
     if check_span_contains(nums, 300):
         print("300 in span: yes")
@@ -81,7 +81,7 @@ def test_string_membership() -> None:
 
 def test_membership_in_conditions() -> None:
     """Test membership operators in complex conditions."""
-    nums: list[Int32] = [1, 2, 3, 4, 5]
+    nums: list[int32] = [1, 2, 3, 4, 5]
 
     # Combined with 'and'
     if 2 in nums and 4 in nums:
@@ -97,9 +97,9 @@ def test_membership_in_conditions() -> None:
 
 def test_membership_with_variables() -> None:
     """Test membership with variable lookups."""
-    nums: list[Int32] = [5, 10, 15, 20]
-    target: Int32 = 10
-    missing: Int32 = 7
+    nums: list[int32] = [5, 10, 15, 20]
+    target: int32 = 10
+    missing: int32 = 7
 
     if target in nums:
         print("target found")

@@ -56,7 +56,7 @@ struct Cell {
     // self.n = n
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Cell() = default;
     explicit Cell(int32_t n);
     // non-copyable (@nocopy)
@@ -227,7 +227,7 @@ struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, int32_t> {
 };
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Cell::Cell(int32_t n) : n(n) {}
 
 // def __init__(self, name: str) -> None:

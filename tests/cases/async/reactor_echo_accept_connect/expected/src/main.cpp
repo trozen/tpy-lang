@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def echo_client(port: Int32) -> None:
+// async def echo_client(port: int32) -> None:
 ::tpystd::tpy::Poll<::std::monostate> __coro_echo_client::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -57,7 +57,7 @@ namespace tpyapp::main {
 }
 
 
-// async def echo_client(port: Int32) -> None:
+// async def echo_client(port: int32) -> None:
 __coro_echo_client echo_client(int32_t port) {
     return __coro_echo_client(port);
 }

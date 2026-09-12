@@ -2,14 +2,14 @@
 # tpy: cpp_namespace("tpystd::builtins")
 from .._typing import Self, Iterator, Iterable
 from .._bootstrap._decorators import readonly, pure, Own, dispatch
-from .._core._types import UInt8, UInt64, Int32, Comparable, Equatable, NativeIterable
+from .._core._types import uint8, uint64, int32, Comparable, Equatable, NativeIterable
 from .._bootstrap._extern import native, cpp_template, builtin_type
 from tpy import BytesView
 
 
 @builtin_type("builtins.bytes")
 @native("::tpy::Bytes")
-class bytes(NativeIterable[UInt8], Iterable[UInt8], Comparable, Equatable):
+class bytes(NativeIterable[uint8], Iterable[uint8], Comparable, Equatable):
     @dispatch
     @cpp_template("::tpy::Bytes()")
     def __init__(self) -> None: ...
@@ -29,30 +29,30 @@ class bytes(NativeIterable[UInt8], Iterable[UInt8], Comparable, Equatable):
     def __init__(self, x: BytesView) -> None: ...
     @dispatch
     @native("tpy::bytes_from_size", function=True)
-    def __init__(self, x: Int32) -> None: ...
+    def __init__(self, x: int32) -> None: ...
     @dispatch
     @cpp_template("::tpy::construct<::tpy::Bytes>({0})")
-    def __init__(self, x: Iterable[UInt8]) -> None: ...
-    # TODO(hot-path): the Int32 overload below is per-element range-checked.
+    def __init__(self, x: Iterable[uint8]) -> None: ...
+    # TODO(hot-path): the int32 overload below is per-element range-checked.
     @dispatch
     @native("tpy::bytes_from_int_iterable", function=True)
-    def __init__(self, x: Iterable[Int32]) -> None: ...
+    def __init__(self, x: Iterable[int32]) -> None: ...
 
     @native("tpy::__iter__", function=True)
     @readonly
     @pure
-    def __iter__(self) -> Iterator[UInt8]: ...
+    def __iter__(self) -> Iterator[uint8]: ...
 
     @native("tpy::__len__", function=True)
     @readonly
     @pure
-    def __len__(self) -> Int32: ...
+    def __len__(self) -> int32: ...
 
     @dispatch
     @native("tpy::bytes_getitem", function=True)
     @readonly
     @pure
-    def __getitem__(self, index: Int32) -> UInt8: ...
+    def __getitem__(self, index: int32) -> uint8: ...
 
     @dispatch
     @cpp_template("::tpy::bytes_slice({self}, {0})")
@@ -70,7 +70,7 @@ class bytes(NativeIterable[UInt8], Iterable[UInt8], Comparable, Equatable):
     @native("tpy::bytes_contains", function=True)
     @readonly
     @pure
-    def __contains__(self, value: UInt8) -> bool: ...
+    def __contains__(self, value: uint8) -> bool: ...
     @dispatch
     @native("tpy::bytes_contains_sub", function=True)
     @readonly
@@ -93,12 +93,12 @@ class bytes(NativeIterable[UInt8], Iterable[UInt8], Comparable, Equatable):
     @native("tpy::bytes_repeat", function=True)
     @readonly
     @pure
-    def __mul__(self, n: Int32) -> bytes: ...
+    def __mul__(self, n: int32) -> bytes: ...
 
     @native("tpy::bytes_repeat", function=True)
     @readonly
     @pure
-    def __rmul__(self, n: Int32) -> bytes: ...
+    def __rmul__(self, n: int32) -> bytes: ...
 
     @cpp_template("{self} == {0}")
     @readonly
@@ -113,7 +113,7 @@ class bytes(NativeIterable[UInt8], Iterable[UInt8], Comparable, Equatable):
     @cpp_template("::tpy::__hash__({self})")
     @readonly
     @pure
-    def __hash__(self) -> UInt64: ...
+    def __hash__(self) -> uint64: ...
 
     @native("tpy::bytes_decode", function=True)
     @readonly
@@ -128,17 +128,17 @@ class bytes(NativeIterable[UInt8], Iterable[UInt8], Comparable, Equatable):
     @native("tpy::bytes_find", function=True)
     @readonly
     @pure
-    def find(self, sub: bytes) -> Int32: ...
+    def find(self, sub: bytes) -> int32: ...
 
     @native("tpy::bytes_rfind", function=True)
     @readonly
     @pure
-    def rfind(self, sub: bytes) -> Int32: ...
+    def rfind(self, sub: bytes) -> int32: ...
 
     @native("tpy::bytes_count", function=True)
     @readonly
     @pure
-    def count(self, sub: bytes) -> Int32: ...
+    def count(self, sub: bytes) -> int32: ...
 
     @native("tpy::bytes_startswith", function=True)
     @readonly
@@ -197,7 +197,7 @@ class bytes(NativeIterable[UInt8], Iterable[UInt8], Comparable, Equatable):
 
 @builtin_type("builtins.bytearray")
 @native("::tpy::ByteArray")
-class bytearray(NativeIterable[UInt8], Iterable[UInt8], Comparable, Equatable):
+class bytearray(NativeIterable[uint8], Iterable[uint8], Comparable, Equatable):
     @dispatch
     @cpp_template("::tpy::ByteArray()")
     def __init__(self) -> None: ...
@@ -213,30 +213,30 @@ class bytearray(NativeIterable[UInt8], Iterable[UInt8], Comparable, Equatable):
     def __init__(self, x: bytearray) -> None: ...
     @dispatch
     @native("tpy::bytearray_from_size", function=True)
-    def __init__(self, x: Int32) -> None: ...
+    def __init__(self, x: int32) -> None: ...
     @dispatch
     @cpp_template("::tpy::construct<::tpy::ByteArray>({0})")
-    def __init__(self, x: Iterable[UInt8]) -> None: ...
-    # TODO(hot-path): the Int32 overload below is per-element range-checked.
+    def __init__(self, x: Iterable[uint8]) -> None: ...
+    # TODO(hot-path): the int32 overload below is per-element range-checked.
     @dispatch
     @native("tpy::bytearray_from_int_iterable", function=True)
-    def __init__(self, x: Iterable[Int32]) -> None: ...
+    def __init__(self, x: Iterable[int32]) -> None: ...
 
     @native("tpy::__iter__", function=True)
     @readonly
     @pure
-    def __iter__(self) -> Iterator[UInt8]: ...
+    def __iter__(self) -> Iterator[uint8]: ...
 
     @native("tpy::__len__", function=True)
     @readonly
     @pure
-    def __len__(self) -> Int32: ...
+    def __len__(self) -> int32: ...
 
     @dispatch
     @native("tpy::bytes_getitem", function=True)
     @readonly
     @pure
-    def __getitem__(self, index: Int32) -> UInt8: ...
+    def __getitem__(self, index: int32) -> uint8: ...
 
     @dispatch
     @cpp_template("::tpy::bytes_slice({self}, {0})")
@@ -264,7 +264,7 @@ class bytearray(NativeIterable[UInt8], Iterable[UInt8], Comparable, Equatable):
     @native("tpy::bytes_contains", function=True)
     @readonly
     @pure
-    def __contains__(self, value: UInt8) -> bool: ...
+    def __contains__(self, value: uint8) -> bool: ...
     @dispatch
     @native("tpy::bytes_contains_sub", function=True)
     @readonly
@@ -272,7 +272,7 @@ class bytearray(NativeIterable[UInt8], Iterable[UInt8], Comparable, Equatable):
     def __contains__(self, value: bytes) -> bool: ...
 
     @native("tpy::bytearray_setitem", function=True)
-    def __setitem__(self, index: Int32, value: UInt8) -> None: ...
+    def __setitem__(self, index: int32, value: uint8) -> None: ...
 
     @dispatch
     @native("tpy::bytearray_concat", function=True)
@@ -290,34 +290,34 @@ class bytearray(NativeIterable[UInt8], Iterable[UInt8], Comparable, Equatable):
     @native("tpy::bytearray_repeat", function=True)
     @readonly
     @pure
-    def __mul__(self, n: Int32) -> Own[bytearray]: ...
+    def __mul__(self, n: int32) -> Own[bytearray]: ...
 
     @native("push_back")
-    def append(self, value: UInt8) -> None: ...
+    def append(self, value: uint8) -> None: ...
 
     @dispatch
     @native("tpy::extend", function=True)
-    def extend(self, other: Iterable[UInt8]) -> None: ...
-    # TODO(hot-path): the Int32 overload below is per-element range-checked.
+    def extend(self, other: Iterable[uint8]) -> None: ...
+    # TODO(hot-path): the int32 overload below is per-element range-checked.
     @dispatch
     @native("tpy::bytes_extend_int_iterable", function=True)
-    def extend(self, other: Iterable[Int32]) -> None: ...
+    def extend(self, other: Iterable[int32]) -> None: ...
 
     @dispatch
     @native("tpy::bytearray_pop", function=True)
-    def pop(self) -> UInt8: ...
+    def pop(self) -> uint8: ...
     @dispatch
     @native("tpy::bytearray_pop_at", function=True)
-    def pop(self, index: Int32) -> UInt8: ...
+    def pop(self, index: int32) -> uint8: ...
 
     @native
     def clear(self) -> None: ...
 
     @native("tpy::bytearray_insert", function=True)
-    def insert(self, index: Int32, value: UInt8) -> None: ...
+    def insert(self, index: int32, value: uint8) -> None: ...
 
     @native("tpy::bytearray_remove", function=True)
-    def remove(self, value: UInt8) -> None: ...
+    def remove(self, value: uint8) -> None: ...
 
     @native("tpy::bytes_decode", function=True)
     @readonly
@@ -332,17 +332,17 @@ class bytearray(NativeIterable[UInt8], Iterable[UInt8], Comparable, Equatable):
     @native("tpy::bytes_find", function=True)
     @readonly
     @pure
-    def find(self, sub: bytes) -> Int32: ...
+    def find(self, sub: bytes) -> int32: ...
 
     @native("tpy::bytes_rfind", function=True)
     @readonly
     @pure
-    def rfind(self, sub: bytes) -> Int32: ...
+    def rfind(self, sub: bytes) -> int32: ...
 
     @native("tpy::bytes_count", function=True)
     @readonly
     @pure
-    def count(self, sub: bytes) -> Int32: ...
+    def count(self, sub: bytes) -> int32: ...
 
     @native("tpy::bytes_startswith", function=True)
     @readonly

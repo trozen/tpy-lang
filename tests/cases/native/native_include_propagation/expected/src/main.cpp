@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // print(native_add(Int32(10), Int32(32)))
+    // print(native_add(int32(10), int32(32)))
     std::cout << ::nativelib::native_add(10, 32) << "\n";
 }
 

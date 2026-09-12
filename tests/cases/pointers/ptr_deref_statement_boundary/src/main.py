@@ -3,12 +3,12 @@
 # for arithmetic, and only sequences RHS-before-LHS for whole assignments --
 # eliding a sibling access inside one expression would risk UB if the unchecked
 # side ran first and the pointer was null.
-from tpy import Ptr, Int32
+from tpy import Ptr, int32
 
 class A:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32) -> None:
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 

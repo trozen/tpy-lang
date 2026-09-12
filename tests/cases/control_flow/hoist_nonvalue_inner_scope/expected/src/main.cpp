@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def make_list() -> Own[list[Int32]]:
+// def make_list() -> Own[list[int32]]:
 std::vector<int32_t> make_list() {
     // return [1, 2, 3]
     return {1, 2, 3};
@@ -310,7 +310,7 @@ void optional_rvalue_init() {
 void optional_list_init() {
     // for i in range(2):
     for (int32_t i = 0; i < 2; ++i) {
-        // xs: Optional[list[Int32]] = [i]  # tpyc: ok
+        // xs: Optional[list[int32]] = [i]  # tpyc: ok
         std::vector<int32_t> __slot_1 = std::vector<int32_t>{i};
         std::vector<int32_t>* xs = &__slot_1;
         // if xs is not None:
@@ -424,7 +424,7 @@ void try_body() {
 }
 
 // # Match arm body.
-// def match_arm(k: Int32) -> None:
+// def match_arm(k: int32) -> None:
 void match_arm(int32_t k) {
     std::optional<Flat> __slot_1;
     // match k:
@@ -462,7 +462,7 @@ void match_arm(int32_t k) {
 // # prescan (BUGS.md#rebind-slot-missing-module-nested-def).
 // def closure() -> None:
 void closure() {
-    // def inner(k: Int32) -> Int32:
+    // def inner(k: int32) -> int32:
     auto inner = [](int32_t k) -> int32_t {
         // for j in range(2):
         for (int32_t j = 0; j < 2; ++j) {
@@ -490,7 +490,7 @@ void closure() {
 
 // # @error_return body.
 // @error_return(MyErr)
-// def error_return_body(i: Int32) -> Int32:
+// def error_return_body(i: int32) -> int32:
 std::expected<int32_t, MyErr> error_return_body(int32_t i) {
     std::optional<Flat> __slot_1;
     // for j in range(2):

@@ -1,1 +1,1 @@
-main.py:12: error: 'Int32' is not a member of union 'Tree[Int32 | str]'
+main.py:12: error: 'int32' is not a member of union 'Tree[int32 | str]'

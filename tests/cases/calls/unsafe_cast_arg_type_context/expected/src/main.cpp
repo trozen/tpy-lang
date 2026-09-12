@@ -3,7 +3,7 @@
 
 namespace tpyapp::main {
 
-// carg: list[Int32] = [Int32(1)]
+// carg: list[int32] = [int32(1)]
 std::vector<int32_t>* carg{};
 // parg_list = list[Ptr[None]]()
 std::vector<void*>* parg_list{};
@@ -12,9 +12,9 @@ void* carg_ptr{};
 // sink = Sink()
 Sink* sink{};
 
-// def take_ptr(p: Ptr[None]) -> Int32:
+// def take_ptr(p: Ptr[None]) -> int32:
 int32_t take_ptr(void* p) {
-    // return Int32(10)
+    // return int32(10)
     return 10;
 }
 
@@ -24,7 +24,7 @@ void __tpy_init() {
     initialized = true;
 
     // from tpy.unsafe import unsafe_cast, unsafe_ptr
-    // carg: list[Int32] = [Int32(1)]
+    // carg: list[int32] = [int32(1)]
     static std::vector<int32_t> __global_slot_1 = {1};
     carg = &__global_slot_1;
     // parg_list = list[Ptr[None]]()

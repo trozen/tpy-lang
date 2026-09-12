@@ -1,12 +1,12 @@
 # A walrus-bound pointer-repr tuple takes the borrow form like a regular
 # VarDecl: the binding aliases its captured member, and a storage-form
 # source (list element) is lifted element-wise so mutation reaches it.
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    val: Int32
-    def __init__(self, v: Int32) -> None:
+    val: int32
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 
@@ -18,7 +18,7 @@ def literal_capture() -> None:
 
 
 def storage_source() -> None:
-    items: list[tuple[Int32, Box]] = [(2, Box(7))]
+    items: list[tuple[int32, Box]] = [(2, Box(7))]
     print((t := items[0])[0])
     t[1].val = 42
     print(items[0][1].val)

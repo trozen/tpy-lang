@@ -1,12 +1,12 @@
 # Transitive mutation: outer forwards a tuple to inner that mutates it.
 # Phase-2 propagation marks outer's tuple param mutated too, so
 # const-inference does NOT fire for outer. Slots stay non-const.
-from tpy import Int32
+from tpy import int32
 
 
 class T:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 

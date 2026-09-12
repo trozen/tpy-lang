@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 
-def root_func() -> Int32:
-    return Int32(42)
+def root_func() -> int32:
+    return int32(42)

@@ -17,7 +17,7 @@ wire values are hardcoded TPy-side by the consuming reactor, not here.
 its bindings resolve at link time to the tpy_epoll_* symbols.
 """
 
-from tpy import Int32, UInt32, Ptr
+from tpy import int32, uint32, Ptr
 from tpy.extern import native
 
 
@@ -29,11 +29,11 @@ from tpy.extern import native
 # exist.) Same convention as posix_socket.py's `::tpy_resolve_ipv4`.
 
 @native("::tpy_epoll_create")
-def epoll_create() -> Int32: ...
+def epoll_create() -> int32: ...
 
 @native("::tpy_epoll_ctl")
-def epoll_ctl(epfd: Int32, op: Int32, fd: Int32, events: UInt32) -> Int32: ...
+def epoll_ctl(epfd: int32, op: int32, fd: int32, events: uint32) -> int32: ...
 
 @native("::tpy_epoll_wait")
-def epoll_wait(epfd: Int32, out_fds: Ptr[Int32], out_events: Ptr[UInt32],
-               maxevents: Int32, timeout_ms: Int32) -> Int32: ...
+def epoll_wait(epfd: int32, out_fds: Ptr[int32], out_events: Ptr[uint32],
+               maxevents: int32, timeout_ms: int32) -> int32: ...

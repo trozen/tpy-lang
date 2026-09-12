@@ -1,12 +1,12 @@
 # User-record method calls on bare-name receivers (record args, void stmt
 # calls, inherited/narrowed); mutations observed on the caller's object (aliasing).
-from tpy import Int32
+from tpy import int32
 
 
 class Counter:
-    value: Int32
+    value: int32
 
-    def __init__(self, start: Int32):
+    def __init__(self, start: int32):
         self.value = start
 
     def bump(self) -> None:
@@ -15,10 +15,10 @@ class Counter:
     def add_from(self, other: "Counter") -> None:
         self.value += other.value
 
-    def diff(self, other: "Counter") -> Int32:
+    def diff(self, other: "Counter") -> int32:
         return self.value - other.value
 
-    def get(self) -> Int32:
+    def get(self) -> int32:
         return self.value
 
 
@@ -30,24 +30,24 @@ class Label:
 
 
 class FancyCounter(Counter):
-    def __init__(self, start: Int32):
+    def __init__(self, start: int32):
         super().__init__(start)
 
 
-def combine(a: Counter, b: Counter) -> Int32:
+def combine(a: Counter, b: Counter) -> int32:
     a.bump()          # void, statement position
     a.add_from(b)     # record name as method arg
     return a.diff(b)
 
 
-def narrowed_receiver(v: Counter | Label) -> Int32:
+def narrowed_receiver(v: Counter | Label) -> int32:
     if isinstance(v, Counter):
         v.bump()
         return v.get()
     return len(v.name)
 
 
-def inherited(f: FancyCounter, k: Int32) -> Int32:
+def inherited(f: FancyCounter, k: int32) -> int32:
     f.bump()
     return f.get() + k
 

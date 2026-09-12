@@ -1,12 +1,12 @@
 # print()/str() of a bare union value (value-union and pointer-variant record
 # union); the record case mutates after narrowing to prove print aliases it.
-from tpy import Int32
+from tpy import int32
 
 
 class Counter:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def __repr__(self) -> str:
@@ -14,7 +14,7 @@ class Counter:
 
 
 def main() -> None:
-    a: Int32 | str = 5
+    a: int32 | str = 5
     print(a)  # tpyc: ok
     print(str(a))  # tpyc: ok
     a = "hi"

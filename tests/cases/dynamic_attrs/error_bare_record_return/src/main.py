@@ -1,10 +1,10 @@
 # D16 Phase 1: __getattr__ cannot return a bare non-value record; use Own[T] instead.
-from tpy import Int32
+from tpy import int32
 
 class Box:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 class Bad:

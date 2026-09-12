@@ -1,5 +1,5 @@
 # Error: wrong number of explicit type arguments for a generic method
-from tpy import Int32
+from tpy import int32
 
 class Box[T]:
     val: T
@@ -11,7 +11,7 @@ class Box[T]:
         return other
 
 def main() -> None:
-    b = Box[Int32](Int32(10))
-    b.transform[Int32, str](Int32(5))  # tpyc: error(/expects 1 type argument/)
+    b = Box[int32](int32(10))
+    b.transform[int32, str](int32(5))  # tpyc: error(/expects 1 type argument/)
 
 main()

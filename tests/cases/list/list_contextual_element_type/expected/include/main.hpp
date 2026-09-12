@@ -17,9 +17,9 @@ void main();
 
 // class Rect:
 struct Rect {
-    // w: Int32
+    // w: int32
     int32_t w;
-    // h: Int32
+    // h: int32
     int32_t h;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.Rect";
@@ -32,7 +32,7 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
 
 // class Circle:
 struct Circle {
-    // r: Int32
+    // r: int32
     int32_t r;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.Circle";

@@ -2,12 +2,12 @@
 # storage form (value tuple) -- the helper would emit T&-form slots that
 # can't be stored in a std::vector<std::tuple<T, T>>. Verifies the
 # in_storage_context guard in _tuple_literal_slot_info.
-from tpy import Int32
+from tpy import int32
 
 
 class T:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 

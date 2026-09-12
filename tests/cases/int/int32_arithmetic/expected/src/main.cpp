@@ -6,9 +6,9 @@ namespace tpyapp::main {
 
 // def test_binary_ops():
 void test_binary_ops() {
-    // a: Int32 = 20
+    // a: int32 = 20
     int32_t a = 20;
-    // b: Int32 = 7
+    // b: int32 = 7
     int32_t b = 7;
     // # Addition
     // print(a + b)  # 27
@@ -29,11 +29,11 @@ void test_binary_ops() {
 
 // def test_unary_neg():
 void test_unary_neg() {
-    // x: Int32 = 42
+    // x: int32 = 42
     int32_t x = 42;
     // print(-x)  # -42
     std::cout << ::tpy::neg_check<int32_t>(x) << "\n";
-    // y: Int32 = -100
+    // y: int32 = -100
     int32_t y = -100;
     // print(-y)  # 100
     std::cout << ::tpy::neg_check<int32_t>(y) << "\n";
@@ -41,12 +41,12 @@ void test_unary_neg() {
 
 // def test_mixed_literals():
 void test_mixed_literals() {
-    // x: Int32 = 10
+    // x: int32 = 10
     int32_t x = 10;
-    // # Int32 + literal
+    // # int32 + literal
     // print(x + 5)  # 15
     std::cout << (::tpy::add_check<int32_t>(x, 5)) << "\n";
-    // # literal + Int32 (less common but should work)
+    // # literal + int32 (less common but should work)
     // print(5 + x)  # 15
     std::cout << (::tpy::add_check<int32_t>(5, x)) << "\n";
     // # Chained operations
@@ -56,9 +56,9 @@ void test_mixed_literals() {
 
 // def test_negative_division():
 void test_negative_division() {
-    // a: Int32 = -17
+    // a: int32 = -17
     int32_t a = -17;
-    // b: Int32 = 5
+    // b: int32 = 5
     int32_t b = 5;
     // # Python floor division: -17 // 5 = -4 (not -3)
     // print(a // b)  # -4

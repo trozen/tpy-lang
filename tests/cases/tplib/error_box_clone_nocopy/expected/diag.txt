@@ -1,1 +1,1 @@
-main.py:11: error: Method 'clone' requires type parameter 'T' to satisfy 'Copyable', but 'Rc[Int32]' does not conform
+main.py:11: error: Method 'clone' requires type parameter 'T' to satisfy 'Copyable', but 'Rc[int32]' does not conform

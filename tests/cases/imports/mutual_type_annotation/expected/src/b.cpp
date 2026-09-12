@@ -5,7 +5,7 @@
 namespace tpyapp::b {
 
 
-// def H(x: A) -> Int32:
+// def H(x: A) -> int32:
 int32_t H(const ::tpyapp::a::A& x) {
     // return x.go()
     return x.go();

@@ -16,22 +16,22 @@ void main();
 
 // class Buffer:
 struct Buffer {
-    // _data: list[Int32]
+    // _data: list[int32]
     std::vector<int32_t> _data;
 
     // def __init__(self) -> None:
     Buffer();
 
     // @auto_readonly
-    // def as_span(self) -> Span[auto_readonly[Int32]]:
+    // def as_span(self) -> Span[auto_readonly[int32]]:
     std::span<int32_t> as_span();
 
     // @auto_readonly
-    // def as_span(self) -> Span[auto_readonly[Int32]]:
+    // def as_span(self) -> Span[auto_readonly[int32]]:
     std::span<const int32_t> as_span() const;
 
-    // # __getitem__ is implicitly readonly; returns Int32 (value type), no dual overload needed
-    // def __getitem__(self, index: Int32) -> Int32:
+    // # __getitem__ is implicitly readonly; returns int32 (value type), no dual overload needed
+    // def __getitem__(self, index: int32) -> int32:
     int32_t __getitem__(int32_t index) const;
 
     int32_t operator[](int32_t index) const {
@@ -50,21 +50,21 @@ inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {
 inline Buffer::Buffer() : _data(std::vector<int32_t>{1, 2, 3}) {}
 
 // @auto_readonly
-// def as_span(self) -> Span[auto_readonly[Int32]]:
+// def as_span(self) -> Span[auto_readonly[int32]]:
 inline std::span<int32_t> Buffer::as_span() {
     // return self._data
     return ::tpy::as_mut_span(this->_data);
 }
 
 // @auto_readonly
-// def as_span(self) -> Span[auto_readonly[Int32]]:
+// def as_span(self) -> Span[auto_readonly[int32]]:
 inline std::span<const int32_t> Buffer::as_span() const {
     // return self._data
     return ::tpy::as_span(this->_data);
 }
 
-// # __getitem__ is implicitly readonly; returns Int32 (value type), no dual overload needed
-// def __getitem__(self, index: Int32) -> Int32:
+// # __getitem__ is implicitly readonly; returns int32 (value type), no dual overload needed
+// def __getitem__(self, index: int32) -> int32:
 inline int32_t Buffer::__getitem__(int32_t index) const {
     // return self._data[index]
     return ::tpy::__getitem__(this->_data, index);

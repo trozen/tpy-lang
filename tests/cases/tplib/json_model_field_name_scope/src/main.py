@@ -1,7 +1,7 @@
 # Regression: @model field names must not leak into other methods' scopes.
 # A @model with field `color: str` must not shadow a `color: Color` parameter
 # in an unrelated method after an if-statement triggers _sync_promoted_var_types.
-from tpy import Int32, copy
+from tpy import int32, copy
 from tplib.json.model import model
 from dataclasses import dataclass
 from enum import Enum, auto
@@ -13,19 +13,19 @@ class Color(Enum):
 @model
 class Msg:
     color: str = ""
-    value: Int32 = 0
+    value: int32 = 0
 
 @dataclass
 class Item:
     color: Color
 
 class Registry:
-    items: dict[Int32, Item]
+    items: dict[int32, Item]
 
     def __init__(self):
-        self.items = dict[Int32, Item]()
+        self.items = dict[int32, Item]()
 
-    def update(self, key: Int32, color: Color) -> None:
+    def update(self, key: int32, color: Color) -> None:
         if key in self.items:
             del self.items[key]
         item = Item(color)

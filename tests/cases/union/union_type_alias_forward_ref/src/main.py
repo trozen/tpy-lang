@@ -1,19 +1,19 @@
 # Old-style type alias with forward references (alias before class definitions)
-from tpy import Int32
+from tpy import int32
 
 Shape = Circle | Rect
 
 class Circle:
-    radius: Int32
+    radius: int32
 
-    def __init__(self, radius: Int32) -> None:
+    def __init__(self, radius: int32) -> None:
         self.radius = radius
 
 
 class Rect:
-    width: Int32
+    width: int32
 
-    def __init__(self, width: Int32) -> None:
+    def __init__(self, width: int32) -> None:
         self.width = width
 
 
@@ -25,8 +25,8 @@ def describe(s: Shape) -> str:
 
 
 def main() -> None:
-    c: Shape = Circle(Int32(10))
-    r: Shape = Rect(Int32(3))
+    c: Shape = Circle(int32(10))
+    r: Shape = Rect(int32(3))
     print(describe(c))
     print(describe(r))
 

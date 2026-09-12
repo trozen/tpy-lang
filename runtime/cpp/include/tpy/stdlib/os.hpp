@@ -125,7 +125,7 @@ extern int64_t kc_r_ok;
 extern int64_t kc_w_ok;
 extern int64_t kc_x_ok;
 
-// int32 SEEK_* for io.seek (its whence is Int32, not the Int64 os.lseek uses);
+// int32 SEEK_* for io.seek (its whence is int32, not the int64 os.lseek uses);
 // same POSIX values, separate width.
 extern int32_t kc_seek_set32;
 extern int32_t kc_seek_cur32;

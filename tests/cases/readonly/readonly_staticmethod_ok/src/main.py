@@ -1,10 +1,10 @@
-from tpy import Int32, readonly
+from tpy import int32, readonly
 
 
 class Ops:
     @staticmethod
     @readonly
-    def plus_one(x: Int32) -> Int32:
+    def plus_one(x: int32) -> int32:
         return x + 1
 
 

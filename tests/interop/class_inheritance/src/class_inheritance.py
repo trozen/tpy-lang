@@ -8,7 +8,7 @@
 # method-hiding warning (TPy dispatch is static inside the module); the driver
 # only calls overrides from the Python side (MRO dispatch, matches CPython) --
 # the static-dispatch shape is asserted ext-only in ext_checks.py.
-from tpy import Int64
+from tpy import int64
 from tpy.extern import export
 
 
@@ -29,7 +29,7 @@ class Shape:
     def __eq__(self, other: "Shape") -> bool:
         return self.name == other.name
 
-    def __hash__(self) -> Int64:
+    def __hash__(self) -> int64:
         return len(self.name)
 
 
@@ -59,12 +59,12 @@ class Disc(Circle):
 
 @export
 class BaseBox:
-    width: Int64
+    width: int64
 
-    def __init__(self, width: Int64):
+    def __init__(self, width: int64):
         self.width = width
 
-    def w(self) -> Int64:
+    def w(self) -> int64:
         return self.width
 
 

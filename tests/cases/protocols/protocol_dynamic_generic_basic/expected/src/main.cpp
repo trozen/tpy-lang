@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def show(c: Container[Int32]) -> None:
+// def show(c: Container[int32]) -> None:
 void show(Container<int32_t>& c) {
     // print(c.get())
     std::cout << c.get() << "\n";
 }
 
-// def bump(c: Container[Int32]) -> None:
+// def bump(c: Container[int32]) -> None:
 void bump(Container<int32_t>& c) {
     // c.set(c.get() + 1)
     c.set((::tpy::add_check<int32_t>(c.get(), 1)));
@@ -19,7 +19,7 @@ void bump(Container<int32_t>& c) {
 // def main() -> None:
 void main() {
     std::optional<::tpy::Adapter<Container<int32_t>, Ratio>> __slot_2;
-    // c: Container[Int32] = Box(7)
+    // c: Container[int32] = Box(7)
     ::tpy::Adapter<Container<int32_t>, Box> __slot_1{Box(7)};
     Container<int32_t>* c = &__slot_1;
     // print(c.get())

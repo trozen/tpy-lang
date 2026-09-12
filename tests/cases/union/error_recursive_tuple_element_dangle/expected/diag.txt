@@ -1,1 +1,1 @@
-main.py:9: error: Cannot return local or temporary as tuple element 0. Type 'Tree[Int32]' is returned by reference. Use Own[Tree[Int32]] for this tuple element to return by value.
+main.py:9: error: Cannot return local or temporary as tuple element 0. Type 'Tree[int32]' is returned by reference. Use Own[Tree[int32]] for this tuple element to return by value.

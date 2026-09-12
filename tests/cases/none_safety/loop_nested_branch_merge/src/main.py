@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 
 
-def nested(flag: bool, a: Int32 | None, b: Int32 | None) -> Int32:
+def nested(flag: bool, a: int32 | None, b: int32 | None) -> int32:
     while flag:
         if a is not None:
             if b is None:

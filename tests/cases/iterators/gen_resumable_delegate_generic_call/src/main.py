@@ -2,7 +2,7 @@
 # __for_src frame field spells the callee struct with its inferred type
 # args (__gen_pair<int32_t>).
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
 def pair[T](a: T, b: T) -> Iterator[T]:
@@ -10,7 +10,7 @@ def pair[T](a: T, b: T) -> Iterator[T]:
     yield b
 
 
-def gen() -> Iterator[Int32]:
+def gen() -> Iterator[int32]:
     yield 0
     for x in pair(7, 8):  # tpyc: ok
         yield x

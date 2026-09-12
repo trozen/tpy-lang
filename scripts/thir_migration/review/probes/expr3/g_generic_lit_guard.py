@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 def pick[T](a: T, b: T) -> T:
     return b
 

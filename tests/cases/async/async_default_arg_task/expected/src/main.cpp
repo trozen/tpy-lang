@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def add(a: Int32, b: Int32 = 10) -> Int32:
+// async def add(a: int32, b: int32 = 10) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_add::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -29,12 +29,12 @@ namespace tpyapp::main {
 }
 
 
-// async def add(a: Int32, b: Int32 = 10) -> Int32:
+// async def add(a: int32, b: int32 = 10) -> int32:
 __coro_add add(int32_t a, int32_t b) {
     return __coro_add(a, b);
 }
 
-// async def with_default() -> Int32:
+// async def with_default() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_with_default::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -59,12 +59,12 @@ __coro_add add(int32_t a, int32_t b) {
 }
 
 
-// async def with_default() -> Int32:
+// async def with_default() -> int32:
 __coro_with_default with_default() {
     return __coro_with_default();
 }
 
-// async def with_override() -> Int32:
+// async def with_override() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_with_override::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -89,12 +89,12 @@ __coro_with_default with_default() {
 }
 
 
-// async def with_override() -> Int32:
+// async def with_override() -> int32:
 __coro_with_override with_override() {
     return __coro_with_override();
 }
 
-// async def inline_default() -> Int32:
+// async def inline_default() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_inline_default::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -117,12 +117,12 @@ __coro_with_override with_override() {
 }
 
 
-// async def inline_default() -> Int32:
+// async def inline_default() -> int32:
 __coro_inline_default inline_default() {
     return __coro_inline_default();
 }
 
-// async def inline_override() -> Int32:
+// async def inline_override() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_inline_override::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -145,16 +145,16 @@ __coro_inline_default inline_default() {
 }
 
 
-// async def inline_override() -> Int32:
+// async def inline_override() -> int32:
 __coro_inline_override inline_override() {
     return __coro_inline_override();
 }
 
-// async def generic_default() -> Int32:
+// async def generic_default() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_generic_default::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // nums: list[Int32] = [1, 2, 3]
+        // nums: list[int32] = [1, 2, 3]
         nums.emplace(std::vector<int32_t>{1, 2, 3});
         // return await counted(nums)            # tpyc: ok
         __sub_0.emplace((*nums));
@@ -175,16 +175,16 @@ __coro_inline_override inline_override() {
 }
 
 
-// async def generic_default() -> Int32:
+// async def generic_default() -> int32:
 __coro_generic_default generic_default() {
     return __coro_generic_default();
 }
 
-// async def generic_override() -> Int32:
+// async def generic_override() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_generic_override::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // nums: list[Int32] = [1, 2, 3]
+        // nums: list[int32] = [1, 2, 3]
         nums.emplace(std::vector<int32_t>{1, 2, 3});
         // return await counted(nums, 3)         # tpyc: ok
         __sub_0.emplace((*nums), 3);
@@ -205,12 +205,12 @@ __coro_generic_default generic_default() {
 }
 
 
-// async def generic_override() -> Int32:
+// async def generic_override() -> int32:
 __coro_generic_override generic_override() {
     return __coro_generic_override();
 }
 
-// async def method_inline_default() -> Int32:
+// async def method_inline_default() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_method_inline_default::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -235,12 +235,12 @@ __coro_generic_override generic_override() {
 }
 
 
-// async def method_inline_default() -> Int32:
+// async def method_inline_default() -> int32:
 __coro_method_inline_default method_inline_default() {
     return __coro_method_inline_default();
 }
 
-// async def method_inline_override() -> Int32:
+// async def method_inline_override() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_method_inline_override::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -265,12 +265,12 @@ __coro_method_inline_default method_inline_default() {
 }
 
 
-// async def method_inline_override() -> Int32:
+// async def method_inline_override() -> int32:
 __coro_method_inline_override method_inline_override() {
     return __coro_method_inline_override();
 }
 
-// async def method_task_default() -> Int32:
+// async def method_task_default() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_method_task_default::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -297,12 +297,12 @@ __coro_method_inline_override method_inline_override() {
 }
 
 
-// async def method_task_default() -> Int32:
+// async def method_task_default() -> int32:
 __coro_method_task_default method_task_default() {
     return __coro_method_task_default();
 }
 
-// async def method_task_override() -> Int32:
+// async def method_task_override() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_method_task_override::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -329,18 +329,18 @@ __coro_method_task_default method_task_default() {
 }
 
 
-// async def method_task_override() -> Int32:
+// async def method_task_override() -> int32:
 __coro_method_task_override method_task_override() {
     return __coro_method_task_override();
 }
 
-// async def aenter_default() -> Int32:
+// async def aenter_default() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_aenter_default::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // cm = CM()
         cm.emplace(CM());
-        // out: Int32 = 0
+        // out: int32 = 0
         out = 0;
         __with_ctx_0 = &((*cm));
         // async with cm as v:                   # tpyc: ok
@@ -399,12 +399,12 @@ __coro_method_task_override method_task_override() {
 }
 
 
-// async def aenter_default() -> Int32:
+// async def aenter_default() -> int32:
 __coro_aenter_default aenter_default() {
     return __coro_aenter_default();
 }
 
-// async def aexit_default() -> Int32:
+// async def aexit_default() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_aexit_default::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -467,18 +467,18 @@ __coro_aenter_default aenter_default() {
 }
 
 
-// async def aexit_default() -> Int32:
+// async def aexit_default() -> int32:
 __coro_aexit_default aexit_default() {
     return __coro_aexit_default();
 }
 
-// async def anext_default() -> Int32:
+// async def anext_default() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_anext_default::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // c = Counts(4)
         c.emplace(Counts(4));
-        // total: Int32 = 0
+        // total: int32 = 0
         total = 0;
         __for_itr_0.emplace(((*c)).__aiter__());
         __state = S_JOIN_0;
@@ -532,12 +532,12 @@ __coro_aexit_default aexit_default() {
 }
 
 
-// async def anext_default() -> Int32:
+// async def anext_default() -> int32:
 __coro_anext_default anext_default() {
     return __coro_anext_default();
 }
 
-// async def cross_module_default() -> Int32:
+// async def cross_module_default() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_cross_module_default::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -560,12 +560,12 @@ __coro_anext_default anext_default() {
 }
 
 
-// async def cross_module_default() -> Int32:
+// async def cross_module_default() -> int32:
 __coro_cross_module_default cross_module_default() {
     return __coro_cross_module_default();
 }
 
-// async def cross_module_override() -> Int32:
+// async def cross_module_override() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_cross_module_override::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -588,7 +588,7 @@ __coro_cross_module_default cross_module_default() {
 }
 
 
-// async def cross_module_override() -> Int32:
+// async def cross_module_override() -> int32:
 __coro_cross_module_override cross_module_override() {
     return __coro_cross_module_override();
 }
@@ -627,7 +627,7 @@ void main() {
     std::cout << "xmod-override" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(cross_module_override())) << "\n";
 }
 
-// async def add(self, a: Int32, b: Int32 = 10) -> Int32:
+// async def add(self, a: int32, b: int32 = 10) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_Adder_add::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -652,7 +652,7 @@ void main() {
 }
 
 
-// async def __aenter__(self, bump: Int32 = 5) -> Int32:
+// async def __aenter__(self, bump: int32 = 5) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_CM___aenter__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -705,7 +705,7 @@ void main() {
 }
 
 
-// async def __aenter__(self) -> Int32:
+// async def __aenter__(self) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_CM2___aenter__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -731,7 +731,7 @@ void main() {
 
 
 // async def __aexit__(self, exc_type: None, exc: None, tb: None,
-// extra: Int32 = 9) -> bool:
+// extra: int32 = 9) -> bool:
 ::tpystd::tpy::Poll<bool> __coro_CM2___aexit__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -758,7 +758,7 @@ void main() {
 }
 
 
-// async def __anext__(self, step: Int32 = 1) -> Int32:
+// async def __anext__(self, step: int32 = 1) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_Counter___anext__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {

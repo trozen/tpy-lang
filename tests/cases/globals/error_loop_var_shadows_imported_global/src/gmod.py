@@ -1,3 +1,3 @@
-from tpy import Int32
+from tpy import int32
 
-counter: Int32 = 7
+counter: int32 = 7

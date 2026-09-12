@@ -16,10 +16,10 @@ void main();
 
 // class Box:
 struct Box {
-    // val: Int32
+    // val: int32
     int32_t val;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Box() = default;
     explicit Box(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
@@ -34,7 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 struct Pile {
 
 
-    // def sum_tail(self, *items: Box) -> Int32:  # tpyc: ok
+    // def sum_tail(self, *items: Box) -> int32:  # tpyc: ok
     int32_t sum_tail(::tpy::varargs<const Box> items) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pile";
 };
@@ -45,12 +45,12 @@ inline std::ostream& operator<<(std::ostream& os, const Pile& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Box::Box(int32_t v) : val(v) {}
 
-// def sum_tail(self, *items: Box) -> Int32:  # tpyc: ok
+// def sum_tail(self, *items: Box) -> int32:  # tpyc: ok
 inline int32_t Pile::sum_tail(::tpy::varargs<const Box> items) const {
-    // n: Int32 = 0
+    // n: int32 = 0
     int32_t n = 0;
     // for b in items[1:]:
     auto __obj_0 = ::tpy::list_slice(items, ::tpy::BasicSlice{1, std::nullopt});

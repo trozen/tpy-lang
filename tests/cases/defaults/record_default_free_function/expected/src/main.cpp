@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def offset_of(tz: "Fixed | None" = None) -> Int64:
+// def offset_of(tz: "Fixed | None" = None) -> int64:
 int64_t offset_of(std::optional<Fixed> tz) {
     // if tz is None:
     if ((!tz.has_value())) {
@@ -15,7 +15,7 @@ int64_t offset_of(std::optional<Fixed> tz) {
     return (*tz).off;
 }
 
-// def kind_of(z: "Fixed | Wide | None" = None) -> Int64:
+// def kind_of(z: "Fixed | Wide | None" = None) -> int64:
 int64_t kind_of(const ::tpy::Union<std::monostate, Fixed, Wide>& z) {
     // if z is None:
     if ((std::holds_alternative<std::monostate>(z))) {
@@ -33,7 +33,7 @@ int64_t kind_of(const ::tpy::Union<std::monostate, Fixed, Wide>& z) {
     return __z.span;
 }
 
-// def barks_of(d: "Dog | None" = None) -> Int64:
+// def barks_of(d: "Dog | None" = None) -> int64:
 int64_t barks_of(const Dog* d) {
     // if d is None:
     if ((d == nullptr)) {

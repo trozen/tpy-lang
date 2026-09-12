@@ -1,18 +1,18 @@
-# Test UninitArrayStorage with value types (Int32) and record types (Point).
-from tpy import Int32, Ptr
+# Test UninitArrayStorage with value types (int32) and record types (Point).
+from tpy import int32, Ptr
 from tpy.unsafe import unsafe_load
 from tpy.mem import UninitArrayStorage
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32):
+    def __init__(self, x: int32, y: int32):
         self.x = x
         self.y = y
 
-# Value type: Int32
-storage = UninitArrayStorage[Int32, 4]()
+# Value type: int32
+storage = UninitArrayStorage[int32, 4]()
 storage.init(0, 10)
 storage.init(1, 20)
 storage.init(2, 30)
@@ -22,7 +22,7 @@ print(storage.load(1))
 print(storage.load(2))
 
 # ptr() returns a raw pointer
-p: Ptr[Int32] = storage.ptr()
+p: Ptr[int32] = storage.ptr()
 print(unsafe_load(p, 0))
 
 storage.drop(0)

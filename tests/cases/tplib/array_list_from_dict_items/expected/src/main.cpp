@@ -6,9 +6,9 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // d = dict([("one", Int32(1)), ("two", Int32(2))])
+    // d = dict([("one", int32(1)), ("two", int32(2))])
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({std::tuple<std::string, int32_t>{"one", 1}, std::tuple<std::string, int32_t>{"two", 2}});
-    // from_dict = ArrayList[tuple[str, Int32], 16](d.items())  # rvalue -> temp
+    // from_dict = ArrayList[tuple[str, int32], 16](d.items())  # rvalue -> temp
     ::tpy::dict_items_view<std::string, int32_t> __tmp_1 = ::tpy::dict_items(d);
     ::tpystd::tplib::array_list::ArrayList<std::tuple<std::string, int32_t>, 16> from_dict = ::tpystd::tplib::array_list::ArrayList<std::tuple<std::string, int32_t>, 16>(&(__tmp_1));
     // for pair in from_dict:
@@ -21,9 +21,9 @@ void main() {
         // print(pair)
         std::cout << ::tpy::TuplePrinter(pair) << "\n";
     }
-    // src: list[Int32] = [10, 20, 30]
+    // src: list[int32] = [10, 20, 30]
     std::vector<int32_t> src = {10, 20, 30};
-    // from_name = ArrayList[Int32, 8](src)  # a NAME binds without a temp
+    // from_name = ArrayList[int32, 8](src)  # a NAME binds without a temp
     ::tpystd::tplib::array_list::ArrayList<int32_t, 8> from_name = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>(&(src));
     // print(len(from_dict), len(from_name), from_name[2])
     std::cout << ::tpy::__len__(from_dict) << " " << ::tpy::__len__(from_name) << " " << from_name[2] << "\n";

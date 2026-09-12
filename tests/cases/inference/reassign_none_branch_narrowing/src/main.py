@@ -1,14 +1,14 @@
 # None-seeded variable reassigned inside an if-branch should be
 # Optional[T] after the branch, allowing narrowing with `is not None`.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 class Box:
-    v: Int32
-    def __init__(self, v: Int32) -> None:
+    v: int32
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 def make_box() -> Own[Box]:
-    return Box(Int32(42))
+    return Box(int32(42))
 
 def test_if_branch() -> None:
     b = None

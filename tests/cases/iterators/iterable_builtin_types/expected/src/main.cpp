@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def test_iterable_params() -> None:
 void test_iterable_params() {
     // # list
-    // nums: list[Int32] = [10, 20, 30]
+    // nums: list[int32] = [10, 20, 30]
     std::vector<int32_t> nums = {10, 20, 30};
     // print(sum_items(nums))
     std::cout << sum_items(nums) << "\n";
@@ -20,22 +20,22 @@ void test_iterable_params() {
     auto __tmp_2 = "hello";
     std::cout << count_chars(__tmp_2) << "\n";
     // # Array
-    // arr: Array[Int32, 3] = [1, 2, 3]
+    // arr: Array[int32, 3] = [1, 2, 3]
     std::array<int32_t, 3> arr = {1, 2, 3};
     // print(sum_items(arr))
     std::cout << sum_items(arr) << "\n";
     // # Span (mutable, via Ptr)
-    // sp: Span[Int32] = Span(take_ptr(arr[0]), 3)
+    // sp: Span[int32] = Span(take_ptr(arr[0]), 3)
     std::span<int32_t> sp = std::span<int32_t>(&::tpy::__getitem__(arr, 0), static_cast<size_t>(3));
     // print(sum_items(sp))
     std::cout << sum_items(sp) << "\n";
     // # Span[readonly[T]] (via Array.__span__())
-    // rosp: Span[readonly[Int32]] = arr.__span__()
+    // rosp: Span[readonly[int32]] = arr.__span__()
     std::span<const int32_t> rosp = ::tpy::as_span(arr);
     // print(sum_items(rosp))
     std::cout << sum_items(rosp) << "\n";
     // # list (another)
-    // sl: list[Int32] = [100, 200]
+    // sl: list[int32] = [100, 200]
     std::vector<int32_t> sl = {100, 200};
     // print(sum_items(sl))
     std::cout << sum_items(sl) << "\n";
@@ -50,7 +50,7 @@ void test_iterable_params() {
     // print(count_chars(sv))
     std::cout << count_chars(sv) << "\n";
     // # dict (iterates over keys)
-    // d: dict[str, Int32] = {"a": 1, "b": 2}
+    // d: dict[str, int32] = {"a": 1, "b": 2}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
     // print(sum_strs(d))
     std::cout << sum_strs(d) << "\n";
@@ -59,11 +59,11 @@ void test_iterable_params() {
 // def test_manual_iter() -> None:
 void test_manual_iter() {
     // # Call __iter__() explicitly on concrete types
-    // nums: list[Int32] = [1, 2, 3]
+    // nums: list[int32] = [1, 2, 3]
     std::vector<int32_t> nums = {1, 2, 3};
     // it = nums.__iter__()
     auto it = ::tpy::__iter__(nums);
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for x in it:
     auto& __src_0 = it;
@@ -93,7 +93,7 @@ void test_manual_iter() {
         std::cout << c << "\n";
     }
     // # Array.__iter__()
-    // arr: Array[Int32, 2] = [7, 8]
+    // arr: Array[int32, 2] = [7, 8]
     std::array<int32_t, 2> arr = {7, 8};
     // arr_it = arr.__iter__()
     auto arr_it = ::tpy::__iter__(arr);
@@ -108,7 +108,7 @@ void test_manual_iter() {
         std::cout << v << "\n";
     }
     // # dict.__iter__()
-    // d: dict[str, Int32] = {"x": 10, "y": 20}
+    // d: dict[str, int32] = {"x": 10, "y": 20}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"x", 10}, {"y", 20}});
     // d_it = d.__iter__()
     auto d_it = ::tpy::__iter__(d);
@@ -127,11 +127,11 @@ void test_manual_iter() {
 // def test_iter_builtin() -> None:
 void test_iter_builtin() {
     // # iter() builtin with builtin container types
-    // nums: list[Int32] = [4, 5, 6]
+    // nums: list[int32] = [4, 5, 6]
     std::vector<int32_t> nums = {4, 5, 6};
     // it = iter(nums)
     auto it = ::tpy::__iter__(nums);
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for x in it:
     auto& __src_0 = it;
@@ -146,7 +146,7 @@ void test_iter_builtin() {
     // print(total)
     std::cout << total << "\n";
     // # iter() on dict
-    // d: dict[str, Int32] = {"p": 1, "q": 2}
+    // d: dict[str, int32] = {"p": 1, "q": 2}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"p", 1}, {"q", 2}});
     // d_it = iter(d)
     auto d_it = ::tpy::__iter__(d);
@@ -168,7 +168,7 @@ void main() {
     test_iterable_params();
     // test_manual_iter()
     test_manual_iter();
-    // proto_input: list[Int32] = [10, 20]
+    // proto_input: list[int32] = [10, 20]
     std::vector<int32_t> proto_input = {10, 20};
     // test_iter_on_protocol(proto_input)
     test_iter_on_protocol(proto_input);

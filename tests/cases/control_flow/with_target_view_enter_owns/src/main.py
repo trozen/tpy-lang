@@ -6,7 +6,7 @@
 # catches a dangling view: the length often survives while the bytes do not.
 from typing import Iterator
 
-from tpy import Int32
+from tpy import int32
 
 
 class Label:
@@ -25,7 +25,7 @@ class Blob:
         pass
 
 
-def gen() -> Iterator[Int32]:
+def gen() -> Iterator[int32]:
     with Label() as s:
         pass
     with Blob() as b:

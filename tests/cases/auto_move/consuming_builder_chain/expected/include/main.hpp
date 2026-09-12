@@ -21,10 +21,10 @@ void main();
 
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
 
-    // def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: int32) -> None:
     Point() = default;
     explicit Point(int32_t x);
 
@@ -41,10 +41,10 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 // class Factory:
 struct Factory {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Factory() = default;
     explicit Factory(int32_t n);
 
@@ -61,10 +61,10 @@ inline std::ostream& operator<<(std::ostream& os, const Factory& obj) {
 // @nocopy
 // class Ticket:
 struct Ticket {
-    // id: Int32
+    // id: int32
     int32_t id;
 
-    // def __init__(self, id: Int32) -> None:
+    // def __init__(self, id: int32) -> None:
     Ticket() = default;
     explicit Ticket(int32_t id);
     // non-copyable (@nocopy)
@@ -85,7 +85,7 @@ inline std::ostream& operator<<(std::ostream& os, const Ticket& obj) {
 }
 
 
-// def __init__(self, x: Int32) -> None:
+// def __init__(self, x: int32) -> None:
 inline Point::Point(int32_t x) : x(x) {}
 
 // # The subject: a consuming builder step handing the receiver back.
@@ -97,7 +97,7 @@ inline Point Point::updated() && {
     return std::move((*this));
 }
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Factory::Factory(int32_t n) : n(n) {}
 
 // def make(self) -> Own[Point]:
@@ -106,7 +106,7 @@ inline Point Factory::make() const {
     return Point(this->n);
 }
 
-// def __init__(self, id: Int32) -> None:
+// def __init__(self, id: int32) -> None:
 inline Ticket::Ticket(int32_t id) : id(id) {}
 
 // # A copy here cannot compile, so this leg pins that the return MOVES.

@@ -25,7 +25,7 @@ in libc (for the socket/bind/... set) and in socket_impl.cpp (for the
 tpy_* set).
 """
 
-from tpy import Int32, UInt8, UInt16, UInt32, UInt64, Int64, Ptr, readonly
+from tpy import int32, uint8, uint16, uint32, uint64, int64, Ptr, readonly
 from tpy.extern import native
 
 
@@ -37,9 +37,9 @@ from tpy.extern import native
 # public `socket` facade.
 @native("sockaddr_in", binding="C")
 class SockaddrIn:
-    sin_family: UInt16
-    sin_port: UInt16
-    sin_addr: UInt32
+    sin_family: uint16
+    sin_port: uint16
+    sin_addr: uint32
 
 
 # ---------- Socket lifecycle ----------
@@ -52,28 +52,28 @@ class SockaddrIn:
 # namespace prefix, which is what we want for libc bindings.
 
 @native("::socket")
-def socket(domain: Int32, type_: Int32, protocol: Int32) -> Int32: ...
+def socket(domain: int32, type_: int32, protocol: int32) -> int32: ...
 
 @native("::close")
-def close(fd: Int32) -> Int32: ...
+def close(fd: int32) -> int32: ...
 
 @native("::shutdown")
-def shutdown(fd: Int32, how: Int32) -> Int32: ...
+def shutdown(fd: int32, how: int32) -> int32: ...
 
 
 # ---------- Address binding + connection setup ----------
 
 @native("::bind")
-def bind(fd: Int32, addr: Ptr[SockaddrIn], addrlen: UInt32) -> Int32: ...
+def bind(fd: int32, addr: Ptr[SockaddrIn], addrlen: uint32) -> int32: ...
 
 @native("::connect")
-def connect(fd: Int32, addr: Ptr[SockaddrIn], addrlen: UInt32) -> Int32: ...
+def connect(fd: int32, addr: Ptr[SockaddrIn], addrlen: uint32) -> int32: ...
 
 @native("::listen")
-def listen(fd: Int32, backlog: Int32) -> Int32: ...
+def listen(fd: int32, backlog: int32) -> int32: ...
 
 @native("::accept")
-def accept(fd: Int32, addr: Ptr[SockaddrIn], addrlen: Ptr[UInt32]) -> Int32: ...
+def accept(fd: int32, addr: Ptr[SockaddrIn], addrlen: Ptr[uint32]) -> int32: ...
 
 
 # ---------- Data transfer ----------
@@ -81,10 +81,10 @@ def accept(fd: Int32, addr: Ptr[SockaddrIn], addrlen: Ptr[UInt32]) -> Int32: ...
 # 0 from recv means peer closed (orderly shutdown).
 
 @native("::send")
-def send(fd: Int32, buf: Ptr[readonly[UInt8]], len_: UInt64, flags: Int32) -> Int64: ...
+def send(fd: int32, buf: Ptr[readonly[uint8]], len_: uint64, flags: int32) -> int64: ...
 
 @native("::recv")
-def recv(fd: Int32, buf: Ptr[UInt8], len_: UInt64, flags: Int32) -> Int64: ...
+def recv(fd: int32, buf: Ptr[uint8], len_: uint64, flags: int32) -> int64: ...
 
 
 # ---------- Options + introspection ----------
@@ -93,45 +93,45 @@ def recv(fd: Int32, buf: Ptr[UInt8], len_: UInt64, flags: Int32) -> Int64: ...
 # options; broader shapes arrive with SO_RCVTIMEO / SO_LINGER support.
 
 @native("::setsockopt")
-def setsockopt(fd: Int32, level: Int32, optname: Int32,
-               optval: Ptr[readonly[Int32]], optlen: UInt32) -> Int32: ...
+def setsockopt(fd: int32, level: int32, optname: int32,
+               optval: Ptr[readonly[int32]], optlen: uint32) -> int32: ...
 
 # optlen is in/out (socklen_t*): caller seeds it with the buffer size, libc
 # writes back the bytes filled. Int-valued options only, like setsockopt.
 @native("::getsockopt")
-def getsockopt(fd: Int32, level: Int32, optname: Int32,
-               optval: Ptr[Int32], optlen: Ptr[UInt32]) -> Int32: ...
+def getsockopt(fd: int32, level: int32, optname: int32,
+               optval: Ptr[int32], optlen: Ptr[uint32]) -> int32: ...
 
 @native("::getsockname")
-def getsockname(fd: Int32, addr: Ptr[SockaddrIn], addrlen: Ptr[UInt32]) -> Int32: ...
+def getsockname(fd: int32, addr: Ptr[SockaddrIn], addrlen: Ptr[uint32]) -> int32: ...
 
 @native("::getpeername")
-def getpeername(fd: Int32, addr: Ptr[SockaddrIn], addrlen: Ptr[UInt32]) -> Int32: ...
+def getpeername(fd: int32, addr: Ptr[SockaddrIn], addrlen: Ptr[uint32]) -> int32: ...
 
 @native("::socketpair")
-def socketpair(domain: Int32, type_: Int32, protocol: Int32,
-               sv: Ptr[Int32]) -> Int32: ...
+def socketpair(domain: int32, type_: int32, protocol: int32,
+               sv: Ptr[int32]) -> int32: ...
 
 
 # ---------- Byte-order + address conversion ----------
 
 @native("::htons")
-def htons(hostshort: UInt16) -> UInt16: ...
+def htons(hostshort: uint16) -> uint16: ...
 
 @native("::ntohs")
-def ntohs(netshort: UInt16) -> UInt16: ...
+def ntohs(netshort: uint16) -> uint16: ...
 
 # inet_pton writes the binary form (4 bytes for AF_INET) into `dst`.
 # Returns 1 on success, 0 for bad format, -1 for unsupported family.
 @native("::inet_pton")
-def inet_pton(af: Int32, src: Ptr[readonly[UInt8]], dst: Ptr[UInt8]) -> Int32: ...
+def inet_pton(af: int32, src: Ptr[readonly[uint8]], dst: Ptr[uint8]) -> int32: ...
 
 # inet_ntop writes the text form into `dst` and returns a pointer into it
 # on success, NULL on error. We accept the non-null-terminated return
 # semantics implicitly by copying via dst's span.
 @native("::inet_ntop")
-def inet_ntop(af: Int32, src: Ptr[readonly[UInt8]],
-              dst: Ptr[UInt8], size: UInt32) -> Ptr[UInt8]: ...
+def inet_ntop(af: int32, src: Ptr[readonly[uint8]],
+              dst: Ptr[uint8], size: uint32) -> Ptr[uint8]: ...
 
 
 # ---------- TPy runtime helpers (socket_impl.cpp) ----------
@@ -141,43 +141,43 @@ def inet_ntop(af: Int32, src: Ptr[readonly[UInt8]],
 # to `out`. Returns 0 on success, -1 on failure; caller reads
 # tpy_last_resolve_error for a human message on failure.
 @native("::tpy_resolve_ipv4")
-def tpy_resolve_ipv4(host: Ptr[readonly[UInt8]], host_len: UInt64,
-                     out: Ptr[UInt8]) -> Int32: ...
+def tpy_resolve_ipv4(host: Ptr[readonly[uint8]], host_len: uint64,
+                     out: Ptr[uint8]) -> int32: ...
 
 # errno at the point of call. Indirection for platform portability
 # (glibc uses __errno_location, macOS uses __error).
 @native("::tpy_errno")
-def tpy_errno() -> Int32: ...
+def tpy_errno() -> int32: ...
 
 # Last DNS-resolution error message (thread-local, C string, valid until
 # the next tpy_resolve_ipv4 call on this thread). readonly because the
 # C signature is `const char*` -- callers must not mutate the buffer.
 @native("::tpy_last_resolve_error")
-def tpy_last_resolve_error() -> Ptr[readonly[UInt8]]: ...
+def tpy_last_resolve_error() -> Ptr[readonly[uint8]]: ...
 
 # The matching EAI_* code (same thread-local lifetime as the message);
 # becomes socket.gaierror's `.errno`, like CPython.
 @native("::tpy_last_resolve_code")
-def tpy_last_resolve_code() -> Int32: ...
+def tpy_last_resolve_code() -> int32: ...
 
 # Toggle O_NONBLOCK on `fd` (nonblocking != 0 sets it). Backs
 # socket.socket.setblocking; required before using a socket with the
 # asyncio reactor. Returns 0 on success, -1 on error (read tpy_errno).
 @native("::tpy_set_nonblocking")
-def tpy_set_nonblocking(fd: Int32, nonblocking: Int32) -> Int32: ...
+def tpy_set_nonblocking(fd: int32, nonblocking: int32) -> int32: ...
 
 
 # Set SO_RCVTIMEO + SO_SNDTIMEO from `seconds` (<= 0 disables). Backs
 # socket.socket.settimeout for recv/send. Returns 0 on success, -1 on error.
 @native("::tpy_set_timeout")
-def tpy_set_timeout(fd: Int32, seconds: float) -> Int32: ...
+def tpy_set_timeout(fd: int32, seconds: float) -> int32: ...
 
 
 # connect() with a wall-clock timeout (SO_*TIMEO does not cover connect).
 # Returns 0 on success, -2 on timeout, -1 on any other error (read tpy_errno).
 @native("::tpy_connect_timeout")
-def tpy_connect_timeout(fd: Int32, addr: Ptr[SockaddrIn], addrlen: UInt32,
-                        seconds: float) -> Int32: ...
+def tpy_connect_timeout(fd: int32, addr: Ptr[SockaddrIn], addrlen: uint32,
+                        seconds: float) -> int32: ...
 
 
 # Platform-correct constant values (SOL_SOCKET / SO_* / AF_INET6 / EAGAIN /
@@ -194,4 +194,4 @@ def tpy_connect_timeout(fd: Int32, addr: Ptr[SockaddrIn], addrlen: UInt32,
 # matches TPy's byte-buffer convention; ABI is identical. readonly because
 # libc's strerror buffer is thread-local / shared and must not be written.
 @native("::strerror")
-def strerror(errnum: Int32) -> Ptr[readonly[UInt8]]: ...
+def strerror(errnum: int32) -> Ptr[readonly[uint8]]: ...

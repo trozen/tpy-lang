@@ -4,15 +4,15 @@
 namespace tpyapp::main {
 
 
-// def get_pair() -> tuple[Int32, str]:
+// def get_pair() -> tuple[int32, str]:
 std::tuple<int32_t, std::string> get_pair() {
-    // return (Int32(42), "answer")
+    // return (int32(42), "answer")
     return std::tuple<int32_t, std::string>{42, "answer"};
 }
 
-// def get_triple() -> tuple[bool, Int32, str]:
+// def get_triple() -> tuple[bool, int32, str]:
 std::tuple<bool, int32_t, std::string> get_triple() {
-    // return (True, Int32(7), "lucky")
+    // return (True, int32(7), "lucky")
     return std::tuple<bool, int32_t, std::string>{true, 7, "lucky"};
 }
 

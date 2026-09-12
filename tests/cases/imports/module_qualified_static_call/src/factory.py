@@ -1,14 +1,14 @@
 from typing import ClassVar
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Counter:
-    LIMIT: ClassVar[Int32] = Int32(100)
-    value: Int32
+    LIMIT: ClassVar[int32] = int32(100)
+    value: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.value = v
 
     @staticmethod
-    def make(v: Int32) -> Own["Counter"]:
+    def make(v: int32) -> Own["Counter"]:
         return Counter(v)

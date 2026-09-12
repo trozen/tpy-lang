@@ -15,13 +15,13 @@ void main();
 
 // class Bag:
 struct Bag {
-    // _items: list[Int32]
+    // _items: list[int32]
     std::vector<int32_t> _items;
 
     // def __init__(self) -> None:
     Bag();
 
-    // def add(self, x: Int32) -> None:
+    // def add(self, x: int32) -> None:
     void add(int32_t x);
 
     // def __len__(self) -> int:
@@ -44,7 +44,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 // def __init__(self) -> None:
 inline Bag::Bag() : _items(std::vector<int32_t>{10, 20, 30}) {}
 
-// def add(self, x: Int32) -> None:
+// def add(self, x: int32) -> None:
 inline void Bag::add(int32_t x) {
     // self._items.append(x)
     this->_items.push_back(x);

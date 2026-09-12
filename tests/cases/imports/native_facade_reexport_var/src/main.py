@@ -3,13 +3,13 @@
 # defining module (the facade has no .hpp) and skip the facade-header
 # include (it doesn't exist).
 from pkg import VERSION, LIMIT
-from tpy import Int32
+from tpy import int32
 
 
 def main() -> None:
     print(VERSION)
     print(LIMIT)
-    print(Int32(LIMIT) + Int32(1))
+    print(int32(LIMIT) + int32(1))
 
 
 main()

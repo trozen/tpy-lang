@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // x: Int64 = Int64(1) << Int64(63)
+    // x: int64 = int64(1) << int64(63)
     int64_t x = (::tpy::lshift_check<int64_t>(1, 63));
     // print(x)
     std::cout << x << "\n";

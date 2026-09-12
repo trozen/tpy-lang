@@ -1,7 +1,7 @@
 # int/BigInt variable widens to float when used with aug-assign and a float operand;
-# Float32 variable stays Float32 when multiplied by a bare float literal (adapts to context)
+# float32 variable stays float32 when multiplied by a bare float literal (adapts to context)
 
-from tpy import Float32
+from tpy import float32
 
 def bigint_widen() -> float:
     x = 14         # tpyc: type(float)   -- widens to float because x *= 1.3 follows
@@ -25,9 +25,9 @@ def use_after_widen() -> float:
     x *= 1.3
     return x + 1.0   # should be 19.2, not 19.0
 
-def float32_stays() -> Float32:
-    # Float32 variable stays Float32 when multiplied by a float literal (2.0 adapts to context)
-    x = Float32(1.5)   # tpyc: type(Float32) -- stays Float32 because 2.0 is a literal that adapts
+def float32_stays() -> float32:
+    # float32 variable stays float32 when multiplied by a float literal (2.0 adapts to context)
+    x = float32(1.5)   # tpyc: type(float32) -- stays float32 because 2.0 is a literal that adapts
     x *= 2.0
     return x
 

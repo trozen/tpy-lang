@@ -2,10 +2,10 @@
 # read, so the select goes under the pinned as_ostream consumer whole. stderr
 # output is not captured by the runner, so only the stdout arm shows up.
 import sys
-from tpy import Int32
+from tpy import int32
 
 
-def emit(n: Int32, to_out: bool) -> None:
+def emit(n: int32, to_out: bool) -> None:
     print(n, file=sys.stdout if to_out else sys.stderr)  # tpyc: ok
 
 

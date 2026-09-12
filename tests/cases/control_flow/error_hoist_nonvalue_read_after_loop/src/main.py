@@ -2,11 +2,11 @@
 # if/else and READ AFTER the loop is sema's for-level hoist, whose non-value
 # flavor still rejects (BUGS.md#two-site-loop-bind-read-after-loop). The
 # if-level hoist must not admit it by accident.
-from tpy import Int32
+from tpy import int32
 
 
 class Flat:
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 

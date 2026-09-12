@@ -69,7 +69,7 @@ class TypeResolver:
         Args:
             expr: The expression to get the type of.
             target_type: Optional hint for what type the expression will be coerced to.
-                         Used to determine if literal+literal should be Int32 or BigInt.
+                         Used to determine if literal+literal should be int32 or BigInt.
         """
         # Protocol isinstance narrowing: `if isinstance(x, SomeProtocol):`
         # narrows x from a union parameter to the protocol type within the
@@ -128,7 +128,7 @@ class TypeResolver:
                     ret = self._resolve_pending_view(ret)
                 return ret
 
-            # First pass without context to detect Int32 operands
+            # First pass without context to detect int32 operands
             left_raw = self.get_resolved_type(expr.left)
             right_raw = self.get_resolved_type(expr.right)
             # The numeric rules below (div -> float, float precedence, fixed-int
@@ -145,7 +145,7 @@ class TypeResolver:
                 # If either operand is float-family, result is float (float takes precedence)
                 if is_float_type(left_raw) or is_float_type(right_raw):
                     if expr.op == "div" or expr.op in ("+", "-", "*", "//", "%", "**"):
-                        # Float64 wins over Float32
+                        # float64 wins over float32
                         if is_float64_type(left_raw) or is_float64_type(right_raw):
                             return FLOAT
                         return left_raw if is_float32_type(left_raw) else right_raw
@@ -208,7 +208,7 @@ class TypeResolver:
             if target_type is not None and is_integer_type(target_type):
                 return target_type
             return self.ctx.analyzer.ctx.default_int_for_literal(typ)
-        # Resolve FloatLiteralType based on context (Float32 if target, else float64).
+        # Resolve FloatLiteralType based on context (float32 if target, else float64).
         if isinstance(typ, FloatLiteralType):
             if is_float32_type(target_type):
                 return FLOAT32

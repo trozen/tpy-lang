@@ -1,5 +1,5 @@
 # finally block runs on both success and error paths
-from tpy import Int32
+from tpy import int32
 
 def fail(do_raise: bool) -> None:
     if do_raise:

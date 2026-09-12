@@ -3,14 +3,14 @@
 # from the field write there is no argument row for it -- so `put`'s own body
 # is only ever reachable at a ctor, where the same field write is pinned by
 # tests/cases/auto_move/owned_optional_local_move_out.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32):
+    def __init__(self, x: int32, y: int32):
         self.x = x
         self.y = y
 
@@ -22,7 +22,7 @@ class Holder:
         self.value = None
 
 
-def maybe_make(x: Int32) -> Own[Point] | None:
+def maybe_make(x: int32) -> Own[Point] | None:
     if x > 0:
         return Point(x, x)
     return None

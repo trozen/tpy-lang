@@ -44,7 +44,7 @@ bool _scheme_uses_params(std::string_view scheme) {
 }
 
 // # ---------- byte / char classifiers ----------
-// def _is_alpha(c: Char) -> bool:
+// def _is_alpha(c: char) -> bool:
 bool _is_alpha(char c) {
     // o = ord(c)
     int32_t o = static_cast<int32_t>(static_cast<unsigned char>(c));
@@ -52,7 +52,7 @@ bool _is_alpha(char c) {
     return (((o >= 65) && (o <= 90)) || ((o >= 97) && (o <= 122)));
 }
 
-// def _is_alnum(c: Char) -> bool:
+// def _is_alnum(c: char) -> bool:
 bool _is_alnum(char c) {
     // o = ord(c)
     int32_t o = static_cast<int32_t>(static_cast<unsigned char>(c));
@@ -60,7 +60,7 @@ bool _is_alnum(char c) {
     return (_is_alpha(c) || ((o >= 48) && (o <= 57)));
 }
 
-// def _byte_unreserved(c: Int32) -> bool:
+// def _byte_unreserved(c: int32) -> bool:
 bool _byte_unreserved(int32_t c) {
     // # RFC 3986 unreserved set -- always safe, never percent-encoded.
     // # ALPHA / DIGIT / '-' / '.' / '_' / '~'.
@@ -83,7 +83,7 @@ bool _byte_unreserved(int32_t c) {
     return ((((c == 45) || (c == 46)) || (c == 95)) || (c == 126));
 }
 
-// def _byte_in(c: Int32, chars: str) -> bool:
+// def _byte_in(c: int32, chars: str) -> bool:
 bool _byte_in(int32_t c, std::string_view chars) {
     // for ch in chars:
     auto& __obj_0 = chars;
@@ -101,7 +101,7 @@ bool _byte_in(int32_t c, std::string_view chars) {
     return false;
 }
 
-// def _hex_val(c: Int32) -> Int32:
+// def _hex_val(c: int32) -> int32:
 int32_t _hex_val(int32_t c) {
     // if c >= 48 and c <= 57:
     if (((c >= 48) && (c <= 57))) {
@@ -135,19 +135,19 @@ std::string _quote_impl(std::string_view s, std::string_view safe, bool plus) {
     int32_t i = 0;
     // while i < n:
     while ((i < n)) {
-        // c = Int32(data[i])
+        // c = int32(data[i])
         int32_t c = ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, i));
         // if _byte_unreserved(c) or _byte_in(c, safe):
         if ((_byte_unreserved(c) || _byte_in(c, safe))) {
-            // out.append(UInt8(c))
+            // out.append(uint8(c))
             out.push_back(::tpy::int_cast_check<uint8_t>(c));
         // elif plus and c == 32:
         } else if ((plus && (c == 32))) {
-            // out.append(UInt8(43))
+            // out.append(uint8(43))
             out.push_back(43);
         // else:
         } else {
-            // out.append(UInt8(37))
+            // out.append(uint8(37))
             out.push_back(37);
             // out.append(_HEX[c >> 4])
             out.push_back(::tpy::bytes_getitem(_HEX, (::tpy::rshift_check<int32_t>(c, 4))));
@@ -185,36 +185,36 @@ std::string _unquote_impl(std::string_view s, bool plus) {
     int32_t i = 0;
     // while i < n:
     while ((i < n)) {
-        // c = Int32(data[i])
+        // c = int32(data[i])
         int32_t c = ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, i));
         // if c == 37 and i + 2 < n:
         if (((c == 37) && ((::tpy::add_check<int32_t>(i, 2)) < n))) {
-            // hi = _hex_val(Int32(data[i + 1]))
+            // hi = _hex_val(int32(data[i + 1]))
             int32_t hi = _hex_val(::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(i, 1)))));
-            // lo = _hex_val(Int32(data[i + 2]))
+            // lo = _hex_val(int32(data[i + 2]))
             int32_t lo = _hex_val(::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(i, 2)))));
             // if hi >= 0 and lo >= 0:
             if (((hi >= 0) && (lo >= 0))) {
-                // out.append(UInt8((hi << 4) | lo))
+                // out.append(uint8((hi << 4) | lo))
                 out.push_back(::tpy::int_cast_check<uint8_t>((static_cast<int32_t>((::tpy::lshift_check<int32_t>(hi, 4)) | lo))));
                 // i += 3
                 i = ::tpy::add_check<int32_t>(i, 3);
                 // continue
                 continue;
             }
-            // out.append(UInt8(c))
+            // out.append(uint8(c))
             out.push_back(::tpy::int_cast_check<uint8_t>(c));
             // i += 1
             i = ::tpy::add_check<int32_t>(i, 1);
         // elif plus and c == 43:
         } else if ((plus && (c == 43))) {
-            // out.append(UInt8(32))
+            // out.append(uint8(32))
             out.push_back(32);
             // i += 1
             i = ::tpy::add_check<int32_t>(i, 1);
         // else:
         } else {
-            // out.append(UInt8(c))
+            // out.append(uint8(c))
             out.push_back(::tpy::int_cast_check<uint8_t>(c));
             // i += 1
             i = ::tpy::add_check<int32_t>(i, 1);
@@ -512,7 +512,7 @@ std::string _clean(std::string_view url) {
     return cleaned;
 }
 
-// def _netloc_end(s: str) -> Int32:
+// def _netloc_end(s: str) -> int32:
 int32_t _netloc_end(std::string_view s) {
     // n = len(s)
     int32_t n = ::tpy::__len__(s);

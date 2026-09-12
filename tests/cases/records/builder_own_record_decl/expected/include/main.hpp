@@ -18,10 +18,10 @@ void run();
 // @nocopy
 // class Inner:
 struct Inner {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Inner() = default;
     explicit Inner(int32_t v);
     // non-copyable (@nocopy)
@@ -42,10 +42,10 @@ inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
 
 // class Builder:
 struct Builder {
-    // seed: Int32
+    // seed: int32
     int32_t seed;
 
-    // def __init__(self, seed: Int32) -> None:
+    // def __init__(self, seed: int32) -> None:
     Builder() = default;
     explicit Builder(int32_t seed);
 
@@ -60,7 +60,7 @@ inline std::ostream& operator<<(std::ostream& os, const Builder& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Inner::Inner(int32_t v) : v(v) {}
 
 // def bump(self) -> None:
@@ -69,7 +69,7 @@ inline void Inner::bump() {
     this->v = ::tpy::add_check<int32_t>(this->v, 1);
 }
 
-// def __init__(self, seed: Int32) -> None:
+// def __init__(self, seed: int32) -> None:
 inline Builder::Builder(int32_t seed) : seed(seed) {}
 
 // def build(self) -> Own[Inner]:

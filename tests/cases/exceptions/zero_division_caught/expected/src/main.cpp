@@ -55,9 +55,9 @@ void main() {
     // try:
     {
         try {
-            // g: Int32 = Int32(10)
+            // g: int32 = int32(10)
             int32_t g = 10;
-            // h: Int32 = Int32(0)
+            // h: int32 = int32(0)
             int32_t h = 0;
             // print(g // h)
             std::cout << (::tpy::div_check<int32_t>(g, h)) << "\n";
@@ -70,9 +70,9 @@ void main() {
     // try:
     {
         try {
-            // i: Int32 = Int32(10)
+            // i: int32 = int32(10)
             int32_t i = 10;
-            // j: Int32 = Int32(0)
+            // j: int32 = int32(0)
             int32_t j = 0;
             // print(i % j)
             std::cout << (::tpy::mod_check<int32_t>(i, j)) << "\n";
@@ -115,9 +115,9 @@ void main() {
     // try:
     {
         try {
-            // p: Int32 = Int32(10)
+            // p: int32 = int32(10)
             int32_t p = 10;
-            // q: Int32 = Int32(0)
+            // q: int32 = int32(0)
             int32_t q = 0;
             // print(divmod(p, q))
             std::cout << ::tpy::TuplePrinter(::tpy::divmod_fixed<int32_t>(p, q)) << "\n";

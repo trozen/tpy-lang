@@ -1,11 +1,11 @@
 # A `None`-typed field assigned `None` OUTSIDE the constructor: the method
 # body takes the residual field-write family's storage literal.
-from tpy import Int32
+from tpy import int32
 
 
 class Field:
     slot: None
-    n: Int32
+    n: int32
 
     def __init__(self) -> None:
         self.slot = None

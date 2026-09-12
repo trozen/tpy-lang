@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def consume(v: Own[A | B]) -> Int32:
+// def consume(v: Own[A | B]) -> int32:
 int32_t consume(::tpy::Union<A, B>&& v) {
     // sink = Sink(v)
     Sink sink = Sink(std::move(v));
@@ -21,12 +21,12 @@ int32_t consume(::tpy::Union<A, B>&& v) {
     return __w.y;
 }
 
-// # Discriminates on Float64 (== float under CPython) so the plain-int literal
-// # arg narrows identically on both runtimes (isinstance(3, Int32) would be
+// # Discriminates on float64 (== float under CPython) so the plain-int literal
+// # arg narrows identically on both runtimes (isinstance(3, int32) would be
 // # False under CPython, where the literal is a plain int).
-// def pick(v: Int32 | Float64) -> Int32:
-int32_t pick(const ::tpy::Union<int32_t, double>& v) {
-    // if isinstance(v, Float64):
+// def pick(v: int32 | float64) -> int32:
+int32_t pick(const ::tpy::Union<double, int32_t>& v) {
+    // if isinstance(v, float64):
     if (std::holds_alternative<double>(v)) {
         const auto& __v = std::get<double>(v);
         // return -1

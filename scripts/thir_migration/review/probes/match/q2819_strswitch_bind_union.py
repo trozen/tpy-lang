@@ -1,6 +1,6 @@
-from tpy import Int32
+from tpy import int32
 
-def f(s: str, u: str | Int32) -> str:
+def f(s: str, u: str | int32) -> str:
     if isinstance(u, str):
         match s:
             case "a":

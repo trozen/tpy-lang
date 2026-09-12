@@ -24,7 +24,7 @@ __coro_main main();
 
 // class Box:
 struct Box {
-    // n: Int32
+    // n: int32
     int32_t n;
 
     // def __init__(self) -> None:
@@ -65,14 +65,14 @@ struct __coro_combine {
         return os << "<coroutine combine>";
     }
 };
-// async def combine(xs: Iterable[Int32]) -> Own[Box]:
+// async def combine(xs: Iterable[int32]) -> Own[Box]:
 template <::tpystd::typing::Iterable<int32_t> T_xs>
 ::tpystd::tpy::Poll<Box> __coro_combine<T_xs>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // b = Box()
         b.emplace(Box());
-        // def stash(target: Box, extra: Int32) -> None:
+        // def stash(target: Box, extra: int32) -> None:
         // def stash: frame member
         // def double() -> None:
         // def double: frame member
@@ -120,7 +120,7 @@ void __coro_combine<T_xs>::double_() {
     (*b).n = ::tpy::mul_check<int32_t>((*b).n, 2);
 }
 
-// async def combine(xs: Iterable[Int32]) -> Own[Box]:
+// async def combine(xs: Iterable[int32]) -> Own[Box]:
 template <::tpystd::typing::Iterable<int32_t> T_xs>
 __coro_combine<T_xs> combine(T_xs&& xs) {
     return __coro_combine<T_xs>(std::forward<T_xs>(xs));

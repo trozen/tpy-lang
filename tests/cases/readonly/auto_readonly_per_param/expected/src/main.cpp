@@ -6,13 +6,13 @@ namespace tpyapp::main {
 
 // def read_buf(b: readonly[Buffer]) -> None:
 void read_buf(const Buffer& b) {
-    // out: list[Int32] = []
+    // out: list[int32] = []
     std::vector<int32_t> out = std::vector<int32_t>{};
-    // s = b.copy_into(out)  # tpyc: type(Span[readonly[Int32]])
+    // s = b.copy_into(out)  # tpyc: type(Span[readonly[int32]])
     std::span<const int32_t> s = b.copy_into(out);
     // print(len(out))
     std::cout << ::tpy::__len__(out) << "\n";
-    // print(s[Int32(0)])
+    // print(s[int32(0)])
     std::cout << ::tpy::__getitem__(s, 0) << "\n";
 }
 
@@ -20,13 +20,13 @@ void read_buf(const Buffer& b) {
 void main() {
     // b = Buffer()
     Buffer b = Buffer();
-    // out: list[Int32] = []
+    // out: list[int32] = []
     std::vector<int32_t> out = std::vector<int32_t>{};
-    // s = b.copy_into(out)  # tpyc: type(Span[Int32])
+    // s = b.copy_into(out)  # tpyc: type(Span[int32])
     std::span<int32_t> s = b.copy_into(out);
     // print(len(out))
     std::cout << ::tpy::__len__(out) << "\n";
-    // print(s[Int32(0)])
+    // print(s[int32(0)])
     std::cout << ::tpy::__getitem__(s, 0) << "\n";
     // read_buf(b)
     read_buf(b);

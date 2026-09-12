@@ -1,14 +1,14 @@
 from typing import Protocol
-from tpy import dynamic, Int32
+from tpy import dynamic, int32
 @dynamic
 class Speaker(Protocol):
-    def speak(self) -> Int32: ...
+    def speak(self) -> int32: ...
 class Dog:
     def __init__(self) -> None:
         pass
-    def speak(self) -> Int32:
+    def speak(self) -> int32:
         return 1
-def talk(s: Speaker | None) -> Int32:
+def talk(s: Speaker | None) -> int32:
     if s is None:
         return 0
     return s.speak()

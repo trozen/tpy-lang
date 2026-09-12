@@ -1,9 +1,9 @@
 # Set comprehension: filter clause
-from tpy import Int32
+from tpy import int32
 
 def main() -> None:
     # Single condition -- integer sets have deterministic order
-    evens: set[Int32] = {x for x in range(10) if x % 2 == 0}
+    evens: set[int32] = {x for x in range(10) if x % 2 == 0}
     for v in evens:
         print(v)
 

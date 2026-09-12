@@ -18,10 +18,10 @@ void main();
 
 // class Node:
 struct Node {
-    // val: Int32
+    // val: int32
     int32_t val;
 
-    // def __init__(self, val: Int32) -> None:
+    // def __init__(self, val: int32) -> None:
     Node() = default;
     explicit Node(int32_t val);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Node";
@@ -81,7 +81,7 @@ inline __gen_Holder_bump Holder::bump() {
 }
 
 
-// def __init__(self, val: Int32) -> None:
+// def __init__(self, val: int32) -> None:
 inline Node::Node(int32_t val) : val(val) {}
 
 // def __init__(self) -> None:

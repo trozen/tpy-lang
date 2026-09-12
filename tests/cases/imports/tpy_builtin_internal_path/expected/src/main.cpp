@@ -42,9 +42,9 @@ std::optional<::tpyapp::main::Color> EnumUtil<::tpyapp::main::Color>::try_parse(
 namespace tpyapp::main {
 
 
-// def sum_copied(xs: list[Int32]) -> Int32:
+// def sum_copied(xs: list[int32]) -> int32:
 int32_t sum_copied(const std::vector<int32_t>& xs) {
-    // total = Int32(0)
+    // total = int32(0)
     int32_t total = 0;
     // for x in copy_iter(xs):  # tpyc: ok
     auto __obj_0 = ::tpy::copy_iter<int32_t>(xs);
@@ -59,11 +59,11 @@ int32_t sum_copied(const std::vector<int32_t>& xs) {
     return total;
 }
 
-// def consume() -> Int32:
+// def consume() -> int32:
 int32_t consume() {
-    // xs: list[Int32] = [Int32(10), Int32(20)]
+    // xs: list[int32] = [int32(10), int32(20)]
     std::vector<int32_t> xs = {10, 20};
-    // total = Int32(0)
+    // total = int32(0)
     int32_t total = 0;
     // for x in own_iter(xs):  # tpyc: ok
     auto __obj_0 = ::tpy::own_iter(std::move(xs));
@@ -80,13 +80,13 @@ int32_t consume() {
 
 // def main() -> None:
 void main() {
-    // h: Holder[Int32] = Holder(Int32(7))
+    // h: Holder[int32] = Holder(int32(7))
     Holder<int32_t> h = Holder<int32_t>(7);
     // print(h.dup())
     std::cout << h.dup() << "\n";
     // print(h.dup_via_module())
     std::cout << h.dup_via_module() << "\n";
-    // print(sum_copied([Int32(1), Int32(2), Int32(3)]))
+    // print(sum_copied([int32(1), int32(2), int32(3)]))
     std::vector<int32_t> __tmp_1 = {1, 2, 3};
     std::cout << sum_copied(__tmp_1) << "\n";
     // print(consume())

@@ -4,7 +4,7 @@
 # `field = v` -- unlike the ctor member-init-list, which moves. This shape was a
 # THIR-path compiler crash (a move-free field write built a no-op form convert);
 # guards against that regression via the byte-diff.
-from tpy import Int32, Own, ValueType
+from tpy import int32, Own, ValueType
 
 
 class Cell[T: ValueType]:
@@ -13,13 +13,13 @@ class Cell[T: ValueType]:
     def __init__(self, item: Own[T]) -> None:
         self.item = item  # tpyc: ok
 
-    def replace(self, item: Own[T]) -> Int32:
+    def replace(self, item: Own[T]) -> int32:
         self.item = item  # tpyc: ok
         return 1
 
 
 def main() -> None:
-    c: Cell[Int32] = Cell[Int32](11)
+    c: Cell[int32] = Cell[int32](11)
     print(c.item)
     c.replace(22)
     print(c.item)

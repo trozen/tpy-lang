@@ -23,10 +23,10 @@ void main();
 
 // class Picture:
 struct Picture {
-    // width: Int32
+    // width: int32
     int32_t width;
 
-    // def __init__(self, width: Int32) -> None:
+    // def __init__(self, width: int32) -> None:
     Picture() = default;
     explicit Picture(int32_t width);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Picture";
@@ -41,12 +41,12 @@ inline std::ostream& operator<<(std::ostream& os, const Picture& obj) {
 struct Sector {
     // flags: list[bool]
     std::vector<bool> flags;
-    // nums: list[Int32]
+    // nums: list[int32]
     std::vector<int32_t> nums;
     // ceil_pic: Picture | None
     std::optional<Picture> ceil_pic;
 
-    // def __init__(self, width: Int32) -> None:
+    // def __init__(self, width: int32) -> None:
     Sector() = default;
     explicit Sector(int32_t width);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Sector";
@@ -74,10 +74,10 @@ inline std::ostream& operator<<(std::ostream& os, const Seg& obj) {
 }
 
 
-// def __init__(self, width: Int32) -> None:
+// def __init__(self, width: int32) -> None:
 inline Picture::Picture(int32_t width) : width(width) {}
 
-// def __init__(self, width: Int32) -> None:
+// def __init__(self, width: int32) -> None:
 inline Sector::Sector(int32_t width) : flags(std::vector<bool>{true, false, true}), nums(std::vector<int32_t>{4, 5, 6}), ceil_pic(Picture(width)) {}
 
 // def __init__(self, sector_front: Ptr[Sector]) -> None:

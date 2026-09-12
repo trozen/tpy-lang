@@ -4,16 +4,16 @@
 namespace tpyapp::main {
 
 
-// # Test Char type comprehensively
+// # Test char type comprehensively
 // def test_char_literals() -> None:
 void test_char_literals() {
-    // a: Char = "A"
+    // a: char = "A"
     char a = 'A';
-    // b: Char = "B"
+    // b: char = "B"
     char b = 'B';
-    // space: Char = " "
+    // space: char = " "
     char space = ' ';
-    // newline: Char = "\n"
+    // newline: char = "\n"
     char newline = '\n';
     // print(a)
     std::cout << a << "\n";
@@ -29,11 +29,11 @@ void test_char_literals() {
 void test_char_from_string_index() {
     // text: str = "Hello"
     std::string_view text = "Hello";
-    // c0: Char = text[0]
+    // c0: char = text[0]
     char c0 = ::tpy::__getitem__(text, 0);
-    // c1: Char = text[1]
+    // c1: char = text[1]
     char c1 = ::tpy::__getitem__(text, 1);
-    // c4: Char = text[4]
+    // c4: char = text[4]
     char c4 = ::tpy::__getitem__(text, 4);
     // print(c0)
     std::cout << c0 << "\n";
@@ -45,11 +45,11 @@ void test_char_from_string_index() {
 
 // def test_char_comparison() -> None:
 void test_char_comparison() {
-    // a: Char = "a"
+    // a: char = "a"
     char a = 'a';
-    // b: Char = "b"
+    // b: char = "b"
     char b = 'b';
-    // a2: Char = "a"
+    // a2: char = "a"
     char a2 = 'a';
     // # Equality
     // if a == a2:
@@ -99,9 +99,9 @@ void test_char_comparison() {
 void test_char_in_string() {
     // text: str = "hello world"
     std::string_view text = "hello world";
-    // target: Char = "o"
+    // target: char = "o"
     char target = 'o';
-    // missing: Char = "z"
+    // missing: char = "z"
     char missing = 'z';
     // if target in text:
     if ((text.find(target) != std::string::npos)) {
@@ -119,7 +119,7 @@ void test_char_in_string() {
     }
 }
 
-// def is_vowel(c: Char) -> bool:
+// def is_vowel(c: char) -> bool:
 bool is_vowel(char c) {
     // if c == "a":
     if ((c == 'a')) {
@@ -150,11 +150,11 @@ bool is_vowel(char c) {
     return false;
 }
 
-// def count_vowels(text: str) -> Int32:
+// def count_vowels(text: str) -> int32:
 int32_t count_vowels(std::string_view text) {
-    // count: Int32 = 0
+    // count: int32 = 0
     int32_t count = 0;
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < len(text):
     while ((i < ::tpy::__len__(text))) {
@@ -231,9 +231,9 @@ void test_vowel_counting() {
 
 // def test_chr_function() -> None:
 void test_chr_function() {
-    // c65: Char = chr(65)
+    // c65: char = chr(65)
     char c65 = static_cast<char>(65);
-    // c97: Char = chr(97)
+    // c97: char = chr(97)
     char c97 = static_cast<char>(97);
     // print(c65)
     std::cout << c65 << "\n";

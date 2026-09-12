@@ -3,12 +3,12 @@
 import asyncio
 from typing import Iterator
 
-from tpy import Float32, Int32, Own, ReturnException, copy, error_return, nocopy
+from tpy import float32, int32, Own, ReturnException, copy, error_return, nocopy
 
 
 @nocopy
 class Cell:
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
@@ -26,7 +26,7 @@ def anyslot[T](name: str, v: T) -> bool:
     return name != ""
 
 
-def anyslot_i32(name: str, v: Int32) -> bool:
+def anyslot_i32(name: str, v: int32) -> bool:
     # The monomorphic twin: its slot is `int32_t` by value, and it has always
     # taken the rvalue inline.
     return name != ""
@@ -44,7 +44,7 @@ def mk_cell() -> Own[Cell]:
     return Cell(7)
 
 
-def repeat[T](value: T, count: Int32) -> Iterator[T]:
+def repeat[T](value: T, count: int32) -> Iterator[T]:
     # A SIMPLE generator: the peephole's lambda captures the slot by reference,
     # so its argument keeps the temp at every instantiation.
     i = 0
@@ -64,7 +64,7 @@ top_flag = anyslot("module", 5)  # tpyc: ok
 def free_positions() -> None:
     # The four value-typed instantiations: each renders its rvalue inline.
     a = anyslot("free", 42)  # tpyc: ok
-    b = anyslot("free", Float32(2.25))  # tpyc: ok
+    b = anyslot("free", float32(2.25))  # tpyc: ok
     c = anyslot("free", "lit")  # tpyc: ok
     d = anyslot("free", None)  # tpyc: ok
     print("free", a, b, c, d)
@@ -99,7 +99,7 @@ def ref_lvalue() -> None:
 
 def method_and_ctor() -> None:
     # Record ctor and record method, both at a value-typed T.
-    b = Boxed[Int32](3)  # tpyc: ok
+    b = Boxed[int32](3)  # tpyc: ok
     print("method_ctor", b.v, b.holds(4))  # tpyc: ok
 
 
@@ -120,7 +120,7 @@ def cond_operand(flag: bool) -> bool:
     return flag or anyslot("cond", 42)  # tpyc: ok
 
 
-def while_condition() -> Int32:
+def while_condition() -> int32:
     # A COMPOUND while condition is not a flush position; the inline render
     # needs none.
     n = 0
@@ -129,7 +129,7 @@ def while_condition() -> Int32:
     return n
 
 
-def match_arm(tag: Int32) -> bool:
+def match_arm(tag: int32) -> bool:
     match tag:
         case 1:
             return anyslot("match", 1)  # tpyc: ok
@@ -161,7 +161,7 @@ def with_body() -> None:
         print("with_body", label, anyslot("with", 9))  # tpyc: ok
 
 
-def gen_body() -> Iterator[Int32]:
+def gen_body() -> Iterator[int32]:
     # GENERATOR body (resumable -- the yield is not a direct loop child), where
     # the call renders inline inside the frame's switch.
     n = 0
@@ -172,7 +172,7 @@ def gen_body() -> Iterator[Int32]:
 
 
 @error_return(Missing)
-def er_body(n: Int32) -> Int32:
+def er_body(n: int32) -> int32:
     # @error_return body: the same inline render under the expected-return tier.
     if not (anyslot("erbody", n) and anyslot_i32("erbody", n)):  # tpyc: ok
         raise Missing
@@ -204,7 +204,7 @@ def generator_factory() -> None:
     print("generator", out)
 
 
-async def async_main() -> Int32:
+async def async_main() -> int32:
     # The coroutine factory takes the same row as the generator's.
     return await echo(21)  # tpyc: ok
 

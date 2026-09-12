@@ -16,7 +16,7 @@ void main();
 
 // class MyError(Exception, ReturnException):
 struct MyError : ::tpy::Exception {
-    // code: Int32
+    // code: int32
     int32_t code;
 
 

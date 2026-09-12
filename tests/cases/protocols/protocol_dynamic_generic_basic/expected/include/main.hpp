@@ -41,17 +41,17 @@ void main();
 
 // class Box:
 struct Box {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32):
+    // def __init__(self, v: int32):
     Box() = default;
     explicit Box(int32_t v);
 
-    // def get(self) -> Int32:
+    // def get(self) -> int32:
     int32_t get() const;
 
-    // def set(self, val: Int32) -> None:
+    // def set(self, val: int32) -> None:
     void set(int32_t val);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
@@ -63,17 +63,17 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 // class Ratio:
 struct Ratio {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32):
+    // def __init__(self, n: int32):
     Ratio() = default;
     explicit Ratio(int32_t n);
 
-    // def get(self) -> Int32:
+    // def get(self) -> int32:
     int32_t get() const;
 
-    // def set(self, val: Int32) -> None:
+    // def set(self, val: int32) -> None:
     void set(int32_t val);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Ratio";
 };
@@ -105,31 +105,31 @@ struct tpy::RefAdapter<tpyapp::main::Container<T>, __tpy_Impl> : tpyapp::main::C
 namespace tpyapp::main {
 
 
-// def __init__(self, v: Int32):
+// def __init__(self, v: int32):
 inline Box::Box(int32_t v) : v(v) {}
 
-// def get(self) -> Int32:
+// def get(self) -> int32:
 inline int32_t Box::get() const {
     // return self.v
     return this->v;
 }
 
-// def set(self, val: Int32) -> None:
+// def set(self, val: int32) -> None:
 inline void Box::set(int32_t val) {
     // self.v = val
     this->v = val;
 }
 
-// def __init__(self, n: Int32):
+// def __init__(self, n: int32):
 inline Ratio::Ratio(int32_t n) : n(n) {}
 
-// def get(self) -> Int32:
+// def get(self) -> int32:
 inline int32_t Ratio::get() const {
     // return self.n
     return this->n;
 }
 
-// def set(self, val: Int32) -> None:
+// def set(self, val: int32) -> None:
 inline void Ratio::set(int32_t val) {
     // self.n = val
     this->n = val;

@@ -3,14 +3,14 @@
 # Phase 9 v1 doesn't yet plumb the parent's concrete instantiation through
 # the subclass; access through a `C[T]` instance instead.
 from typing import Final
-from tpy import Int32
+from tpy import int32
 
 
 class C[T]:
-    MAX: Final[Int32] = 10
+    MAX: Final[int32] = 10
 
 
-class Child(C[Int32]):
+class Child(C[int32]):
     pass
 
 

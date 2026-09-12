@@ -78,7 +78,7 @@ void test_reassign_concat() {
     // print(a)  # ab
     std::cout << a << "\n";
     // # with str() conversion
-    // n: Int32 = 42
+    // n: int32 = 42
     int32_t n = 42;
     // a = a + str(n)
     a += ::tpy::fixed_to_str<int32_t>(n);
@@ -90,7 +90,7 @@ void test_reassign_concat() {
 void test_loop_concat() {
     // s: String = String("")
     ::tpy::String s = ::tpy::String("");
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < 5:
     while ((i < 5)) {

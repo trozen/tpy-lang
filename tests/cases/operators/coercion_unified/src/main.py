@@ -6,56 +6,56 @@ Each coercion is tested in multiple contexts:
 - Return statement
 - Function argument
 """
-from tpy import Int32, Ptr, Span, Array, readonly
+from tpy import int32, Ptr, Span, Array, readonly
 from tplib import ArrayList
 
 # --- Records for pointer coercion tests ---
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32) -> None:
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 
 
 # --- Helper functions that take specific types ---
 
-def take_int32(n: Int32) -> Int32:
+def take_int32(n: int32) -> int32:
     return n
 
 def take_ptr(p: Ptr[Point]) -> None:
     p.x = p.x + 1
 
-def take_const_ptr(p: Ptr[readonly[Point]]) -> Int32:
+def take_const_ptr(p: Ptr[readonly[Point]]) -> int32:
     return p.x + p.y
 
-def take_point(p: Point) -> Int32:
+def take_point(p: Point) -> int32:
     return p.x + p.y
 
-def take_span(s: Span[Int32]) -> Int32:
-    result: Int32 = 0
-    i: Int32 = 0
+def take_span(s: Span[int32]) -> int32:
+    result: int32 = 0
+    i: int32 = 0
     while i < len(s):
         result = result + s[i]
         i = i + 1
     return result
 
 
-# --- BigInt -> Int32 coercion ---
+# --- BigInt -> int32 coercion ---
 
-def return_bigint_as_int32() -> Int32:
+def return_bigint_as_int32() -> int32:
     big: int = 42
-    return big  # BigInt -> Int32 in return
+    return big  # BigInt -> int32 in return
 
 
 def test_bigint_to_int32() -> None:
-    print("BigInt -> Int32 coercions:")
+    print("BigInt -> int32 coercions:")
 
     # Variable declaration
     big: int = 100
-    small: Int32 = big
+    small: int32 = big
     print(small)  # 100
 
     # Assignment
@@ -64,7 +64,7 @@ def test_bigint_to_int32() -> None:
     print(small)  # 200
 
     # Return
-    result: Int32 = return_bigint_as_int32()
+    result: int32 = return_bigint_as_int32()
     print(result)  # 42
 
     # Function argument
@@ -150,7 +150,7 @@ def test_ptr_to_record() -> None:
 
 # --- Ptr -> Ptr[readonly[...]] coercion ---
 
-def take_const_ptr_val(p: Ptr[readonly[Point]]) -> Int32:
+def take_const_ptr_val(p: Ptr[readonly[Point]]) -> int32:
     return p.x
 
 
@@ -181,7 +181,7 @@ def test_ptr_to_const_ptr() -> None:
 def test_arraylist_to_span() -> None:
     print("ArrayList -> Span coercions:")
 
-    al = ArrayList[Int32, 8]()
+    al = ArrayList[int32, 8]()
     al.append(1)
     al.append(2)
     al.append(3)
@@ -195,7 +195,7 @@ def test_arraylist_to_span() -> None:
 def test_array_to_span() -> None:
     print("Array -> Span coercions:")
 
-    arr: Array[Int32, 3] = [10, 20, 30]
+    arr: Array[int32, 3] = [10, 20, 30]
 
     # Function argument
     print(take_span(arr))  # 60
@@ -206,7 +206,7 @@ def test_array_to_span() -> None:
 def test_list_to_span() -> None:
     print("List -> Span coercions:")
 
-    lst: list[Int32] = [100, 200, 300]
+    lst: list[int32] = [100, 200, 300]
 
     # Function argument
     print(take_span(lst))  # 600

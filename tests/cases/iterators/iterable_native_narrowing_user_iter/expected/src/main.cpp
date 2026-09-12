@@ -13,7 +13,7 @@ void main() {
     // print(sum_fast(c))
     std::cout << sum_fast(c) << "\n";
     // # Sanity: a list takes the fast branch (x * 100 each): 1*100 + 2*100 = 300.
-    // nums: list[Int32] = [1, 2]
+    // nums: list[int32] = [1, 2]
     std::vector<int32_t> nums = {1, 2};
     // print(sum_fast(nums))
     std::cout << sum_fast(nums) << "\n";

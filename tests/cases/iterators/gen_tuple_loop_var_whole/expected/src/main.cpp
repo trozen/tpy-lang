@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def walk_free(xs: list[tuple[Int32, A]]) -> Iterator[Int32]:
+// def walk_free(xs: list[tuple[int32, A]]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_walk_free::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -40,12 +40,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_walk_free::__next__() {
 }
 
 
-// def walk_free(xs: list[tuple[Int32, A]]) -> Iterator[Int32]:
+// def walk_free(xs: list[tuple[int32, A]]) -> Iterator[int32]:
 __gen_walk_free walk_free(std::vector<std::tuple<int32_t, A>>& xs) {
     return __gen_walk_free(xs);
 }
 
-// def walk_value(xs: list[tuple[Int32, Int32]]) -> Iterator[Int32]:
+// def walk_value(xs: list[tuple[int32, int32]]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_walk_value::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -79,12 +79,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_walk_value::__next__() {
 }
 
 
-// def walk_value(xs: list[tuple[Int32, Int32]]) -> Iterator[Int32]:
+// def walk_value(xs: list[tuple[int32, int32]]) -> Iterator[int32]:
 __gen_walk_value walk_value(std::vector<std::tuple<int32_t, int32_t>>& xs) {
     return __gen_walk_value(xs);
 }
 
-// async def walk_async(xs: list[tuple[Int32, A]]) -> Int32:
+// async def walk_async(xs: list[tuple[int32, A]]) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_walk_async::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -128,12 +128,12 @@ __gen_walk_value walk_value(std::vector<std::tuple<int32_t, int32_t>>& xs) {
 }
 
 
-// async def walk_async(xs: list[tuple[Int32, A]]) -> Int32:
+// async def walk_async(xs: list[tuple[int32, A]]) -> int32:
 __coro_walk_async walk_async(std::vector<std::tuple<int32_t, A>>& xs) {
     return __coro_walk_async(xs);
 }
 
-// def walk_items(d: dict[Int32, A]) -> Iterator[Int32]:
+// def walk_items(d: dict[int32, A]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_walk_items::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -170,12 +170,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_walk_items::__next__() {
 }
 
 
-// def walk_items(d: dict[Int32, A]) -> Iterator[Int32]:
+// def walk_items(d: dict[int32, A]) -> Iterator[int32]:
 __gen_walk_items walk_items(::tpy::ordered_map<int32_t, A>& d) {
     return __gen_walk_items(d);
 }
 
-// async def sum_items(d: dict[Int32, Int32]) -> Int32:
+// async def sum_items(d: dict[int32, int32]) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_sum_items::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -216,7 +216,7 @@ __gen_walk_items walk_items(::tpy::ordered_map<int32_t, A>& d) {
 }
 
 
-// async def sum_items(d: dict[Int32, Int32]) -> Int32:
+// async def sum_items(d: dict[int32, int32]) -> int32:
 __coro_sum_items sum_items(::tpy::ordered_map<int32_t, int32_t>& d) {
     return __coro_sum_items(d);
 }
@@ -348,7 +348,7 @@ void main() {
     std::cout << "items src" << " " << ::tpy::__getitem__(d, 7).v << "\n";
 }
 
-// def walk(self) -> Iterator[Int32]:
+// def walk(self) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_walk::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -384,7 +384,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_walk::__next__() {
 }
 
 
-// def peek(self) -> Iterator[Int32]:
+// def peek(self) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_peek::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {

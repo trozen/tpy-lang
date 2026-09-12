@@ -2,18 +2,18 @@
 # iter_next strategy never records the per-loop borrow-tuple fact its holder
 # would need.
 import asyncio
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Box:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 
 class Pairs:
-    i: Int32
+    i: int32
 
     def __init__(self) -> None:
         self.i = 0
@@ -21,18 +21,18 @@ class Pairs:
     def __iter__(self) -> "Pairs":
         return self
 
-    def __next__(self) -> tuple[Int32, Own[Box]]:
+    def __next__(self) -> tuple[int32, Own[Box]]:
         self.i = self.i + 1
         if self.i > 2:
             raise StopIteration
         return (self.i, Box(self.i))
 
 
-async def step(n: Int32) -> Int32:
+async def step(n: int32) -> int32:
     return n + 1
 
 
-async def f() -> Int32:  # tpyc: error(/res\.local_storage/)
+async def f() -> int32:  # tpyc: error(/res\.local_storage/)
     total = 0
     # The unpack holder for a user iterator has no frame form.
     for k, b in Pairs():

@@ -24,13 +24,13 @@ void main() {
     std::cout << ::tpy::ListPrinter(w.xs) << "\n";
     // wide = [3]
     std::vector<int64_t> wide = {3};
-    // w2 = Wrap[Int64](wide)
+    // w2 = Wrap[int64](wide)
     Wrap<int64_t> w2 = Wrap<int64_t>(std::move(wide));
     // print(w2.xs)
     std::cout << ::tpy::ListPrinter(w2.xs) << "\n";
     // dd = {"a": 1}
     ::tpy::ordered_map<std::string, int32_t> dd = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
-    // dh = DictHolder(dd)  # tpyc: warning(/copies dict\[str, Int32\] into owned storage/)
+    // dh = DictHolder(dd)  # tpyc: warning(/copies dict\[str, int32\] into owned storage/)
     ::tpy::ordered_map<std::string, int32_t> __tmp_1 = dd;
     DictHolder dh = DictHolder(std::move(__tmp_1));
     // print(dd["a"], dh.d["a"])
@@ -49,7 +49,7 @@ void main() {
     }
     // ss = {1, 2}
     ::tpy::ordered_set<int32_t> ss = ::tpy::ordered_set<int32_t>({1, 2});
-    // sh = SetHolder(ss)  # tpyc: warning(/copies set\[Int32\] into owned storage/)
+    // sh = SetHolder(ss)  # tpyc: warning(/copies set\[int32\] into owned storage/)
     ::tpy::ordered_set<int32_t> __tmp_2 = ss;
     SetHolder sh = SetHolder(std::move(__tmp_2));
     // print(len(ss), len(sh.s))

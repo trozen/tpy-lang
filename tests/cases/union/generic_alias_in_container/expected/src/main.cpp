@@ -6,9 +6,9 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // pairs: list[Pair[Int32]] = [(Int32(1), Int32(2)), (Int32(3), Int32(4))]  # tpyc: type(/list\[tuple\[Int32, Int32\]\]/)
+    // pairs: list[Pair[int32]] = [(int32(1), int32(2)), (int32(3), int32(4))]  # tpyc: type(/list\[tuple\[int32, int32\]\]/)
     std::vector<std::tuple<int32_t, int32_t>> pairs = {std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}};
-    // for p in pairs:  # tpyc: type(/tuple\[Int32, Int32\]/)
+    // for p in pairs:  # tpyc: type(/tuple\[int32, int32\]/)
     auto& __obj_0 = pairs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();

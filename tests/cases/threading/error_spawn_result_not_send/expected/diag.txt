@@ -1,4 +1,4 @@
-main.py:15: error: Type argument 'Rc[Int32]' does not satisfy bound 'Send' for type parameter 'R' of 'spawn'
-Rc[Int32] is not Send
+main.py:15: error: Type argument 'Rc[int32]' does not satisfy bound 'Send' for type parameter 'R' of 'spawn'
+Rc[int32] is not Send
 +-- field '_cell: Ptr[_RcCellBase]' is not Send (raw pointer, no ownership guarantee)
-+-- field '_payload: Ptr[Int32]' is not Send (raw pointer, no ownership guarantee)
++-- field '_payload: Ptr[int32]' is not Send (raw pointer, no ownership guarantee)

@@ -34,13 +34,13 @@ GEN_CPP = """\
 
 namespace tpyapp::main {
 
-// def first(items: list[Int32]) -> Int32:
+// def first(items: list[int32]) -> int32:
 int32_t first(const std::vector<int32_t>& items) {
     // return items[0]
     return ::tpy::__getitem__(items, 0);
 }
 
-// def second(items: list[Int32]) -> Int32:
+// def second(items: list[int32]) -> int32:
 int32_t second(const std::vector<int32_t>& items) {
     // return items[1]
     return ::tpy::__getitem__(items, 1);
@@ -57,18 +57,18 @@ namespace tpyapp::main {
 
 // class Counter:
 struct Counter {
-    // value: Int32
+    // value: int32
     int32_t value;
 
-    // def __init__(self, start: Int32):
+    // def __init__(self, start: int32):
     Counter() = default;
     explicit Counter(int32_t start) : value(start) {}
 
-    // def get(self) -> Int32:
+    // def get(self) -> int32:
     int32_t get() const;
 };
 
-// def get(self) -> Int32:
+// def get(self) -> int32:
 inline int32_t Counter::get() const {
     // return self.value
     return this->value;

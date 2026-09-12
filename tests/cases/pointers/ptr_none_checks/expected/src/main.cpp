@@ -3,11 +3,11 @@
 
 namespace tpyapp::main {
 
-// p: Ptr[Int32] = None  # tpyc: ok
+// p: Ptr[int32] = None  # tpyc: ok
 int32_t* p{};
-// x: Int32 = Int32(7)
+// x: int32 = int32(7)
 int32_t x{};
-// cp: Ptr[readonly[Int32]] = None  # tpyc: ok
+// cp: Ptr[readonly[int32]] = None  # tpyc: ok
 const int32_t* cp{};
 
 void __tpy_init() {
@@ -15,11 +15,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // p: Ptr[Int32] = None  # tpyc: ok
+    // p: Ptr[int32] = None  # tpyc: ok
     p = nullptr;
     // print(p is None)
     std::cout << ::tpy::print_bool((p == nullptr)) << "\n";
-    // x: Int32 = Int32(7)
+    // x: int32 = int32(7)
     x = 7;
     // p = take_ptr(x)
     p = &x;
@@ -31,7 +31,7 @@ void __tpy_init() {
     p = nullptr;
     // print(p is None)
     std::cout << ::tpy::print_bool((p == nullptr)) << "\n";
-    // cp: Ptr[readonly[Int32]] = None  # tpyc: ok
+    // cp: Ptr[readonly[int32]] = None  # tpyc: ok
     cp = nullptr;
     // print(cp is None)
     std::cout << ::tpy::print_bool((cp == nullptr)) << "\n";
@@ -51,7 +51,7 @@ void __tpy_init() {
         std::cout << ::tpy::deref_check(p) << "\n";
     // else:
     } else {
-        // print(Int32(0))
+        // print(int32(0))
         std::cout << 0 << "\n";
     }
 }

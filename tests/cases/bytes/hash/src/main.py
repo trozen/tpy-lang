@@ -1,6 +1,6 @@
 # bytes is hashable and can be used as dict keys and set elements.
 # BytesView supports hash() but cannot be used as a container key.
-from tpy import Int32
+from tpy import int32
 
 def test_hash_basic() -> None:
     h1 = hash(b"hello")
@@ -21,7 +21,7 @@ def test_set_element() -> None:
 
 def test_bytes_view_hash() -> None:
     items: list[bytes] = [b"hello", b"world"]
-    v = items[Int32(0)]  # tpyc: type(BytesView)
+    v = items[int32(0)]  # tpyc: type(BytesView)
     h1 = hash(v)
     h2 = hash(b"hello")
     print(h1 == h2)

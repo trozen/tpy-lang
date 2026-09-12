@@ -18,7 +18,7 @@ void main();
 
 // class Registry:
 struct Registry {
-    // code: ClassVar[Int32] = 999
+    // code: ClassVar[int32] = 999
     static inline int32_t code = 999;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.Registry";
@@ -34,7 +34,7 @@ struct Item {
     // self.code = code
     int32_t code;
 
-    // def __init__(self, code: Int32):
+    // def __init__(self, code: int32):
     Item() = default;
     explicit Item(int32_t code);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Item";
@@ -50,7 +50,7 @@ struct Other {
     // self.tag = tag
     int32_t tag;
 
-    // def __init__(self, tag: Int32):
+    // def __init__(self, tag: int32):
     Other() = default;
     explicit Other(int32_t tag);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Other";
@@ -62,10 +62,10 @@ inline std::ostream& operator<<(std::ostream& os, const Other& obj) {
 }
 
 
-// def __init__(self, code: Int32):
+// def __init__(self, code: int32):
 inline Item::Item(int32_t code) : code(code) {}
 
-// def __init__(self, tag: Int32):
+// def __init__(self, tag: int32):
 inline Other::Other(int32_t tag) : tag(tag) {}
 void __tpy_init();
 } // namespace tpyapp::main

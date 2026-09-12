@@ -1,11 +1,11 @@
 # Test tplib.ArrayList: fixed-capacity list imported from the standard library.
-from tpy import Int32, Span, Array, copy
+from tpy import int32, Span, Array, copy
 from tplib import ArrayList
 
 
 def main() -> None:
     # -- basics: empty, append, len, getitem --
-    a = ArrayList[Int32, 8]()
+    a = ArrayList[int32, 8]()
     print(len(a))               # 0
     a.append(10)
     a.append(20)
@@ -57,7 +57,7 @@ def main() -> None:
     print(b[0])                 # 100
 
     # -- iter --
-    c = ArrayList[Int32, 4]()
+    c = ArrayList[int32, 4]()
     c.append(1)
     c.append(2)
     c.append(3)
@@ -72,9 +72,9 @@ def main() -> None:
     print(len(a))               # 0
 
     # -- construct from Span --
-    arr: Array[Int32, 3] = [10, 20, 30]
-    s: Span[Int32] = arr
-    d = ArrayList[Int32, 8](s)
+    arr: Array[int32, 3] = [10, 20, 30]
+    s: Span[int32] = arr
+    d = ArrayList[int32, 8](s)
     print(len(d))               # 3
     print(d[0])                 # 10
     print(d[2])                 # 30

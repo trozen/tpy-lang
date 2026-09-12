@@ -1,12 +1,12 @@
 # ArrayList.extend() warns when copying non-value elements from an Iterable source.
 # copy() suppression is tested in warn_extend_copy (list); here we check ArrayList-specific paths.
-from tpy import Int32
+from tpy import int32
 from tplib import ArrayList
 
 
 class Node:
-    val: Int32
-    def __init__(self, val: Int32) -> None:
+    val: int32
+    def __init__(self, val: int32) -> None:
         self.val = val
 
 
@@ -18,8 +18,8 @@ def test_extend_warns() -> None:
     print(len(b))
 
 def test_extend_value_type_no_warn() -> None:
-    a = ArrayList[Int32, 16]()
-    b: list[Int32] = [1, 2]
+    a = ArrayList[int32, 16]()
+    b: list[int32] = [1, 2]
     a.extend(b)  # tpyc: ok
     print(a[0])
 

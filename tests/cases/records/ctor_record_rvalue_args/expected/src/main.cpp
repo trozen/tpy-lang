@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def make_inner(v: Int32) -> Own[Inner]:
+// def make_inner(v: int32) -> Own[Inner]:
 Inner make_inner(int32_t v) {
     // return Inner(v)
     return Inner(v);

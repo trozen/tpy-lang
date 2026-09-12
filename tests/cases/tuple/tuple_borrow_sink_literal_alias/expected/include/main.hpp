@@ -19,10 +19,10 @@ void main();
 
 // class Item:
 struct Item {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Item() = default;
     explicit Item(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Item";
@@ -34,9 +34,9 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
 }
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Item::Item(int32_t n) : n(n) {}
-// def relay[T](p: tuple[T, Int32]) -> Int32:
+// def relay[T](p: tuple[T, int32]) -> int32:
 template<typename T>
 int32_t relay(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& p) {
     // return p[1]

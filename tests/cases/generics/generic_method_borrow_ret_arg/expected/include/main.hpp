@@ -27,10 +27,10 @@ void main();
 
 // class Cell:
 struct Cell {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Cell() = default;
     explicit Cell(int32_t n);
 
@@ -49,7 +49,7 @@ struct Holder {
     // c: Cell
     Cell c;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Holder() = default;
     explicit Holder(int32_t n);
 
@@ -102,7 +102,7 @@ inline std::ostream& operator<<(std::ostream& os, const Owner& obj) {
 }
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Cell::Cell(int32_t n) : n(n) {}
 
 // def bump(self) -> None:
@@ -111,7 +111,7 @@ inline void Cell::bump() {
     this->n = (::tpy::add_check<int32_t>(this->n, 1));
 }
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Holder::Holder(int32_t n) : c(Cell(n)) {}
 
 // def borrow(self) -> Cell:

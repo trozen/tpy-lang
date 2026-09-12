@@ -1,19 +1,19 @@
-from tpy import Int32
+from tpy import int32
 class A:
-    n: Int32
+    n: int32
     def __init__(self) -> None:
         self.n = 1
 class B:
-    m: Int32
+    m: int32
     def __init__(self) -> None:
         self.m = 2
-def size(u: A | B) -> Int32:
+def size(u: A | B) -> int32:
     if isinstance(u, A):
         return u.n
     return 0
-def go(u: A | B) -> Int32:
+def go(u: A | B) -> int32:
     if isinstance(u, A):
-        def f() -> Int32:
+        def f() -> int32:
             return size(u)
         return f()
     return 0

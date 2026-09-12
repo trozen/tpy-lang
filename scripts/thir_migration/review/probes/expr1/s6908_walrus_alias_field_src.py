@@ -1,13 +1,13 @@
-from tpy import Int32
+from tpy import int32
 class Rec:
-    n: Int32
-    def __init__(self, n: Int32) -> None:
+    n: int32
+    def __init__(self, n: int32) -> None:
         self.n = n
 class H:
     inner: Rec
     def __init__(self) -> None:
         self.inner = Rec(1)
-def f(h: H) -> Int32:
+def f(h: H) -> int32:
     if (q := h.inner).n > 0:
         return q.n
     return 0

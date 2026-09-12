@@ -1,15 +1,15 @@
 # unsafe_interior_mutable[Ptr[T]] on a user type: a @readonly method mutates through the
 # interior field (the bump is bookkeeping outside the readonly boundary);
 # observing the bumped value proves the mutation took effect.
-from tpy import Int32, Ptr, nocopy, unsafe_interior_mutable, readonly
+from tpy import int32, Ptr, nocopy, unsafe_interior_mutable, readonly
 from tpy.unsafe import unsafe_take, unsafe_release
 
 
 @nocopy
 class Cell:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def bump(self) -> None:
@@ -31,7 +31,7 @@ class Counter:
         self._cell.bump()
 
     @readonly
-    def value(self) -> Int32:
+    def value(self) -> int32:
         return self._cell.n
 
 

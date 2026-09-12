@@ -32,13 +32,13 @@ It maps to `const T&` in C++. This follows C++ and Rust semantics: constness
 is a property of the reference, not the object.
 
 ```python
-from tpy import Int32, readonly
+from tpy import int32, readonly
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32):
+    def __init__(self, x: int32, y: int32):
         self.x = x
         self.y = y
 
@@ -70,8 +70,8 @@ def copy_into(src: readonly[Point], dest: Point) -> None:
 
 ### Value types are unaffected
 
-Value types (`Int32`, `bool`, `float`, `str`, `Char`, etc.) are always copies.
-`readonly[Int32]` is valid syntax but has no effect -- the parameter is a copy
+Value types (`int32`, `bool`, `float`, `str`, `char`, etc.) are always copies.
+`readonly[int32]` is valid syntax but has no effect -- the parameter is a copy
 regardless. This means you never need to annotate value-type parameters with
 `readonly`.
 
@@ -83,10 +83,10 @@ treated as readonly." It enforces the same mutation restrictions as
 
 ```python
 @readonly
-def observe(b: Box) -> Int32:
+def observe(b: Box) -> int32:
     return b.value
 # Equivalent enforcement to:
-# def observe(b: readonly[Box]) -> Int32:
+# def observe(b: readonly[Box]) -> int32:
 ```
 
 For methods, `@readonly` makes `self` readonly, which maps to a `const` method
@@ -95,7 +95,7 @@ in C++:
 ```python
 class Box:
     @readonly
-    def value(self) -> Int32:
+    def value(self) -> int32:
         return self._value
     # C++: int32_t value() const { return _value; }
 ```
@@ -145,7 +145,7 @@ readonly status for non-value types:
 def f(p: Point) -> None:
     alias = p           # alias: readonly[Point] (deduced)
     alias.mutate()      # ERROR: non-readonly method on readonly ref
-    v = p.x             # v: Int32 (value type, no readonly needed)
+    v = p.x             # v: int32 (value type, no readonly needed)
     inner = p.box       # inner: readonly[Box] (non-value field of readonly)
 ```
 
@@ -185,9 +185,9 @@ At the callsite, C++ overload resolution selects based on the receiver's
 constness. Sema enforces readonly at the TurboPython level independently:
 
 ```python
-def read(c: readonly[Container]) -> Int32:
-    return c[0]         # calls const overload, result is readonly[Int32]
-                        # (Int32 is value type, so readonly is a no-op)
+def read(c: readonly[Container]) -> int32:
+    return c[0]         # calls const overload, result is readonly[int32]
+                        # (int32 is value type, so readonly is a no-op)
 
 def write(c: Container) -> None:
     c[0] = 42           # calls non-const overload
@@ -216,8 +216,8 @@ pointer).
 |-----------------------------------|--------------------------------|
 | `p: Point` (param)               | `Point& p`                     |
 | `p: readonly[Point]` (param)     | `const Point& p`               |
-| `x: Int32` (param, value type)   | `int32_t x`                    |
-| `x: readonly[Int32]` (param)     | `int32_t x` (same, copy)       |
+| `x: int32` (param, value type)   | `int32_t x`                    |
+| `x: readonly[int32]` (param)     | `int32_t x` (same, copy)       |
 | `@readonly` method               | `... method() const`           |
 | `readonly[Point | None]`         | `const Point*`                 |
 
@@ -410,7 +410,7 @@ need dual treatment. Example:
 class ArrayList[T, N: int]:
     @overload
     @auto_readonly
-    def __getitem__(self, index: Int32) -> T: ...                       # T is value-copied; no annotation needed
+    def __getitem__(self, index: int32) -> T: ...                       # T is value-copied; no annotation needed
     @overload
     @auto_readonly
     def __getitem__(self, index: slice) -> Span[auto_readonly[T]]: ... # Span element becomes const
@@ -437,7 +437,7 @@ receiver param (`sema/methods.py` skips the non-readonly-call mutation mark for
 receiver at the mutation site:
 
 ```python
-def read(o: Outer) -> Int32:  return o.b.get().v   # const Outer&  (result only read)
+def read(o: Outer) -> int32:  return o.b.get().v   # const Outer&  (result only read)
 def write(o: Outer) -> None:  o.b.get().v = 9       # Outer&        (result field written)
 def mutate(o: Outer) -> None: o.b.get().bump()      # Outer&        (mutating method on result)
 ```

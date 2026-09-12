@@ -63,9 +63,9 @@ struct __gen_BufferedReader___iter__;
 struct StringIO {
     // _chunks: list[str]
     std::vector<std::string> _chunks;
-    // _pos: Int32
+    // _pos: int32
     int32_t _pos;
-    // _total: Int32
+    // _total: int32
     int32_t _total;
     // _closed: bool
     bool _closed;
@@ -78,10 +78,10 @@ struct StringIO {
     StringIO(StringIO&&) = default;
     StringIO& operator=(StringIO&&) = default;
 
-    // def write(self, s: str) -> Int32:
+    // def write(self, s: str) -> int32:
     int32_t write(std::string_view s);
 
-    // def read(self, size: Int32 = -1) -> str:
+    // def read(self, size: int32 = -1) -> str:
     std::string read(int32_t size = -1);
 
     // def readline(self) -> str:
@@ -95,13 +95,13 @@ struct StringIO {
     // def getvalue(self) -> str:
     std::string getvalue() const;
 
-    // def tell(self) -> Int32:
+    // def tell(self) -> int32:
     int32_t tell() const;
 
-    // def seek(self, pos: Int32, whence: Int32 = 0) -> Int32:
+    // def seek(self, pos: int32, whence: int32 = 0) -> int32:
     int32_t seek(int32_t pos, int32_t whence = 0);
 
-    // def truncate(self, size: Int32 = -1) -> Int32:
+    // def truncate(self, size: int32 = -1) -> int32:
     int32_t truncate(int32_t size = -1);
 
     // def flush(self) -> None:
@@ -147,9 +147,9 @@ inline std::ostream& operator<<(std::ostream& os, const StringIO& obj) {
 struct BytesIO {
     // _chunks: list[bytes]
     std::vector<::tpy::Bytes> _chunks;
-    // _pos: Int32
+    // _pos: int32
     int32_t _pos;
-    // _total: Int32
+    // _total: int32
     int32_t _total;
     // _closed: bool
     bool _closed;
@@ -162,10 +162,10 @@ struct BytesIO {
     BytesIO(BytesIO&&) = default;
     BytesIO& operator=(BytesIO&&) = default;
 
-    // def write(self, data: bytes) -> Int32:
+    // def write(self, data: bytes) -> int32:
     int32_t write(::tpy::BytesView data);
 
-    // def read(self, size: Int32 = -1) -> bytes:
+    // def read(self, size: int32 = -1) -> bytes:
     ::tpy::Bytes read(int32_t size = -1);
 
     // def readline(self) -> bytes:
@@ -179,13 +179,13 @@ struct BytesIO {
     // def getvalue(self) -> bytes:
     ::tpy::Bytes getvalue() const;
 
-    // def tell(self) -> Int32:
+    // def tell(self) -> int32:
     int32_t tell() const;
 
-    // def seek(self, pos: Int32, whence: Int32 = 0) -> Int32:
+    // def seek(self, pos: int32, whence: int32 = 0) -> int32:
     int32_t seek(int32_t pos, int32_t whence = 0);
 
-    // def truncate(self, size: Int32 = -1) -> Int32:
+    // def truncate(self, size: int32 = -1) -> int32:
     int32_t truncate(int32_t size = -1);
 
     // def flush(self) -> None:
@@ -230,7 +230,7 @@ inline std::ostream& operator<<(std::ostream& os, const BytesIO& obj) {
 // class FileIO:
 struct FileIO {
     // # -1 sentinel marks closed/moved-from so __del__ won't double-close.
-    // _fd: Int64 = -1
+    // _fd: int64 = -1
     int64_t _fd = -1;
     // _closefd: bool
     bool _closefd;
@@ -243,7 +243,7 @@ struct FileIO {
     bool _timeout_mode;
     bool __tpy_owned_ = true;
 
-    // def __init__(self, fd: Int64, closefd: bool = True,
+    // def __init__(self, fd: int64, closefd: bool = True,
     // timeout_mode: bool = False) -> None:
     explicit FileIO(int64_t fd, bool closefd = true, bool timeout_mode = false);
     // non-copyable (@nocopy)
@@ -255,19 +255,19 @@ struct FileIO {
     // def __del__(self) -> None:
     ~FileIO();
 
-    // def read(self, size: Int32 = -1) -> bytes:
+    // def read(self, size: int32 = -1) -> bytes:
     ::tpy::Bytes read(int32_t size = -1) const;
 
     // def _readall(self) -> bytes:
     ::tpy::Bytes _readall() const;
 
-    // def _os_read(self, n: Int64) -> bytes:
+    // def _os_read(self, n: int64) -> bytes:
     ::tpy::Bytes _os_read(int64_t n) const;
 
     // def readable(self) -> bool:
     bool readable() const;
 
-    // def fileno(self) -> Int64:
+    // def fileno(self) -> int64:
     int64_t fileno() const;
 
     // def close(self) -> None:
@@ -302,13 +302,13 @@ struct BufferedReader {
     ::tpy::Bytes _buf;
     // _eof: bool
     bool _eof;
-    // _buffer_size: Int32
+    // _buffer_size: int32
     int32_t _buffer_size;
     // _closed: bool
     bool _closed;
 
     // def __init__(self, raw: Own[RawBinaryIO],
-    // buffer_size: Int32 = DEFAULT_BUFFER_SIZE) -> None:
+    // buffer_size: int32 = DEFAULT_BUFFER_SIZE) -> None:
     explicit BufferedReader(std::unique_ptr<RawBinaryIO> raw, int32_t buffer_size = DEFAULT_BUFFER_SIZE);
     // non-copyable (@nocopy)
     BufferedReader(const BufferedReader&) = delete;
@@ -319,13 +319,13 @@ struct BufferedReader {
     // def _fill(self) -> None:
     void _fill();
 
-    // def _take(self, n: Int32) -> bytes:
+    // def _take(self, n: int32) -> bytes:
     ::tpy::Bytes _take(int32_t n);
 
-    // def read(self, size: Int32 = -1) -> bytes:
+    // def read(self, size: int32 = -1) -> bytes:
     ::tpy::Bytes read(int32_t size = -1);
 
-    // def readline(self, size: Int32 = -1) -> bytes:
+    // def readline(self, size: int32 = -1) -> bytes:
     ::tpy::Bytes readline(int32_t size = -1);
 
     // def readlines(self) -> Own[list[bytes]]:
@@ -474,7 +474,7 @@ inline StringIO::StringIO(std::string_view initial) : _chunks(std::vector<std::s
     }
     // self._pos = 0
     this->_pos = 0;
-    // self._total = Int32(len(initial))
+    // self._total = int32(len(initial))
     this->_total = ::tpy::__len__(initial);
     // self._closed = False
     this->_closed = false;
@@ -521,7 +521,7 @@ inline std::string StringIO::getvalue() const {
     return ::tpy::str_join("", this->_chunks);
 }
 
-// def tell(self) -> Int32:
+// def tell(self) -> int32:
 inline int32_t StringIO::tell() const {
     // self._check_open()
     this->_check_open();
@@ -620,7 +620,7 @@ inline BytesIO::BytesIO(std::optional<::tpy::BytesView> initial) : _chunks(std::
     if (((initial.has_value()) && (::tpy::__len__((*initial)) > 0))) {
         // self._chunks.append(bytes(initial))
         this->_chunks.push_back(::tpy::Bytes((*initial)));
-        // self._total = Int32(len(initial))
+        // self._total = int32(len(initial))
         this->_total = ::tpy::__len__((*initial));
     }
     // self._closed = False
@@ -665,7 +665,7 @@ inline ::tpy::Bytes BytesIO::getvalue() const {
     return ::tpy::bytes_join(::tpy::Bytes{}, this->_chunks);
 }
 
-// def tell(self) -> Int32:
+// def tell(self) -> int32:
 inline int32_t BytesIO::tell() const {
     // self._check_open()
     this->_check_open();
@@ -750,7 +750,7 @@ inline void BytesIO::_check_open() const {
     }
 }
 
-// def __init__(self, fd: Int64, closefd: bool = True,
+// def __init__(self, fd: int64, closefd: bool = True,
 // timeout_mode: bool = False) -> None:
 inline FileIO::FileIO(int64_t fd, bool closefd, bool timeout_mode) {
     // if fd < 0:
@@ -794,7 +794,7 @@ inline FileIO::~FileIO() {
     this->_closed = true;
 }
 
-// def read(self, size: Int32 = -1) -> bytes:
+// def read(self, size: int32 = -1) -> bytes:
 inline ::tpy::Bytes FileIO::read(int32_t size) const {
     // self._check_open()
     this->_check_open();
@@ -808,7 +808,7 @@ inline ::tpy::Bytes FileIO::read(int32_t size) const {
         // return b""
         return ::tpy::Bytes{};
     }
-    // return self._os_read(Int64(size))
+    // return self._os_read(int64(size))
     return this->_os_read(::tpy::int_cast_check<int64_t>(size));
 }
 
@@ -818,7 +818,7 @@ inline ::tpy::Bytes FileIO::_readall() const {
     ::tpy::Bytes out = ::tpy::Bytes{};
     // while True:
     while (true) {
-        // chunk: bytes = self._os_read(Int64(DEFAULT_BUFFER_SIZE))
+        // chunk: bytes = self._os_read(int64(DEFAULT_BUFFER_SIZE))
         ::tpy::Bytes chunk = this->_os_read(::tpy::int_cast_check<int64_t>(DEFAULT_BUFFER_SIZE));
         // if len(chunk) == 0:
         if ((::tpy::__len__(chunk) == 0)) {
@@ -832,7 +832,7 @@ inline ::tpy::Bytes FileIO::_readall() const {
     return out;
 }
 
-// def _os_read(self, n: Int64) -> bytes:
+// def _os_read(self, n: int64) -> bytes:
 inline ::tpy::Bytes FileIO::_os_read(int64_t n) const {
     // if not self._timeout_mode:
     if ((!(this->_timeout_mode))) {
@@ -859,7 +859,7 @@ inline bool FileIO::readable() const {
     return (!(this->_closed));
 }
 
-// def fileno(self) -> Int64:
+// def fileno(self) -> int64:
 inline int64_t FileIO::fileno() const {
     // self._check_open()
     this->_check_open();
@@ -912,7 +912,7 @@ inline void FileIO::_check_open() const {
 }
 
 // def __init__(self, raw: Own[RawBinaryIO],
-// buffer_size: Int32 = DEFAULT_BUFFER_SIZE) -> None:
+// buffer_size: int32 = DEFAULT_BUFFER_SIZE) -> None:
 inline BufferedReader::BufferedReader(std::unique_ptr<RawBinaryIO> raw, int32_t buffer_size) : _raw(::tpystd::tplib::box::Box<RawBinaryIO>(std::move(raw))), _buf(::tpy::Bytes{}), _eof(false), _buffer_size(buffer_size), _closed(false) {
     // if buffer_size <= 0:
     if ((buffer_size <= 0)) {
@@ -936,7 +936,7 @@ inline void BufferedReader::_fill() {
     }
 }
 
-// def _take(self, n: Int32) -> bytes:
+// def _take(self, n: int32) -> bytes:
 inline ::tpy::Bytes BufferedReader::_take(int32_t n) {
     // # Materialize the owned head before reassigning `_buf` (a slice is a
     // # borrow into the old buffer).

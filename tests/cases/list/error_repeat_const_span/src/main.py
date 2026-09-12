@@ -1,7 +1,7 @@
 # Constant-count list repeat cannot be passed directly to Span either
-from tpy import Int32, Span
+from tpy import int32, Span
 
-def takes_span(s: Span[Int32]) -> None:
+def takes_span(s: Span[int32]) -> None:
     for v in s:
         print(v)
 

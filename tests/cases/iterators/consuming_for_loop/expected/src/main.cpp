@@ -10,7 +10,7 @@ void test_own_iter_explicit() {
     std::vector<Node> src = {Node(1), Node(2), Node(3)};
     // oi = own_iter(src)  # tpyc: type(/OwnIter\[Node\]/)
     auto oi = ::tpy::own_iter(std::move(src));
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for x in oi:
     auto& __obj_0 = oi;
@@ -27,9 +27,9 @@ void test_own_iter_explicit() {
 
 // def test_own_iter_value_type() -> None:
 void test_own_iter_value_type() {
-    // src: list[Int32] = [10, 20, 30]
+    // src: list[int32] = [10, 20, 30]
     std::vector<int32_t> src = {10, 20, 30};
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for x in own_iter(src):
     auto __obj_0 = ::tpy::own_iter(std::move(src));
@@ -48,7 +48,7 @@ void test_own_iter_value_type() {
 void test_borrowing_default() {
     // src: list[Node] = [Node(10), Node(20)]
     std::vector<Node> src = {Node(10), Node(20)};
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for x in src:
     auto& __obj_0 = src;
@@ -67,9 +67,9 @@ void test_borrowing_default() {
 
 // def test_value_type_borrowing() -> None:
 void test_value_type_borrowing() {
-    // src: list[Int32] = [1, 2, 3]
+    // src: list[int32] = [1, 2, 3]
     std::vector<int32_t> src = {1, 2, 3};
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for x in src:
     auto& __obj_0 = src;

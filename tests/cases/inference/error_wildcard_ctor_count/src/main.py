@@ -1,5 +1,5 @@
 # Error: wrong number of _ wildcard type arguments on constructor
-from tpy import Int32
+from tpy import int32
 
 class Box[T]:
     val: T
@@ -7,6 +7,6 @@ class Box[T]:
         self.val = val
 
 def main() -> None:
-    Box[_, _](Int32(1))  # tpyc: error(/expects 1 type argument/)
+    Box[_, _](int32(1))  # tpyc: error(/expects 1 type argument/)
 
 main()

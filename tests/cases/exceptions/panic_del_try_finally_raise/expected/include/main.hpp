@@ -15,11 +15,11 @@ void main();
 
 // class Fussy:
 struct Fussy {
-    // _id: Int32
+    // _id: int32
     int32_t _id;
     bool __tpy_owned_ = true;
 
-    // def __init__(self, id: Int32):
+    // def __init__(self, id: int32):
     explicit Fussy(int32_t id);
     Fussy(const Fussy&) = delete;
     Fussy& operator=(const Fussy&) = delete;
@@ -37,7 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const Fussy& obj) {
 }
 
 
-// def __init__(self, id: Int32):
+// def __init__(self, id: int32):
 inline Fussy::Fussy(int32_t id) : _id(id) {}
 
 inline Fussy::Fussy(Fussy&& other) noexcept : _id(std::move(other._id)) {

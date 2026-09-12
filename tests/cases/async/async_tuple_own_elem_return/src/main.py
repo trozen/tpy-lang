@@ -4,21 +4,21 @@
 # record). Mutation before the return and after the await proves the
 # moved object carries state across the boundary.
 import asyncio
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 
 
 @nocopy
 class Counter:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def bump(self) -> None:
         self.n += 1
 
 
-async def make_pair() -> tuple[Own[Counter], Int32]:
+async def make_pair() -> tuple[Own[Counter], int32]:
     c = Counter(10)
     c.bump()
     return (c, 99)

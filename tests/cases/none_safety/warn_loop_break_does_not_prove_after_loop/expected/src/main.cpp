@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def after_break(x: Int32 | None, flag: bool) -> Int32:
+// def after_break(x: int32 | None, flag: bool) -> int32:
 int32_t after_break(std::optional<int32_t> x, bool flag) {
     // while flag:
     while (flag) {

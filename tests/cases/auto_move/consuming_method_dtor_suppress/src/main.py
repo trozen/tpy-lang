@@ -2,13 +2,13 @@
 # preventing double-free. Without suppression, the moved-from object's dtor
 # would run unsafe_free on already-freed memory.
 from typing import Self
-from tpy import Own, Ptr, Int32
+from tpy import Own, Ptr, int32
 from tpy.unsafe import unsafe_alloc, unsafe_free, unsafe_init, unsafe_drop, unsafe_move_out
 
 class HeapVal:
-    _ptr: Ptr[Int32]
+    _ptr: Ptr[int32]
 
-    def __init__(self, value: Int32):
+    def __init__(self, value: int32):
         print("init", value)
         self._ptr = unsafe_alloc()
         unsafe_init(self._ptr, value)
@@ -18,19 +18,19 @@ class HeapVal:
         unsafe_drop(self._ptr)
         unsafe_free(self._ptr)
 
-    def take(self: Own[Self]) -> Int32:
+    def take(self: Own[Self]) -> int32:
         print("take")
-        val: Int32 = unsafe_move_out(self._ptr)
+        val: int32 = unsafe_move_out(self._ptr)
         unsafe_free(self._ptr)
         return val
 
 def main() -> None:
-    h = HeapVal(Int32(42))
-    val: Int32 = h.take()
+    h = HeapVal(int32(42))
+    val: int32 = h.take()
     print("got", val)
 
     # Temporary
-    val2: Int32 = HeapVal(Int32(99)).take()
+    val2: int32 = HeapVal(int32(99)).take()
     print("got", val2)
 
 main()

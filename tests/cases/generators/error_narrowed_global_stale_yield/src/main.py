@@ -3,13 +3,13 @@
 # same kill as at call sites, reached through the suspension route. The
 # surviving first yield is pinned by
 # tests/cases/generators/narrowed_value_opt_frame_faces.
-from tpy import Int32
+from tpy import int32
 from typing import Iterator
 
-G: Int32 | None = 5
+G: int32 | None = 5
 
 
-def ints() -> Iterator[Int32]:
+def ints() -> Iterator[int32]:
     if G is not None:
         yield G
         yield G  # tpyc: error(/Type mismatch in yield value/)

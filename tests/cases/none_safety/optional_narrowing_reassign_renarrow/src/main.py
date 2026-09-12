@@ -1,18 +1,18 @@
 # Reassignment of Optional interacts correctly with narrowing.
-from tpy import Int32
+from tpy import int32
 
-def test_reassign_renarrows(x: Int32 | None) -> Int32:
+def test_reassign_renarrows(x: int32 | None) -> int32:
     """Assigning a non-None value re-narrows the variable."""
     x = 10
     return x + 1
 
-def test_truthiness_short_circuit(a: Int32 | None, b: Int32 | None) -> Int32:
+def test_truthiness_short_circuit(a: int32 | None, b: int32 | None) -> int32:
     """Truthiness narrowing flows through && short-circuit."""
     if a and b:
         return a + b
     return 0
 
-def test_is_not_none_short_circuit(a: Int32 | None, b: Int32 | None) -> Int32:
+def test_is_not_none_short_circuit(a: int32 | None, b: int32 | None) -> int32:
     """is-not-None narrowing flows through && short-circuit."""
     if a is not None and b is not None:
         return a + b

@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // b = Bounded[Int32]()
+    // b = Bounded[int32]()
     Bounded<int32_t> b = Bounded<int32_t>();
     // print(b.at_limit(5))
     std::cout << ::tpy::print_bool(b.at_limit(5)) << "\n";

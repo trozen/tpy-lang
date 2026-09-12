@@ -1,18 +1,18 @@
 # Multiple awaits inside a single try body.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
-async def value(n: Int32) -> Int32:
+async def value(n: int32) -> int32:
     return n
 
-async def go() -> Int32:
+async def go() -> int32:
     try:
-        a = await value(Int32(10))
-        b = await value(Int32(20))
-        c = await value(Int32(30))
+        a = await value(int32(10))
+        b = await value(int32(20))
+        c = await value(int32(30))
         return a + b + c
     except ValueError:
-        return Int32(-1)
+        return int32(-1)
 
 def main() -> None:
     print(asyncio.run(go()))

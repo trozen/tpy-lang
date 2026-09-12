@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // d: dict[str, Int32] = {"a": 1, "b": 2, "c": 3}
+    // d: dict[str, int32] = {"a": 1, "b": 2, "c": 3}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}, {"c", 3}});
     // keys = list(d.keys())
     std::vector<std::string> keys = ::tpy::construct<std::vector<std::string>>(::tpy::dict_keys(d));

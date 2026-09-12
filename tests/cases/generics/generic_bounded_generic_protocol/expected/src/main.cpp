@@ -8,7 +8,7 @@ namespace tpyapp::main {
 void main() {
     // box = IntBox(42)
     IntBox box = IntBox(42);
-    // # IntBox satisfies Container[Int32]
+    // # IntBox satisfies Container[int32]
     // h = Holder[IntBox](box)
     Holder<IntBox> h = Holder<IntBox>(box);
     // # Call get() on the concrete type after retrieval

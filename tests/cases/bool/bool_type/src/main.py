@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 
 def test_bool():
     # Boolean literals with explicit type
@@ -28,7 +28,7 @@ def test_bool():
 
     # Boolean in while condition (inferred type)
     flag = True
-    count: Int32 = 0
+    count: int32 = 0
     while flag:
         count = count + 1
         if count == 3:

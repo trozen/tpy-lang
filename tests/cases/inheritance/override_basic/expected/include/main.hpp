@@ -18,7 +18,7 @@ void main();
 struct Shape {
 
 
-    // def area(self) -> Int32:
+    // def area(self) -> int32:
     int32_t area() const;
 
     // def describe(self) -> str:
@@ -33,15 +33,15 @@ inline std::ostream& operator<<(std::ostream& os, const Shape& obj) {
 
 // class Square(Shape):
 struct Square : Shape {
-    // side: Int32
+    // side: int32
     int32_t side;
 
-    // def __init__(self, side: Int32) -> None:
+    // def __init__(self, side: int32) -> None:
     Square() = default;
     explicit Square(int32_t side);
 
     // @override
-    // def area(self) -> Int32:  # tpyc: warning(/non-polymorphic/)
+    // def area(self) -> int32:  # tpyc: warning(/non-polymorphic/)
     int32_t area() const;
 
     // @override
@@ -56,9 +56,9 @@ inline std::ostream& operator<<(std::ostream& os, const Square& obj) {
 }
 
 
-// def area(self) -> Int32:
+// def area(self) -> int32:
 inline int32_t Shape::area() const {
-    // return Int32(0)
+    // return int32(0)
     return 0;
 }
 
@@ -68,11 +68,11 @@ inline std::string Shape::describe() const {
     return "shape";
 }
 
-// def __init__(self, side: Int32) -> None:
+// def __init__(self, side: int32) -> None:
 inline Square::Square(int32_t side) : side(side) {}
 
 // @override
-// def area(self) -> Int32:  # tpyc: warning(/non-polymorphic/)
+// def area(self) -> int32:  # tpyc: warning(/non-polymorphic/)
 inline int32_t Square::area() const {
     // return self.side * self.side
     return (::tpy::mul_check<int32_t>(this->side, this->side));

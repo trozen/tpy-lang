@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def make_it() -> Own[list[Int32]]:
+// def make_it() -> Own[list[int32]]:
 std::vector<int32_t> make_it() {
-    // xs: list[Int32] = [1, 2, 3]
+    // xs: list[int32] = [1, 2, 3]
     std::vector<int32_t> xs = {1, 2, 3};
     // return xs
     return xs;

@@ -3,7 +3,7 @@
 # free-function / module-constant cases.
 from typing import Iterator
 from enum import Enum
-from tpy import Int32
+from tpy import int32
 import caps
 
 
@@ -13,8 +13,8 @@ class Color(Enum):
 
 
 class Source:
-    def gen(self, n: Int32) -> Iterator[Int32]:
-        i: Int32 = 0
+    def gen(self, n: int32) -> Iterator[int32]:
+        i: int32 = 0
         while i < n:
             if i == caps.CAP:           # module-constant access in a method generator
                 break

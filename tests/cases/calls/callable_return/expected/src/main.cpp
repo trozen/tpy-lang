@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def make_adder(n: Int32) -> Callable[[Int32], Int32]:
+// def make_adder(n: int32) -> Callable[[int32], int32]:
 std::function<int32_t(int32_t)> make_adder(int32_t n) {
     // return lambda x: x + n
     return [n](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, n)); };
 }
 
-// def make_multiplier(factor: Int32) -> Callable[[Int32], Int32]:
+// def make_multiplier(factor: int32) -> Callable[[int32], int32]:
 std::function<int32_t(int32_t)> make_multiplier(int32_t factor) {
     // return lambda x: x * factor
     return [factor](int32_t x) -> int32_t { return (::tpy::mul_check<int32_t>(x, factor)); };

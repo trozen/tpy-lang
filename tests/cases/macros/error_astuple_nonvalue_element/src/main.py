@@ -2,20 +2,20 @@
 # expansion is a pointer-repr tuple whose form the position decides, so it
 # cannot be spelled from the dataclass type alone.
 import dataclasses
-from tpy import Int32
+from tpy import int32
 
 
 class Rec:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
 @dataclasses.dataclass
 class Holder:
     r: Rec
-    k: Int32
+    k: int32
 
 
 def main() -> None:

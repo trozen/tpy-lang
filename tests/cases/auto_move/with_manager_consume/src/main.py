@@ -1,11 +1,11 @@
 # __exit__ runs on the context manager after the body on every path, so a
 # consume of the manager inside its own with body must copy (with
 # warning), not move -- __exit__ must observe the original object.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Guard:
-    vals: list[Int32]
+    vals: list[int32]
 
     def __init__(self):
         self.vals = [1, 2]

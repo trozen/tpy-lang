@@ -3,38 +3,38 @@
 # a pointer for a non-value payload, so each consumer's mutation lands in the
 # caller's own object.
 from typing import Iterator
-from tpy import Int32, Array
+from tpy import int32, Array
 
 
-def repeat_list(xs: list[Int32], n: Int32) -> Iterator[list[Int32]]:  # tpyc: ok
+def repeat_list(xs: list[int32], n: int32) -> Iterator[list[int32]]:  # tpyc: ok
     i = 0
     while i < n:
         yield xs  # tpyc: ok
         i += 1
 
 
-def repeat_dict(d: dict[str, Int32], n: Int32) -> Iterator[dict[str, Int32]]:  # tpyc: ok
+def repeat_dict(d: dict[str, int32], n: int32) -> Iterator[dict[str, int32]]:  # tpyc: ok
     i = 0
     while i < n:
         yield d  # tpyc: ok
         i += 1
 
 
-def repeat_set(s: set[Int32], n: Int32) -> Iterator[set[Int32]]:  # tpyc: ok
+def repeat_set(s: set[int32], n: int32) -> Iterator[set[int32]]:  # tpyc: ok
     i = 0
     while i < n:
         yield s  # tpyc: ok
         i += 1
 
 
-def repeat_buf(b: bytearray, n: Int32) -> Iterator[bytearray]:  # tpyc: ok
+def repeat_buf(b: bytearray, n: int32) -> Iterator[bytearray]:  # tpyc: ok
     i = 0
     while i < n:
         yield b  # tpyc: ok
         i += 1
 
 
-def repeat_arr(a: Array[Int32, 2], n: Int32) -> Iterator[Array[Int32, 2]]:  # tpyc: ok
+def repeat_arr(a: Array[int32, 2], n: int32) -> Iterator[Array[int32, 2]]:  # tpyc: ok
     i = 0
     while i < n:
         yield a  # tpyc: ok
@@ -65,7 +65,7 @@ def main() -> None:
         gb.append(66)
     print(len(b), b[1])
 
-    a = Array[Int32, 2]()
+    a = Array[int32, 2]()
     for ga in repeat_arr(a, 1):
         ga[0] = 7
     print(a[0])

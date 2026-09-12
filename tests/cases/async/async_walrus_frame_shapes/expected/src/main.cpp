@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def step(i: Int32) -> Int32:
+// async def step(i: int32) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_step::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -29,7 +29,7 @@ namespace tpyapp::main {
 }
 
 
-// async def step(i: Int32) -> Int32:
+// async def step(i: int32) -> int32:
 __coro_step step(int32_t i) {
     return __coro_step(i);
 }
@@ -134,7 +134,7 @@ __coro_owning owning() {
     return __coro_owning();
 }
 
-// async def borrow_alias(rows: list[list[Int32]]) -> None:
+// async def borrow_alias(rows: list[list[int32]]) -> None:
 ::tpystd::tpy::Poll<::std::monostate> __coro_borrow_alias::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -176,12 +176,12 @@ __coro_owning owning() {
 }
 
 
-// async def borrow_alias(rows: list[list[Int32]]) -> None:
+// async def borrow_alias(rows: list[list[int32]]) -> None:
 __coro_borrow_alias borrow_alias(std::vector<std::vector<int32_t>>& rows) {
     return __coro_borrow_alias(rows);
 }
 
-// def pick(nodes: list[Node], i: Int32) -> Node | None:
+// def pick(nodes: list[Node], i: int32) -> Node | None:
 Node* pick(std::vector<Node>& nodes, int32_t i) {
     // if i < len(nodes):
     if ((i < ::tpy::__len__(nodes))) {

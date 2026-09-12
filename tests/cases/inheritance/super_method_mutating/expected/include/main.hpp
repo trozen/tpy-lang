@@ -18,7 +18,7 @@ void main();
 
 // class Base:
 struct Base {
-    // x: Int32
+    // x: int32
     int32_t x;
 
     // def __init__(self) -> None:
@@ -27,7 +27,7 @@ struct Base {
     // def bump(self) -> None:
     void bump();
 
-    // def get(self) -> Int32:
+    // def get(self) -> int32:
     int32_t get() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
@@ -39,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
 
 // class Other:
 struct Other {
-    // y: Int32
+    // y: int32
     int32_t y;
 
     // def __init__(self) -> None:
@@ -64,7 +64,7 @@ struct Child : Base {
     // def call_super_bump(self) -> None:
     void call_super_bump();
 
-    // def call_super_get(self) -> Int32:
+    // def call_super_get(self) -> int32:
     int32_t call_super_get() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
@@ -100,7 +100,7 @@ inline void Base::bump() {
     this->x = (::tpy::add_check<int32_t>(this->x, 1));
 }
 
-// def get(self) -> Int32:
+// def get(self) -> int32:
 inline int32_t Base::get() const {
     // return self.x
     return this->x;
@@ -124,7 +124,7 @@ inline void Child::call_super_bump() {
     this->Base::bump();
 }
 
-// def call_super_get(self) -> Int32:
+// def call_super_get(self) -> int32:
 inline int32_t Child::call_super_get() const {
     // return super().get()
     return this->Base::get();

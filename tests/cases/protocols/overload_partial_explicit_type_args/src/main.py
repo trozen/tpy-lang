@@ -11,14 +11,14 @@
 # explicit. Without the merge, the lambda hint has T unresolved -> the
 # Phase-2 has_unresolved check skips the hint -> lambda body analyzed
 # unhinted -> compile error ("Lambda parameter types cannot be
-# inferred"). Post-fix, the merge fires (T=Int32) and the lambda hint
-# becomes Fn[[Int32], U] -> body analyzes under Int32 -> compiles.
-from tpy import Int32, Fn, dispatch
+# inferred"). Post-fix, the merge fires (T=int32) and the lambda hint
+# becomes Fn[[int32], U] -> body analyzes under int32 -> compiles.
+from tpy import int32, Fn, dispatch
 
 
 @dispatch
-def stub[T, U](fn: Fn[[T], U]) -> Int32:
-    return Int32(0)
+def stub[T, U](fn: Fn[[T], U]) -> int32:
+    return int32(0)
 
 
 @dispatch
@@ -27,7 +27,7 @@ def stub(val: str) -> str:
 
 
 def main() -> None:
-    r: Int32 = stub[Int32](lambda x: x * Int32(2))
+    r: int32 = stub[int32](lambda x: x * int32(2))
     print(r)
 
 

@@ -1,8 +1,8 @@
 # Tuple membership: x in (a, b, c) lowers to x == a || x == b || x == c.
-from tpy import Int32
+from tpy import int32
 
 def test_int_membership() -> None:
-    x: Int32 = 17
+    x: int32 = 17
     if x in (1, 17, 42):
         print("found 17")
     if x not in (1, 2, 3):
@@ -18,18 +18,18 @@ def test_str_membership() -> None:
         print("hello not in foo/bar")
 
 def test_single_element() -> None:
-    x: Int32 = 5
+    x: int32 = 5
     if x in (5,):
         print("single match")
     if x not in (3,):
         print("single non-match")
 
-call_count: Int32 = 0
+call_count: int32 = 0
 
-def get_val() -> Int32:
+def get_val() -> int32:
     global call_count
     call_count = call_count + 1
-    return Int32(17)
+    return int32(17)
 
 def test_call_lhs() -> None:
     global call_count

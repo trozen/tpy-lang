@@ -1,17 +1,17 @@
 # An `Optional[record]`-returning call used directly as an `is None`
 # subject: the borrowed pointer result is compared bare, and the same
 # optional-record name passes straight back out of a returning slot.
-from tpy import Int32
+from tpy import int32
 
 
 class Rec:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 
-def find(xs: list[Rec], want: Int32) -> Rec | None:
+def find(xs: list[Rec], want: int32) -> Rec | None:
     for r in xs:
         if r.v == want:
             return r

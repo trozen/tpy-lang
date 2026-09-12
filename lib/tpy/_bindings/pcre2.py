@@ -14,12 +14,12 @@ Naming:
     handle is `Ptr[Code]` etc., which codegens to `pcre2_code_8*`.
   - All function names mirror the PCRE2 C names with the `_8` suffix dropped.
 
-Constants are hardcoded UInt32 values matching pcre2.h. PCRE2's flag values
+Constants are hardcoded uint32 values matching pcre2.h. PCRE2's flag values
 are part of its public ABI and don't change between versions.
 """
 
 from typing import Final
-from tpy import Ptr, UInt8, UInt32, UInt64, Int32, readonly
+from tpy import Ptr, uint8, uint32, uint64, int32, readonly
 from tpy.extern import native
 
 
@@ -56,39 +56,39 @@ class GeneralContext: ...
 # in the same TU as our constant declaration. Values are part of PCRE2's
 # stable ABI.
 
-PCRE2_CASELESS:                     Final[UInt32] = 0x00000008
-PCRE2_MULTILINE:                    Final[UInt32] = 0x00000400
-PCRE2_DOTALL:                       Final[UInt32] = 0x00000020
-PCRE2_EXTENDED:                     Final[UInt32] = 0x00000080
-PCRE2_UTF:                          Final[UInt32] = 0x00080000
-PCRE2_UCP:                          Final[UInt32] = 0x00020000
-PCRE2_ANCHORED:                     Final[UInt32] = 0x80000000
-PCRE2_ENDANCHORED:                  Final[UInt32] = 0x20000000
+PCRE2_CASELESS:                     Final[uint32] = 0x00000008
+PCRE2_MULTILINE:                    Final[uint32] = 0x00000400
+PCRE2_DOTALL:                       Final[uint32] = 0x00000020
+PCRE2_EXTENDED:                     Final[uint32] = 0x00000080
+PCRE2_UTF:                          Final[uint32] = 0x00080000
+PCRE2_UCP:                          Final[uint32] = 0x00020000
+PCRE2_ANCHORED:                     Final[uint32] = 0x80000000
+PCRE2_ENDANCHORED:                  Final[uint32] = 0x20000000
 
 # Match-time option: reject an empty match at the start offset (the
 # advance-after-empty-match step of global substitution semantics).
-PCRE2_NOTEMPTY_ATSTART:             Final[UInt32] = 0x00000008
+PCRE2_NOTEMPTY_ATSTART:             Final[uint32] = 0x00000008
 
 # Match-step option for pcre2_substitute.
-PCRE2_SUBSTITUTE_GLOBAL:            Final[UInt32] = 0x00000100
-PCRE2_SUBSTITUTE_OVERFLOW_LENGTH:   Final[UInt32] = 0x00001000
-PCRE2_SUBSTITUTE_MATCHED:           Final[UInt32] = 0x00010000
+PCRE2_SUBSTITUTE_GLOBAL:            Final[uint32] = 0x00000100
+PCRE2_SUBSTITUTE_OVERFLOW_LENGTH:   Final[uint32] = 0x00001000
+PCRE2_SUBSTITUTE_MATCHED:           Final[uint32] = 0x00010000
 
 # pcre2_jit_compile selector: full JIT for normal matching.
-PCRE2_JIT_COMPLETE:                 Final[UInt32] = 0x00000001
+PCRE2_JIT_COMPLETE:                 Final[uint32] = 0x00000001
 
 # Pattern-info selectors for pcre2_pattern_info.
-PCRE2_INFO_CAPTURECOUNT:            Final[UInt32] = 4
+PCRE2_INFO_CAPTURECOUNT:            Final[uint32] = 4
 
 # pcre2_match return codes. NOMATCH means "no match" (not an error);
 # NOMEMORY is returned by pcre2_substitute when the output buffer is
 # too small AND PCRE2_SUBSTITUTE_OVERFLOW_LENGTH is set.
-PCRE2_ERROR_NOMATCH:                Final[Int32] = -1
-PCRE2_ERROR_NOMEMORY:               Final[Int32] = -48
+PCRE2_ERROR_NOMATCH:                Final[int32] = -1
+PCRE2_ERROR_NOMEMORY:               Final[int32] = -48
 
 # Sentinel meaning "this group did not participate". PCRE2_UNSET is
 # (PCRE2_SIZE)~0u = SIZE_MAX in C; we compare against it via raw uint64.
-PCRE2_UNSET:                        Final[UInt64] = 0xFFFFFFFFFFFFFFFF
+PCRE2_UNSET:                        Final[uint64] = 0xFFFFFFFFFFFFFFFF
 
 
 # ---------- Compile / free ----------
@@ -98,23 +98,23 @@ PCRE2_UNSET:                        Final[UInt64] = 0xFFFFFFFFFFFFFFFF
 # bare `Ptr[X]`; callers pass `None` (codegens to `nullptr`).
 
 @native("::pcre2_compile_8")
-def compile(pattern_data: Ptr[readonly[UInt8]], pattern_len: UInt64,
-            flags: UInt32,
-            errcode_out: Ptr[Int32], erroff_out: Ptr[UInt64],
+def compile(pattern_data: Ptr[readonly[uint8]], pattern_len: uint64,
+            flags: uint32,
+            errcode_out: Ptr[int32], erroff_out: Ptr[uint64],
             ccontext: Ptr[CompileContext]) -> Ptr[Code]: ...
 
 @native("::pcre2_code_free_8")
 def code_free(code: Ptr[Code]) -> None: ...
 
 @native("::pcre2_jit_compile_8")
-def jit_compile(code: Ptr[Code], opts: UInt32) -> Int32: ...
+def jit_compile(code: Ptr[Code], opts: uint32) -> int32: ...
 
 # Render a PCRE2 numeric error into a human-readable message. Writes into
 # the caller-provided buffer and returns the number of bytes written
-# (negative on error). `PCRE2_UCHAR8` is `uint8_t` -- same as `Ptr[UInt8]`'s
+# (negative on error). `PCRE2_UCHAR8` is `uint8_t` -- same as `Ptr[uint8]`'s
 # underlying C type, so no cast needed.
 @native("::pcre2_get_error_message_8")
-def get_error_message(errcode: Int32, buf: Ptr[UInt8], buflen: UInt64) -> Int32: ...
+def get_error_message(errcode: int32, buf: Ptr[uint8], buflen: uint64) -> int32: ...
 
 
 # ---------- Match contexts and match-data blocks ----------
@@ -142,14 +142,14 @@ def match_data_free(md: Ptr[MatchData]) -> None: ...
 # match_data_create_from_pattern), or negative on no-match / error.
 @native("::pcre2_match_8")
 def match(code: Ptr[Code],
-          subject_data: Ptr[readonly[UInt8]], subject_len: UInt64,
-          start_offset: UInt64, opts: UInt32,
-          md: Ptr[MatchData], mctx: Ptr[MatchContext]) -> Int32: ...
+          subject_data: Ptr[readonly[uint8]], subject_len: uint64,
+          start_offset: uint64, opts: uint32,
+          md: Ptr[MatchData], mctx: Ptr[MatchContext]) -> int32: ...
 
-# Returns Ptr[UInt64] -- pointer into the match-data block holding the
+# Returns Ptr[uint64] -- pointer into the match-data block holding the
 # ovector (pairs of (start, end) byte offsets, length 2*group_count).
 @native("::pcre2_get_ovector_pointer_8")
-def get_ovector_pointer(md: Ptr[MatchData]) -> Ptr[readonly[UInt64]]: ...
+def get_ovector_pointer(md: Ptr[MatchData]) -> Ptr[readonly[uint64]]: ...
 
 
 # ---------- Pattern info ----------
@@ -158,7 +158,7 @@ def get_ovector_pointer(md: Ptr[MatchData]) -> Ptr[readonly[UInt64]]: ...
 # `where` (typed appropriately for the selector). We only use it to fetch
 # the capture count (uint32_t).
 @native("::pcre2_pattern_info_8")
-def pattern_info_u32(code: Ptr[Code], what: UInt32, out: Ptr[UInt32]) -> Int32: ...
+def pattern_info_u32(code: Ptr[Code], what: uint32, out: Ptr[uint32]) -> int32: ...
 
 
 # ---------- Substitution ----------
@@ -170,9 +170,9 @@ def pattern_info_u32(code: Ptr[Code], what: UInt32, out: Ptr[UInt32]) -> Int32: 
 # we don't use -- pass None.
 @native("::pcre2_substitute_8")
 def substitute(code: Ptr[Code],
-               subject_data: Ptr[readonly[UInt8]], subject_len: UInt64,
-               start_offset: UInt64, opts: UInt32,
+               subject_data: Ptr[readonly[uint8]], subject_len: uint64,
+               start_offset: uint64, opts: uint32,
                mcache: Ptr[MatchData],
                mctx: Ptr[MatchContext],
-               repl_data: Ptr[readonly[UInt8]], repl_len: UInt64,
-               outbuf: Ptr[UInt8], outlen_inout: Ptr[UInt64]) -> Int32: ...
+               repl_data: Ptr[readonly[uint8]], repl_len: uint64,
+               outbuf: Ptr[uint8], outlen_inout: Ptr[uint64]) -> int32: ...

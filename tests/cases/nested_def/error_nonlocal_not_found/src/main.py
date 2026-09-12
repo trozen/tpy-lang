@@ -1,5 +1,5 @@
 # Test error: nonlocal name not in outer scope
-from tpy import Int32
+from tpy import int32
 
 def main() -> None:
     def inner() -> None:

@@ -17,7 +17,7 @@ void main();
 
 // class Timer:
 struct Timer {
-    // x: Int32
+    // x: int32
     int32_t x;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.Timer";

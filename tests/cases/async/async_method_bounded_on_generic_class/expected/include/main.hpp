@@ -18,7 +18,7 @@ struct __coro_Summer_total;
 
 void main();
 
-// class Summer[T: Iterable[Int32]]:
+// class Summer[T: Iterable[int32]]:
 template<::tpystd::typing::Iterable<int32_t> T>
 struct Summer {
     // items: T
@@ -63,13 +63,13 @@ struct __coro_Summer_total {
     }
 };
 
-// async def total(self) -> Int32:
+// async def total(self) -> int32:
 template <::tpystd::typing::Iterable<int32_t> T>
 ::tpystd::tpy::Poll<int32_t> __coro_Summer_total<T>::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // result: Int32 = 0
+        // result: int32 = 0
         result = 0;
         // for x in self.items:
         auto& __src_0 = __self.items;

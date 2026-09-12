@@ -18,10 +18,10 @@ void main();
 // @nocopy
 // class Resource:
 struct Resource {
-    // val: Int32
+    // val: int32
     int32_t val;
 
-    // def __init__(self, val: Int32) -> None:
+    // def __init__(self, val: int32) -> None:
     Resource() = default;
     explicit Resource(int32_t val);
     // non-copyable (@nocopy)
@@ -38,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
 }
 
 
-// def __init__(self, val: Int32) -> None:
+// def __init__(self, val: int32) -> None:
 inline Resource::Resource(int32_t val) : val(val) {}
 void __tpy_init();
 } // namespace tpyapp::main

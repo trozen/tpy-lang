@@ -1,13 +1,13 @@
 # Test error: ValueType record with non-value-type field.
-from tpy import Int32, ValueType
+from tpy import int32, ValueType
 
 
 class Inner:
-    x: Int32
+    x: int32
 
 
 class Bad(ValueType):
-    val: Int32
+    val: int32
     inner: Inner  # tpyc: error(/non-value type 'Inner'/)
 
 

@@ -11,7 +11,7 @@ and one parked receiver, mirroring `Future`'s single-waiter model. Shared
 state is `Rc`-backed (single-threaded; the cross-thread Arc-backed channel
 is Phase 6).
 """
-from tpy import Own, Int32, UInt32, nocopy, Send
+from tpy import Own, int32, uint32, nocopy, Send
 from tpy.mem import UninitHeapStorage, UninitStorage
 from tpy.coro import Waker, Poll, poll_ready, poll_pending, poll_ready_none
 from tplib.rc import Rc
@@ -28,9 +28,9 @@ class _ChanState[T: Send]:
     """Shared ring buffer + park slots. Reached only through `Rc` handles
     held by `Sender` / `Receiver`."""
     _buf: UninitHeapStorage[T]
-    _cap: UInt32
-    _head: UInt32
-    _count: UInt32
+    _cap: uint32
+    _head: uint32
+    _count: uint32
     _closed: bool
     # SPSC: at most one parked waiter per side.
     _send_waker: Waker
@@ -38,7 +38,7 @@ class _ChanState[T: Send]:
     _recv_waker: Waker
     _has_recv_waiter: bool
 
-    def __init__(self, capacity: UInt32) -> None:
+    def __init__(self, capacity: uint32) -> None:
         self._buf = UninitHeapStorage[T](capacity)
         self._cap = capacity
         self._head = 0
@@ -52,7 +52,7 @@ class _ChanState[T: Send]:
     def __del__(self) -> None:
         # UninitHeapStorage is uninitialized storage and won't drop live
         # slots itself -- drain the buffered elements or they leak.
-        i: UInt32 = 0
+        i: uint32 = 0
         while i < self._count:
             self._buf.take((self._head + i) % self._cap)
             i += 1
@@ -185,9 +185,9 @@ class Receiver[T: Send]:
         return _Recv[T](self._state.clone())
 
 
-def channel[T: Send](capacity: Int32) -> tuple[Own[Sender[T]], Own[Receiver[T]]]:
+def channel[T: Send](capacity: int32) -> tuple[Own[Sender[T]], Own[Receiver[T]]]:
     if capacity < 1:
         raise ValueError("channel capacity must be >= 1")
-    state = Rc.new(_ChanState[T](UInt32(capacity)))
+    state = Rc.new(_ChanState[T](uint32(capacity)))
     state_for_sender = state.clone()
     return (Sender[T](state_for_sender), Receiver[T](state))

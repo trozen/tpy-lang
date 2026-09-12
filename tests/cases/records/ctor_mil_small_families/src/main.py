@@ -3,40 +3,40 @@
 # tuple param and literal sources; and a bare-global-name init the compiler
 # demotes to the ctor body (chain-breaking every later init). Union and tuple
 # fields store copies by design (value-variant / storage-form semantics).
-from tpy import Int32, Float64, Ptr
+from tpy import int32, float64, Ptr
 
 
 class A:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
 class B:
-    y: Int32
+    y: int32
 
-    def __init__(self, y: Int32) -> None:
+    def __init__(self, y: int32) -> None:
         self.y = y
 
 
-G: Int32 = 9
+G: int32 = 9
 
 
 class H:
-    items: list[Int32] | None
-    ox: Int32 | None
-    vu: Int32 | Float64
-    un: Int32 | Float64 | None
+    items: list[int32] | None
+    ox: int32 | None
+    vu: int32 | float64
+    un: int32 | float64 | None
     pu: A | B
     pr: A | B
     pn: A | B | None
-    ft: tuple[A, Int32]
-    vt: tuple[Int32, Int32]
-    tl: tuple[Int32, Int32]
+    ft: tuple[A, int32]
+    vt: tuple[int32, int32]
+    tl: tuple[int32, int32]
 
-    def __init__(self, pu: A | B, ft: tuple[A, Int32],
-                 vt: tuple[Int32, Int32]) -> None:
+    def __init__(self, pu: A | B, ft: tuple[A, int32],
+                 vt: tuple[int32, int32]) -> None:
         self.items = None
         self.ox = None
         self.vu = 5
@@ -50,14 +50,14 @@ class H:
 
 
 class P:
-    p: Ptr[Int32]
+    p: Ptr[int32]
 
     def __init__(self) -> None:
         self.p = None
 
 
 class D:
-    n: Int32
+    n: int32
     strict: bool
 
     def __init__(self) -> None:

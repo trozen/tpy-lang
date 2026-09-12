@@ -5,14 +5,14 @@
 # the LOCAL `step`, a phantom cycle rejected as "recursive coroutine embedding".
 import asyncio
 import helper
-from tpy import Int32
+from tpy import int32
 
 
-async def step() -> Int32:
+async def step() -> int32:
     return await helper.other()
 
 
-async def other() -> Int32:
+async def other() -> int32:
     return await helper.step()
 
 

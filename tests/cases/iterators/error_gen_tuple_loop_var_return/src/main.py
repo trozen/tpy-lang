@@ -2,21 +2,21 @@
 # returning it lets the borrow outlive the frame (use-after-free), so the
 # escape is rejected like the scalar ephemeral-borrow case.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    val: Int32
-    def __init__(self, v: Int32) -> None:
+    val: int32
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 
-def gen() -> Iterator[tuple[Int32, Box]]:
-    items: list[tuple[Int32, Box]] = [(1, Box(5))]
+def gen() -> Iterator[tuple[int32, Box]]:
+    items: list[tuple[int32, Box]] = [(1, Box(5))]
     yield items[0]
 
 
-def take() -> tuple[Int32, Box]:
+def take() -> tuple[int32, Box]:
     for p in gen():
         return p  # tpyc: error(/borrows an element/)
     raise RuntimeError("empty")

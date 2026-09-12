@@ -1,16 +1,16 @@
 # Test that __span__() -> Span[readonly[T]] cannot coerce to mutable Span[T].
-from tpy import Int32, Span, readonly
+from tpy import int32, Span, readonly
 
 class IntBuffer:
-    _data: list[Int32]
+    _data: list[int32]
 
     def __init__(self) -> None:
         self._data = [1, 2, 3]
 
-    def __span__(self) -> Span[readonly[Int32]]:
+    def __span__(self) -> Span[readonly[int32]]:
         return self._data
 
-def mutate(s: Span[Int32]) -> None:
+def mutate(s: Span[int32]) -> None:
     s[0] = 99
 
 buf = IntBuffer()

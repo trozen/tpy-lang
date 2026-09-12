@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 from utils import MAX, MIN
 
 # Use imported values first
@@ -6,7 +6,7 @@ print(MAX)  # 100
 print(MIN)  # 1
 
 # Redefine MAX with same type (explicit annotation)
-MAX: Int32 = Int32(42)
+MAX: int32 = int32(42)
 
 # Redefine MIN with different type (int/BigInt)
 MIN: int = 99

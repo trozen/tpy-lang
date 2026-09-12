@@ -16,7 +16,7 @@ Edge* e3{};
 // e4 = Edge(find(pts, 99))
 Edge* e4{};
 
-// def find(items: list[Point], target: Int32) -> Point | None:
+// def find(items: list[Point], target: int32) -> Point | None:
 Point* find(std::vector<Point>& items, int32_t target) {
     // for p in items:
     auto& __obj_0 = items;

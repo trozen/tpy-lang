@@ -1,21 +1,21 @@
 # An in-place dunder's parameter is force-const; an unmutated, non-escaping one
 # keeps that force, so a local bound to it is a const borrow. @nocopy makes a
 # silent copy at that binding a compile error.
-from tpy import Int32, nocopy
+from tpy import int32, nocopy
 
 
 @nocopy
 class Counter:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
 class Acc:
-    total: Int32
+    total: int32
 
-    def __init__(self, total: Int32) -> None:
+    def __init__(self, total: int32) -> None:
         self.total = total
 
     def __iadd__(self, other: Counter) -> "Acc":

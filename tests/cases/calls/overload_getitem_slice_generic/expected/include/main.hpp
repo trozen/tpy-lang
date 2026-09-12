@@ -30,7 +30,7 @@ struct Container {
 
     // @overload
     // @auto_readonly
-    // def __getitem__(self, index: Int32) -> T: ...  # tpyc: ok
+    // def __getitem__(self, index: int32) -> T: ...  # tpyc: ok
     ::tpy::val_or_ref_t<T> __getitem__(int32_t index) {
         // return self._data[index]
         return ::tpy::__getitem__(this->_data, index);
@@ -38,7 +38,7 @@ struct Container {
 
     // @overload
     // @auto_readonly
-    // def __getitem__(self, index: Int32) -> T: ...  # tpyc: ok
+    // def __getitem__(self, index: int32) -> T: ...  # tpyc: ok
     ::tpy::val_or_cref_t<T> __getitem__(int32_t index) const {
         // return self._data[index]
         return ::tpy::__getitem__(this->_data, index);
@@ -51,9 +51,9 @@ struct Container {
         std::optional<int32_t> s_start = index.start;
         // s_stop = index.stop
         std::optional<int32_t> s_stop = index.stop;
-        // start: Int32 = s_start if s_start is not None else Int32(0)
+        // start: int32 = s_start if s_start is not None else int32(0)
         int32_t start = (((s_start.has_value())) ? ((*s_start)) : (0));
-        // stop: Int32 = s_stop if s_stop is not None else Int32(len(self._data))
+        // stop: int32 = s_stop if s_stop is not None else int32(len(self._data))
         int32_t stop = (((s_stop.has_value())) ? ((*s_stop)) : (::tpy::__len__(this->_data)));
         // return self._data[start:stop]
         return ::tpy::list_slice(this->_data, ::tpy::BasicSlice{start, stop});

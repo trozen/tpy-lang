@@ -1,13 +1,13 @@
 # Aliased tpy.copy should still trigger the unnecessary copy warning
-from tpy import Int32, Own
+from tpy import int32, Own
 from tpy import copy as c
 
 
 class Box:
-    value: Int32
+    value: int32
 
 
-def consume(b: Own[Box]) -> Int32:
+def consume(b: Own[Box]) -> int32:
     return b.value
 
 

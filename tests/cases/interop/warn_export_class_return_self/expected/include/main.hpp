@@ -24,10 +24,10 @@ Box fresh(int64_t v);
 // @export
 // class Inner:
 struct Inner {
-    // x: Int64
+    // x: int64
     int64_t x;
 
-    // def __init__(self, x: Int64):
+    // def __init__(self, x: int64):
     Inner() = default;
     explicit Inner(int64_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Inner";
@@ -41,14 +41,14 @@ inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
 // @export
 // class Box:
 struct Box {
-    // v: Int64
+    // v: int64
     int64_t v;
     // _inner: Inner
     Inner _inner;
     // _alt: Inner
     Inner _alt;
 
-    // def __init__(self, v: Int64):
+    // def __init__(self, v: int64):
     Box() = default;
     explicit Box(int64_t v);
 
@@ -78,13 +78,13 @@ struct Box {
     // def __iter__(self) -> "Box":
     Box& __iter__();
 
-    // def __getitem__(self, i: Int64) -> "Box":
+    // def __getitem__(self, i: int64) -> "Box":
     Box& __getitem__(int64_t i);
 
-    // def __getitem__(self, i: Int64) -> "Box":
+    // def __getitem__(self, i: int64) -> "Box":
     const Box& __getitem__(int64_t i) const;
 
-    // def __next__(self) -> Int64:
+    // def __next__(self) -> int64:
     std::expected<int64_t, ::tpy::StopIteration> __next__();
 
     const Box& operator[](int64_t i) const {
@@ -133,13 +133,13 @@ struct Rebound {
     // def reset(self) -> None:
     void reset();
 
-    // def __getitem__(self, i: Int64) -> Inner:
+    // def __getitem__(self, i: int64) -> Inner:
     Inner& __getitem__(int64_t i);
 
-    // def __getitem__(self, i: Int64) -> Inner:
+    // def __getitem__(self, i: int64) -> Inner:
     const Inner& __getitem__(int64_t i) const;
 
-    // def __setitem__(self, i: Int64, v: Int64) -> Inner:
+    // def __setitem__(self, i: int64, v: int64) -> Inner:
     Inner& __setitem__(int64_t i, int64_t v);
 
     const Inner& operator[](int64_t i) const {
@@ -160,17 +160,17 @@ inline std::ostream& operator<<(std::ostream& os, const Rebound& obj) {
 // @export
 // class Flat(ValueType):
 struct Flat {
-    // n: Int64
+    // n: int64
     int64_t n;
 
-    // def __init__(self, n: Int64):
+    // def __init__(self, n: int64):
     Flat() = default;
     explicit Flat(int64_t n);
 
     // def itself(self) -> "readonly[Flat]":
     Flat itself() const;
 
-    // def __getitem__(self, i: Int64) -> "readonly[Flat]":
+    // def __getitem__(self, i: int64) -> "readonly[Flat]":
     Flat __getitem__(int64_t i) const;
 
     Flat operator[](int64_t i) const {
@@ -191,10 +191,10 @@ namespace tpyapp::main {
 
 
 
-// def __init__(self, x: Int64):
+// def __init__(self, x: int64):
 inline Inner::Inner(int64_t x) : x(x) {}
 
-// def __init__(self, v: Int64):
+// def __init__(self, v: int64):
 inline Box::Box(int64_t v) : v(v), _inner(Inner(v)), _alt(Inner(v)) {}
 
 // def me(self) -> "Box":
@@ -258,7 +258,7 @@ inline Box& Box::__iter__() {
     return (*this);
 }
 
-// def __getitem__(self, i: Int64) -> "Box":
+// def __getitem__(self, i: int64) -> "Box":
 inline Box& Box::__getitem__(int64_t i) {
     // # The mp_subscript slot threads the receiver candidate like a
     // # method wrapper: a bare `self` return crosses by identity.
@@ -266,7 +266,7 @@ inline Box& Box::__getitem__(int64_t i) {
     return (*this);
 }
 
-// def __getitem__(self, i: Int64) -> "Box":
+// def __getitem__(self, i: int64) -> "Box":
 inline const Box& Box::__getitem__(int64_t i) const {
     // # The mp_subscript slot threads the receiver candidate like a
     // # method wrapper: a bare `self` return crosses by identity.
@@ -274,7 +274,7 @@ inline const Box& Box::__getitem__(int64_t i) const {
     return (*this);
 }
 
-// def __next__(self) -> Int64:
+// def __next__(self) -> int64:
 inline std::expected<int64_t, ::tpy::StopIteration> Box::__next__() {
     // if self.v <= 0:
     if ((this->v <= 0)) {
@@ -307,7 +307,7 @@ inline void Rebound::reset() {
     this->_alt = Inner(1);
 }
 
-// def __getitem__(self, i: Int64) -> Inner:
+// def __getitem__(self, i: int64) -> Inner:
 inline Inner& Rebound::__getitem__(int64_t i) {
     // # Dunder-slot RESIDUE witness: a reassignable-field source has no
     // # identity/view path, so dunder slots warn exactly like method
@@ -316,7 +316,7 @@ inline Inner& Rebound::__getitem__(int64_t i) {
     return this->_alt;
 }
 
-// def __getitem__(self, i: Int64) -> Inner:
+// def __getitem__(self, i: int64) -> Inner:
 inline const Inner& Rebound::__getitem__(int64_t i) const {
     // # Dunder-slot RESIDUE witness: a reassignable-field source has no
     // # identity/view path, so dunder slots warn exactly like method
@@ -325,7 +325,7 @@ inline const Inner& Rebound::__getitem__(int64_t i) const {
     return this->_alt;
 }
 
-// def __setitem__(self, i: Int64, v: Int64) -> Inner:
+// def __setitem__(self, i: int64, v: int64) -> Inner:
 inline Inner& Rebound::__setitem__(int64_t i, int64_t v) {
     // # The mp_ass_subscript slot discards the method's return (CPython
     // # does too), so even a would-warn source never crosses here.
@@ -333,7 +333,7 @@ inline Inner& Rebound::__setitem__(int64_t i, int64_t v) {
     return this->_alt;
 }
 
-// def __init__(self, n: Int64):
+// def __init__(self, n: int64):
 inline Flat::Flat(int64_t n) : n(n) {}
 
 // def itself(self) -> "readonly[Flat]":
@@ -345,7 +345,7 @@ inline Flat Flat::itself() const {
     return (*this);
 }
 
-// def __getitem__(self, i: Int64) -> "readonly[Flat]":
+// def __getitem__(self, i: int64) -> "readonly[Flat]":
 inline Flat Flat::__getitem__(int64_t i) const {
     // return self  # tpyc: warning(/value-type class 'Flat' by reference, and a value class always crosses/)
     return (*this);

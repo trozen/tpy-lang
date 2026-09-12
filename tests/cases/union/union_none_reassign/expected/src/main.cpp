@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def test_reassign_to_none() -> str:
 std::string test_reassign_to_none() {
-    // v: Int32 | Dog | None = Int32(5)
+    // v: int32 | Dog | None = int32(5)
     ::tpy::Union<std::monostate, Dog, int32_t> __slot_1 = 5;
     ::tpy::Union<std::monostate, Dog*, int32_t*> v = ::tpy::to_ptr_variant(__slot_1);
     // if v is not None:
@@ -25,14 +25,14 @@ std::string test_reassign_to_none() {
 
 // def test_init_none_then_assign() -> str:
 std::string test_init_none_then_assign() {
-    // v: Int32 | Dog | None = None
+    // v: int32 | Dog | None = None
     ::tpy::Union<std::monostate, Dog*, int32_t*> v = std::monostate{};
-    // v = Int32(42)
+    // v = int32(42)
     ::tpy::Union<std::monostate, Dog, int32_t> __slot_1 = 42;
     v = ::tpy::to_ptr_variant(__slot_1);
     // if v is not None:
     if ((!std::holds_alternative<std::monostate>(v))) {
-        // if isinstance(v, Int32):
+        // if isinstance(v, int32):
         if (std::holds_alternative<int32_t*>(v)) {
             auto& __v = *std::get<int32_t*>(v);
             // return "got int"

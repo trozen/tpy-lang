@@ -1,15 +1,15 @@
 # User-defined throw exception with data fields
-from tpy import Int32
+from tpy import int32
 
 class AppError(Exception):
-    code: Int32
+    code: int32
     detail: str
 
-    def __init__(self, code: Int32, detail: str) -> None:
+    def __init__(self, code: int32, detail: str) -> None:
         self.code = code
         self.detail = detail
 
-def validate(x: Int32) -> None:
+def validate(x: int32) -> None:
     if x < 0:
         raise AppError(1, "negative value")
     if x > 100:

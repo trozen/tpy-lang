@@ -6,23 +6,23 @@ namespace tpyapp::main {
 
 // # Reads the heap member through a borrow, so a moved-from Box shows up as an
 // # empty list rather than an intact `val`.
-// def first_item(b: Box) -> Int32:
+// def first_item(b: Box) -> int32:
 int32_t first_item(const Box& b) {
     // return b.items[0]
     return ::tpy::__getitem__(b.items, 0);
 }
 
-// def mk(v: Int32) -> Own[tuple[Int32, Own[Box]]]:
+// def mk(v: int32) -> Own[tuple[int32, Own[Box]]]:
 std::tuple<int32_t, Box> mk(int32_t v) {
     // return (v, Box(v * 10))
     return std::tuple<int32_t, Box>{v, Box((::tpy::mul_check<int32_t>(v, 10)))};
 }
 
-// def gen_twice(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
+// def gen_twice(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_twice::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i = Int32(0)
+        // i = int32(0)
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -58,16 +58,16 @@ std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_twice::_
 }
 
 
-// def gen_twice(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
+// def gen_twice(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 __gen_gen_twice gen_twice(int32_t n) {
     return __gen_gen_twice(n);
 }
 
-// def gen_call_init(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
+// def gen_call_init(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_call_init::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i = Int32(0)
+        // i = int32(0)
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -105,16 +105,16 @@ std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_call_ini
 }
 
 
-// def gen_call_init(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
+// def gen_call_init(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 __gen_gen_call_init gen_call_init(int32_t n) {
     return __gen_gen_call_init(n);
 }
 
-// def gen_call_init_borrowed(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
+// def gen_call_init_borrowed(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_call_init_borrowed::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i = Int32(0)
+        // i = int32(0)
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -154,16 +154,16 @@ std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_call_ini
 }
 
 
-// def gen_call_init_borrowed(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
+// def gen_call_init_borrowed(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 __gen_gen_call_init_borrowed gen_call_init_borrowed(int32_t n) {
     return __gen_gen_call_init_borrowed(n);
 }
 
-// def gen_call_init_borrow_dead(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
+// def gen_call_init_borrow_dead(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_call_init_borrow_dead::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i = Int32(0)
+        // i = int32(0)
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -203,12 +203,12 @@ std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_call_ini
 }
 
 
-// def gen_call_init_borrow_dead(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
+// def gen_call_init_borrow_dead(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 __gen_gen_call_init_borrow_dead gen_call_init_borrow_dead(int32_t n) {
     return __gen_gen_call_init_borrow_dead(n);
 }
 
-// def gen_preloop(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
+// def gen_preloop(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_preloop::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -241,16 +241,16 @@ std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_preloop:
 }
 
 
-// def gen_preloop(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
+// def gen_preloop(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 __gen_gen_preloop gen_preloop(int32_t n) {
     return __gen_gen_preloop(n);
 }
 
-// def gen_live(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
+// def gen_live(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_live::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i = Int32(0)
+        // i = int32(0)
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -288,7 +288,7 @@ std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_live::__
 }
 
 
-// def gen_live(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
+// def gen_live(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 __gen_gen_live gen_live(int32_t n) {
     return __gen_gen_live(n);
 }
@@ -419,11 +419,11 @@ void main() {
     }
 }
 
-// def pairs(self, n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
+// def pairs(self, n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_Src_pairs::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i = Int32(0)
+        // i = int32(0)
         i = 0;
         __state = S_JOIN_0;
         continue;

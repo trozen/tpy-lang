@@ -1,9 +1,9 @@
-from tpy import Int32, copy
+from tpy import int32, copy
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32):
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32):
         self.x = x
         self.y = y
 
@@ -91,7 +91,7 @@ def test_rebind_to_global() -> None:
 
 # Test 11: List sharing — lists are non-value, assignment shares
 def test_list_sharing() -> None:
-    a: list[Int32] = [1, 2, 3]
+    a: list[int32] = [1, 2, 3]
     b = a
     b.append(4)
     print(len(a))  # 4 — shared
@@ -107,8 +107,8 @@ def test_pointer_chain() -> None:
 
 # Test 13: User-defined method on pointer-local — uses ->
 class Counter:
-    val: Int32
-    def __init__(self, v: Int32):
+    val: int32
+    def __init__(self, v: int32):
         self.val = v
     def increment(self) -> None:
         self.val = self.val + 1
@@ -121,8 +121,8 @@ def test_method_on_pointer_local() -> None:
 
 # Test 14: For-each value elements from pointer-local list
 def test_foreach_value_from_pointer_local() -> None:
-    nums: list[Int32] = [10, 20, 30]
-    total: Int32 = 0
+    nums: list[int32] = [10, 20, 30]
+    total: int32 = 0
     for n in nums:
         total = total + n
     print(total)  # 60

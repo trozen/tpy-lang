@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def main() -> Int32:
+// def main() -> int32:
 int32_t main() {
     // if len(sys.argv) > 0:
     if ((::tpy::__len__((*::tpystd::sys::argv)) > 0)) {

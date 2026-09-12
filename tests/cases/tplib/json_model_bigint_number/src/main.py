@@ -1,7 +1,7 @@
 # Regression: @model round-trips `int` (BigInt) fields as bare JSON numbers,
 # not quoted strings -- matching stdlib json.dumps/loads and CPython. A
 # bare-number payload must parse, to_json must emit an unquoted number, and
-# arbitrary precision (values beyond Int64) must survive a round-trip.
+# arbitrary precision (values beyond int64) must survive a round-trip.
 from tplib.json.model import model
 
 @model
@@ -18,7 +18,7 @@ def main() -> None:
     # to_json emits a bare number, not a quoted string.
     print(Repo("x", 42).to_json())
 
-    # Arbitrary precision survives a round-trip (value well beyond Int64).
+    # Arbitrary precision survives a round-trip (value well beyond int64).
     big = Repo.from_json('{"name": "big", "stars": 123456789012345678901234567890}')
     print(big.stars)
     print(Repo.from_json(big.to_json()).stars == big.stars)

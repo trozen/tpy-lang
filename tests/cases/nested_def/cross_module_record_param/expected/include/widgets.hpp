@@ -13,14 +13,14 @@ inline constexpr std::string_view __name__ = "widgets";
 
 // class Widget:
 struct Widget {
-    // value: Int32
+    // value: int32
     int32_t value;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Widget() = default;
     explicit Widget(int32_t v);
 
-    // def get(self) -> Int32:
+    // def get(self) -> int32:
     int32_t get() const;
     static constexpr std::string_view __tpy_class_name__ = "widgets.Widget";
 };
@@ -31,10 +31,10 @@ inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Widget::Widget(int32_t v) : value(v) {}
 
-// def get(self) -> Int32:
+// def get(self) -> int32:
 inline int32_t Widget::get() const {
     // return self.value
     return this->value;

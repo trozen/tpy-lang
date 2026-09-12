@@ -1,2 +1,2 @@
-main.py:43: warning: Integer literal 1267650600228230527396610048000 is outside default Int32 range; inferring int (BigInt).
-main.py:44: warning: Integer literal 1267650600228229401496736759808 is outside default Int32 range; inferring int (BigInt).
+main.py:43: warning: Integer literal 1267650600228230527396610048000 is outside default int32 range; inferring int (BigInt).
+main.py:44: warning: Integer literal 1267650600228229401496736759808 is outside default int32 range; inferring int (BigInt).

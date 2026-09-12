@@ -1,6 +1,6 @@
 main.py:24: error: 'Bad' is not Send -- cannot use it where 'Send[Own[Bad]]' is expected in argument 'task'
 Bad is not Send
-+-- field 'shared: RwLock[Rc[Int32]]'
-    +-- type parameter 'T' = Rc[Int32]
++-- field 'shared: RwLock[Rc[int32]]'
+    +-- type parameter 'T' = Rc[int32]
         +-- field '_cell: Ptr[_RcCellBase]' is not Send (raw pointer, no ownership guarantee)
-        +-- field '_payload: Ptr[Int32]' is not Send (raw pointer, no ownership guarantee)
+        +-- field '_payload: Ptr[int32]' is not Send (raw pointer, no ownership guarantee)

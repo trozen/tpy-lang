@@ -3,7 +3,7 @@
 # a T return may be by-value): returning an element of an Own[list[T]] and
 # returning a ValueType-bound Own[T] both stay accepted, unlike the
 # concrete Own-param shapes (see error_own_param_borrow_return).
-from tpy import Int32, Own, ValueType
+from tpy import int32, Own, ValueType
 
 
 def first_val[T](items: Own[list[T]]) -> T:
@@ -15,7 +15,7 @@ def passthrough[T: ValueType](x: Own[T]) -> T:
 
 
 def main() -> None:
-    nums: list[Int32] = [10, 20, 30]
+    nums: list[int32] = [10, 20, 30]
     print(first_val(nums))
     print(passthrough(7))
 

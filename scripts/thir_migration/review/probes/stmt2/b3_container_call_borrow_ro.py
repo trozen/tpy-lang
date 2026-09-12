@@ -1,5 +1,5 @@
-from tpy import Int32, readonly
-def ident(t: list[Int32]) -> readonly[list[Int32]]:
+from tpy import int32, readonly
+def ident(t: list[int32]) -> readonly[list[int32]]:
     return t
 def main() -> None:
     t = [1, 2]

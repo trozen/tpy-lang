@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def make_error(code: Int32) -> Own[AppError]:
+// def make_error(code: int32) -> Own[AppError]:
 AppError make_error(int32_t code) {
     // return AppError(code)
     return AppError(code);

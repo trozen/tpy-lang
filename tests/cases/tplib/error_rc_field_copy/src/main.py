@@ -2,15 +2,15 @@
 # nocopy and cannot be implicitly copied -- the caller must transfer
 # ownership via Own[Rc[T]] (typically by passing .clone() at the call
 # site).
-from tpy import Int32
+from tpy import int32
 from tplib import Rc
 
 
 class Counter:
-    value: Int32
+    value: int32
 
     def __init__(self) -> None:
-        self.value = Int32(0)
+        self.value = int32(0)
 
 
 class Holder:

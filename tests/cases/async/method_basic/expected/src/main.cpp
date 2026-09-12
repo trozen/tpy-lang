@@ -36,7 +36,7 @@ __coro_main_coro main_coro() {
     return __coro_main_coro();
 }
 
-// async def add(self, x: Int32) -> Int32:
+// async def add(self, x: int32) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_Adder_add::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {

@@ -1,5 +1,5 @@
 # @model field renaming: alias maps Python field name to JSON key.
-from tpy import Int32
+from tpy import int32
 from typing import Optional
 from tplib.json.model import model, field
 
@@ -7,17 +7,17 @@ from tplib.json.model import model, field
 class User:
     first_name: str = field(alias="firstName")
     last_name: str = field(alias="lastName")
-    age: Int32
+    age: int32
 
 @model
 class WithDefault:
     label: str = field(alias="lbl", default="none")
     note: Optional[str] = field(default=None)
-    score: Int32 = 0
+    score: int32 = 0
 
 @model
 class Base:
-    item_id: Int32 = field(alias="id")
+    item_id: int32 = field(alias="id")
 
 @model
 class Extended(Base):

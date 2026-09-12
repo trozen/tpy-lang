@@ -1,24 +1,24 @@
 # @override on a method that correctly overrides a parent class method.
 # Should produce a non-polymorphic warning (expected behavior).
-from tpy import Int32
+from tpy import int32
 from typing import override
 
 class Shape:
-    def area(self) -> Int32:
-        return Int32(0)
+    def area(self) -> int32:
+        return int32(0)
 
     def describe(self) -> str:
         return "shape"
 
 
 class Square(Shape):
-    side: Int32
+    side: int32
 
-    def __init__(self, side: Int32) -> None:
+    def __init__(self, side: int32) -> None:
         self.side = side
 
     @override
-    def area(self) -> Int32:  # tpyc: warning(/non-polymorphic/)
+    def area(self) -> int32:  # tpyc: warning(/non-polymorphic/)
         return self.side * self.side
 
     @override
@@ -27,7 +27,7 @@ class Square(Shape):
 
 
 def main() -> None:
-    s = Square(Int32(4))
+    s = Square(int32(4))
     print(s.area())
     print(s.describe())
 

@@ -1,2 +1,2 @@
-main.py:35: warning: ALL_CAPS variable 'LO' without Final annotation; use Final[Int32] if this is a constant
-main.py:35: warning: ALL_CAPS variable 'HI' without Final annotation; use Final[Int32] if this is a constant
+main.py:35: warning: ALL_CAPS variable 'LO' without Final annotation; use Final[int32] if this is a constant
+main.py:35: warning: ALL_CAPS variable 'HI' without Final annotation; use Final[int32] if this is a constant

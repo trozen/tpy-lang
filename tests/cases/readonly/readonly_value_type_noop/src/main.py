@@ -1,11 +1,11 @@
-# readonly[Int32] is a no-op -- value types are copies, so readonly is stripped.
-from tpy import Int32, readonly
+# readonly[int32] is a no-op -- value types are copies, so readonly is stripped.
+from tpy import int32, readonly
 
-def add_one(x: readonly[Int32]) -> Int32:
-    return x + Int32(1)
+def add_one(x: readonly[int32]) -> int32:
+    return x + int32(1)
 
 def main() -> None:
-    v = Int32(10)
+    v = int32(10)
     print(add_one(v))
 
 main()

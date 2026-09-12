@@ -20,16 +20,16 @@ struct Point {
     // self.y = y
     int32_t y;
 
-    // def __init__(self, x: Int32, y: Int32):
+    // def __init__(self, x: int32, y: int32):
     Point() = default;
     explicit Point(int32_t x, int32_t y);
 
     // @classmethod
-    // def make(cls, x: Int32, y: Int32 = 9) -> Own[Self]:
+    // def make(cls, x: int32, y: int32 = 9) -> Own[Self]:
     static Point make(int32_t x, int32_t y = 9);
 
     // @classmethod
-    // def blank(cls, x: Int32 = 1, y: Int32 = 2) -> Own[Self]:
+    // def blank(cls, x: int32 = 1, y: int32 = 2) -> Own[Self]:
     static Point blank(int32_t x = 1, int32_t y = 2);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
@@ -40,18 +40,18 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 }
 
 
-// def __init__(self, x: Int32, y: Int32):
+// def __init__(self, x: int32, y: int32):
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // @classmethod
-// def make(cls, x: Int32, y: Int32 = 9) -> Own[Self]:
+// def make(cls, x: int32, y: int32 = 9) -> Own[Self]:
 inline Point Point::make(int32_t x, int32_t y) {
     // return cls(x, y)
     return Point(x, y);
 }
 
 // @classmethod
-// def blank(cls, x: Int32 = 1, y: Int32 = 2) -> Own[Self]:
+// def blank(cls, x: int32 = 1, y: int32 = 2) -> Own[Self]:
 inline Point Point::blank(int32_t x, int32_t y) {
     // return cls(x, y)
     return Point(x, y);

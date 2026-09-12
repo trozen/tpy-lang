@@ -4,19 +4,19 @@
 namespace tpyapp::main {
 
 
-// def is_small(n: Int32) -> bool:
+// def is_small(n: int32) -> bool:
 bool is_small(int32_t n) {
     // return n < 5
     return (n < 5);
 }
 
-// def double(n: Int32) -> Int32:
+// def double(n: int32) -> int32:
 int32_t double_(int32_t n) {
     // return n * 2
     return (::tpy::mul_check<int32_t>(n, 2));
 }
 
-// def filterfalse(pred: Fn[[Int32], bool], it: list[Int32]) -> Iterator[Int32]:
+// def filterfalse(pred: Fn[[int32], bool], it: list[int32]) -> Iterator[int32]:
 template <typename F_pred>
 std::expected<int32_t, ::tpy::StopIteration> __gen_filterfalse<F_pred>::__next__() {
     while (true) switch (__state) {
@@ -55,13 +55,13 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_filterfalse<F_pred>::__next__
 }
 
 
-// def filterfalse(pred: Fn[[Int32], bool], it: list[Int32]) -> Iterator[Int32]:
+// def filterfalse(pred: Fn[[int32], bool], it: list[int32]) -> Iterator[int32]:
 template <typename F_pred>
 __gen_filterfalse<F_pred> filterfalse(F_pred&& pred, std::vector<int32_t>& it) {
     return __gen_filterfalse<F_pred>(std::forward<F_pred>(pred), it);
 }
 
-// def takewhile(pred: Fn[[Int32], bool], it: list[Int32]) -> Iterator[Int32]:
+// def takewhile(pred: Fn[[int32], bool], it: list[int32]) -> Iterator[int32]:
 template <typename F_pred>
 std::expected<int32_t, ::tpy::StopIteration> __gen_takewhile<F_pred>::__next__() {
     while (true) switch (__state) {
@@ -100,13 +100,13 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_takewhile<F_pred>::__next__()
 }
 
 
-// def takewhile(pred: Fn[[Int32], bool], it: list[Int32]) -> Iterator[Int32]:
+// def takewhile(pred: Fn[[int32], bool], it: list[int32]) -> Iterator[int32]:
 template <typename F_pred>
 __gen_takewhile<F_pred> takewhile(F_pred&& pred, std::vector<int32_t>& it) {
     return __gen_takewhile<F_pred>(std::forward<F_pred>(pred), it);
 }
 
-// def tag(pred: Fn[[Int32], bool], it: list[Int32]) -> Iterator[Int32]:
+// def tag(pred: Fn[[int32], bool], it: list[int32]) -> Iterator[int32]:
 template <typename F_pred>
 std::expected<int32_t, ::tpy::StopIteration> __gen_tag<F_pred>::__next__() {
     while (true) switch (__state) {
@@ -150,7 +150,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_tag<F_pred>::__next__() {
 }
 
 
-// def tag(pred: Fn[[Int32], bool], it: list[Int32]) -> Iterator[Int32]:
+// def tag(pred: Fn[[int32], bool], it: list[int32]) -> Iterator[int32]:
 template <typename F_pred>
 __gen_tag<F_pred> tag(F_pred&& pred, std::vector<int32_t>& it) {
     return __gen_tag<F_pred>(std::forward<F_pred>(pred), it);
@@ -158,7 +158,7 @@ __gen_tag<F_pred> tag(F_pred&& pred, std::vector<int32_t>& it) {
 
 // def main() -> None:
 void main() {
-    // nums: list[Int32] = [1, 7, 2, 9, 3]
+    // nums: list[int32] = [1, 7, 2, 9, 3]
     std::vector<int32_t> nums = {1, 7, 2, 9, 3};
     // for v in filterfalse(is_small, nums):
     {
@@ -223,7 +223,7 @@ void main() {
     Capped c = Capped(2);
     // # Bind the list to a local: a generator METHOD captures a reference-type
     // # param by reference in its frame, so a literal (rvalue) arg can't bind.
-    // capnums: list[Int32] = [1, 2, 3, 4]
+    // capnums: list[int32] = [1, 2, 3, 4]
     std::vector<int32_t> capnums = {1, 2, 3, 4};
     // for v in c.keep(is_small, capnums):
     {
@@ -239,12 +239,12 @@ void main() {
     }
 }
 
-// def keep(self, pred: Fn[[Int32], bool], it: list[Int32]) -> Iterator[Int32]:
+// def keep(self, pred: Fn[[int32], bool], it: list[int32]) -> Iterator[int32]:
 template <typename F_pred>
 std::expected<int32_t, ::tpy::StopIteration> __gen_Capped_keep<F_pred>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // n: Int32 = 0
+        // n: int32 = 0
         n = 0;
         __for_it_0.emplace((it).begin());
         __for_end_0.emplace((it).end());

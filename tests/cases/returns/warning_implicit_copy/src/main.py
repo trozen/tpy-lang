@@ -1,11 +1,11 @@
 # Warn when a reference return is stored in a field or container element
 # (implicit copy). No warning for local variable binding (C++ uses T&).
-from tpy import Int32
+from tpy import int32
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32) -> None:
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 

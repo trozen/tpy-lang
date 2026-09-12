@@ -1,7 +1,7 @@
 # Walrus operator (:=) in various positions: if, while, and/or chains, expressions
-from tpy import Int32
+from tpy import int32
 
-def get_opt(x: Int32) -> Int32 | None:
+def get_opt(x: int32) -> int32 | None:
     if x > 0:
         return x * 10
     return None
@@ -21,13 +21,13 @@ def test_optional_narrowing() -> None:
         print("none")
 
 def test_and_chain() -> None:
-    x: Int32 = 10
+    x: int32 = 10
     if (y := x * 2) > 15 and (z := y + 1) > 20:  # tpyc: ok
         print(y, z)
 
 def test_while_loop() -> None:
     values = [10, 20, 30, 0, 40]
-    i: Int32 = 0
+    i: int32 = 0
     while (v := values[i]) != 0:  # tpyc: ok
         print(v)
         i += 1
@@ -48,17 +48,17 @@ def test_reuse_walrus_target() -> None:
         print(val)
 
 def test_walrus_in_branch() -> None:
-    x: Int32 = 10
+    x: int32 = 10
     if x > 5:
         y = (n := x + 1) * 2  # tpyc: ok
         print(n, y)
     print("done")
 
-def double(x: Int32) -> Int32:
+def double(x: int32) -> int32:
     return x * 2
 
 def test_walrus_elif() -> None:
-    x: Int32 = 5
+    x: int32 = 5
     if x > 10:
         print("big")
     elif (v := get_opt(x)) is not None:  # tpyc: ok

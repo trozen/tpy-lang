@@ -7,13 +7,13 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // # extend from another ArrayList (Spannable)
-    // a = ArrayList[Int32, 16]()
+    // a = ArrayList[int32, 16]()
     ::tpystd::tplib::array_list::ArrayList<int32_t, 16> a = ::tpystd::tplib::array_list::ArrayList<int32_t, 16>();
     // a.append(1)
     a.append(1);
     // a.append(2)
     a.append(2);
-    // b = ArrayList[Int32, 16]()
+    // b = ArrayList[int32, 16]()
     ::tpystd::tplib::array_list::ArrayList<int32_t, 16> b = ::tpystd::tplib::array_list::ArrayList<int32_t, 16>();
     // b.append(10)
     b.append(10);
@@ -36,11 +36,11 @@ void main() {
         std::cout << x << "\n";
     }
     // # extend from Array/Span
-    // c = ArrayList[Int32, 8]()
+    // c = ArrayList[int32, 8]()
     ::tpystd::tplib::array_list::ArrayList<int32_t, 8> c = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
-    // arr: Array[Int32, 3] = [100, 200, 300]
+    // arr: Array[int32, 3] = [100, 200, 300]
     std::array<int32_t, 3> arr = {100, 200, 300};
-    // s: Span[Int32] = arr
+    // s: Span[int32] = arr
     std::span<int32_t> s = ::tpy::as_mut_span(arr);
     // c.extend(s)
     c.extend(s);

@@ -1,1 +1,1 @@
-main.py:18: error: Type argument 'tuple[Int32, Foo]' does not satisfy bound 'Comparable' for type parameter 'T' of 'less'
+main.py:18: error: Type argument 'tuple[int32, Foo]' does not satisfy bound 'Comparable' for type parameter 'T' of 'less'

@@ -20,13 +20,13 @@ void main();
 
 // class Box:
 struct Box {
-    // xs: list[Int32]
+    // xs: list[int32]
     std::vector<int32_t> xs;
 
     // def __init__(self) -> None:
     Box();
 
-    // def get(self) -> list[Int32]:
+    // def get(self) -> list[int32]:
     std::vector<int32_t>& get();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
@@ -40,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 // def __init__(self) -> None:
 inline Box::Box() : xs(std::vector<int32_t>{1, 2, 3}) {}
 
-// def get(self) -> list[Int32]:
+// def get(self) -> list[int32]:
 inline std::vector<int32_t>& Box::get() {
     // return self.xs
     return this->xs;

@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 
 # Test the 'not' logical operator
 
@@ -20,8 +20,8 @@ def test_not_with_bool_literals() -> None:
 
 def test_not_with_comparisons() -> None:
     """Test 'not' with comparison expressions."""
-    x: Int32 = 5
-    y: Int32 = 10
+    x: int32 = 5
+    y: int32 = 10
 
     # not with comparison
     if not (x > y):
@@ -69,7 +69,7 @@ def test_double_negation() -> None:
     else:
         print("not not False: no")
 
-def is_valid(x: Int32) -> bool:
+def is_valid(x: int32) -> bool:
     """Helper function returning bool."""
     return x > 0
 
@@ -86,7 +86,7 @@ def test_not_with_function_call() -> None:
 def test_not_in_while() -> None:
     """Test 'not' in while condition."""
     done: bool = False
-    count: Int32 = 0
+    count: int32 = 0
 
     while not done:
         count += 1

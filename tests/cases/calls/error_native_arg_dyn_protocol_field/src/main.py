@@ -2,7 +2,7 @@
 # the dynamic slot takes the adapter machinery, not a bare member read.
 from typing import Protocol
 
-from tpy import Int32, StrView, dynamic
+from tpy import int32, StrView, dynamic
 from tpy.extern import native
 
 
@@ -12,9 +12,9 @@ class Pet(Protocol):
 
 
 class Dog:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def noise(self) -> StrView:

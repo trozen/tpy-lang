@@ -1,5 +1,5 @@
 # Error: explicit type arg on method doesn't satisfy bound
-from tpy import Int32, Comparable
+from tpy import int32, Comparable
 
 class Wrapper:
     def __init__(self):
@@ -15,7 +15,7 @@ class Box[T]:
         return a < b
 
 def main() -> None:
-    b = Box[Int32](Int32(1))
+    b = Box[int32](int32(1))
     b.compare[Wrapper](Wrapper(), Wrapper())  # tpyc: error(/does not satisfy bound/)
 
 main()

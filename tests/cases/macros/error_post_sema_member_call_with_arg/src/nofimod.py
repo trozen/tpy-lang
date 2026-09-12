@@ -23,7 +23,7 @@ def resolve_bump(ctx: FunctionMacroContext) -> None:
 
 
 def _resolve(ctx) -> None:
-    int32 = ctx.resolve_type("Int32")
+    int32 = ctx.resolve_type("int32")
     param_names = [n for n, _ in ctx.params]
     for call in _sentinel_calls(ctx.body):
         recv = call.args[0]

@@ -1,10 +1,10 @@
 from typing import Self
 
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Point:
-    def __init__(self, x: Int32):
+    def __init__(self, x: int32):
         self.x = x
 
     @classmethod
@@ -12,5 +12,5 @@ class Point:
         return cls(0)
 
     @classmethod
-    def at(cls, x: Int32) -> Own[Self]:
+    def at(cls, x: int32) -> Own[Self]:
         return cls(x)

@@ -73,7 +73,7 @@ void main() {
     }
     // print(len(b), b[1])
     std::cout << ::tpy::__len__(b) << " " << static_cast<int>(::tpy::bytes_getitem(b, 1)) << "\n";
-    // a = Array[Int32, 2]()
+    // a = Array[int32, 2]()
     std::array<int32_t, 2> a = std::array<int32_t, 2>();
     // for ga in repeat_arr(a, 1):
     {

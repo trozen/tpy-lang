@@ -31,17 +31,17 @@ void main();
 
 // class Impl:
 struct Impl {
-    // value: Int32
+    // value: int32
     int32_t value;
 
-    // def __init__(self, value: Int32) -> None:
+    // def __init__(self, value: int32) -> None:
     Impl() = default;
     explicit Impl(int32_t value);
 
-    // def call(self, extra: Int32 = Int32(0)) -> Int32:
+    // def call(self, extra: int32 = int32(0)) -> int32:
     int32_t call(int32_t extra = 0) const;
 
-    // def process(self, x: Int32, scale: Int32 = Int32(1)) -> Int32:
+    // def process(self, x: int32, scale: int32 = int32(1)) -> int32:
     int32_t process(int32_t x, int32_t scale = 1) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Impl";
 };
@@ -52,16 +52,16 @@ inline std::ostream& operator<<(std::ostream& os, const Impl& obj) {
 }
 
 
-// def __init__(self, value: Int32) -> None:
+// def __init__(self, value: int32) -> None:
 inline Impl::Impl(int32_t value) : value(value) {}
 
-// def call(self, extra: Int32 = Int32(0)) -> Int32:
+// def call(self, extra: int32 = int32(0)) -> int32:
 inline int32_t Impl::call(int32_t extra) const {
     // return self.value + extra
     return (::tpy::add_check<int32_t>(this->value, extra));
 }
 
-// def process(self, x: Int32, scale: Int32 = Int32(1)) -> Int32:
+// def process(self, x: int32, scale: int32 = int32(1)) -> int32:
 inline int32_t Impl::process(int32_t x, int32_t scale) const {
     // return x * scale + self.value
     return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(x, scale)), this->value));
@@ -75,7 +75,7 @@ void use_callable(T_c& c) {
 // def use_one_arg(p: OneArg) -> None:
 template<OneArg T_p>
 void use_one_arg(T_p& p) {
-    // print(p.process(Int32(10)))
+    // print(p.process(int32(10)))
     std::cout << p.process(10) << "\n";
 }
 

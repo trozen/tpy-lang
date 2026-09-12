@@ -112,7 +112,7 @@ struct _OwnedCode {
     ::pcre2_code_8* _p;
     bool __tpy_owned_ = true;
 
-    // def __init__(self, pattern: str, flags: Int32) -> None:
+    // def __init__(self, pattern: str, flags: int32) -> None:
     explicit _OwnedCode(std::string_view pattern, int32_t flags);
     // non-copyable (@nocopy)
     _OwnedCode(const _OwnedCode&) = delete;
@@ -127,7 +127,7 @@ struct _OwnedCode {
     ::pcre2_code_8* get() const;
 
     // @staticmethod
-    // def _compile(pattern: str, flags: Int32) -> Ptr[pcre2.Code]:
+    // def _compile(pattern: str, flags: int32) -> Ptr[pcre2.Code]:
     static ::pcre2_code_8* _compile(std::string_view pattern, int32_t flags);
     static constexpr std::string_view __tpy_class_name__ = "re._OwnedCode";
 };
@@ -172,11 +172,11 @@ struct Match {
     _OwnedMatchData _md;
     // _subject: str
     std::string _subject;
-    // _ngroups: Int32   # number of populated entries in the ovector
+    // _ngroups: int32   # number of populated entries in the ovector
     int32_t _ngroups;
 
     // def __init__(self, md: Own[_OwnedMatchData], subject: str,
-    // ngroups: Int32) -> None:
+    // ngroups: int32) -> None:
     explicit Match(_OwnedMatchData&& md, std::string_view subject, int32_t ngroups);
     // non-copyable (field '_md')
     Match(const Match&) = delete;
@@ -184,19 +184,19 @@ struct Match {
     Match(Match&&) = default;
     Match& operator=(Match&&) = default;
 
-    // def _ovec_load(self, i: UInt32) -> UInt64:
+    // def _ovec_load(self, i: uint32) -> uint64:
     uint64_t _ovec_load(uint32_t i) const;
 
-    // def span(self, group: Int32 = 0) -> tuple[Int32, Int32]:
+    // def span(self, group: int32 = 0) -> tuple[int32, int32]:
     std::tuple<int32_t, int32_t> span(int32_t group = 0) const;
 
-    // def start(self, group: Int32 = 0) -> Int32:
+    // def start(self, group: int32 = 0) -> int32:
     int32_t start(int32_t group = 0) const;
 
-    // def end(self, group: Int32 = 0) -> Int32:
+    // def end(self, group: int32 = 0) -> int32:
     int32_t end(int32_t group = 0) const;
 
-    // def group(self, i: Int32 = 0) -> str:
+    // def group(self, i: int32 = 0) -> str:
     std::string group(int32_t i = 0) const;
 
     // def groups(self) -> Own[list[str]]:
@@ -218,10 +218,10 @@ struct Pattern {
     _OwnedMatchContext _mctx;
     // pattern: str
     std::string pattern;
-    // flags: Int32
+    // flags: int32
     int32_t flags;
 
-    // def __init__(self, pattern: str, flags: Int32 = NOFLAG) -> None:
+    // def __init__(self, pattern: str, flags: int32 = NOFLAG) -> None:
     explicit Pattern(std::string_view pattern, int32_t flags = NOFLAG);
     // non-copyable (field '_code')
     Pattern(const Pattern&) = delete;
@@ -229,8 +229,8 @@ struct Pattern {
     Pattern(Pattern&&) = default;
     Pattern& operator=(Pattern&&) = default;
 
-    // def _do_match(self, subject: str, start_offset: UInt64,
-    // opts: UInt32) -> Optional[Own[Match]]:
+    // def _do_match(self, subject: str, start_offset: uint64,
+    // opts: uint32) -> Optional[Own[Match]]:
     std::optional<Match> _do_match(std::string_view subject, uint64_t start_offset, uint32_t opts) const;
 
     // def search(self, subject: str) -> Optional[Own[Match]]:
@@ -244,11 +244,11 @@ struct Pattern {
 
     // def finditer(self, subject: str) -> Iterator[Own[Match]]:
     auto finditer(std::string_view subject) const {
-        // offset: UInt64 = 0
+        // offset: uint64 = 0
         uint64_t offset = 0;
-        // sub_len = UInt64(len(subject))
+        // sub_len = uint64(len(subject))
         uint64_t sub_len = ::tpy::int_cast_check<uint64_t>(::tpy::__len__(subject));
-        // s_data: Ptr[readonly[UInt8]] = unsafe_cast(unsafe_ptr(subject))
+        // s_data: Ptr[readonly[uint8]] = unsafe_cast(unsafe_ptr(subject))
         const uint8_t* s_data = reinterpret_cast<const uint8_t*>(subject.data());
         return ::tpy::make_generator<Match>(
             [this, subject = std::string(subject), offset, sub_len, s_data]() mutable -> std::optional<Match> {
@@ -302,14 +302,14 @@ struct Pattern {
     // def findall(self, subject: str) -> Own[list[str]]:
     std::vector<std::string> findall(std::string_view subject) const;
 
-    // def _substitute(self, repl: str, subject: str, opts: UInt32,
+    // def _substitute(self, repl: str, subject: str, opts: uint32,
     // md: Ptr[pcre2.MatchData]) -> str:
     std::string _substitute(std::string_view repl, std::string_view subject, uint32_t opts, ::pcre2_match_data_8* md) const;
 
-    // def sub(self, repl: str, subject: str, count: Int32 = 0) -> str:
+    // def sub(self, repl: str, subject: str, count: int32 = 0) -> str:
     std::string sub(std::string_view repl, std::string_view subject, int32_t count = 0) const;
 
-    // def split(self, subject: str, maxsplit: Int32 = 0) -> Own[list[str]]:
+    // def split(self, subject: str, maxsplit: int32 = 0) -> Own[list[str]]:
     std::vector<std::string> split(std::string_view subject, int32_t maxsplit = 0) const;
     static constexpr std::string_view __tpy_class_name__ = "re.Pattern";
 };
@@ -347,7 +347,7 @@ inline ::pcre2_match_data_8* _OwnedMatchData::get() const {
     return this->_p;
 }
 
-// def __init__(self, pattern: str, flags: Int32) -> None:
+// def __init__(self, pattern: str, flags: int32) -> None:
 inline _OwnedCode::_OwnedCode(std::string_view pattern, int32_t flags) : _p(_OwnedCode::_compile(pattern, flags)) {}
 
 inline _OwnedCode::_OwnedCode(_OwnedCode&& other) noexcept : _p(std::move(other._p)) {
@@ -402,10 +402,10 @@ inline ::pcre2_match_context_8* _OwnedMatchContext::get() const {
 }
 
 // def __init__(self, md: Own[_OwnedMatchData], subject: str,
-// ngroups: Int32) -> None:
+// ngroups: int32) -> None:
 inline Match::Match(_OwnedMatchData&& md, std::string_view subject, int32_t ngroups) : _md(std::move(md)), _subject(subject), _ngroups(ngroups) {}
 
-// def _ovec_load(self, i: UInt32) -> UInt64:
+// def _ovec_load(self, i: uint32) -> uint64:
 inline uint64_t Match::_ovec_load(uint32_t i) const {
     // ovec = pcre2.get_ovector_pointer(self._md.get())
     const uint64_t* ovec = ::pcre2_get_ovector_pointer_8(this->_md.get());
@@ -413,39 +413,39 @@ inline uint64_t Match::_ovec_load(uint32_t i) const {
     return ovec[i];
 }
 
-// def span(self, group: Int32 = 0) -> tuple[Int32, Int32]:
+// def span(self, group: int32 = 0) -> tuple[int32, int32]:
 inline std::tuple<int32_t, int32_t> Match::span(int32_t group) const {
     // if group < 0 or group >= self._ngroups:
     if (((group < 0) || (group >= this->_ngroups))) {
         // raise error(f"no such group: {group}")
         throw error(std::format("no such group: {}", group));
     }
-    // start = self._ovec_load(UInt32.trunc(group * 2))
+    // start = self._ovec_load(uint32.trunc(group * 2))
     uint64_t start = this->_ovec_load(static_cast<uint32_t>((::tpy::mul_check<int32_t>(group, 2))));
-    // end = self._ovec_load(UInt32.trunc(group * 2 + 1))
+    // end = self._ovec_load(uint32.trunc(group * 2 + 1))
     uint64_t end = this->_ovec_load(static_cast<uint32_t>((::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(group, 2)), 1))));
     // if start == pcre2.PCRE2_UNSET or end == pcre2.PCRE2_UNSET:
     if (((start == ::tpystd::_bindings::pcre2::PCRE2_UNSET) || (end == ::tpystd::_bindings::pcre2::PCRE2_UNSET))) {
         // return (0, 0)
         return std::tuple<int32_t, int32_t>{0, 0};
     }
-    // return (Int32.trunc(start), Int32.trunc(end))
+    // return (int32.trunc(start), int32.trunc(end))
     return std::tuple<int32_t, int32_t>{static_cast<int32_t>(start), static_cast<int32_t>(end)};
 }
 
-// def start(self, group: Int32 = 0) -> Int32:
+// def start(self, group: int32 = 0) -> int32:
 inline int32_t Match::start(int32_t group) const {
     // return self.span(group)[0]
     return std::get<0>(this->span(group));
 }
 
-// def end(self, group: Int32 = 0) -> Int32:
+// def end(self, group: int32 = 0) -> int32:
 inline int32_t Match::end(int32_t group) const {
     // return self.span(group)[1]
     return std::get<1>(this->span(group));
 }
 
-// def group(self, i: Int32 = 0) -> str:
+// def group(self, i: int32 = 0) -> str:
 inline std::string Match::group(int32_t i) const {
     // s, e = self.span(i)
     auto __tup_1 = this->span(i);
@@ -469,7 +469,7 @@ inline std::vector<std::string> Match::groups() const {
     return out;
 }
 
-// def __init__(self, pattern: str, flags: Int32 = NOFLAG) -> None:
+// def __init__(self, pattern: str, flags: int32 = NOFLAG) -> None:
 inline Pattern::Pattern(std::string_view pattern, int32_t flags) : _code(_OwnedCode(pattern, flags)), _mctx(_OwnedMatchContext()) {
     // # JIT-compile for ~10x match speedup. Failure here is non-fatal --
     // # PCRE2 falls back to interpreted matching on patterns the JIT
@@ -513,7 +513,7 @@ inline std::vector<std::string> Pattern::findall(std::string_view subject) const
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& m = ::tpy::unwrap_ref(*__r_1);
-        // out.append(m.group(Int32(0)))
+        // out.append(m.group(int32(0)))
         out.push_back(m.group(0));
         }
     }

@@ -1,12 +1,12 @@
 # Field access reached through several Ptr hops, and a for-each over a
 # container member of a Ptr binding -- each hop spells its own deref_check.
-from tpy import Int32, Own, Ptr
+from tpy import int32, Own, Ptr
 
 
 class Sector:
-    floor_h: Int32
+    floor_h: int32
 
-    def __init__(self, floor_h: Int32) -> None:
+    def __init__(self, floor_h: int32) -> None:
         self.floor_h = floor_h
 
 
@@ -38,18 +38,18 @@ class Map:
         self.subsectors = [SubSector(segs)]
 
 
-def head_floor(subsectors: list[Ptr[SubSector]]) -> Int32:
+def head_floor(subsectors: list[Ptr[SubSector]]) -> int32:
     # Two Ptr hops under a subscript: the whole chain is one read.
     return subsectors[0].segs[0].sector_front.floor_h  # tpyc: ok
 
 
-def via_local(ss: Ptr[SubSector]) -> Int32:
+def via_local(ss: Ptr[SubSector]) -> int32:
     seg = ss.segs[0]
     # A Ptr-valued field taken off a Ptr binding, then read again.
     return seg.sector_front.floor_h  # tpyc: ok
 
 
-def total(subsectors: list[Ptr[SubSector]]) -> Int32:
+def total(subsectors: list[Ptr[SubSector]]) -> int32:
     acc = 0
     for subsector in subsectors:
         # A container member of a Ptr binding is the loop's iterable.

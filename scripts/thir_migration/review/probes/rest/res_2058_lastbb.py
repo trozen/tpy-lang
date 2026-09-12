@@ -1,11 +1,11 @@
-from tpy import Int32
+from tpy import int32
 class Dog:
     def sound(self) -> str:
         return "woof"
 class Cat:
     def sound(self) -> str:
         return "meow"
-async def step(n: Int32) -> Int32:
+async def step(n: int32) -> int32:
     return n + 1
 async def f(a: Dog | Cat) -> str:
     __a = 1

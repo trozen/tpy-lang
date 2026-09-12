@@ -3,7 +3,7 @@
 # validate_type flag-forwarding fix and the codegen topo-sort's
 # hash-element edge through OptionalType. The `own_set_forward_ref`
 # sibling exercises the OwnType path; this one pins OptionalType.
-from tpy import Int32, UInt64
+from tpy import int32, uint64
 
 
 class Holder:
@@ -14,13 +14,13 @@ class Holder:
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
-    def __hash__(self) -> UInt64:
-        return UInt64(self.x)
+    def __hash__(self) -> uint64:
+        return uint64(self.x)
 
     def __eq__(self, other: "Point") -> bool:
         return self.x == other.x

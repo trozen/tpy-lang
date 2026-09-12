@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def make_opt(n: Int32) -> Own[Optional[Point]]:
+// def make_opt(n: int32) -> Own[Optional[Point]]:
 std::optional<Point> make_opt(int32_t n) {
     // if n > 0:
     if ((n > 0)) {
@@ -15,7 +15,7 @@ std::optional<Point> make_opt(int32_t n) {
     return std::nullopt;
 }
 
-// def rvalue_init() -> Iterator[Int32]:
+// def rvalue_init() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_rvalue_init::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -61,12 +61,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_rvalue_init::__next__() {
 }
 
 
-// def rvalue_init() -> Iterator[Int32]:
+// def rvalue_init() -> Iterator[int32]:
 __gen_rvalue_init rvalue_init() {
     return __gen_rvalue_init();
 }
 
-// def rebind_after_alias(items: list[Point]) -> Iterator[Int32]:
+// def rebind_after_alias(items: list[Point]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_rebind_after_alias::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -117,12 +117,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_rebind_after_alias::__next__(
 }
 
 
-// def rebind_after_alias(items: list[Point]) -> Iterator[Int32]:
+// def rebind_after_alias(items: list[Point]) -> Iterator[int32]:
 __gen_rebind_after_alias rebind_after_alias(std::vector<Point>& items) {
     return __gen_rebind_after_alias(items);
 }
 
-// def rebind_after_none() -> Iterator[Int32]:
+// def rebind_after_none() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_rebind_after_none::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -163,12 +163,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_rebind_after_none::__next__()
 }
 
 
-// def rebind_after_none() -> Iterator[Int32]:
+// def rebind_after_none() -> Iterator[int32]:
 __gen_rebind_after_none rebind_after_none() {
     return __gen_rebind_after_none();
 }
 
-// def own_opt_call() -> Iterator[Int32]:
+// def own_opt_call() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_own_opt_call::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -210,12 +210,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_own_opt_call::__next__() {
 }
 
 
-// def own_opt_call() -> Iterator[Int32]:
+// def own_opt_call() -> Iterator[int32]:
 __gen_own_opt_call own_opt_call() {
     return __gen_own_opt_call();
 }
 
-// def loop_rebind(n: Int32) -> Iterator[Int32]:
+// def loop_rebind(n: int32) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_loop_rebind::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -266,7 +266,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_loop_rebind::__next__() {
 }
 
 
-// def loop_rebind(n: Int32) -> Iterator[Int32]:
+// def loop_rebind(n: int32) -> Iterator[int32]:
 __gen_loop_rebind loop_rebind(int32_t n) {
     return __gen_loop_rebind(n);
 }

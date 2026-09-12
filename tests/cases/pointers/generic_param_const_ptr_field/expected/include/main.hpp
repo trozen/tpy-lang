@@ -23,15 +23,15 @@ void main();
 
 // class Counter(Reads):
 struct Counter {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Counter() = default;
     explicit Counter(int32_t n);
 
     // @readonly
-    // def value(self) -> Int32:
+    // def value(self) -> int32:
     int32_t value() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
@@ -54,7 +54,7 @@ struct RWView {
     RWView() = default;
     explicit RWView(::tpy::readonly_form_t<W> src) : _src(&src) {}
 
-    // def read(self) -> Int32:
+    // def read(self) -> int32:
     int32_t read() const {
         // return self._src.value()
         return ::tpy::deref_check(this->_src).value();
@@ -80,7 +80,7 @@ struct ROView {
     ROView() = default;
     explicit ROView(::tpy::readonly_form_t<W> src) : _src(&src) {}
 
-    // def read(self) -> Int32:
+    // def read(self) -> int32:
     int32_t read() const {
         // return self._src.value()
         return ::tpy::deref_check(this->_src).value();
@@ -95,11 +95,11 @@ inline std::ostream& operator<<(std::ostream& os, const ROView<W>& obj) {
 }
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Counter::Counter(int32_t n) : n(n) {}
 
 // @readonly
-// def value(self) -> Int32:
+// def value(self) -> int32:
 inline int32_t Counter::value() const {
     // return self.n
     return this->n;

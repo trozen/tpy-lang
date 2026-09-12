@@ -3,16 +3,16 @@
 # closure (visible on the caller's object), the generator one reads self.n.
 import asyncio
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
 class Counter:
-    n: Int32
+    n: int32
 
     def __init__(self) -> None:
         self.n = 10
 
-    async def bump_twice(self) -> Int32:
+    async def bump_twice(self) -> int32:
         delta = 0
 
         def bump() -> None:
@@ -25,10 +25,10 @@ class Counter:
         bump()
         return self.n
 
-    def steps(self) -> Iterator[Int32]:
+    def steps(self) -> Iterator[int32]:
         step = 100
 
-        def next_offset() -> Int32:
+        def next_offset() -> int32:
             nonlocal step
             step += self.n
             return step

@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // b = Box[Int32]()
+    // b = Box[int32]()
     ::tpyapp::box::Box<int32_t> b = ::tpyapp::box::Box<int32_t>();
     // print(b.CAPACITY)
     std::cout << ::tpyapp::box::Box<int32_t>::CAPACITY << "\n";

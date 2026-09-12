@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def set_first(s: Span[Int32], val: Int32) -> None:
+// def set_first(s: Span[int32], val: int32) -> None:
 void set_first(std::span<int32_t> s, int32_t val) {
     // s[0] = val
     ::tpy::__setitem__(s, 0, val);
@@ -12,7 +12,7 @@ void set_first(std::span<int32_t> s, int32_t val) {
 
 // def main() -> None:
 void main() {
-    // arr = Array[Int32, 3]([10, 20, 30])
+    // arr = Array[int32, 3]([10, 20, 30])
     std::array<int32_t, 3> arr = std::array<int32_t, 3>({10, 20, 30});
     // set_first(arr, 42)
     set_first(::tpy::as_mut_span(arr), 42);

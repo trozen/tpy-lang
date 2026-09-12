@@ -1,17 +1,17 @@
 # Reassigned local with rvalue on one branch and lvalue on another must error.
 # The lvalue_reassigned tracking prevents moving from potentially borrowed storage.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Point:
-    x: Int32
+    x: int32
 
 
-def consume(p: Own[Point]) -> Int32:
+def consume(p: Own[Point]) -> int32:
     return p.x
 
 
-def test(a: Point, cond: bool) -> Int32:
+def test(a: Point, cond: bool) -> int32:
     p = Point()
     p.x = 10
     if cond:

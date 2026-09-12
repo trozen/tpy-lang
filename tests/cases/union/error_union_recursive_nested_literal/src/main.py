@@ -1,10 +1,10 @@
 # Error: wrong element types in nested recursive union literals
 from dataclasses import dataclass
-from tpy import Int32
+from tpy import int32
 
 @dataclass
 class Leaf:
-    value: Int32
+    value: int32
 
 type Tree = Leaf | list[Tree]
 

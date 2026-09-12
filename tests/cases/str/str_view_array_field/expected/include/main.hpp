@@ -27,10 +27,10 @@ void test_multiple_views_one_source();
 struct Person {
     // name: str
     std::string name;
-    // age: Int32
+    // age: int32
     int32_t age;
 
-    // def __init__(self, name: str, age: Int32) -> None:
+    // def __init__(self, name: str, age: int32) -> None:
     Person() = default;
     explicit Person(std::string_view name, int32_t age);
 
@@ -49,7 +49,7 @@ inline std::ostream& operator<<(std::ostream& os, const Person& obj) {
 }
 
 
-// def __init__(self, name: str, age: Int32) -> None:
+// def __init__(self, name: str, age: int32) -> None:
 inline Person::Person(std::string_view name, int32_t age) : name(name), age(age) {}
 
 // def rename(self, new_name: str) -> None:

@@ -3,10 +3,10 @@
 # async and generator-method cases don't cover. The deferred element-type
 # inference (Pending* types) must be resolved before the frame fields render.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
-def gen() -> Iterator[Int32]:
+def gen() -> Iterator[int32]:
     nums = [1, 2, 3]
     d = {1: 10, 2: 20}
     s = {7, 8}

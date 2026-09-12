@@ -1,8 +1,8 @@
-from tpy import Int32, Own, readonly
+from tpy import int32, Own, readonly
 class Point:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 from tplib import Box
-d: dict[Int32, Box[Point]] = {1: Box(Point(1))}
+d: dict[int32, Box[Point]] = {1: Box(Point(1))}
 print(len(d))

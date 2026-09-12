@@ -2,11 +2,11 @@
 # find them (MRO lookup) and name the __anext__ coro struct after the defining
 # base.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
 class BaseAIter:
-    i: Int32
+    i: int32
 
     def __init__(self) -> None:
         self.i = 0
@@ -14,7 +14,7 @@ class BaseAIter:
     def __aiter__(self) -> "BaseAIter":
         return self
 
-    async def __anext__(self) -> Int32:
+    async def __anext__(self) -> int32:
         await asyncio.sleep(0)
         if self.i >= 3:
             raise StopAsyncIteration()
@@ -27,7 +27,7 @@ class DerivedAIter(BaseAIter):
 
 
 async def main_coro() -> None:
-    total: Int32 = 0
+    total: int32 = 0
     async for x in DerivedAIter():
         total += x
     print(total)

@@ -15,7 +15,7 @@ void __tpy_init() {
 
     // x = 0  # tpyc: type(int)
     x = ::tpy::BigInt(0);
-    // x = Int32(10)  # tpyc: type(int)
+    // x = int32(10)  # tpyc: type(int)
     x = 10;
     // x = int(20)  # tpyc: type(int)
     x = ::tpy::BigInt(20);
@@ -23,7 +23,7 @@ void __tpy_init() {
     std::cout << x << "\n";
     // f = 0  # tpyc: type(float)
     f = 0;
-    // f = Int32(3)  # tpyc: type(float)
+    // f = int32(3)  # tpyc: type(float)
     f = 3;
     // f = 1.5  # tpyc: type(float)
     f = 1.5;

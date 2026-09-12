@@ -64,7 +64,7 @@ template<::tpystd::tpy::Comparable T>
     return ::tpy::param_to_return<T>(b);
 }
 // # Fn param (zero-cost template)
-// def apply_fn(f: Fn[[Int32], Int32], x: Int32) -> Int32:
+// def apply_fn(f: Fn[[int32], int32], x: int32) -> int32:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<int32_t>;
@@ -74,7 +74,7 @@ int32_t apply_fn(__F0&& f, int32_t x) {
     return f(x);
 }
 // # Multi type params
-// def make_pair(f: Fn[[Int32, Int32], tuple[Int32, Int32]], a: Int32, b: Int32) -> tuple[Int32, Int32]:
+// def make_pair(f: Fn[[int32, int32], tuple[int32, int32]], a: int32, b: int32) -> tuple[int32, int32]:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0, int32_t __a1) {
       { __fn(__a0, __a1) } -> std::convertible_to<std::tuple<int32_t, int32_t>>;
@@ -84,7 +84,7 @@ std::tuple<int32_t, int32_t> make_pair(__F0&& f, int32_t a, int32_t b) {
     return f(a, b);
 }
 // # Bounded generic
-// def apply2(f: Fn[[Int32, Int32], Int32], a: Int32, b: Int32) -> Int32:
+// def apply2(f: Fn[[int32, int32], int32], a: int32, b: int32) -> int32:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0, int32_t __a1) {
       { __fn(__a0, __a1) } -> std::convertible_to<int32_t>;
@@ -94,7 +94,7 @@ int32_t apply2(__F0&& f, int32_t a, int32_t b) {
     return f(a, b);
 }
 // # Void hint -- generic function's return value discarded
-// def run_void(f: Fn[[Int32], None], x: Int32) -> None:
+// def run_void(f: Fn[[int32], None], x: int32) -> None:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       __fn(__a0);

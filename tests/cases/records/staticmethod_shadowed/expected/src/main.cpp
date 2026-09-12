@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // h = Helper(42)
 Helper* h{};
 
-// def use_helper(Helper: Helper) -> Int32:
+// def use_helper(Helper: Helper) -> int32:
 int32_t use_helper(Helper& Helper) {
     // # Inside this function, 'Helper' is the parameter (an instance), not the class
     // # So Helper.get() should call the instance method, not try to find a static method

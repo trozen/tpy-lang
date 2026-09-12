@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 
 
 def first[T](items: list[T]) -> T:
@@ -6,5 +6,5 @@ def first[T](items: list[T]) -> T:
 
 
 x = None
-x = first([Int32(41), Int32(42)])
+x = first([int32(41), int32(42)])
 print(x)

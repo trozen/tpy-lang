@@ -3,9 +3,9 @@
 
 namespace tpyapp::main {
 
-// a = Score(Int32(2))
+// a = Score(int32(2))
 Score* a{};
-// b = Score(Int32(5))
+// b = Score(int32(5))
 Score* b{};
 
 void __tpy_init() {
@@ -22,10 +22,10 @@ void __tpy_init() {
     // # where the macro overwrote a user-defined op.
     // from functools import total_ordering
     ::tpystd::functools::__tpy_init();
-    // a = Score(Int32(2))
+    // a = Score(int32(2))
     static Score __global_slot_1 = Score(2);
     a = &__global_slot_1;
-    // b = Score(Int32(5))
+    // b = Score(int32(5))
     static Score __global_slot_2 = Score(5);
     b = &__global_slot_2;
     // print(a < b)
@@ -36,7 +36,7 @@ void __tpy_init() {
     std::cout << ::tpy::print_bool((((*a)) > ((*b)))) << "\n";
     // print(a >= b)   # user's
     std::cout << ::tpy::print_bool((((*a)) >= ((*b)))) << "\n";
-    // print(a == Score(Int32(2)))
+    // print(a == Score(int32(2)))
     std::cout << ::tpy::print_bool((((*a)) == (Score(2)))) << "\n";
 }
 

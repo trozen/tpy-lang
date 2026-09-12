@@ -2,12 +2,12 @@
 # (std::tuple<..., Box*>), so mutating through the tuple subscript reaches the
 # member -- for both a local member and a borrowed param member (the param is
 # inferred as a mutable borrow because its address escapes into the tuple).
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    val: Int32
-    def __init__(self, v: Int32) -> None:
+    val: int32
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 
@@ -16,7 +16,7 @@ def mutate_param_member(b: Box) -> None:
     t[1].val = 99
 
 
-def local_member() -> Int32:
+def local_member() -> int32:
     b = Box(5)
     t = (1, b)
     t[1].val = 77

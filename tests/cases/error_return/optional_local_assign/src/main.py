@@ -1,6 +1,6 @@
 # An @error_return result assigned to a pointer-repr `T | None` local moves into
 # the local's rebind slot (not an ill-formed `T* = T`). @nocopy forces the move.
-from tpy import Int32, Own, nocopy, error_return, ReturnException
+from tpy import int32, Own, nocopy, error_return, ReturnException
 
 
 class Bad(Exception, ReturnException):
@@ -9,9 +9,9 @@ class Bad(Exception, ReturnException):
 
 @nocopy
 class Box:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 
@@ -22,7 +22,7 @@ def decode(ok: bool) -> Own[Box]:
     raise Bad
 
 
-def run(ok: bool) -> Int32:
+def run(ok: bool) -> int32:
     b: Box | None = None
     try:
         b = decode(ok)          # result -> pointer-repr Optional local (rebind slot)

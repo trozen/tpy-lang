@@ -3,11 +3,11 @@
 # before any other dispatch runs. Confirms detection happens BEFORE
 # missing-required-arg validation -- here ``file`` is required, but
 # the bare argv carries -h so the help fn fires first.
-from tpy import Int32
+from tpy import int32
 from argparse import ArgumentParser
 
 
-def main() -> Int32:
+def main() -> int32:
     parser = ArgumentParser(description="A test program.")
     parser.add_argument("file", help="input file path")
     parser.add_argument("--count", type=int, default=1, help="repetition count")

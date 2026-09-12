@@ -2,13 +2,13 @@
 # from an `except` body, and the try body raises. Same reachability -- the handler
 # runs on the exception path, so the read keeps the target live entering the
 # statement and the manager has to outlive its branch.
-from tpy import Int32
+from tpy import int32
 
 
 class Reg:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
     def __enter__(self) -> "Reg":
@@ -21,7 +21,7 @@ class Reg:
         self.n = -999
 
 
-def probe(flag: bool) -> Int32:
+def probe(flag: bool) -> int32:
     if flag:
         with Reg(11) as view:
             pass

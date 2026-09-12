@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def cmp_score(x: Int32 | None) -> Int32:
+// def cmp_score(x: int32 | None) -> int32:
 int32_t cmp_score(std::optional<int32_t> x) {
     // if x > 0:
     if ((::tpy::deref_optional_check(x) > 0)) {

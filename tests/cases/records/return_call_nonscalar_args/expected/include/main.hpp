@@ -21,10 +21,10 @@ void main();
 struct Config {
     // label: str
     std::string label;
-    // size: Int32
+    // size: int32
     int32_t size;
 
-    // def __init__(self, label: str, size: Int32) -> None:
+    // def __init__(self, label: str, size: int32) -> None:
     Config() = default;
     explicit Config(std::string_view label, int32_t size);
     // non-copyable (@nocopy)
@@ -41,7 +41,7 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
 }
 
 
-// def __init__(self, label: str, size: Int32) -> None:
+// def __init__(self, label: str, size: int32) -> None:
 inline Config::Config(std::string_view label, int32_t size) : label(label), size(size) {}
 void __tpy_init();
 } // namespace tpyapp::main

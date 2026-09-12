@@ -17,7 +17,7 @@ void main();
 
 // class A:
 struct A {
-    // v: Int32
+    // v: int32
     int32_t v;
 
     // def __init__(self) -> None:
@@ -32,7 +32,7 @@ inline std::ostream& operator<<(std::ostream& os, const A& obj) {
 
 // class B:
 struct B {
-    // v: Int32
+    // v: int32
     int32_t v;
 
     // def __init__(self) -> None:

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def f(*args: Int32, sep: str = ", ") -> str:
+// def f(*args: int32, sep: str = ", ") -> str:
 std::string f(::tpy::varargs<const int32_t> args, std::string_view sep) {
     // result = ""
     std::string result = "";

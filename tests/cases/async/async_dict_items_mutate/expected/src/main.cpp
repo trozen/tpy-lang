@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def bump(d: dict[Int32, C]) -> Int32:
+// async def bump(d: dict[int32, C]) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_bump::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -51,7 +51,7 @@ namespace tpyapp::main {
 }
 
 
-// async def bump(d: dict[Int32, C]) -> Int32:
+// async def bump(d: dict[int32, C]) -> int32:
 __coro_bump bump(::tpy::ordered_map<int32_t, C>& d) {
     return __coro_bump(d);
 }

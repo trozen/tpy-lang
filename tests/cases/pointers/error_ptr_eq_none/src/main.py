@@ -1,5 +1,5 @@
 # Pointer None checks use identity operators; equality with None stays invalid.
-from tpy import Ptr, Int32
+from tpy import Ptr, int32
 
-p: Ptr[Int32] = None
+p: Ptr[int32] = None
 print(p == None)  # tpyc: error(/Use 'is None' \/ 'is not None' for pointer None checks/)

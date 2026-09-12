@@ -6,10 +6,10 @@ namespace tpyapp::a {
 
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 A::A(int32_t v) : val(v) {}
 
-// def go(self) -> Int32:
+// def go(self) -> int32:
 int32_t A::go() const {
     // return self.val
     return this->val;
@@ -19,7 +19,7 @@ int32_t A::go() const {
 // # auto-wraps the non-value record type), so the .hpp can hold
 // # B's fwd-decl while the .cpp body sees full A. This is the
 // # mutual case: a uses H by call, b uses A as a parameter type.
-// def twice(self) -> Int32:
+// def twice(self) -> int32:
 int32_t A::twice() {
     // return H(self) * 2
     return (::tpy::mul_check<int32_t>(::tpyapp::b::H((*this)), 2));

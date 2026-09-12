@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// # Nested tuples with bare int literals (no explicit Int32)
+// # Nested tuples with bare int literals (no explicit int32)
 // def main() -> None:
 void main() {
     // t = ((1, 2), (3, 4))

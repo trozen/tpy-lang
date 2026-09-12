@@ -3,10 +3,10 @@
 # fold lives on the compare, and the body walk here does not carry it, so the
 # loop would re-test what the fact already decided.
 from typing import Literal
-from tpy import Int32
+from tpy import int32
 
 
-def go(mode: Literal["r", "w"]) -> Int32:
+def go(mode: Literal["r", "w"]) -> int32:
     n = 0
     while mode == "r":  # tpyc: error(/not yet supported.*while.literal_fact/)
         n += 1

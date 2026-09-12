@@ -1,8 +1,8 @@
-from tpy import Int32
+from tpy import int32
 import helper
 
-def main() -> Int32:
+def main() -> int32:
     print(helper.get_value())
-    return Int32(0)
+    return int32(0)
 
 main()

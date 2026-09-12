@@ -146,7 +146,7 @@ Macros receive type info through thin public wrappers over compiler internals:
 from tpyc.macro_api import ClassInfo, FieldInfo, TypeInfo, class_macro
 
 class TypeInfo:
-    name: str                      # "Int32", "list", "str"
+    name: str                      # "int32", "list", "str"
     type_args: list[TypeInfo | int]  # an `N: int` generic binding is a plain
                                      # int -- match with isinstance(ta, int)
     is_optional: bool
@@ -301,8 +301,8 @@ macros import only from `tpyc.macro_api` and other macro modules (files with
 @model
 class Order:
     symbol: FixStr[8]
-    price: Float64
-    quantity: Int32
+    price: float64
+    quantity: int32
 ```
 
 The `@model` macro inspects fields+types, generates `__init__`, `validate()`,
@@ -327,13 +327,13 @@ and `field(N)` reusing the existing descriptor infrastructure.
 from tplib.protobuf import Message, field
 
 class Point(Message):
-    x: Float64 = field(1)
-    y: Float64 = field(2)
+    x: float64 = field(1)
+    y: float64 = field(2)
 
 class Trade(Message):
-    id: Int64 = field(1)
+    id: int64 = field(1)
     symbol: str = field(2)
-    price: Float64 = field(3)
+    price: float64 = field(3)
     tags: list[str] = field(4)
     origin: Optional[Point] = field(5)
 
@@ -351,10 +351,10 @@ TPy types map to protobuf wire types:
 | TPy type | Proto wire type | Encoding |
 |----------|----------------|----------|
 | `bool` | varint | 0/1 |
-| `Int32`, `Int64` | varint | signed varint (zigzag) |
-| `UInt32`, `UInt64` | varint | unsigned varint |
-| `Float32` | fixed32 | IEEE 754 single |
-| `Float64` | fixed64 | IEEE 754 double |
+| `int32`, `int64` | varint | signed varint (zigzag) |
+| `uint32`, `uint64` | varint | unsigned varint |
+| `float32` | fixed32 | IEEE 754 single |
+| `float64` | fixed64 | IEEE 754 double |
 | `str` | length-delimited | UTF-8 bytes |
 | `bytes` | length-delimited | raw bytes |
 | `list[T]` | length-delimited (packed) | repeated, packed for scalars |
@@ -387,7 +387,7 @@ virtual dispatch, no reflection, no field table lookups at runtime.
 
 #### Implementation phases
 
-1. **Scalar fields**: `Int32`, `Int64`, `UInt32`, `UInt64`, `Float32`, `Float64`,
+1. **Scalar fields**: `int32`, `int64`, `uint32`, `uint64`, `float32`, `float64`,
    `bool`, `str` -- covers the core wire types
 2. **Nested messages**: `Message` subclass fields, recursive encode/decode
 3. **Repeated fields**: `list[T]` with packed encoding for scalars
@@ -401,17 +401,17 @@ virtual dispatch, no reflection, no field table lookups at runtime.
 - `add_method_from_source` (Phase 4) or manual AST construction for
   `encode()`/`decode()` bodies -- these are complex method bodies with loops
   and conditional logic
-- `bytes` / `bytearray` type support in TPy (or `Span[UInt8]` as the buffer type)
+- `bytes` / `bytearray` type support in TPy (or `Span[uint8]` as the buffer type)
 - C++ runtime header for protobuf encoding primitives
 
 #### Open questions
 
-- **Buffer type**: `bytearray` (Pythonic) vs `Span[UInt8]` (zero-copy, existing
-  TPy type) vs `list[UInt8]` (simple but slow). Probably `bytearray` as the
+- **Buffer type**: `bytearray` (Pythonic) vs `Span[uint8]` (zero-copy, existing
+  TPy type) vs `list[uint8]` (simple but slow). Probably `bytearray` as the
   API type, backed by `::tpy::Bytes` in C++.
 - **Streaming**: should `encode()` accept an output buffer/writer for zero-copy
   serialization, or always return a new buffer? Could offer both:
-  `encode() -> bytearray` and `encode_into(buf: Span[UInt8]) -> Int32` (returns
+  `encode() -> bytearray` and `encode_into(buf: Span[uint8]) -> int32` (returns
   bytes written).
 - **Compatibility**: should we support reading proto2 messages (required fields,
   groups)? Probably proto3-only for simplicity.
@@ -432,8 +432,8 @@ Expands at compile time to type-aware writes into a fixed buffer.
 ```python
 @derive(Eq, Hash, Repr)
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 ```
 
 ### 5. Builder pattern (class-macro form)
@@ -442,8 +442,8 @@ class Point:
 @builder
 class Config:
     host: str
-    port: Int32 = 8080
-    timeout: Float64 = 30.0
+    port: int32 = 8080
+    timeout: float64 = 30.0
 ```
 
 A class macro that emits fluent `set_*` methods. Distinct from builder-trace
@@ -464,7 +464,7 @@ r2 = regex("[invalid(")   # compile error: malformed regex pattern
 ```python
 from argparse import ArgumentParser
 
-def main(argv: list[str]) -> Int32:
+def main(argv: list[str]) -> int32:
     parser = ArgumentParser(description="Frobnicate")
     parser.add_argument("-v", "--verbose", action="store_true")
     parser.add_argument("-n", "--count", type=int, default=1)
@@ -482,8 +482,8 @@ the fields; no runtime reflection.
 v1 surface (done): `add_argument` with `store` / `store_true` /
 `store_false` / `count` / `append` / `extend` / `store_const` actions;
 `nargs` in `?` / `*` / `+` / integer; `type=` from `int` / `float` /
-`str` plus all eight fixed-width ints (`Int8`..`Int64`,
-`UInt8`..`UInt64`); `default=` (scalar literals + list literals for
+`str` plus all eight fixed-width ints (`int8`..`int64`,
+`uint8`..`uint64`); `default=` (scalar literals + list literals for
 list-typed actions) / `const=` / `choices=` / `required=` / `help=` /
 `dest=` / `metavar=`. Optional scalar flags without `default=` produce
 `Optional[T]` fields. ArgumentParser kwargs `description=` / `prog=` /
@@ -500,7 +500,7 @@ status table for the `argparse` module.
 | Tier | Feature | Notes |
 |------|---------|-------|
 | 1 | ~~`--help` / `-h` auto-generation~~ | Done. The terminal handler synthesizes a help-printer fn (pre-rendered usage + sections, no macro state retained at runtime). The parse fn opens with a prelude that scans argv for ``-h`` / ``--help`` and calls the help fn (which prints + ``sys.exit(0)``). User add_argument calls that re-use ``-h`` / ``--help`` are rejected at macro time |
-| 1 | ~~`type=` for fixed-width ints~~ / `Float32` | Fixed-width ints (`Int8` / `Int16` / `Int32` / `Int64` / `UInt8` / `UInt16` / `UInt32` / `UInt64`) done. `Float32` blocked on a codegen gap: `Float32(runtime_str)` doesn't lower to `float32_from_str` the way `Int32(runtime_str)` lowers to `from_str_check<int32_t>`. Land that lowering, then add `"Float32"` to `_ALLOWED_TYPES` |
+| 1 | ~~`type=` for fixed-width ints~~ / `float32` | Fixed-width ints (`int8` / `int16` / `int32` / `int64` / `uint8` / `uint16` / `uint32` / `uint64`) done. `float32` blocked on a codegen gap: `float32(runtime_str)` doesn't lower to `float32_from_str` the way `int32(runtime_str)` lowers to `from_str_check<int32_t>`. Land that lowering, then add `"float32"` to `_ALLOWED_TYPES` |
 | 1 | ~~Subparsers~~ | Done. `add_subparsers()` returns a `_SubparsersAction` sub-builder via `@builder_returns`; each `add_parser(name)` returns a `_SubparserBuilder` collecting its own arg specs. Synthesis emits one record + parse-fn per sub-parser; the top record carries common args, a `cmd: str` (`Optional[str]` when `required=False`) for the chosen subcommand name, and every per-sub field as a flat `Optional[T]` (CPython argparse Namespace shape). The parse fn dispatches the subcommand keyword, calls the matching sub-parse-fn, and copies the chosen sub record's fields into the corresponding flat locals. **Future option (typed-union escape hatch):** a stored ``_subcommand: A \| B`` + `@property` forwarders that match over it would replace the flat-namespace shape on non-active per-sub fields. The pre-pass-6 builder-trace move (now landed) unblocked this: synthesized record method bodies are now sema-analyzed in pass 6, so property forwarder bodies are no longer "Could not infer type". Still gated on `__tpy_builder_` private records being reachable for `match`/`case`, plus emitting per-sub forwarders alongside the flat fields. **Other CPython divergence:** TPy preemptively populates every per-sub field on the top namespace as `None`; CPython only sets attributes for the chosen sub. Code that reads non-active per-sub fields under both backends needs `getattr(args, ..., None)` |
 | 2 | ~~`add_help=False`~~ | Done. Suppresses the auto help printer + prelude when False, and lifts the `-h` / `--help` reservation so users can register their own |
 | 2 | ~~`metavar=`~~ | Done. Per-arg display-name override; flows through `_metavar_for` into both usage and help-section rendering |
@@ -630,7 +630,7 @@ Context surface:
   (resolved `(name, TypeInfo | None)` -- `None` for unannotated params),
   `return_type`, `body` (walkable statements).
 - *Type minting:* `resolve_type(name)` returns the `TypeInfo` for a
-  primitive/builtin type name (`"bool"`, `"Int32"`, `"Float64"`, ...), or
+  primitive/builtin type name (`"bool"`, `"int32"`, `"float64"`, ...), or
   `None` -- so a macro can hand a type to `annotate_local` without borrowing
   one off a param/return. For imported user types (records/enums), use
   `lookup_imported_name` instead.
@@ -820,7 +820,7 @@ TypeInfo predicates inspect Python type annotations:
 ```python
 # CPython TypeInfo wraps a Python type annotation
 TypeInfo.from_python_type(int)        # is_int = False (Python int = BigInt)
-TypeInfo.from_python_type(Int32)      # is_int = True (from lib/cpy/tpy/)
+TypeInfo.from_python_type(int32)      # is_int = True (from lib/cpy/tpy/)
 TypeInfo.from_python_type(str)        # is_str = True
 TypeInfo.from_python_type(list[str])  # is_list = True, type_args = [TypeInfo(str)]
 ```
@@ -1029,7 +1029,7 @@ def parse_fragment(cls, source: str, kind: str = "function") -> ...:
 
 Creates a throwaway `TpyParser` with minimal state. Type annotations in the
 fragment are left as unresolved names -- sema resolves them later, same as
-AST builder nodes like `ast.name("Int32")`.
+AST builder nodes like `ast.name("int32")`.
 
 The CPython backend (`lib/cpy/tpyc/macro_api.py`) implements the same methods
 using Python's `ast.parse()`, consistent with how `ast.function()` already

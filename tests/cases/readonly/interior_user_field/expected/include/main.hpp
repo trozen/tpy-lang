@@ -17,10 +17,10 @@ void main();
 // @nocopy
 // class Cell:
 struct Cell {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Cell() = default;
     explicit Cell(int32_t n);
     // non-copyable (@nocopy)
@@ -62,7 +62,7 @@ struct Counter {
     void tick() const;
 
     // @readonly
-    // def value(self) -> Int32:
+    // def value(self) -> int32:
     int32_t value() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
@@ -73,7 +73,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 }
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Cell::Cell(int32_t n) : n(n) {}
 
 // def bump(self) -> None:
@@ -111,7 +111,7 @@ inline void Counter::tick() const {
 }
 
 // @readonly
-// def value(self) -> Int32:
+// def value(self) -> int32:
 inline int32_t Counter::value() const {
     // return self._cell.n
     return ::tpy::deref_check(this->_cell).n;

@@ -3,8 +3,8 @@
 
 namespace tpyapp::main {
 
-// # Test abs with Int32
-// x: Int32 = -42
+// # Test abs with int32
+// x: int32 = -42
 int32_t x{};
 // # Test abs with BigInt (default int)
 // y = -100
@@ -21,14 +21,14 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Test abs with Int32
-    // x: Int32 = -42
+    // # Test abs with int32
+    // x: int32 = -42
     x = -42;
     // print(abs(x))
     std::cout << ::std::abs(x) << "\n";
-    // print(abs(Int32(10)))
+    // print(abs(int32(10)))
     std::cout << ::std::abs(10) << "\n";
-    // print(abs(Int32(0)))
+    // print(abs(int32(0)))
     std::cout << ::std::abs(0) << "\n";
     // # Test abs with BigInt (default int)
     // y = -100

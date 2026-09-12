@@ -4,17 +4,17 @@
 namespace tpyapp::main {
 
 
-// def pair() -> tuple[Own[P | None], Int32]:
+// def pair() -> tuple[Own[P | None], int32]:
 std::tuple<std::optional<P>, int32_t> pair() {
-    // return (P(42), Int32(99))
+    // return (P(42), int32(99))
     return std::tuple<std::optional<P>, int32_t>{P(42), 99};
 }
 
-// def borrow(p: P | None) -> Int32:
+// def borrow(p: P | None) -> int32:
 int32_t borrow(const P* p) {
     // if p is None:
     if ((p == nullptr)) {
-        // return Int32(-1)
+        // return int32(-1)
         return -1;
     }
     // return p.x

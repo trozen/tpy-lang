@@ -4,13 +4,13 @@
 # temporary receiver takes. The copy is the ACKNOWLEDGED CPython divergence
 # (CPython hands back the caller's Point), so the case prints only what both
 # agree on: `updated()` mutates through the borrow BEFORE the return.
-from tpy import Int32, Own, copy
+from tpy import int32, Own, copy
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
     def updated(self) -> 'Point':

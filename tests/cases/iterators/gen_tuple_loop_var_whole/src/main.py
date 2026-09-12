@@ -6,18 +6,18 @@
 import asyncio
 from typing import Iterator
 
-from tpy import Int32, Own, readonly
+from tpy import int32, Own, readonly
 
 
 class A:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 
 # free generator: reference element, mutated after a yield
-def walk_free(xs: list[tuple[Int32, A]]) -> Iterator[Int32]:
+def walk_free(xs: list[tuple[int32, A]]) -> Iterator[int32]:
     for t in xs:  # tpyc: ok
         yield t[0]
         t[1].v += 100
@@ -25,20 +25,20 @@ def walk_free(xs: list[tuple[Int32, A]]) -> Iterator[Int32]:
 
 
 # all-value element tuple: a plain value field, copy is unobservable
-def walk_value(xs: list[tuple[Int32, Int32]]) -> Iterator[Int32]:
+def walk_value(xs: list[tuple[int32, int32]]) -> Iterator[int32]:
     for t in xs:  # tpyc: ok
         yield t[0]
         yield t[1]
 
 
 class Holder:
-    xs: list[tuple[Int32, A]]
+    xs: list[tuple[int32, A]]
 
-    def __init__(self, xs: Own[list[tuple[Int32, A]]]) -> None:
+    def __init__(self, xs: Own[list[tuple[int32, A]]]) -> None:
         self.xs = xs
 
     # generator method: same field over a field-rooted source
-    def walk(self) -> Iterator[Int32]:
+    def walk(self) -> Iterator[int32]:
         for t in self.xs:  # tpyc: ok
             yield t[0]
             t[1].v += 100
@@ -46,14 +46,14 @@ class Holder:
 
     # readonly method: the source iterates const, so the field is `const T*`
     @readonly
-    def peek(self) -> Iterator[Int32]:
+    def peek(self) -> Iterator[int32]:
         for t in self.xs:  # tpyc: ok
             yield t[0]
             yield t[1].v
 
 
 # async def: the same classification serves the coroutine frame
-async def walk_async(xs: list[tuple[Int32, A]]) -> Int32:
+async def walk_async(xs: list[tuple[int32, A]]) -> int32:
     total = 0
     for t in xs:  # tpyc: ok
         total += t[0]
@@ -65,7 +65,7 @@ async def walk_async(xs: list[tuple[Int32, A]]) -> Int32:
 
 # dict_items proxy: `&(*it)` is ill-formed on the prvalue proxy, so this one
 # keeps the borrow-form tuple field and its tuple_to_pointer bind
-def walk_items(d: dict[Int32, A]) -> Iterator[Int32]:
+def walk_items(d: dict[int32, A]) -> Iterator[int32]:
     for kv in d.items():  # tpyc: ok
         yield kv[0]
         kv[1].v += 100
@@ -74,7 +74,7 @@ def walk_items(d: dict[Int32, A]) -> Iterator[Int32]:
 
 # async + dict_items with an ALL-VALUE element: the proxy cannot be
 # address-taken, so this one keeps the plain value-tuple field and its bare bind
-async def sum_items(d: dict[Int32, Int32]) -> Int32:
+async def sum_items(d: dict[int32, int32]) -> int32:
     total = 0
     for kv in d.items():  # tpyc: ok
         await asyncio.sleep(0)

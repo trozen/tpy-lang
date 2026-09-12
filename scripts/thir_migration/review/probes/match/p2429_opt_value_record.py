@@ -1,9 +1,9 @@
 from typing import Optional
-from tpy import Int32, ValueType
+from tpy import int32, ValueType
 
 class P(ValueType):
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 def f(o: Optional[P]) -> str:

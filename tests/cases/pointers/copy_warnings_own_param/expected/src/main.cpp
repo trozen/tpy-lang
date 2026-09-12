@@ -35,9 +35,9 @@ void main() {
     // items[0] = Point()        # tpyc: ok
     ::tpy::__setitem__(items, 0, Point());
     // # value types — no warning
-    // nums: list[Int32] = []
+    // nums: list[int32] = []
     std::vector<int32_t> nums = std::vector<int32_t>{};
-    // x: Int32 = 42
+    // x: int32 = 42
     int32_t x = 42;
     // nums.append(x)            # tpyc: ok
     nums.push_back(x);

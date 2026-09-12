@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def free_import() -> Iterator[Int32]:
+// def free_import() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_free_import::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -38,12 +38,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_free_import::__next__() {
 }
 
 
-// def free_import() -> Iterator[Int32]:
+// def free_import() -> Iterator[int32]:
 __gen_free_import free_import() {
     return __gen_free_import();
 }
 
-// def module_call() -> Iterator[Int32]:
+// def module_call() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_module_call::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -77,12 +77,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_module_call::__next__() {
 }
 
 
-// def module_call() -> Iterator[Int32]:
+// def module_call() -> Iterator[int32]:
 __gen_module_call module_call() {
     return __gen_module_call();
 }
 
-// def imported_method(s: Src) -> Iterator[Int32]:
+// def imported_method(s: Src) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_imported_method::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -116,12 +116,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_imported_method::__next__() {
 }
 
 
-// def imported_method(s: Src) -> Iterator[Int32]:
+// def imported_method(s: Src) -> Iterator[int32]:
 __gen_imported_method imported_method(::tpyapp::gensrc::Src& s) {
     return __gen_imported_method(s);
 }
 
-// def generic_callee() -> Iterator[Int32]:
+// def generic_callee() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_generic_callee::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -157,12 +157,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_generic_callee::__next__() {
 }
 
 
-// def generic_callee() -> Iterator[Int32]:
+// def generic_callee() -> Iterator[int32]:
 __gen_generic_callee generic_callee() {
     return __gen_generic_callee();
 }
 
-// def generic_owner_imported(b: Box[Int32]) -> Iterator[Int32]:
+// def generic_owner_imported(b: Box[int32]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_generic_owner_imported::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -196,12 +196,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_generic_owner_imported::__nex
 }
 
 
-// def generic_owner_imported(b: Box[Int32]) -> Iterator[Int32]:
+// def generic_owner_imported(b: Box[int32]) -> Iterator[int32]:
 __gen_generic_owner_imported generic_owner_imported(::tpyapp::gensrc::Box<int32_t>& b) {
     return __gen_generic_owner_imported(b);
 }
 
-// def generic_owner_local(b: LocalBox[Int32]) -> Iterator[Int32]:
+// def generic_owner_local(b: LocalBox[int32]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_generic_owner_local::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -235,12 +235,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_generic_owner_local::__next__
 }
 
 
-// def generic_owner_local(b: LocalBox[Int32]) -> Iterator[Int32]:
+// def generic_owner_local(b: LocalBox[int32]) -> Iterator[int32]:
 __gen_generic_owner_local generic_owner_local(LocalBox<int32_t>& b) {
     return __gen_generic_owner_local(b);
 }
 
-// def mutate_receiver(b: Bag) -> Iterator[Int32]:
+// def mutate_receiver(b: Bag) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_mutate_receiver::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -276,12 +276,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_mutate_receiver::__next__() {
 }
 
 
-// def mutate_receiver(b: Bag) -> Iterator[Int32]:
+// def mutate_receiver(b: Bag) -> Iterator[int32]:
 __gen_mutate_receiver mutate_receiver(::tpyapp::gensrc::Bag& b) {
     return __gen_mutate_receiver(b);
 }
 
-// def lazy_interleave() -> Iterator[Int32]:
+// def lazy_interleave() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_lazy_interleave::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -315,12 +315,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_lazy_interleave::__next__() {
 }
 
 
-// def lazy_interleave() -> Iterator[Int32]:
+// def lazy_interleave() -> Iterator[int32]:
 __gen_lazy_interleave lazy_interleave() {
     return __gen_lazy_interleave();
 }
 
-// def abandoned() -> Iterator[Int32]:
+// def abandoned() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_abandoned::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -354,16 +354,16 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_abandoned::__next__() {
 }
 
 
-// def abandoned() -> Iterator[Int32]:
+// def abandoned() -> Iterator[int32]:
 __gen_abandoned abandoned() {
     return __gen_abandoned();
 }
 
-// async def async_position() -> Int32:
+// async def async_position() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_async_position::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // total: Int32 = 0
+        // total: int32 = 0
         total = 0;
         __for_src_0.emplace(::tpyapp::gensrc::walk());
         __state = S_JOIN_0;
@@ -399,7 +399,7 @@ __gen_abandoned abandoned() {
 }
 
 
-// async def async_position() -> Int32:
+// async def async_position() -> int32:
 __coro_async_position async_position() {
     return __coro_async_position();
 }

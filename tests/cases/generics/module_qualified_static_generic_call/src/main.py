@@ -2,10 +2,10 @@
 # class is qualified through the module namespace and the method's own type
 # argument rides the call.
 import helpers
-from tpy import Int32
+from tpy import int32
 
 
-def use(x: Int32, y: Int32) -> Int32:
+def use(x: int32, y: int32) -> int32:
     return helpers.Util.second(x, y)
 
 

@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // nums: list[Int32] = [10, 20, 30, 40]
+    // nums: list[int32] = [10, 20, 30, 40]
     std::vector<int32_t> nums = {10, 20, 30, 40};
     // print(last(nums))
     std::cout << last<int32_t>(nums) << "\n";

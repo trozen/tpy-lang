@@ -17,10 +17,10 @@ void main();
 
 // class Acc:
 struct Acc {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32):
+    // def __init__(self, n: int32):
     Acc() = default;
     explicit Acc(int32_t n);
 
@@ -46,7 +46,7 @@ inline std::ostream& operator<<(std::ostream& os, const Acc& obj) {
 }
 
 
-// def __init__(self, n: Int32):
+// def __init__(self, n: int32):
 inline Acc::Acc(int32_t n) : n(n) {}
 
 // def __add__(self, o: "Acc") -> "readonly[Acc]":

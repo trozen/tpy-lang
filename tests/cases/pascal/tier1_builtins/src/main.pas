@@ -1,6 +1,6 @@
 { Tier-1 built-ins: inc/dec (with and without step), sqr, odd, abs,
   chr, ord, plus char-typed variables and the implicit single-char
-  string -> Char conversion at the assignment site. }
+  string -> char conversion at the assignment site. }
 program BuiltinsTest;
 var
   i: integer;

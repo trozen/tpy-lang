@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def main() -> Int32:
+// def main() -> int32:
 int32_t main() {
     // print(b_value())
     std::cout << ::tpyapp::mod_b::b_value() << "\n";
     // print(c_value())
     std::cout << ::tpyapp::mod_c::c_value() << "\n";
-    // return Int32(0)
+    // return int32(0)
     return 0;
 }
 

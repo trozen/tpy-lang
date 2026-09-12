@@ -2,12 +2,12 @@
 # std::tuple<std::optional<T>, ...>; init from pointer-form literal goes
 # through tuple_to_storage. Reading the global into a pointer-form param
 # goes through tuple_to_pointer.
-from tpy import Int32
+from tpy import int32
 
 
 class T:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 

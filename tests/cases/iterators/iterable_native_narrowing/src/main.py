@@ -5,28 +5,28 @@
 # CPython) so outputs match across both runtimes; the narrowing codegen
 # itself is verified by the generated .hpp snapshot (distinct branches).
 from typing import Iterable
-from tpy import Int32, NativeIterable
+from tpy import int32, NativeIterable
 
 
-def sum_fast(it: Iterable[Int32] | NativeIterable[Int32]) -> Int32:
-    total: Int32 = 0
+def sum_fast(it: Iterable[int32] | NativeIterable[int32]) -> int32:
+    total: int32 = 0
     if isinstance(it, NativeIterable):
-        # Narrowed to NativeIterable[Int32] -- emitted as begin/end range-for.
+        # Narrowed to NativeIterable[int32] -- emitted as begin/end range-for.
         for x in it:
             total += x
     else:
-        # Still Iterable[Int32] -- emitted as universal __iter__/__next__.
+        # Still Iterable[int32] -- emitted as universal __iter__/__next__.
         for x in it:
             total += x
     return total
 
 
-def sum_nested(it: Iterable[Int32] | NativeIterable[Int32], flag: bool) -> Int32:
+def sum_nested(it: Iterable[int32] | NativeIterable[int32], flag: bool) -> int32:
     # Exercise the protocol_narrowings save/restore across nested branches:
     # an inner if-block inside the narrowing branch must not leak its own
     # narrowing out, and the narrowing must still be visible after the
     # inner block re-exits.
-    total: Int32 = 0
+    total: int32 = 0
     if isinstance(it, NativeIterable):
         if flag:
             for x in it:
@@ -40,10 +40,10 @@ def sum_nested(it: Iterable[Int32] | NativeIterable[Int32], flag: bool) -> Int32
     return total
 
 
-def sum_elif(kind: Int32, it: Iterable[Int32] | NativeIterable[Int32]) -> Int32:
+def sum_elif(kind: int32, it: Iterable[int32] | NativeIterable[int32]) -> int32:
     # Exercise elif-branch save/restore: the narrowing must be local to the
     # isinstance branch and not leak across elif/else.
-    total: Int32 = 0
+    total: int32 = 0
     if kind == 0:
         total = 1
     elif isinstance(it, NativeIterable):
@@ -58,7 +58,7 @@ def sum_elif(kind: Int32, it: Iterable[Int32] | NativeIterable[Int32]) -> Int32:
 
 
 def main() -> None:
-    nums: list[Int32] = [1, 2, 3, 4]
+    nums: list[int32] = [1, 2, 3, 4]
 
     # Basic narrowing.
     print(sum_fast(nums))                # 10

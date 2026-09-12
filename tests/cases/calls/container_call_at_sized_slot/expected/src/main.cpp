@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def empty_set() -> Own[set[Int32]]:
+// def empty_set() -> Own[set[int32]]:
 ::tpy::ordered_set<int32_t> empty_set() {
     // return set()
     return ::tpy::ordered_set<int32_t>();

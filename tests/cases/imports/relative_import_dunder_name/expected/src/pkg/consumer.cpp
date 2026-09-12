@@ -4,7 +4,7 @@
 namespace tpyapp::pkg::consumer {
 
 
-// def compute() -> Int32:
+// def compute() -> int32:
 int32_t compute() {
     // return get_value()
     return ::tpyapp::pkg::my__helper::get_value();

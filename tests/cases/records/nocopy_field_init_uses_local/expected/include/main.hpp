@@ -18,10 +18,10 @@ void main();
 // @nocopy
 // class Wrap:
 struct Wrap {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Wrap() = default;
     explicit Wrap(int32_t v);
     // non-copyable (@nocopy)
@@ -42,7 +42,7 @@ struct Foo {
     // _x: Wrap
     Wrap _x;
 
-    // def __init__(self, seed: Int32) -> None:
+    // def __init__(self, seed: int32) -> None:
     Foo() = default;
     explicit Foo(int32_t seed);
     // non-copyable (field '_x')
@@ -59,10 +59,10 @@ inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Wrap::Wrap(int32_t v) : v(v) {}
 
-// def __init__(self, seed: Int32) -> None:
+// def __init__(self, seed: int32) -> None:
 inline Foo::Foo(int32_t seed) {
     // tmp = pick(seed)
     int32_t tmp = pick(seed);

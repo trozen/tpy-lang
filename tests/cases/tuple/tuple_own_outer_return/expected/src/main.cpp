@@ -6,9 +6,9 @@ namespace tpyapp::main {
 
 // def make_pair() -> Own[tuple[Handle, Handle]]:
 std::tuple<Handle, Handle> make_pair() {
-    // a = Handle(Int32(10))
+    // a = Handle(int32(10))
     Handle a = Handle(10);
-    // b = Handle(Int32(20))
+    // b = Handle(int32(20))
     Handle b = Handle(20);
     // return (a, b)  # tpyc: ok
     return std::tuple<Handle, Handle>{std::move(a), std::move(b)};

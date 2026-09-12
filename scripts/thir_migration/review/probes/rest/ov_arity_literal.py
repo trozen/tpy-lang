@@ -1,10 +1,10 @@
 from typing import overload, Literal
-from tpy import Int32
+from tpy import int32
 @overload
-def h(a: Literal["x"]) -> Int32: ...
+def h(a: Literal["x"]) -> int32: ...
 @overload
-def h(a: str, b: Int32) -> Int32: ...
-def h(a: str, b: Int32 = 0) -> Int32:
+def h(a: str, b: int32) -> int32: ...
+def h(a: str, b: int32 = 0) -> int32:
     return b
 def main() -> None:
     print(h("x"), h("y", 2))

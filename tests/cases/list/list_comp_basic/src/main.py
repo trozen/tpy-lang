@@ -1,25 +1,25 @@
 # List comprehension: basic expression transformation
-from tpy import Int32, Own
+from tpy import int32, Own
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32) -> None:
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 
 def main() -> None:
     # Transform with range
-    squares: list[Int32] = [x * x for x in range(5)]
+    squares: list[int32] = [x * x for x in range(5)]
     print(squares)
 
     # Identity comprehension from list
-    items: list[Int32] = [10, 20, 30]
+    items: list[int32] = [10, 20, 30]
     copy = [x for x in items]
     print(copy)
 
     # Two-arg range (non-literal stop to stay on list path)
-    stop: Int32 = 7
+    stop: int32 = 7
     shifted = [x for x in range(3, stop)]
     print(shifted)
 
@@ -40,11 +40,11 @@ def main() -> None:
     print(make_list(4))
 
     # Three-arg range (non-literal step to stay on list path)
-    step: Int32 = 3
+    step: int32 = 3
     stepped = [x for x in range(0, 10, step)]
     print(stepped)
 
-def make_list(n: Int32) -> Own[list[Int32]]:
+def make_list(n: int32) -> Own[list[int32]]:
     return [x * 10 for x in range(n)]
 
 main()

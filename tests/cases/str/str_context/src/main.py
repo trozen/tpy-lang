@@ -1,11 +1,11 @@
 # Test context-dependent str: param=view, field=owned, return=owned
-from tpy import Int32
+from tpy import int32
 
 def greet(name: str) -> str:
     return str("Hello ") + name
 
 def get_name() -> str:
-    return str(Int32(42))
+    return str(int32(42))
 
 class Person:
     name: str

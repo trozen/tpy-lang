@@ -15,10 +15,10 @@ Circle make_circle(int32_t r);
 
 // class Circle:
 struct Circle {
-    // radius: Int32
+    // radius: int32
     int32_t radius;
 
-    // def __init__(self, radius: Int32) -> None:
+    // def __init__(self, radius: int32) -> None:
     Circle() = default;
     explicit Circle(int32_t radius);
     static constexpr std::string_view __tpy_class_name__ = "shapes.Circle";
@@ -30,7 +30,7 @@ inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
 }
 
 
-// def __init__(self, radius: Int32) -> None:
+// def __init__(self, radius: int32) -> None:
 inline Circle::Circle(int32_t radius) : radius(radius) {}
 void __tpy_init();
 } // namespace tpyapp::shapes

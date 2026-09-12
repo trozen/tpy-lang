@@ -6,14 +6,14 @@ namespace tpyapp::main {
 
 // # free function: variants differ by arity
 // @dispatch
-// def area(w: Int32) -> Int32:  # tpyc: ok
+// def area(w: int32) -> int32:  # tpyc: ok
 int32_t area(int32_t w) {
     // return w * w
     return (::tpy::mul_check<int32_t>(w, w));
 }
 
 // @dispatch
-// def area(w: Int32, h: Int32) -> Int32:
+// def area(w: int32, h: int32) -> int32:
 int32_t area(int32_t w, int32_t h) {
     // return w * h
     return (::tpy::mul_check<int32_t>(w, h));
@@ -21,14 +21,14 @@ int32_t area(int32_t w, int32_t h) {
 
 // # free function: variants differ by type, with different return types
 // @dispatch
-// def tag(x: Int32) -> str:  # tpyc: ok
+// def tag(x: int32) -> str:  # tpyc: ok
 std::string tag(int32_t x) {
     // return "int"
     return "int";
 }
 
 // @dispatch
-// def tag(x: str) -> Int32:
+// def tag(x: str) -> int32:
 int32_t tag(std::string_view x) {
     // return len(x)
     return ::tpy::__len__(x);
@@ -36,7 +36,7 @@ int32_t tag(std::string_view x) {
 
 // # free function: the fixed-int variant declared AFTER the str one; a literal
 // # must still reach it under both runtimes (the CPython stub cannot isinstance
-// # a plain int against Int32, so its matcher fits the literal to the slot)
+// # a plain int against int32, so its matcher fits the literal to the slot)
 // @dispatch
 // def kind(x: str) -> str:  # tpyc: ok
 std::string kind(std::string_view x) {
@@ -45,7 +45,7 @@ std::string kind(std::string_view x) {
 }
 
 // @dispatch
-// def kind(x: Int32) -> str:
+// def kind(x: int32) -> str:
 std::string kind(int32_t x) {
     // return "int"
     return "int";
@@ -53,14 +53,14 @@ std::string kind(int32_t x) {
 
 // # reference type: a variant mutates the list it is handed, visible to the caller
 // @dispatch
-// def push(xs: list[Int32]) -> None:  # tpyc: ok
+// def push(xs: list[int32]) -> None:  # tpyc: ok
 void push(std::vector<int32_t>& xs) {
     // xs.append(0)
     xs.push_back(0);
 }
 
 // @dispatch
-// def push(xs: list[Int32], v: Int32) -> None:
+// def push(xs: list[int32], v: int32) -> None:
 void push(std::vector<int32_t>& xs, int32_t v) {
     // xs.append(v)
     xs.push_back(v);
@@ -100,7 +100,7 @@ void main() {
     a.add(std::string_view("xyz"));
     // print("method:", a.total)
     std::cout << "method:" << " " << a.total << "\n";
-    // xs: list[Int32] = []
+    // xs: list[int32] = []
     std::vector<int32_t> xs = std::vector<int32_t>{};
     // push(xs)
     push(xs);

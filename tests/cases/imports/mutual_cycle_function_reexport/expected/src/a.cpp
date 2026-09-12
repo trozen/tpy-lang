@@ -5,7 +5,7 @@
 namespace tpyapp::a {
 
 
-// def aye() -> Int32:
+// def aye() -> int32:
 int32_t aye() {
     // return bee()
     return ::tpyapp::b::bee();

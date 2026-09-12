@@ -5,7 +5,7 @@
 TurboPython is a compiler that translates Python source code to C++. The goal is **Python-first**: idiomatic Python should work out of the box, producing efficient native code. Equally important, the language must allow writing C++-level efficient code when desired — the programmer can opt in to low-level control over memory layout, allocation, and ownership without leaving the language. The compiler handles type inference, maps Python types to C++ equivalents, and generates readable C++ that is then compiled with a standard C++ compiler.
 
 The type system already supports:
-- Value types: `int` (arbitrary precision), `float`, `Int32`, `Bool`, `Char`
+- Value types: `int` (arbitrary precision), `float`, `int32`, `Bool`, `char`
 - User-defined records (classes mapped to C++ structs)
 - Containers: `list[T]` (vector), `Array[T, N]` (fixed-size), `Span[T]` (read-only view)
 - Pointers: `Ptr[T]` (raw mutable pointer), `Ptr[readonly[T]]` (raw const pointer)
@@ -163,14 +163,14 @@ print(x.field)
 print(y.field)
 ```
 
-**Value types** — both built-in (`Int32`, `Bool`, `float`) and user-defined (analogous to frozen dataclasses in CPython — small, immutable, no observable difference between copy and share) — would copy silently without warnings, since the copy is semantically invisible.
+**Value types** — both built-in (`int32`, `Bool`, `float`) and user-defined (analogous to frozen dataclasses in CPython — small, immutable, no observable difference between copy and share) — would copy silently without warnings, since the copy is semantically invisible.
 
 **The "find best" pattern** requires returning an index or `Ptr[T]` instead of the object itself, since returning a copy disconnects it from the container:
 
 ```python
 # Option 1: return index
-def find_max_idx(points: list[Point]) -> Int32:
-    best: Int32 = 0
+def find_max_idx(points: list[Point]) -> int32:
+    best: int32 = 0
     for i in range(len(points)):
         if points[i].value > points[best].value:
             best = i
@@ -285,13 +285,13 @@ The programmer explicitly chooses whether a type has value or reference semantic
 
 ```python
 class Point:            # value type (default for simple records)
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 @reftype                # or some other marker — reference type, ARC-managed
 class Node:
     children: list[Node]
-    value: Int32
+    value: int32
 ```
 
 ```python
@@ -331,13 +331,13 @@ Prior art: **Swift** makes exactly this distinction (`struct` vs `class`). **Moj
 Functions declare how they receive parameters: borrowed (read-only reference), mutably borrowed (in-out reference), or owned (takes ownership). Variables use value semantics with explicit transfer syntax. This is the model chosen by Mojo, which has a similar goal (Python syntax, native performance).
 
 ```python
-def process(borrowed p: Point) -> Int32:    # immutable reference (default)
+def process(borrowed p: Point) -> int32:    # immutable reference (default)
     return p.x + p.y
 
 def update(inout p: Point) -> None:         # mutable reference
     p.x += 1
 
-def consume(owned p: Point) -> Int32:       # takes ownership, caller can't use p after
+def consume(owned p: Point) -> int32:       # takes ownership, caller can't use p after
     return p.x
 
 x = Point(1, 2)
@@ -431,7 +431,7 @@ def setup():
 
 **Pattern 4: Simple local computation (90% of code)**
 ```python
-def process() -> Int32:
+def process() -> int32:
     p = Point(1, 2)
     p.x += 10
     return p.x     # no sharing, no aliasing — value semantics is perfect

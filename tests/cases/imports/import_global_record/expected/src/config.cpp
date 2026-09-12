@@ -3,7 +3,7 @@
 
 namespace tpyapp::config {
 
-// DEFAULT: Settings = Settings(Int32(800), Int32(600))
+// DEFAULT: Settings = Settings(int32(800), int32(600))
 Settings* DEFAULT{};
 
 void __tpy_init() {
@@ -11,7 +11,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // DEFAULT: Settings = Settings(Int32(800), Int32(600))
+    // DEFAULT: Settings = Settings(int32(800), int32(600))
     static Settings __global_slot_1 = Settings(800, 600);
     DEFAULT = &__global_slot_1;
 }

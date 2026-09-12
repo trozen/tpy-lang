@@ -1,20 +1,20 @@
 from typing import Iterator, Iterable, Self
-from tpy import Int32, Own, dispatch
+from tpy import int32, Own, dispatch
 class Bag:
-    items: list[Int32]
+    items: list[int32]
     def __init__(self) -> None:
         self.items = [1, 2]
     @dispatch
-    def __iter__(self) -> Iterator[Int32]:
+    def __iter__(self) -> Iterator[int32]:
         for x in self.items:
             yield x
     @dispatch
-    def __iter__(self: Own[Self]) -> Iterator[Own[Int32]]:
+    def __iter__(self: Own[Self]) -> Iterator[Own[int32]]:
         for x in self.items:
             yield x
 def main() -> None:
     b = Bag()
-    xs: list[Int32] = []
+    xs: list[int32] = []
     xs.extend(b)
     print(len(xs))
 main()

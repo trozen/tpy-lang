@@ -172,9 +172,9 @@ void test_comparison_with_literals() {
     }
 }
 
-// def find_string(items: list[str], target: str) -> Int32:
+// def find_string(items: list[str], target: str) -> int32:
 int32_t find_string(const std::vector<std::string>& items, std::string_view target) {
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < len(items):
     while ((i < ::tpy::__len__(items))) {
@@ -194,7 +194,7 @@ int32_t find_string(const std::vector<std::string>& items, std::string_view targ
 void test_comparison_in_loop() {
     // names: list[str] = ["Alice", "Bob", "Charlie"]
     std::vector<std::string> names = {"Alice", "Bob", "Charlie"};
-    // idx: Int32 = find_string(names, "Bob")
+    // idx: int32 = find_string(names, "Bob")
     int32_t idx = find_string(names, "Bob");
     // print(idx)
     std::cout << idx << "\n";

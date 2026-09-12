@@ -1,10 +1,10 @@
-# Char type with default parameter value
-from tpy import Char
+# char type with default parameter value
+from tpy import char
 
-def greet(ch: Char = 'X') -> None:
+def greet(ch: char = 'X') -> None:
     print(ch)
 
-def bracket(text: str, open_ch: Char = '(', close_ch: Char = ')') -> str:
+def bracket(text: str, open_ch: char = '(', close_ch: char = ')') -> str:
     return str(open_ch) + text + str(close_ch)
 
 def main() -> None:

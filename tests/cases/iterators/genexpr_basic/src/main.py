@@ -1,9 +1,9 @@
 # Generator expressions: lazy iterators passed to functions accepting Iterable[T].
 from typing import Iterable
-from tpy import Int32
+from tpy import int32
 
-def sum_items(items: Iterable[Int32]) -> Int32:
-    total: Int32 = 0
+def sum_items(items: Iterable[int32]) -> int32:
+    total: int32 = 0
     for x in items:
         total += x
     return total
@@ -13,7 +13,7 @@ def main() -> None:
     print(sum_items(x * x for x in range(5)))
 
     # List source
-    items: list[Int32] = [1, 2, 3, 4, 5]
+    items: list[int32] = [1, 2, 3, 4, 5]
     print(sum_items(x * 2 for x in items))
 
     # Filter with if clause
@@ -35,25 +35,25 @@ def main() -> None:
     print(sum_items(x for x in [1, 2, 3, 4, 5] if x > 2))
 
     # Body referencing outer local -- exercises [&] capture
-    multiplier: Int32 = 3
+    multiplier: int32 = 3
     print(sum_items(x * multiplier for x in range(5)))
 
     # Lvalue source with outer local in yield -- exercises explicit capture on lvalue path
     print(sum_items(x * multiplier for x in items))
 
     # Outer local referenced only in filter condition
-    threshold: Int32 = 3
+    threshold: int32 = 3
     print(sum_items(x for x in range(10) if x > threshold))
 
     # Lvalue source with outer local only in filter (exercises IIFE + inner capture)
     print(sum_items(x for x in items if x > threshold))
 
     # str.join with generator expression
-    nums: list[Int32] = [1, 2, 3]
+    nums: list[int32] = [1, 2, 3]
     print(", ".join(str(x) for x in nums))
 
     # Tuple unpacking in generator
-    pairs: list[tuple[str, Int32]] = [("a", 1), ("b", 2), ("c", 3)]
+    pairs: list[tuple[str, int32]] = [("a", 1), ("b", 2), ("c", 3)]
     print(sum_items(v for _, v in pairs))
 
 main()

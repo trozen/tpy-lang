@@ -18,7 +18,7 @@ void main();
 
 // class Holder:
 struct Holder {
-    // pair: tuple[Int32, Int32]
+    // pair: tuple[int32, int32]
     std::tuple<int32_t, int32_t> pair;
 
     // def __init__(self):

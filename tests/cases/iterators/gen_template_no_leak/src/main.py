@@ -1,10 +1,10 @@
 # Multiple generators in one module: a generic / protocol-param generator must
 # not leak its template header onto a later generator that reuses a param name.
 from typing import Iterator, Iterable
-from tpy import Fn, Int32
+from tpy import Fn, int32
 
 
-def is_small(n: Int32) -> bool:
+def is_small(n: int32) -> bool:
     return n < 5
 
 
@@ -30,7 +30,7 @@ def gtakewhile[T](pred: Fn[[T], bool], it: Iterable[T]) -> Iterator[T]:
 
 # Concrete generator emitted AFTER the generics, reusing the param name `it`
 # -- this is what previously inherited the prior generator's template header.
-def tag(it: list[Int32]) -> Iterator[Int32]:
+def tag(it: list[int32]) -> Iterator[int32]:
     for x in it:
         yield x
         yield x * 10
@@ -39,15 +39,15 @@ def tag(it: list[Int32]) -> Iterator[Int32]:
 class Doubler:
     # Generator METHOD after the generics (the leak also crossed the
     # free-fn/method boundary). Same param name `it`.
-    def each_twice(self, it: list[Int32]) -> Iterator[Int32]:
+    def each_twice(self, it: list[int32]) -> Iterator[int32]:
         for x in it:
             yield x
             yield x
 
 
 # Another generic after the concrete ones -- the reverse order, also clean.
-def first_n[T](it: Iterable[T], n: Int32) -> Iterator[T]:
-    c: Int32 = 0
+def first_n[T](it: Iterable[T], n: int32) -> Iterator[T]:
+    c: int32 = 0
     for x in it:
         if c >= n:
             break
@@ -59,7 +59,7 @@ def main() -> None:
     for v in skip_first([1, 2, 3]):
         print(v)
     print("--")
-    gnums: list[Int32] = [1, 2, 7, 3]
+    gnums: list[int32] = [1, 2, 7, 3]
     for v in gtakewhile(is_small, gnums):
         print(v)
     print("--")
@@ -67,7 +67,7 @@ def main() -> None:
         print(v)
     print("--")
     d = Doubler()
-    mnums: list[Int32] = [7, 8]
+    mnums: list[int32] = [7, 8]
     for v in d.each_twice(mnums):
         print(v)
     print("--")

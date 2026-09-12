@@ -18,10 +18,10 @@ void main();
 
 // class Circle:
 struct Circle {
-    // radius: Int32
+    // radius: int32
     int32_t radius;
 
-    // def __init__(self, r: Int32) -> None:
+    // def __init__(self, r: int32) -> None:
     Circle() = default;
     explicit Circle(int32_t r);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Circle";
@@ -34,10 +34,10 @@ inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
 
 // class Square:
 struct Square {
-    // side: Int32
+    // side: int32
     int32_t side;
 
-    // def __init__(self, s: Int32) -> None:
+    // def __init__(self, s: int32) -> None:
     Square() = default;
     explicit Square(int32_t s);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Square";
@@ -72,10 +72,10 @@ inline std::ostream& operator<<(std::ostream& os, const Canvas& obj) {
 }
 
 
-// def __init__(self, r: Int32) -> None:
+// def __init__(self, r: int32) -> None:
 inline Circle::Circle(int32_t r) : radius(r) {}
 
-// def __init__(self, s: Int32) -> None:
+// def __init__(self, s: int32) -> None:
 inline Square::Square(int32_t s) : side(s) {}
 
 // def __init__(self, s: Circle | Square) -> None:

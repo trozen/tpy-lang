@@ -1,10 +1,10 @@
 # Property returning Optional[non-value-type] with getter and setter
 from typing import Optional
-from tpy import Int32
+from tpy import int32
 
 class Node:
-    val: Int32
-    def __init__(self, v: Int32) -> None:
+    val: int32
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 class Wrapper:

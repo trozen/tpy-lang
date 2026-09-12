@@ -28,7 +28,7 @@
 #   __init__ isn't supported; `clone()` covers the share path internally.
 from __future__ import annotations
 from typing import Protocol
-from tpy import Own, Ptr, UInt32, UInt64, Deref, Covariant, Equatable, Comparable, Hashable, dynamic, nocopy, auto_readonly, unsafe_interior_mutable
+from tpy import Own, Ptr, uint32, uint64, Deref, Covariant, Equatable, Comparable, Hashable, dynamic, nocopy, auto_readonly, unsafe_interior_mutable
 from tpy.mem import UninitStorage
 from tpy.unsafe import unsafe_take, unsafe_release
 
@@ -59,8 +59,8 @@ class _RcCellBase(Protocol):
 
 @nocopy
 class _RcCell[U](_RcCellBase):
-    strong: UInt32
-    weak: UInt32
+    strong: uint32
+    weak: uint32
     # A single owning slot: tracks its own liveness and moves correctly, so a
     # cell over a payload with SSO-`str`/non-relocatable fields survives the
     # one move into heap storage at `new_` (the payload is constructed in
@@ -187,7 +187,7 @@ class Rc[T](Deref[T], Covariant[T]):
     def __ge__[T: Comparable](self, other: Rc[T]) -> bool:
         return not self.get() < other.get()
 
-    def __hash__[T: Hashable](self) -> UInt64:
+    def __hash__[T: Hashable](self) -> uint64:
         return hash(self.get())
 
 

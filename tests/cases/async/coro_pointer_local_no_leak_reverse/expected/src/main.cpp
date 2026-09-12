@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def maybe_p(items: list[P], i: Int32) -> P | None:
+// def maybe_p(items: list[P], i: int32) -> P | None:
 P* maybe_p(std::vector<P>& items, int32_t i) {
     // if i < len(items):
     if ((i < ::tpy::__len__(items))) {
@@ -15,11 +15,11 @@ P* maybe_p(std::vector<P>& items, int32_t i) {
     return nullptr;
 }
 
-// async def first(n: Int32) -> Int32:
+// async def first(n: int32) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_first::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // x = n + 1  # tpyc: type(Int32)
+        // x = n + 1  # tpyc: type(int32)
         x = (::tpy::add_check<int32_t>(n, 1));
         // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
@@ -42,12 +42,12 @@ P* maybe_p(std::vector<P>& items, int32_t i) {
 }
 
 
-// async def first(n: Int32) -> Int32:
+// async def first(n: int32) -> int32:
 __coro_first first(int32_t n) {
     return __coro_first(n);
 }
 
-// async def second(items: list[P], i: Int32) -> Int32:
+// async def second(items: list[P], i: int32) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_second::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -81,7 +81,7 @@ __coro_first first(int32_t n) {
 }
 
 
-// async def second(items: list[P], i: Int32) -> Int32:
+// async def second(items: list[P], i: int32) -> int32:
 __coro_second second(std::vector<P>& items, int32_t i) {
     return __coro_second(items, i);
 }

@@ -1,4 +1,4 @@
-# A concrete container variable (dict[str, Int32]) is intentionally NOT
+# A concrete container variable (dict[str, int32]) is intentionally NOT
 # implicitly converted into json.dumps's JsonValue param (it would be a hidden
 # deep copy); the rejection points at the explicit alternatives.
 import json

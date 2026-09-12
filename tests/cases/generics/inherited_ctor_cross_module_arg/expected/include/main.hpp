@@ -37,7 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder<K, V>& obj) {
     return os;
 }
 
-// class Sub(Holder[Key, Int32]):
+// class Sub(Holder[Key, int32]):
 struct Sub : Holder<::tpyapp::other::Key, int32_t> {
 
     using Holder<::tpyapp::other::Key, int32_t>::Holder;

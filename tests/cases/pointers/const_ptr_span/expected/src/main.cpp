@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def read_span(s: Span[readonly[Int32]]) -> None:
+// def read_span(s: Span[readonly[int32]]) -> None:
 void read_span(std::span<const int32_t> s) {
     // for v in s:
     auto& __obj_0 = s;
@@ -17,17 +17,17 @@ void read_span(std::span<const int32_t> s) {
     }
 }
 
-// def from_readonly_ptr(p: Ptr[readonly[Int32]], n: Int32) -> None:
+// def from_readonly_ptr(p: Ptr[readonly[int32]], n: int32) -> None:
 void from_readonly_ptr(const int32_t* p, int32_t n) {
-    // s = p.span(n)  # tpyc: type(Span[readonly[Int32]])
+    // s = p.span(n)  # tpyc: type(Span[readonly[int32]])
     std::span<const int32_t> s = std::span(p, static_cast<size_t>(n));
     // read_span(s)
     read_span(s);
 }
 
-// def from_mutable_ptr(p: Ptr[Int32], n: Int32) -> None:
+// def from_mutable_ptr(p: Ptr[int32], n: int32) -> None:
 void from_mutable_ptr(int32_t* p, int32_t n) {
-    // s = p.span(n)  # tpyc: type(Span[Int32])
+    // s = p.span(n)  # tpyc: type(Span[int32])
     std::span<int32_t> s = std::span(p, static_cast<size_t>(n));
     // read_span(s)
     read_span(s);
@@ -35,21 +35,21 @@ void from_mutable_ptr(int32_t* p, int32_t n) {
 
 // def main() -> None:
 void main() {
-    // a = Int32(10)
+    // a = int32(10)
     int32_t a = 10;
-    // b = Int32(20)
+    // b = int32(20)
     int32_t b = 20;
-    // mp: Ptr[Int32] = take_ptr(a)
+    // mp: Ptr[int32] = take_ptr(a)
     int32_t* mp = &a;
-    // cp: Ptr[readonly[Int32]] = take_ptr(b)
+    // cp: Ptr[readonly[int32]] = take_ptr(b)
     const int32_t* cp = &b;
     // print("mutable ptr span:")
     std::cout << "mutable ptr span:" << "\n";
-    // from_mutable_ptr(mp, Int32(1))
+    // from_mutable_ptr(mp, int32(1))
     from_mutable_ptr(mp, 1);
     // print("const ptr span:")
     std::cout << "const ptr span:" << "\n";
-    // from_readonly_ptr(cp, Int32(1))
+    // from_readonly_ptr(cp, int32(1))
     from_readonly_ptr(cp, 1);
 }
 

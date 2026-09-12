@@ -1,20 +1,20 @@
 # Test SpanIter[T]: construct from Span/Span[readonly[T]], iterate, pass as Iterable.
-from tpy import Int32, Array, Span, SpanIter, readonly
+from tpy import int32, Array, Span, SpanIter, readonly
 from typing import Iterable
 
-def sum_iterable(it: Iterable[Int32]) -> Int32:
-    total: Int32 = 0
+def sum_iterable(it: Iterable[int32]) -> int32:
+    total: int32 = 0
     for x in it:
         total += x
     return total
 
-def sum_readonly(rs: Span[readonly[Int32]]) -> Int32:
+def sum_readonly(rs: Span[readonly[int32]]) -> int32:
     it = SpanIter(rs)
     return sum_iterable(it)
 
 def main() -> None:
-    arr: Array[Int32, 5] = [10, 20, 30, 40, 50]
-    s: Span[Int32] = arr
+    arr: Array[int32, 5] = [10, 20, 30, 40, 50]
+    s: Span[int32] = arr
 
     # Iterate SpanIter from mutable Span
     it = SpanIter(s)

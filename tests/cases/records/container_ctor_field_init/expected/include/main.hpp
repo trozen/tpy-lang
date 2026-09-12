@@ -20,7 +20,7 @@ void main();
 struct Empty {
     // buf: bytearray
     ::tpy::ByteArray buf;
-    // tags: list[Int32]
+    // tags: list[int32]
     std::vector<int32_t> tags;
 
     // def __init__(self) -> None:
@@ -53,7 +53,7 @@ struct Sized {
     // buf: bytearray
     ::tpy::ByteArray buf;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     explicit Sized(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Sized";
 };
@@ -85,7 +85,7 @@ inline Empty::Empty() : buf(::tpy::ByteArray()), tags(std::vector<int32_t>()) {}
 // def __init__(self, seed: bytes) -> None:
 inline Seeded::Seeded(::tpy::BytesView seed) : buf(::tpy::ByteArray(seed)) {}
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Sized::Sized(int32_t n) : buf(::tpy::bytearray_from_size(n)) {}
 
 // def __init__(self, data: bytearray) -> None:

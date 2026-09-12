@@ -4,15 +4,15 @@
 # into the element type to determine that the tuple cannot default-init,
 # so Base() = default is implicitly deleted, and Child without super()
 # must be rejected.
-from tpy import Ptr, Int32, nocopy
+from tpy import Ptr, int32, nocopy
 from tpy.unsafe import unsafe_alloc, unsafe_free, unsafe_init, unsafe_drop
 
 
 @nocopy
 class Resource:
-    _ptr: Ptr[Int32]
+    _ptr: Ptr[int32]
 
-    def __init__(self, value: Int32) -> None:
+    def __init__(self, value: int32) -> None:
         self._ptr = unsafe_alloc()
         unsafe_init(self._ptr, value)
 
@@ -24,14 +24,14 @@ class Resource:
 class Base:
     pair: tuple[Resource, Resource]
 
-    def __init__(self, a: Int32, b: Int32) -> None:
+    def __init__(self, a: int32, b: int32) -> None:
         self.pair = (Resource(a), Resource(b))
 
 
 class Child(Base):
     label: str
 
-    def __init__(self, a: Int32, b: Int32, label: str) -> None:   # tpyc: error(/must call 'super\(\).__init__/)
+    def __init__(self, a: int32, b: int32, label: str) -> None:   # tpyc: error(/must call 'super\(\).__init__/)
         self.label = label
 
 

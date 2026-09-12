@@ -16,7 +16,7 @@ void main();
 
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
 
     // def __init__(self) -> None:

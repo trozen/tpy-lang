@@ -1,9 +1,9 @@
 # Error: type alias referencing unknown type name
-from tpy import Int32
+from tpy import int32
 
 
 class Circle:
-    radius: Int32
+    radius: int32
 
 
 type Shape = Circle | unknown  # tpyc: error(/Unknown type/)

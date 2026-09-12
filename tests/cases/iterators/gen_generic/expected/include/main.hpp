@@ -33,17 +33,17 @@ void main();
 
 // class Bin:
 struct Bin {
-    // total: Int32
+    // total: int32
     int32_t total;
 
     // def __init__(self) -> None:
     Bin();
 
-    // def append(self, v: Int32) -> None:
+    // def append(self, v: int32) -> None:
     void append(int32_t v);
 
     // @readonly
-    // def size(self) -> Int32:
+    // def size(self) -> int32:
     int32_t size() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bin";
 };
@@ -57,14 +57,14 @@ inline std::ostream& operator<<(std::ostream& os, const Bin& obj) {
 // def __init__(self) -> None:
 inline Bin::Bin() : total(0) {}
 
-// def append(self, v: Int32) -> None:
+// def append(self, v: int32) -> None:
 inline void Bin::append(int32_t v) {
     // self.total += v
     this->total = ::tpy::add_check<int32_t>(this->total, v);
 }
 
 // @readonly
-// def size(self) -> Int32:
+// def size(self) -> int32:
 inline int32_t Bin::size() const {
     // return self.total
     return this->total;
@@ -74,7 +74,7 @@ inline auto bump_each(::tpy::borrow_frame_param_t<T> obj, int32_t count) {
     // # the bare-`T` slot, MUTATED through its bound's method
     // obj.append(1)
     obj.append(1);
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     return ::tpy::make_generator<int32_t>(
         [&obj, count, i]() mutable -> std::optional<int32_t> {
@@ -94,7 +94,7 @@ inline auto size_each(const T& obj, int32_t count) {
     // # the `readonly[T]` slot: `const T&` at every instantiation -- still a
     // # reference (the capture rule), but const, so only a @readonly method is
     // # callable through it and `obj.append(1)` here would not compile
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     return ::tpy::make_generator<int32_t>(
         [&obj, count, i]() mutable -> std::optional<int32_t> {
@@ -116,7 +116,7 @@ inline auto len_each(const T& obj, int32_t count) {
     // # capture bind the caller's object rather than a parameter that dies with
     // # the factory. Fed a NAMED local, because an rvalue here is not hoisted
     // # into a caller temp (BUGS.md#readonly-tparam-slot-skips-arg-temp).
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     return ::tpy::make_generator<int32_t>(
         [&obj, count, i]() mutable -> std::optional<int32_t> {
@@ -133,7 +133,7 @@ inline auto len_each(const T& obj, int32_t count) {
 
 template<typename T>
 inline auto repeat(::tpy::borrow_frame_param_t<T> value, int32_t count) {
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     return ::tpy::make_generator<T>(
         [&value, count, i]() mutable -> std::optional<T> {
@@ -150,7 +150,7 @@ inline auto repeat(::tpy::borrow_frame_param_t<T> value, int32_t count) {
 
 template<typename T, ::tpystd::typing::Iterable<T> T_iterable>
 inline auto enumerate(T_iterable& iterable) {
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     return ::tpy::make_generator<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>>(
         [&iterable, i, __iter = std::optional<std::decay_t<decltype(::tpy::__iter__(iterable))>>()]() mutable -> std::optional<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>> {

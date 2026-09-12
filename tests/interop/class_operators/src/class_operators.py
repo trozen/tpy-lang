@@ -9,13 +9,13 @@
 # returns the SAME object -- unlike the other dunders' fresh-instance
 # returns); __pow__ -> Py_nb_power (ternary slot; a real modulus is rejected).
 from __future__ import annotations
-from tpy import Int64, Own
+from tpy import int64, Own
 from tpy.extern import export
 
 
 @export
 class Vec2:
-    def __init__(self, x: Int64, y: Int64):
+    def __init__(self, x: int64, y: int64):
         self.x = x
         self.y = y
 
@@ -25,13 +25,13 @@ class Vec2:
     def __sub__(self, other: Vec2) -> Own[Vec2]:
         return Vec2(self.x - other.x, self.y - other.y)
 
-    def __rsub__(self, scalar: Int64) -> Own[Vec2]:
+    def __rsub__(self, scalar: int64) -> Own[Vec2]:
         return Vec2(scalar - self.x, scalar - self.y)
 
-    def __mul__(self, scalar: Int64) -> Own[Vec2]:
+    def __mul__(self, scalar: int64) -> Own[Vec2]:
         return Vec2(self.x * scalar, self.y * scalar)
 
-    def __rmul__(self, scalar: Int64) -> Own[Vec2]:
+    def __rmul__(self, scalar: int64) -> Own[Vec2]:
         return Vec2(self.x * scalar, self.y * scalar)
 
     def __neg__(self) -> Own[Vec2]:
@@ -42,5 +42,5 @@ class Vec2:
         self.y += other.y
         return self
 
-    def __pow__(self, exponent: Int64) -> Own[Vec2]:
+    def __pow__(self, exponent: int64) -> Own[Vec2]:
         return Vec2(self.x * exponent, self.y * exponent)

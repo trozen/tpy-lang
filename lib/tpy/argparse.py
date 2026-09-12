@@ -191,7 +191,7 @@ def _is_allowed_arg_type(ti: TypeInfo) -> bool:
 
     Keyed on TypeInfo's category helpers rather than name lookup so new
     acceptable types get picked up via the type system, not a string
-    table. ``is_float`` covers both ``float`` (Float64) and ``Float32``
+    table. ``is_float`` covers both ``float`` (float64) and ``float32``
     -- both lower to a constructor that accepts ``str`` at runtime.
     """
     return ti.is_str or ti.is_bigint or ti.is_int or ti.is_float
@@ -214,11 +214,11 @@ def _arg_type_name(ti: TypeInfo) -> str:
     """User-facing / source-text name for an arg type.
 
     Doubles as the constructor expression for value coercion: ``int(s)``
-    for BigInt, ``Int32(s)`` for fixed-width, ``float(s)`` for Float64,
-    ``Float32(s)`` for Float32. The ``str`` case is handled by callers
+    for BigInt, ``int32(s)`` for fixed-width, ``float(s)`` for float64,
+    ``float32(s)`` for float32. The ``str`` case is handled by callers
     that skip wrapping (no constructor needed when the field stays a
     plain string). ``is_float32`` is checked before ``is_float`` because
-    ``is_float`` is true for both Float64 and Float32.
+    ``is_float`` is true for both float64 and float32.
     """
     if ti.is_str:
         return "str"
@@ -227,7 +227,7 @@ def _arg_type_name(ti: TypeInfo) -> str:
     if ti.is_int:
         return ti.int_type_name
     if ti.is_float32:
-        return "Float32"
+        return "float32"
     if ti.is_float:
         return "float"
     # Should not occur once _is_allowed_arg_type gates entries; the
@@ -280,7 +280,7 @@ def _resolve_type_info(
     ctx.error(
         f"argparse: unsupported type={ti.name!r}; "
         f"supported: int, float, str, "
-        f"Int8/16/32/64, UInt8/16/32/64, Float32, "
+        f"int8/16/32/64, uint8/16/32/64, float32, "
         f"or any record with @staticmethod from_arg(s: str) -> Self"
     )
     return ti, False
@@ -797,7 +797,7 @@ class ArgumentParser:
             )
             ctx.emit_function(
                 help_fn_name, [], types.void,
-                ast.quote(f"print({help_text!r})\nsys.exit(Int32(0))"),
+                ast.quote(f"print({help_text!r})\nsys.exit(int32(0))"),
             )
         body = _build_parse_body(
             self.specs, record_name, help_fn_name, usage_text,
@@ -976,7 +976,7 @@ class ArgumentParser:
             )
             ctx.emit_function(
                 help_fn_name, [], types.void,
-                ast.quote(f"print({help_text!r})\nsys.exit(Int32(0))"),
+                ast.quote(f"print({help_text!r})\nsys.exit(int32(0))"),
             )
 
         body = _build_subparser_parse_body(
@@ -1259,16 +1259,16 @@ def _render_default_elem(value, ti: TypeInfo):
     """AST expression for one element of a list-typed default.
 
     Mirrors ``_default_expr_src``'s wrapping at the AST level:
-    ``Int32(1)`` / ``Float32(0.5)`` for fixed-width primitives so the
+    ``int32(1)`` / ``float32(0.5)`` for fixed-width primitives so the
     typed list annotation stays consistent regardless of options.json
-    defaults and Float32 elements don't widen to Float64.
+    defaults and float32 elements don't widen to float64.
     """
     if ti.is_str:
         return ast.str_lit(str(value))
     if ti.is_bigint:
         return ast.int_lit(int(value))
     if ti.is_float32:
-        return ast.call("Float32", [ast.float_lit(float(value))])
+        return ast.call("float32", [ast.float_lit(float(value))])
     if ti.is_float:
         return ast.float_lit(float(value))
     # Fixed-width int: wrap with the constructor so the literal type
@@ -1577,8 +1577,8 @@ def _default_expr_src(spec: _ArgSpec) -> str:
         return "0"
     if ti.is_int or ti.is_float32:
         # Constructor form so the literal type matches the field type
-        # (regardless of options.json's default_int, and so Float32
-        # fields don't get a Float64 init that widens the inferred type).
+        # (regardless of options.json's default_int, and so float32
+        # fields don't get a float64 init that widens the inferred type).
         return f"{_arg_type_name(ti)}(0)"
     if ti.is_float:
         return "0.0"
@@ -1639,7 +1639,7 @@ def _error_emit_lines(
     """Render the parse-error sequence at ``indent``.
 
     Prints ``<usage>\\n<prog>: error: <msg>`` to stderr and calls
-    ``sys.exit(Int32(2))``. ``msg_expr`` is a TPy source expression
+    ``sys.exit(int32(2))``. ``msg_expr`` is a TPy source expression
     for the error message (string-typed, may concat a runtime
     token). The ``error_prefix`` parameter is a Python string baked
     in at macro time so the generated code keeps the prefix as a
@@ -1650,7 +1650,7 @@ def _error_emit_lines(
     return [
         f'{indent}print(__tpy_argparse_usage, '
         f'{error_prefix!r} + {msg_expr}, sep="\\n", file=sys.stderr)',
-        f"{indent}sys.exit(Int32(2))",
+        f"{indent}sys.exit(int32(2))",
     ]
 
 

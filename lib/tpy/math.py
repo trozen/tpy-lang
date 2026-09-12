@@ -12,13 +12,13 @@
 #   codegen, and runtime work (std::tuple has no begin/end).
 # - Generic over int type for `gcd`, `isqrt` (result bounded by input, so
 #   generic is safe). Currently `int`-only forces BigInt allocation for
-#   small-int callers under --default-int=Int32. Pure-TPy generic is
+#   small-int callers under --default-int=int32. Pure-TPy generic is
 #   blocked on two language gaps: the missing `AnyInt` protocol (BigInt +
 #   AnyFixedInt) and the ban on `-x` / `abs(x)` / param reassignment
 #   inside unbounded-generic bodies. See TODO.md "No `AnyInt` protocol
 #   covering BigInt + all `AnyFixedInt`". `lcm`, `factorial`, `perm`,
 #   `comb` should probably stay `int`-only even once that lands -- their
-#   results can exceed fixed-int range (e.g. factorial(13) > Int32::max).
+#   results can exceed fixed-int range (e.g. factorial(13) > int32::max).
 #
 # Algorithmic follow-ups (correctness under our implementation, but not
 # bit-exact or optimal vs CPython):
@@ -35,7 +35,7 @@
 #   Minor; consider if benchmarks warrant.
 
 from typing import Final, Iterable
-from tpy import Int32, dispatch
+from tpy import int32, dispatch
 from tpy.extern import native, cpp_template, type_param_default, DefaultInt
 
 pi: Final[float] = 3.141592653589793
@@ -95,7 +95,7 @@ def erfc(x: float) -> float: ...
 def nextafter(x: float, y: float) -> float: ...
 
 @native("tpy::stdlib::math::checked_ldexp")
-def ldexp(x: float, i: Int32) -> float: ...
+def ldexp(x: float, i: int32) -> float: ...
 
 @native("tpy::stdlib::math::checked_fma")
 def fma(x: float, y: float, z: float) -> float: ...
@@ -105,8 +105,8 @@ def modf(x: float) -> tuple[float, float]: ...
 
 # Exponent always fits in a 16+ bit signed int (actual range
 # [-1073, 1024] for IEEE 754 double; see tpy/stdlib/math.hpp for why).
-# Defaults to DefaultInt (respects --default-int); user can pick Int32,
-# Int64, BigInt, etc. explicitly. Zero-allocation for fixed-width T;
+# Defaults to DefaultInt (respects --default-int); user can pick int32,
+# int64, BigInt, etc. explicitly. Zero-allocation for fixed-width T;
 # BigInt allocates.
 @type_param_default(T=DefaultInt)
 @cpp_template("::tpy::stdlib::math::frexp<{T}>({0})")
@@ -259,7 +259,7 @@ def isqrt(n: int) -> int:
     # is sqrt(2) for even bit_length, exactly 2 for odd). Convergence
     # drops from O(log n) iterations (when starting at n) to O(log log n).
     # The `int(1)` LHS forces BigInt arithmetic so the shift can exceed
-    # Int32 width without overflow-checking.
+    # int32 width without overflow-checking.
     x: int = int(1) << ((n.bit_length() + 1) // 2)
     y: int = (x + n // x) // 2
     while y < x:
@@ -310,8 +310,8 @@ def isclose(a: float, b: float, *, rel_tol: float = 1e-09, abs_tol: float = 0.0)
     return diff <= abs_tol or diff <= rel_tol * max_ab
 
 @dispatch
-def prod(iterable: Iterable[Int32], *, start: Int32 = Int32(1)) -> Int32:
-    result: Int32 = start
+def prod(iterable: Iterable[int32], *, start: int32 = int32(1)) -> int32:
+    result: int32 = start
     for x in iterable:
         result = result * x
     return result

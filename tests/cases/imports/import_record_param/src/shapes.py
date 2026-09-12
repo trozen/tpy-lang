@@ -1,9 +1,9 @@
 # Defines a record type for cross-module import
-from tpy import Int32
+from tpy import int32
 
 
 class Circle:
-    radius: Int32
+    radius: int32
 
-    def __init__(self, radius: Int32) -> None:
+    def __init__(self, radius: int32) -> None:
         self.radius = radius

@@ -1,11 +1,11 @@
 # Two bases each declare a same-name public field. The child accesses each
 # independently via `BaseN.field` (read and write), matching the static
 # dispatch model used for v2.1 unbound-self method calls.
-from tpy import Int32
+from tpy import int32
 
 
 class Counter:
-    value: Int32
+    value: int32
 
 
 class Tag:
@@ -13,7 +13,7 @@ class Tag:
 
 
 class Combined(Counter, Tag):
-    def __init__(self, n: Int32, label: str) -> None:
+    def __init__(self, n: int32, label: str) -> None:
         Counter.value = n  # tpyc: ok
         Tag.value = label  # tpyc: ok
 

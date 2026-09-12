@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main():
 void main() {
-    // d: dict[Int64, str] = {}
+    // d: dict[int64, str] = {}
     ::tpy::ordered_map<int64_t, std::string> d = ::tpy::ordered_map<int64_t, std::string>();
     // k: int = 1180591620717411303424  # 2**70
     ::tpy::BigInt k = ::tpy::BigInt::from_str("1180591620717411303424");

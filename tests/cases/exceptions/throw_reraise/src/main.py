@@ -1,10 +1,10 @@
 # Re-raise: bare raise inside except block re-throws
-from tpy import Int32
+from tpy import int32
 
 class MyError(Exception):
-    code: Int32
+    code: int32
 
-    def __init__(self, code: Int32) -> None:
+    def __init__(self, code: int32) -> None:
         self.code = code
 
 def fail() -> None:

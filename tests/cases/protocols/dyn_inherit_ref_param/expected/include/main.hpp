@@ -43,20 +43,20 @@ void main();
 
 // class Counter(Sink):
 struct Counter : Sink {
-    // base: Int32
+    // base: int32
     int32_t base;
 
-    // def __init__(self, base: Int32) -> None:
+    // def __init__(self, base: int32) -> None:
     Counter() = default;
     explicit Counter(int32_t base);
 
-    // def total(self, items: dict[str, Int32] | None = None) -> Int32:
+    // def total(self, items: dict[str, int32] | None = None) -> int32:
     int32_t total(::tpy::ordered_map<std::string, int32_t>* items = nullptr) override;
 
-    // def bump(self, items: dict[str, Int32]) -> None:
+    // def bump(self, items: dict[str, int32]) -> None:
     void bump(::tpy::ordered_map<std::string, int32_t>& items) override;
 
-    // def width(self, tags: list[str]) -> Int32:
+    // def width(self, tags: list[str]) -> int32:
     int32_t width(std::vector<std::string>& tags) override;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
@@ -90,10 +90,10 @@ struct tpy::RefAdapter<tpyapp::main::Sink, T> : tpyapp::main::Sink {
 namespace tpyapp::main {
 
 
-// def __init__(self, base: Int32) -> None:
+// def __init__(self, base: int32) -> None:
 inline Counter::Counter(int32_t base) : base(base) {}
 
-// def total(self, items: dict[str, Int32] | None = None) -> Int32:
+// def total(self, items: dict[str, int32] | None = None) -> int32:
 inline int32_t Counter::total(::tpy::ordered_map<std::string, int32_t>* items) {
     // n = self.base
     int32_t n = this->base;
@@ -113,13 +113,13 @@ inline int32_t Counter::total(::tpy::ordered_map<std::string, int32_t>* items) {
     return n;
 }
 
-// def bump(self, items: dict[str, Int32]) -> None:
+// def bump(self, items: dict[str, int32]) -> None:
 inline void Counter::bump(::tpy::ordered_map<std::string, int32_t>& items) {
     // items["seen"] = self.base
     ::tpy::__setitem__(items, "seen", this->base);
 }
 
-// def width(self, tags: list[str]) -> Int32:
+// def width(self, tags: list[str]) -> int32:
 inline int32_t Counter::width(std::vector<std::string>& tags) {
     // n = 0
     int32_t n = 0;
@@ -132,7 +132,7 @@ inline int32_t Counter::width(std::vector<std::string>& tags) {
         // n += len(t)
         n = ::tpy::add_check<int32_t>(n, ::tpy::__len__(t));
     }
-    // return Int32(n)
+    // return int32(n)
     return n;
 }
 void __tpy_init();

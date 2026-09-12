@@ -1,7 +1,7 @@
-main.py:19: warning: copies list[Int32] into owned storage; use copy() to make this explicit
-main.py:42: warning: copies list[Int32] into owned storage; use copy() to make this explicit
-main.py:51: warning: copies list[Int32] into owned storage; use copy() to make this explicit
-main.py:66: warning: copies list[Int32] into owned storage; use copy() to make this explicit
-main.py:75: warning: copies list[Int32] into owned storage; use copy() to make this explicit
-main.py:84: warning: copies list[Int32] into owned storage; use copy() to make this explicit
-main.py:94: warning: copies list[Int32] into owned storage; use copy() to make this explicit
+main.py:19: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:42: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:51: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:66: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:75: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:84: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:94: warning: copies list[int32] into owned storage; use copy() to make this explicit

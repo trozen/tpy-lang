@@ -1,9 +1,9 @@
 # Generic Optional codegen: a `T | None` PARAMETER takes its form per
 # instantiation (the runtime's opt_param_t trait), while a `T | None` RETURN is
 # still committed to T* so it can alias the stored field. The concrete twin
-# (Int32 | None) is std::optional either way.
+# (int32 | None) is std::optional either way.
 from typing import Optional
-from tpy import Int32
+from tpy import int32
 
 class Container[T]:
     _val: T | None
@@ -17,12 +17,12 @@ class Container[T]:
     def set(self, val: T | None) -> None:
         self._val = val
 
-def maybe_val(x: Optional[Int32]) -> Optional[Int32]:
+def maybe_val(x: Optional[int32]) -> Optional[int32]:
     return x
 
 def main():
     # Generic Optional with value type
-    c = Container[Int32](Int32(42))
+    c = Container[int32](int32(42))
     v = c.get()
     if v is not None:
         print("got:", v)
@@ -36,19 +36,19 @@ def main():
     else:
         print("after set: None")
 
-    c.set(Int32(99))
+    c.set(int32(99))
     v3 = c.get()
     if v3 is not None:
         print("restored:", v3)
 
     # None-initialized container
-    c2 = Container[Int32](None)
+    c2 = Container[int32](None)
     v4 = c2.get()
     if v4 is None:
         print("none init: ok")
 
     # Optional[T] from typing (equivalent to T | None)
-    r = maybe_val(Int32(7))
+    r = maybe_val(int32(7))
     if r is not None:
         print("maybe:", r)
 

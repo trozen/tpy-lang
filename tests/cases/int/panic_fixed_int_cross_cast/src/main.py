@@ -1,6 +1,6 @@
-# Cross-type cast overflow: Int32 value too large for UInt8
-from tpy import Int32, UInt8
+# Cross-type cast overflow: int32 value too large for uint8
+from tpy import int32, uint8
 
-x: Int32 = Int32(300)
-y: UInt8 = UInt8(x)
+x: int32 = int32(300)
+y: uint8 = uint8(x)
 print(y)

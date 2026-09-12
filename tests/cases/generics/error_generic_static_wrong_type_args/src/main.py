@@ -13,4 +13,4 @@ class Pair[T, U]:
     def create(a: Own[T], b: Own[U]) -> Own[Pair[T, U]]:
         return Pair(a, b)
 
-x = Pair[Int32].create(1, 2)  # tpyc: error(/expects 2 type arguments, got 1/)
+x = Pair[int32].create(1, 2)  # tpyc: error(/expects 2 type arguments, got 1/)

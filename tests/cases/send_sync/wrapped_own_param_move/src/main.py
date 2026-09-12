@@ -4,22 +4,22 @@
 # temp (breaking @nocopy). A @nocopy Token makes a silent copy a compile error,
 # so this compiling AND running proves the move. The pre-forward borrow proves
 # the fix doesn't over-move (only the last use relocates).
-from tpy import Own, Send, Int32, nocopy
+from tpy import Own, Send, int32, nocopy
 from typing import Protocol
 
 
 class Counted(Protocol):
-    def value(self) -> Int32: ...
+    def value(self) -> int32: ...
 
 
 @nocopy
 class Token(Counted):
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
-    def value(self) -> Int32:
+    def value(self) -> int32:
         return self.n
 
 

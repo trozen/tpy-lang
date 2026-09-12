@@ -5,7 +5,7 @@
 namespace tpyapp::a {
 
 
-// def a_func() -> Int32:
+// def a_func() -> int32:
 int32_t a_func() {
     // return boost(b_helper())
     return ::tpyapp::util::boost(::tpyapp::b::b_helper());

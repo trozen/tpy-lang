@@ -1,6 +1,6 @@
-from tpy import Int32
+from tpy import int32
 
 
-def f(a: Int32 | None, b: Int32 | None) -> Int32:
+def f(a: int32 | None, b: int32 | None) -> int32:
     assert a is not None
     return a + b  # tpyc: warning(/Potential None access/)

@@ -1,10 +1,10 @@
-from tpy import Int32
+from tpy import int32
 from mypackage import VERSION, add
 
-def main() -> Int32:
+def main() -> int32:
     print(VERSION)
-    result: Int32 = add(Int32(5), Int32(7))
+    result: int32 = add(int32(5), int32(7))
     print(result)
-    return Int32(0)
+    return int32(0)
 
 main()

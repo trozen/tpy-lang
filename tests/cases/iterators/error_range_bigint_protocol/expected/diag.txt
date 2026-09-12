@@ -1,1 +1,1 @@
-main.py:9: error: Type Range[int] does not conform to protocol Iterator[Int32] in argument 'it'
+main.py:9: error: Type Range[int] does not conform to protocol Iterator[int32] in argument 'it'

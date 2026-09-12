@@ -1,3 +1,3 @@
-from tpy import Int32
-d: dict[float, Int32] = {1.5: 2}
+from tpy import int32
+d: dict[float, int32] = {1.5: 2}
 print(len(d))

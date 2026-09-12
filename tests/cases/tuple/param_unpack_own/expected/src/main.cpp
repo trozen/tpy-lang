@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def consume(p: tuple[Own[A], Own[A]]) -> Int32:
+// def consume(p: tuple[Own[A], Own[A]]) -> int32:
 int32_t consume(std::tuple<A, A>&& p) {
     // a, b = p
     auto&& __tup_1 = std::move(p);
@@ -18,7 +18,7 @@ int32_t consume(std::tuple<A, A>&& p) {
     return (::tpy::add_check<int32_t>(a.n, b.n));
 }
 
-// def forward(p: tuple[Own[A], Own[A]]) -> Int32:
+// def forward(p: tuple[Own[A], Own[A]]) -> int32:
 int32_t forward(std::tuple<A, A>&& p) {
     // return consume(p)
     return consume(std::move(p));

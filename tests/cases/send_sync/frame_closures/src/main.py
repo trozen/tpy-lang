@@ -5,13 +5,13 @@
 # reassign-after-capture now warns (see nested_def/escaping_value_capture_
 # reassigned); the in-place mutate-after-capture case still diverges silently
 # (see BUGS.md).
-from tpy import Int32, Send
+from tpy import int32, Send
 from typing import Callable
 
-def take(cb: Send[Callable[[Int32], None]]) -> None:
+def take(cb: Send[Callable[[int32], None]]) -> None:
     cb(1)
 
-def free_fn(n: Int32) -> None:
+def free_fn(n: int32) -> None:
     print("free", n)
 
 def main() -> None:
@@ -22,7 +22,7 @@ def main() -> None:
     xs = [1, 2]
     take(lambda n: print("list", n + xs[0]))
 
-    def nested(n: Int32) -> None:
+    def nested(n: int32) -> None:
         print("nested", n + k)
     take(nested)
 

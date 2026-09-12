@@ -2,18 +2,18 @@
 # into the frame). Exercises the method-side generator_locals collection path:
 # the deferred element type must resolve before the frame field is rendered.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
 class Series:
-    a: Int32
-    b: Int32
+    a: int32
+    b: int32
 
-    def __init__(self, a: Int32, b: Int32) -> None:
+    def __init__(self, a: int32, b: int32) -> None:
         self.a = a
         self.b = b
 
-    def items(self) -> Iterator[Int32]:
+    def items(self) -> Iterator[int32]:
         tmp = [self.a, self.b, self.a + self.b]
         for x in tmp:
             yield x

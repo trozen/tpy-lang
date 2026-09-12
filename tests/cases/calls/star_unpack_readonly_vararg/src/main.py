@@ -3,29 +3,29 @@
 # mutate. (Into a *mutable* vararg it stays rejected -- see
 # error_star_unpack_readonly_span.) A mutable Span[T] unpacked into a readonly
 # slot is also fine (span<T> -> span<const T>).
-from tpy import Int32, Span, readonly, nocopy
+from tpy import int32, Span, readonly, nocopy
 
 
 @nocopy
 class Box:
-    val: Int32
+    val: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 
-def take_ro(*items: readonly[Box]) -> Int32:
-    total: Int32 = 0
+def take_ro(*items: readonly[Box]) -> int32:
+    total: int32 = 0
     for b in items:
         total += b.val
     return total
 
 
-def from_ro_span(xs: Span[readonly[Box]]) -> Int32:
+def from_ro_span(xs: Span[readonly[Box]]) -> int32:
     return take_ro(*xs)
 
 
-def from_mut_span(xs: Span[Box]) -> Int32:
+def from_mut_span(xs: Span[Box]) -> int32:
     return take_ro(*xs)
 
 

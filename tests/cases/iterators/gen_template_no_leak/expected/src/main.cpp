@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def is_small(n: Int32) -> bool:
+// def is_small(n: int32) -> bool:
 bool is_small(int32_t n) {
     // return n < 5
     return (n < 5);
 }
 
-// def tag(it: list[Int32]) -> Iterator[Int32]:
+// def tag(it: list[int32]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_tag::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -44,7 +44,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_tag::__next__() {
 }
 
 
-// def tag(it: list[Int32]) -> Iterator[Int32]:
+// def tag(it: list[int32]) -> Iterator[int32]:
 __gen_tag tag(std::vector<int32_t>& it) {
     return __gen_tag(it);
 }
@@ -66,7 +66,7 @@ void main() {
     }
     // print("--")
     std::cout << "--" << "\n";
-    // gnums: list[Int32] = [1, 2, 7, 3]
+    // gnums: list[int32] = [1, 2, 7, 3]
     std::vector<int32_t> gnums = {1, 2, 7, 3};
     // for v in gtakewhile(is_small, gnums):
     {
@@ -99,7 +99,7 @@ void main() {
     std::cout << "--" << "\n";
     // d = Doubler()
     Doubler d = Doubler();
-    // mnums: list[Int32] = [7, 8]
+    // mnums: list[int32] = [7, 8]
     std::vector<int32_t> mnums = {7, 8};
     // for v in d.each_twice(mnums):
     {
@@ -130,7 +130,7 @@ void main() {
     }
 }
 
-// def each_twice(self, it: list[Int32]) -> Iterator[Int32]:
+// def each_twice(self, it: list[int32]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_Doubler_each_twice::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def add_if_both(a: Int32 | None, b: Int32 | None) -> Int32:
+// def add_if_both(a: int32 | None, b: int32 | None) -> int32:
 int32_t add_if_both(std::optional<int32_t> a, std::optional<int32_t> b) {
     // if a and b:  # tpyc: warning(/variable 'a'/)  # tpyc: warning(/variable 'b'/)
     if ((::tpy::is_truthy(a) && ::tpy::is_truthy(b))) {

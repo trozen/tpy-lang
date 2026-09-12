@@ -3,15 +3,15 @@
 # only compiles if replace_expr descends into dict-valued fields. Without the
 # replacement, `flag="true"` would be a str passed to a bool param (error).
 from kwargmod import kwarg_bool
-from tpy import Int32
+from tpy import int32
 
 
-def takes(flag: bool) -> Int32:
+def takes(flag: bool) -> int32:
     return 1 if flag else 0
 
 
 @kwarg_bool
-def run() -> Int32:
+def run() -> int32:
     x = takes(flag="true")
     y = takes(flag="false")
     return x + y

@@ -15,19 +15,19 @@ void main();
 
 // class Circle:
 struct Circle {
-    // _radius: Int32
+    // _radius: int32
     int32_t _radius;
 
-    // def __init__(self, radius: Int32) -> None:
+    // def __init__(self, radius: int32) -> None:
     Circle() = default;
     explicit Circle(int32_t radius);
 
     // @property
-    // def radius(self) -> Int32:
+    // def radius(self) -> int32:
     int32_t radius() const;
 
     // @property
-    // def diameter(self) -> Int32:
+    // def diameter(self) -> int32:
     int32_t diameter() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Circle";
 };
@@ -38,18 +38,18 @@ inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
 }
 
 
-// def __init__(self, radius: Int32) -> None:
+// def __init__(self, radius: int32) -> None:
 inline Circle::Circle(int32_t radius) : _radius(radius) {}
 
 // @property
-// def radius(self) -> Int32:
+// def radius(self) -> int32:
 inline int32_t Circle::radius() const {
     // return self._radius
     return this->_radius;
 }
 
 // @property
-// def diameter(self) -> Int32:
+// def diameter(self) -> int32:
 inline int32_t Circle::diameter() const {
     // return self._radius * 2
     return (::tpy::mul_check<int32_t>(this->_radius, 2));

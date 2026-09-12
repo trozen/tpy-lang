@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // # Single condition
-    // evens: dict[Int32, Int32] = {x: x * x for x in range(10) if x % 2 == 0}
+    // evens: dict[int32, int32] = {x: x * x for x in range(10) if x % 2 == 0}
     ::tpy::ordered_map<int32_t, int32_t> evens = ({
         ::tpy::ordered_map<int32_t, int32_t> __result;
         const int32_t __stop_0 = 10;
@@ -28,9 +28,9 @@ void main() {
         std::cout << k << " " << ::tpy::__getitem__(evens, k) << "\n";
     }
     // # Filter from existing dict
-    // src: dict[str, Int32] = {"a": 1, "b": 5, "c": 2, "d": 8}
+    // src: dict[str, int32] = {"a": 1, "b": 5, "c": 2, "d": 8}
     ::tpy::ordered_map<std::string, int32_t> src = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 5}, {"c", 2}, {"d", 8}});
-    // big: dict[str, Int32] = {k: v for k, v in src.items() if v > 3}
+    // big: dict[str, int32] = {k: v for k, v in src.items() if v > 3}
     ::tpy::ordered_map<std::string, int32_t> big = ({
         ::tpy::ordered_map<std::string, int32_t> __result;
         auto __obj_2 = ::tpy::dict_items(src);

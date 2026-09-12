@@ -1,18 +1,18 @@
 # Async coroutine iterating d.items() across awaits: the unpacked value
 # var aliases the dict's stored object across suspensions, so mutations
 # after the await reach the dict.
-from tpy import Int32
+from tpy import int32
 import asyncio
 
 
 class C:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32):
+    def __init__(self, v: int32):
         self.v = v
 
 
-async def bump(d: dict[Int32, C]) -> Int32:
+async def bump(d: dict[int32, C]) -> int32:
     n = 0
     for k, c in d.items():
         await asyncio.sleep(0)

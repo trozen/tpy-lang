@@ -7,7 +7,7 @@ of bare `graph` (the file's stem). The visible surface is
 lowercase to match what the Pascal lexer canonicalises identifiers
 to: `initgraph`, `closegraph`, `setcolor`, etc.
 
-All drawing happens in pure TPy against a packed `Int32` pixel
+All drawing happens in pure TPy against a packed `int32` pixel
 buffer (one RGBA-packed value per pixel). On `closegraph` the
 buffer is dumped to a P3 PPM file (`out.ppm`) in the program's
 cwd so users without an interactive backend can still view the
@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import math as _math
 
-from tpy import Array, Int32, Span
+from tpy import Array, int32, Span
 
 
 # TP7 BGI graphics-driver constants. Programs typically write
@@ -33,71 +33,71 @@ from tpy import Array, Int32, Span
 # Names are lowercased because the Pascal frontend canonicalises
 # identifiers to lowercase at parse time -- a Pascal `VGA` and
 # `vga` both look up the symbol `vga` in this module.
-detect: Int32 = Int32(0)
-cga: Int32 = Int32(1)
-mcga: Int32 = Int32(2)
-ega: Int32 = Int32(3)
-ega64: Int32 = Int32(4)
-egamono: Int32 = Int32(5)
-ibm8514: Int32 = Int32(6)
-hercmono: Int32 = Int32(7)
-att400: Int32 = Int32(8)
-vga: Int32 = Int32(9)
-pc3270: Int32 = Int32(10)
-currentdriver: Int32 = Int32(-128)
+detect: int32 = int32(0)
+cga: int32 = int32(1)
+mcga: int32 = int32(2)
+ega: int32 = int32(3)
+ega64: int32 = int32(4)
+egamono: int32 = int32(5)
+ibm8514: int32 = int32(6)
+hercmono: int32 = int32(7)
+att400: int32 = int32(8)
+vga: int32 = int32(9)
+pc3270: int32 = int32(10)
+currentdriver: int32 = int32(-128)
 
 # BGI graphics-mode constants. The POC only honours `mode=0`
 # (Detect-equivalent, default 320x200) and a "smuggle dimensions"
 # extension via mode = width*1000+height; the named modes here are
 # accepted-but-ignored. Real TP7 values:
-vgalo: Int32 = Int32(0)     # 640x200, 16 colours, 4 pages
-vgamed: Int32 = Int32(1)    # 640x350, 16 colours, 2 pages
-vgahi: Int32 = Int32(2)     # 640x480, 16 colours, 1 page
-egalo: Int32 = Int32(0)
-egahi: Int32 = Int32(1)
-cgac0: Int32 = Int32(0)
-cgac1: Int32 = Int32(1)
-cgac2: Int32 = Int32(2)
-cgac3: Int32 = Int32(3)
-cgahi: Int32 = Int32(4)
+vgalo: int32 = int32(0)     # 640x200, 16 colours, 4 pages
+vgamed: int32 = int32(1)    # 640x350, 16 colours, 2 pages
+vgahi: int32 = int32(2)     # 640x480, 16 colours, 1 page
+egalo: int32 = int32(0)
+egahi: int32 = int32(1)
+cgac0: int32 = int32(0)
+cgac1: int32 = int32(1)
+cgac2: int32 = int32(2)
+cgac3: int32 = int32(3)
+cgahi: int32 = int32(4)
 
 # TP7 BGI putimage operators: how an incoming bitmap is combined
 # with the existing canvas pixel. NormalPut copies, the others
 # blend.
-normalput: Int32 = Int32(0)
-copyput: Int32 = Int32(0)
-xorput: Int32 = Int32(1)
-orput: Int32 = Int32(2)
-andput: Int32 = Int32(3)
-notput: Int32 = Int32(4)
+normalput: int32 = int32(0)
+copyput: int32 = int32(0)
+xorput: int32 = int32(1)
+orput: int32 = int32(2)
+andput: int32 = int32(3)
+notput: int32 = int32(4)
 
 # TP7 BGI 16-color palette names. Programs say `setcolor(LightBlue)`
 # rather than `setcolor(9)`; without these constants the source
 # fails to resolve. Values match the palette index used by
 # `_resolve_color`.
-black: Int32 = Int32(0)
-blue: Int32 = Int32(1)
-green: Int32 = Int32(2)
-cyan: Int32 = Int32(3)
-red: Int32 = Int32(4)
-magenta: Int32 = Int32(5)
-brown: Int32 = Int32(6)
-lightgray: Int32 = Int32(7)
-darkgray: Int32 = Int32(8)
-lightblue: Int32 = Int32(9)
-lightgreen: Int32 = Int32(10)
-lightcyan: Int32 = Int32(11)
-lightred: Int32 = Int32(12)
-lightmagenta: Int32 = Int32(13)
-yellow: Int32 = Int32(14)
-white: Int32 = Int32(15)
+black: int32 = int32(0)
+blue: int32 = int32(1)
+green: int32 = int32(2)
+cyan: int32 = int32(3)
+red: int32 = int32(4)
+magenta: int32 = int32(5)
+brown: int32 = int32(6)
+lightgray: int32 = int32(7)
+darkgray: int32 = int32(8)
+lightblue: int32 = int32(9)
+lightgreen: int32 = int32(10)
+lightcyan: int32 = int32(11)
+lightred: int32 = int32(12)
+lightmagenta: int32 = int32(13)
+yellow: int32 = int32(14)
+white: int32 = int32(15)
 
 
 # TP7 16-color palette -> 0xRRGGBB packed. We drop the alpha
-# channel (Int32 fits 24-bit RGB but not 32-bit ARGB); when an
+# channel (int32 fits 24-bit RGB but not 32-bit ARGB); when an
 # SDL display layer ships, the present-loop synthesises alpha
 # (=0xFF) at upload time.
-_PALETTE: list[Int32] = [
+_PALETTE: list[int32] = [
     0x000000,  # 0  Black
     0x0000AA,  # 1  Blue
     0x00AA00,  # 2  Green
@@ -123,21 +123,21 @@ class GraphContext:
     sufficient. Fields are reset by `closegraph` so back-to-back
     init/close cycles work."""
 
-    width: Int32
-    height: Int32
-    fg: Int32        # current pen palette index (0..15)
-    bg: Int32        # current background palette index
-    pen_x: Int32     # last drawn point (for `lineto`/`moveto` in Tier B)
-    pen_y: Int32
-    pixels: list[Int32]  # length = width * height, packed AARRGGBB
+    width: int32
+    height: int32
+    fg: int32        # current pen palette index (0..15)
+    bg: int32        # current background palette index
+    pen_x: int32     # last drawn point (for `lineto`/`moveto` in Tier B)
+    pen_y: int32
+    pixels: list[int32]  # length = width * height, packed AARRGGBB
 
     def __init__(self) -> None:
-        self.width = Int32(0)
-        self.height = Int32(0)
-        self.fg = Int32(15)
-        self.bg = Int32(0)
-        self.pen_x = Int32(0)
-        self.pen_y = Int32(0)
+        self.width = int32(0)
+        self.height = int32(0)
+        self.fg = int32(15)
+        self.bg = int32(0)
+        self.pen_x = int32(0)
+        self.pen_y = int32(0)
         self.pixels = []
 
     def is_open(self) -> bool:
@@ -157,10 +157,10 @@ class pointtype:
     constructor lets array-of-pointtype typed-consts initialise
     inline rather than going through a build-then-assign loop."""
 
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32 = Int32(0), y: Int32 = Int32(0)) -> None:
+    def __init__(self, x: int32 = int32(0), y: int32 = int32(0)) -> None:
         self.x = x
         self.y = y
 
@@ -174,17 +174,17 @@ class BgiImage:
     type to this class -- programs in the legacy corpus only use
     `pointer` for getimage/putimage buffers."""
 
-    width: Int32
-    height: Int32
-    pixels: list[Int32]
+    width: int32
+    height: int32
+    pixels: list[int32]
 
     def __init__(self) -> None:
-        self.width = Int32(0)
-        self.height = Int32(0)
+        self.width = int32(0)
+        self.height = int32(0)
         self.pixels = []
 
 
-def _resolve_color(c: Int32) -> Int32:
+def _resolve_color(c: int32) -> int32:
     """Map a TP7 palette index (0..15) to packed AARRGGBB. Indices
     outside the range default to white -- TP7 itself is lenient
     about out-of-range color values."""
@@ -193,7 +193,7 @@ def _resolve_color(c: Int32) -> Int32:
     return _PALETTE[c]
 
 
-def _set_pixel_raw(x: Int32, y: Int32, packed: Int32) -> None:
+def _set_pixel_raw(x: int32, y: int32, packed: int32) -> None:
     """Write a packed color to (x, y) if the coordinates are inside
     the canvas. Out-of-range writes are silently dropped -- BGI's
     `PutPixel` behaves the same."""
@@ -204,7 +204,7 @@ def _set_pixel_raw(x: Int32, y: Int32, packed: Int32) -> None:
     _ctx.pixels[y * _ctx.width + x] = packed
 
 
-def initgraph(driver: Int32, mode: Int32, path: str) -> None:
+def initgraph(driver: int32, mode: int32, path: str) -> None:
     """Open a graphics canvas. The TP7 `driver` / `mode` /
     `pathtodriver` args are accepted for source-language fidelity.
     The standard TP7 mode constants (vgalo / vgamed / vgahi /
@@ -251,12 +251,12 @@ def initgraph(driver: Int32, mode: Int32, path: str) -> None:
         # + h) or pass an explicit driver+mode pair.
         width = 640
         height = 200
-    _ctx.width = Int32(width)
-    _ctx.height = Int32(height)
-    _ctx.fg = Int32(15)
-    _ctx.bg = Int32(0)
-    _ctx.pen_x = Int32(0)
-    _ctx.pen_y = Int32(0)
+    _ctx.width = int32(width)
+    _ctx.height = int32(height)
+    _ctx.fg = int32(15)
+    _ctx.bg = int32(0)
+    _ctx.pen_x = int32(0)
+    _ctx.pen_y = int32(0)
     bg_packed = _resolve_color(_ctx.bg)
     _ctx.pixels = [bg_packed] * (width * height)
 
@@ -268,8 +268,8 @@ def closegraph() -> None:
     State is reset afterwards so `initgraph` can be called again."""
     if _ctx.is_open():
         _write_ppm("out.ppm")
-    _ctx.width = Int32(0)
-    _ctx.height = Int32(0)
+    _ctx.width = int32(0)
+    _ctx.height = int32(0)
     _ctx.pixels = []
 
 
@@ -283,7 +283,7 @@ def _write_ppm(filename: str) -> None:
     lines.append(str(_ctx.width) + " " + str(_ctx.height))
     lines.append("255")
     n = _ctx.width * _ctx.height
-    i = Int32(0)
+    i = int32(0)
     parts: list[str] = []
     while i < n:
         packed = _ctx.pixels[i]
@@ -301,18 +301,18 @@ def _write_ppm(filename: str) -> None:
             f.write("\n")
 
 
-def setcolor(c: Int32) -> None:
+def setcolor(c: int32) -> None:
     _ctx.fg = c
 
 
-def setbkcolor(c: Int32) -> None:
+def setbkcolor(c: int32) -> None:
     _ctx.bg = c
 
 
 def cleardevice() -> None:
     """Fill the entire canvas with the current background color."""
     bg_packed = _resolve_color(_ctx.bg)
-    i = Int32(0)
+    i = int32(0)
     n = _ctx.width * _ctx.height
     while i < n:
         _ctx.pixels[i] = bg_packed
@@ -326,7 +326,7 @@ def clearviewport() -> None:
     cleardevice()
 
 
-def setfillstyle(pattern: Int32, color: Int32) -> None:
+def setfillstyle(pattern: int32, color: int32) -> None:
     """TP7 BGI fill style. The POC only supports solid fill, so the
     pattern argument is accepted for source-compatibility but
     ignored. The color updates the foreground pen so subsequent
@@ -334,7 +334,7 @@ def setfillstyle(pattern: Int32, color: Int32) -> None:
     _ctx.fg = color
 
 
-def settextstyle(font: Int32, direction: Int32, size: Int32) -> None:
+def settextstyle(font: int32, direction: int32, size: int32) -> None:
     """TP7 BGI font selection. The POC ships only the 8x8 bitmap
     font with left-to-right horizontal direction, so font /
     direction / size are accepted for source-compatibility but
@@ -342,8 +342,8 @@ def settextstyle(font: Int32, direction: Int32, size: Int32) -> None:
     pass
 
 
-def setlinestyle(line_style: Int32, pattern: Int32,
-                 thickness: Int32) -> None:
+def setlinestyle(line_style: int32, pattern: int32,
+                 thickness: int32) -> None:
     """TP7 BGI line style: SolidLn / DottedLn / CenterLn / DashedLn
     / UserBitLn, optional 16-bit user pattern, NormWidth (1) or
     ThickWidth (3). The POC always draws solid 1-pixel lines, so
@@ -351,7 +351,7 @@ def setlinestyle(line_style: Int32, pattern: Int32,
     pass
 
 
-def setgraphmode(mode: Int32) -> None:
+def setgraphmode(mode: int32) -> None:
     """TP7 BGI: switch graphics modes while a session is open. The
     POC keeps the canvas dimensions chosen at `initgraph` and does
     not honour mid-program mode switches; the call is accepted for
@@ -361,25 +361,25 @@ def setgraphmode(mode: Int32) -> None:
     pass
 
 
-def setfillpattern(pattern: Array[Int32, 8], color: Int32) -> None:
+def setfillpattern(pattern: Array[int32, 8], color: int32) -> None:
     """TP7 BGI custom fill pattern (`FillPatternType` is an 8-byte
     bitmask). The POC only supports solid fill, so we set the
     foreground colour and ignore the pattern -- subsequent
     `bar` / `fillpoly` / `floodfill` calls draw in solid `color`.
-    The pattern parameter is typed `Array[Int32, 8]` so that
+    The pattern parameter is typed `Array[int32, 8]` so that
     typed-const `fillpatterntype` values (which the Pascal frontend
-    expands to `Array[Int32, 8]`) pass without an explicit copy."""
+    expands to `Array[int32, 8]`) pass without an explicit copy."""
     _ctx.fg = color
 
 
-def drawpoly(num_points: Int32, points: Span[pointtype]) -> None:
+def drawpoly(num_points: int32, points: Span[pointtype]) -> None:
     """TP7 BGI: draw the outline of a closed polygon defined by
     `num_points` vertices. Connects consecutive points with
     straight lines in the current foreground colour and auto-
     closes the polygon (last vertex back to the first)."""
     if num_points < 2:
         return
-    i = Int32(0)
+    i = int32(0)
     while i < num_points - 1:
         line(points[i].x, points[i].y,
              points[i + 1].x, points[i + 1].y)
@@ -388,7 +388,7 @@ def drawpoly(num_points: Int32, points: Span[pointtype]) -> None:
          points[0].x, points[0].y)
 
 
-def fillpoly(num_points: Int32, points: Span[pointtype]) -> None:
+def fillpoly(num_points: int32, points: Span[pointtype]) -> None:
     """TP7 BGI: fill a closed polygon defined by `num_points`
     vertices. Uses a scan-line fill: for each canvas row that
     intersects the polygon's bounding box, find every edge
@@ -402,7 +402,7 @@ def fillpoly(num_points: Int32, points: Span[pointtype]) -> None:
     # Bounding-box scan range (clip to canvas).
     min_y = points[0].y
     max_y = points[0].y
-    i = Int32(1)
+    i = int32(1)
     while i < num_points:
         if points[i].y < min_y:
             min_y = points[i].y
@@ -410,14 +410,14 @@ def fillpoly(num_points: Int32, points: Span[pointtype]) -> None:
             max_y = points[i].y
         i += 1
     if min_y < 0:
-        min_y = Int32(0)
+        min_y = int32(0)
     if max_y >= _ctx.height:
         max_y = _ctx.height - 1
     # Scan each row in the bounding box.
     y = min_y
     while y <= max_y:
-        crossings: list[Int32] = []
-        j = Int32(0)
+        crossings: list[int32] = []
+        j = int32(0)
         while j < num_points:
             k = (j + 1) % num_points
             y0 = points[j].y
@@ -437,7 +437,7 @@ def fillpoly(num_points: Int32, points: Span[pointtype]) -> None:
             j += 1
         # Sort crossings ascending (simple insertion sort -- the
         # crossings list is short).
-        a = Int32(1)
+        a = int32(1)
         while a < len(crossings):
             v = crossings[a]
             b = a - 1
@@ -447,12 +447,12 @@ def fillpoly(num_points: Int32, points: Span[pointtype]) -> None:
             crossings[b + 1] = v
             a += 1
         # Fill spans between pairs of crossings.
-        p = Int32(0)
+        p = int32(0)
         while p + 1 < len(crossings):
             x_lo = crossings[p]
             x_hi = crossings[p + 1]
             if x_lo < 0:
-                x_lo = Int32(0)
+                x_lo = int32(0)
             if x_hi >= _ctx.width:
                 x_hi = _ctx.width - 1
             x = x_lo
@@ -463,7 +463,7 @@ def fillpoly(num_points: Int32, points: Span[pointtype]) -> None:
         y += 1
 
 
-def imagesize(x1: Int32, y1: Int32, x2: Int32, y2: Int32) -> Int32:
+def imagesize(x1: int32, y1: int32, x2: int32, y2: int32) -> int32:
     """TP7 BGI: byte count needed to store the canvas rectangle
     via `getimage`. Real BGI used this to size a heap allocation;
     `BgiImage` self-allocates so the return value is opaque to
@@ -476,10 +476,10 @@ def imagesize(x1: Int32, y1: Int32, x2: Int32, y2: Int32) -> Int32:
         w = -w
     if h < 0:
         h = -h
-    return Int32(4) + Int32(4) * w * h
+    return int32(4) + int32(4) * w * h
 
 
-def getmem(buf: BgiImage, size: Int32) -> None:
+def getmem(buf: BgiImage, size: int32) -> None:
     """TP7 `GetMem(p, size)`: real BGI allocated `size` bytes and
     set `p^`. The POC's `BgiImage` self-allocates via its default
     constructor, so this is a no-op (the var-param semantics
@@ -488,7 +488,7 @@ def getmem(buf: BgiImage, size: Int32) -> None:
     pass
 
 
-def freemem(buf: BgiImage, size: Int32) -> None:
+def freemem(buf: BgiImage, size: int32) -> None:
     """TP7 `FreeMem(p, size)`: TPy's garbage collector handles the
     buffer's lifetime, so this is a no-op. The buffer's internal
     pixel list is left in place; the next `getimage` overwrites
@@ -497,7 +497,7 @@ def freemem(buf: BgiImage, size: Int32) -> None:
     pass
 
 
-def getimage(x1: Int32, y1: Int32, x2: Int32, y2: Int32,
+def getimage(x1: int32, y1: int32, x2: int32, y2: int32,
              buf: BgiImage) -> None:
     """Snapshot canvas pixels in the inclusive rect [(x1,y1),
     (x2,y2)] into `buf`. Out-of-range pixels read as black (palette
@@ -506,17 +506,17 @@ def getimage(x1: Int32, y1: Int32, x2: Int32, y2: Int32,
     w = x2 - x1 + 1
     h = y2 - y1 + 1
     if w <= 0 or h <= 0:
-        buf.width = Int32(0)
-        buf.height = Int32(0)
+        buf.width = int32(0)
+        buf.height = int32(0)
         buf.pixels = []
         return
     buf.width = w
     buf.height = h
-    buf.pixels = [Int32(0)] * (w * h)
-    y = Int32(0)
+    buf.pixels = [int32(0)] * (w * h)
+    y = int32(0)
     while y < h:
         sy = y1 + y
-        x = Int32(0)
+        x = int32(0)
         while x < w:
             sx = x1 + x
             if (sx >= 0 and sx < _ctx.width
@@ -526,7 +526,7 @@ def getimage(x1: Int32, y1: Int32, x2: Int32, y2: Int32,
         y += 1
 
 
-def putimage(x: Int32, y: Int32, buf: BgiImage, op: Int32) -> None:
+def putimage(x: int32, y: int32, buf: BgiImage, op: int32) -> None:
     """Blit `buf` at canvas (x, y). `op` is TP7's BitBlt operator:
     0 = NormalPut (copy), 1 = XorPut, 2 = OrPut, 3 = AndPut,
     4 = NotPut. The op blends `buf`'s packed colour with the
@@ -535,10 +535,10 @@ def putimage(x: Int32, y: Int32, buf: BgiImage, op: Int32) -> None:
     via `getpixel` round-trip correctly."""
     if buf.width <= 0 or buf.height <= 0:
         return
-    j = Int32(0)
+    j = int32(0)
     while j < buf.height:
         ty = y + j
-        i = Int32(0)
+        i = int32(0)
         while i < buf.width:
             tx = x + i
             if (tx >= 0 and tx < _ctx.width
@@ -555,7 +555,7 @@ def putimage(x: Int32, y: Int32, buf: BgiImage, op: Int32) -> None:
                 elif op == 3:         # AndPut
                     out = src & dst
                 elif op == 4:         # NotPut
-                    out = src ^ Int32(0xFFFFFF)
+                    out = src ^ int32(0xFFFFFF)
                 else:
                     out = src
                 _ctx.pixels[idx] = out
@@ -563,7 +563,7 @@ def putimage(x: Int32, y: Int32, buf: BgiImage, op: Int32) -> None:
         j += 1
 
 
-def setactivepage(page: Int32) -> None:
+def setactivepage(page: int32) -> None:
     """TP7 BGI page flipping. Multi-page video modes were a TP7
     feature for double-buffered animation on 16-color cards; the
     POC has a single canvas, so this is a no-op. Programs that
@@ -572,35 +572,35 @@ def setactivepage(page: Int32) -> None:
     pass
 
 
-def setvisualpage(page: Int32) -> None:
+def setvisualpage(page: int32) -> None:
     """TP7 BGI page flipping (visual half). No-op for the POC --
     see `setactivepage`."""
     pass
 
 
-def putpixel(x: Int32, y: Int32, c: Int32) -> None:
+def putpixel(x: int32, y: int32, c: int32) -> None:
     _set_pixel_raw(x, y, _resolve_color(c))
 
 
-def getpixel(x: Int32, y: Int32) -> Int32:
+def getpixel(x: int32, y: int32) -> int32:
     """Return the palette index of the pixel at (x, y). Out-of-
     range reads return 0 (black). The implementation scans the
     palette for an exact RGBA match; TP7 BGI does the same since
     `PutPixel` always writes a palette color."""
     if x < 0 or x >= _ctx.width:
-        return Int32(0)
+        return int32(0)
     if y < 0 or y >= _ctx.height:
-        return Int32(0)
+        return int32(0)
     packed = _ctx.pixels[y * _ctx.width + x]
-    i = Int32(0)
+    i = int32(0)
     while i < 16:
         if _PALETTE[i] == packed:
             return i
         i += 1
-    return Int32(0)
+    return int32(0)
 
 
-def line(x1: Int32, y1: Int32, x2: Int32, y2: Int32) -> None:
+def line(x1: int32, y1: int32, x2: int32, y2: int32) -> None:
     """Bresenham's line algorithm. Works for arbitrary directions
     including degenerate (single-pixel) and axis-aligned cases."""
     packed = _resolve_color(_ctx.fg)
@@ -612,8 +612,8 @@ def line(x1: Int32, y1: Int32, x2: Int32, y2: Int32) -> None:
     dy = y2 - y1
     if dy < 0:
         dy = -dy
-    sx = Int32(1) if x1 < x2 else Int32(-1)
-    sy = Int32(1) if y1 < y2 else Int32(-1)
+    sx = int32(1) if x1 < x2 else int32(-1)
+    sy = int32(1) if y1 < y2 else int32(-1)
     err = dx - dy
     while True:
         _set_pixel_raw(x, y, packed)
@@ -628,7 +628,7 @@ def line(x1: Int32, y1: Int32, x2: Int32, y2: Int32) -> None:
             y += sy
 
 
-def rectangle(x1: Int32, y1: Int32, x2: Int32, y2: Int32) -> None:
+def rectangle(x1: int32, y1: int32, x2: int32, y2: int32) -> None:
     """Outline of an axis-aligned rectangle. Lower-right corner is
     inclusive (matches BGI). Caller is responsible for any
     coordinate normalisation -- a swapped pair still draws but in
@@ -639,7 +639,7 @@ def rectangle(x1: Int32, y1: Int32, x2: Int32, y2: Int32) -> None:
     line(x1, y2, x1, y1)
 
 
-def bar(x1: Int32, y1: Int32, x2: Int32, y2: Int32) -> None:
+def bar(x1: int32, y1: int32, x2: int32, y2: int32) -> None:
     """Solid-filled rectangle. The fill color is the current pen
     color (TP7 BGI's `Bar` uses the current fill style, which our
     Tier-A subset collapses to the pen color)."""
@@ -657,13 +657,13 @@ def bar(x1: Int32, y1: Int32, x2: Int32, y2: Int32) -> None:
         y += 1
 
 
-def circle(cx: Int32, cy: Int32, r: Int32) -> None:
+def circle(cx: int32, cy: int32, r: int32) -> None:
     """Midpoint circle algorithm. Plots eight symmetric octants
     per step so the outline is connected even at low radii."""
     packed = _resolve_color(_ctx.fg)
-    x = Int32(0)
+    x = int32(0)
     y = r
-    d = Int32(3) - 2 * r
+    d = int32(3) - 2 * r
     while x <= y:
         _set_pixel_raw(cx + x, cy + y, packed)
         _set_pixel_raw(cx - x, cy + y, packed)
@@ -681,12 +681,12 @@ def circle(cx: Int32, cy: Int32, r: Int32) -> None:
         x += 1
 
 
-def getmaxx() -> Int32:
+def getmaxx() -> int32:
     """Highest valid x coordinate (width - 1). TP7 BGI convention."""
     return _ctx.width - 1
 
 
-def getmaxy() -> Int32:
+def getmaxy() -> int32:
     return _ctx.height - 1
 
 
@@ -698,12 +698,12 @@ def getmaxy() -> Int32:
 # itself does NOT move the pen; only `LineTo` does.
 
 
-def moveto(x: Int32, y: Int32) -> None:
+def moveto(x: int32, y: int32) -> None:
     _ctx.pen_x = x
     _ctx.pen_y = y
 
 
-def lineto(x: Int32, y: Int32) -> None:
+def lineto(x: int32, y: int32) -> None:
     """Draw a line from the current pen position to (x, y), then
     advance the pen there."""
     line(_ctx.pen_x, _ctx.pen_y, x, y)
@@ -711,11 +711,11 @@ def lineto(x: Int32, y: Int32) -> None:
     _ctx.pen_y = y
 
 
-def getx() -> Int32:
+def getx() -> int32:
     return _ctx.pen_x
 
 
-def gety() -> Int32:
+def gety() -> int32:
     return _ctx.pen_y
 
 
@@ -729,11 +729,11 @@ def gety() -> Int32:
 # uppercase anyway). Unknown / out-of-range chars render as a
 # fully-blank cell so missing glyphs don't crash the output.
 
-_FONT_FIRST: Int32 = Int32(32)
-_FONT_LAST: Int32 = Int32(95)  # exclusive (' ' through '_')
-_FONT_BYTES_PER_CHAR: Int32 = Int32(8)
+_FONT_FIRST: int32 = int32(32)
+_FONT_LAST: int32 = int32(95)  # exclusive (' ' through '_')
+_FONT_BYTES_PER_CHAR: int32 = int32(8)
 
-_FONT: list[Int32] = [
+_FONT: list[int32] = [
     # ' ' (32)
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     # '!' (33)
@@ -863,38 +863,38 @@ _FONT: list[Int32] = [
 ]
 
 
-def _glyph_offset(c: Int32) -> Int32:
+def _glyph_offset(c: int32) -> int32:
     """Byte offset of the glyph for code `c` in `_FONT`, or -1 if
     out of range. Lowercase ASCII folds to uppercase so labels
     typed in either case render."""
     code = c
-    if code >= Int32(97) and code <= Int32(122):
-        code = code - Int32(32)  # 'a'..'z' -> 'A'..'Z'
+    if code >= int32(97) and code <= int32(122):
+        code = code - int32(32)  # 'a'..'z' -> 'A'..'Z'
     if code < _FONT_FIRST or code >= _FONT_LAST:
-        return Int32(-1)
+        return int32(-1)
     return (code - _FONT_FIRST) * _FONT_BYTES_PER_CHAR
 
 
-def _draw_glyph(x: Int32, y: Int32, c: Int32,
-                packed: Int32) -> None:
+def _draw_glyph(x: int32, y: int32, c: int32,
+                packed: int32) -> None:
     """Plot a single 8x8 glyph at (x, y). Each set bit in the
     glyph's row bytes becomes a pixel in the current pen color."""
     offset = _glyph_offset(c)
     if offset < 0:
         return
-    row = Int32(0)
-    while row < Int32(8):
+    row = int32(0)
+    while row < int32(8):
         bits = _FONT[offset + row]
-        col = Int32(0)
-        while col < Int32(8):
-            mask = Int32(1) << (Int32(7) - col)
+        col = int32(0)
+        while col < int32(8):
+            mask = int32(1) << (int32(7) - col)
             if (bits & mask) != 0:
                 _set_pixel_raw(x + col, y + row, packed)
             col += 1
         row += 1
 
 
-def outtextxy(x: Int32, y: Int32, s: str) -> None:
+def outtextxy(x: int32, y: int32, s: str) -> None:
     """Draw a string at (x, y) using the embedded 8x8 bitmap font
     in the current pen color. Each character advances the
     horizontal cursor by 8 pixels; unsupported characters render
@@ -902,11 +902,11 @@ def outtextxy(x: Int32, y: Int32, s: str) -> None:
     matches TP7's behaviour."""
     packed = _resolve_color(_ctx.fg)
     cx = x
-    i = Int32(0)
+    i = int32(0)
     n = len(s)
     while i < n:
-        _draw_glyph(cx, y, Int32(ord(s[i])), packed)
-        cx += Int32(8)
+        _draw_glyph(cx, y, int32(ord(s[i])), packed)
+        cx += int32(8)
         i += 1
 
 
@@ -924,9 +924,9 @@ def outtext(s: str) -> None:
 # per-scanline horizontal-extent table.
 
 
-def ellipse(cx: Int32, cy: Int32,
-            start_angle: Int32, end_angle: Int32,
-            rx: Int32, ry: Int32) -> None:
+def ellipse(cx: int32, cy: int32,
+            start_angle: int32, end_angle: int32,
+            rx: int32, ry: int32) -> None:
     """Outline of an axis-aligned elliptical arc centred at
     (cx, cy) with horizontal radius `rx` and vertical radius `ry`,
     swept from `start_angle` to `end_angle` (degrees, CCW from the
@@ -946,7 +946,7 @@ def ellipse(cx: Int32, cy: Int32,
     packed = _resolve_color(_ctx.fg)
     rx_sq = rx * rx
     ry_sq = ry * ry
-    x = Int32(0)
+    x = int32(0)
     y = ry
     # Region 1: slope > -1
     p = ry_sq - rx_sq * ry + (rx_sq // 4)
@@ -977,8 +977,8 @@ def ellipse(cx: Int32, cy: Int32,
             p += 2 * ry_sq * x - 2 * rx_sq * y + rx_sq
 
 
-def arc(cx: Int32, cy: Int32, start_angle: Int32,
-        end_angle: Int32, r: Int32) -> None:
+def arc(cx: int32, cy: int32, start_angle: int32,
+        end_angle: int32, r: int32) -> None:
     """Draw a circular arc from `start_angle` to `end_angle` (both
     in degrees, BGI convention: 0 = east, increasing
     counter-clockwise) at radius `r`. Implemented parametrically:
@@ -993,20 +993,20 @@ def arc(cx: Int32, cy: Int32, start_angle: Int32,
     a = start_angle
     end = end_angle
     if end < a:
-        end = end + Int32(360)
+        end = end + int32(360)
     while a <= end:
         rad = float(a) * 3.141592653589793 / 180.0
-        x = cx + Int32(round(float(r) * _math.cos(rad)))
+        x = cx + int32(round(float(r) * _math.cos(rad)))
         # BGI's y axis is screen-style (y grows downward) but
         # angle 0 is east + counter-clockwise; cos handles x as
         # usual, and we flip the sin component so a +90 angle
         # lands above the centre, matching what TP7 users see.
-        y = cy - Int32(round(float(r) * _math.sin(rad)))
+        y = cy - int32(round(float(r) * _math.sin(rad)))
         _set_pixel_raw(x, y, packed)
         a += 1
 
 
-def fillellipse(cx: Int32, cy: Int32, rx: Int32, ry: Int32) -> None:
+def fillellipse(cx: int32, cy: int32, rx: int32, ry: int32) -> None:
     """Filled ellipse. Scans every y-row in `[cy-ry, cy+ry]` and
     fills a horizontal extent computed from the ellipse equation:
     `(x/rx)^2 + (y/ry)^2 <= 1`, solved for x. Faster than a
@@ -1033,7 +1033,7 @@ def fillellipse(cx: Int32, cy: Int32, rx: Int32, ry: Int32) -> None:
         num = rx_sq * (ry_sq - dy * dy)
         # Integer sqrt: linear scan up to rx (small, fine for
         # the canvas sizes the POC handles).
-        ext = Int32(0)
+        ext = int32(0)
         while (ext + 1) * (ext + 1) * ry_sq <= num:
             ext += 1
         x = cx - ext
@@ -1053,7 +1053,7 @@ def fillellipse(cx: Int32, cy: Int32, rx: Int32, ry: Int32) -> None:
 # palette table.
 
 
-def floodfill(x: Int32, y: Int32, border: Int32) -> None:
+def floodfill(x: int32, y: int32, border: int32) -> None:
     """4-way flood fill from (x, y). Recolors every pixel reachable
     from the seed that ISN'T the border color, using the current
     pen color as the fill. An empty seed (seed already equals the
@@ -1072,8 +1072,8 @@ def floodfill(x: Int32, y: Int32, border: Int32) -> None:
     if _ctx.pixels[start_idx] == fill_packed:
         return
     target = _ctx.pixels[start_idx]
-    stack_x: list[Int32] = [x]
-    stack_y: list[Int32] = [y]
+    stack_x: list[int32] = [x]
+    stack_y: list[int32] = [y]
     while len(stack_x) > 0:
         cx = stack_x.pop()
         cy = stack_y.pop()
@@ -1085,18 +1085,18 @@ def floodfill(x: Int32, y: Int32, border: Int32) -> None:
         if _ctx.pixels[idx] != target:
             continue
         _ctx.pixels[idx] = fill_packed
-        stack_x.append(cx + Int32(1))
+        stack_x.append(cx + int32(1))
         stack_y.append(cy)
-        stack_x.append(cx - Int32(1))
+        stack_x.append(cx - int32(1))
         stack_y.append(cy)
         stack_x.append(cx)
-        stack_y.append(cy + Int32(1))
+        stack_y.append(cy + int32(1))
         stack_x.append(cx)
-        stack_y.append(cy - Int32(1))
+        stack_y.append(cy - int32(1))
 
 
-def bar3d(x1: Int32, y1: Int32, x2: Int32, y2: Int32,
-          depth: Int32, top: bool) -> None:
+def bar3d(x1: int32, y1: int32, x2: int32, y2: int32,
+          depth: int32, top: bool) -> None:
     """`Bar3D` -- a filled rectangle plus depth lines on the
     right + top edges, giving the chart-style 3D look. `top=True`
     draws the top face's near edge as well; `top=False` leaves it
@@ -1118,8 +1118,8 @@ def bar3d(x1: Int32, y1: Int32, x2: Int32, y2: Int32,
         line(x1 + depth, ty, rx, ty)
 
 
-def setrgbpalette(index: Int32, r: Int32, g: Int32,
-                   b: Int32) -> None:
+def setrgbpalette(index: int32, r: int32, g: int32,
+                   b: int32) -> None:
     """Override one entry in the 16-color palette. TP7 uses 6-bit
     RGB values (0..63) here; we accept either 6-bit or 8-bit
     values transparently -- values <= 63 get scaled up to 0..255
@@ -1133,7 +1133,7 @@ def setrgbpalette(index: Int32, r: Int32, g: Int32,
     _PALETTE[index] = (rr << 16) | (gg << 8) | bb
 
 
-def detectgraph(var_driver: Int32, var_mode: Int32) -> None:
+def detectgraph(var_driver: int32, var_mode: int32) -> None:
     """No-op stub. TP7's `DetectGraph(var Driver, Mode: Integer)`
     asks the BGI driver to suggest a (driver, mode) pair; we
     operate independently of BGI drivers so the call doesn't
@@ -1143,16 +1143,16 @@ def detectgraph(var_driver: Int32, var_mode: Int32) -> None:
     pass
 
 
-def registerbgidriver(driver: Int32) -> Int32:
+def registerbgidriver(driver: int32) -> int32:
     """No-op stub matching TP7's `RegisterBGIDriver` signature.
     Real TP7 used this to register linked-in driver binaries
     when running off-disk; we don't load drivers, so the call
     always succeeds with status 0."""
-    return Int32(0)
+    return int32(0)
 
 
-def registerbgifont(font: Int32) -> Int32:
+def registerbgifont(font: int32) -> int32:
     """No-op stub matching TP7's `RegisterBGIFont` signature.
     Our text rendering uses the embedded 8x8 font set unconditionally."""
-    return Int32(0)
+    return int32(0)
 

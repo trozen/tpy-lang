@@ -1,9 +1,9 @@
 # raise <expr>: raise pre-constructed exception variables and function results
-from tpy import Int32, Own
+from tpy import int32, Own
 
 class AppError(Exception):
-    code: Int32
-    def __init__(self, code: Int32) -> None:
+    code: int32
+    def __init__(self, code: int32) -> None:
         self.code = code
 
 class OtherError(Exception):
@@ -11,7 +11,7 @@ class OtherError(Exception):
     def __init__(self, tag: str) -> None:
         self.tag = tag
 
-def make_error(code: Int32) -> Own[AppError]:
+def make_error(code: int32) -> Own[AppError]:
     return AppError(code)
 
 def test_raise_variable() -> None:

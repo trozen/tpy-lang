@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def eq_proven(x: Int32 | None, y: Int32) -> bool:
+// def eq_proven(x: int32 | None, y: int32) -> bool:
 bool eq_proven(std::optional<int32_t> x, int32_t y) {
     // assert x is not None
     if (!((x.has_value()))) ::tpy::raise_assertion_error();

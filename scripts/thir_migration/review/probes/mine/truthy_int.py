@@ -1,5 +1,5 @@
-from tpy import Int32
-def f() -> Int32:
+from tpy import int32
+def f() -> int32:
     return 3
 def main() -> None:
     if f():

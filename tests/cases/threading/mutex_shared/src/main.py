@@ -1,12 +1,12 @@
 # Arc[Mutex[list]] shared across real threads: each worker locks the shared list
 # and appends its id N times. After join the list holds every append -- the
 # mutation crossed the thread boundary through the lock, not a per-thread copy.
-# Mutex[list[Int32]] is Send + Sync because list is Send, so the @nocopy task
+# Mutex[list[int32]] is Send + Sync because list is Send, so the @nocopy task
 # carries its Arc clone across the spawn boundary.
 # (`.get().lock()` is spelled explicitly rather than `data.lock()` to stay
 # CPython-compatible -- Arc method auto-deref is TPy-only, exercised separately
 # in mutex_arc_autoderef, which is no_cpython.)
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 from tplib.arc import Arc
 from tpy.thread import spawn
 from tpy.sync import Mutex
@@ -14,11 +14,11 @@ from tpy.sync import Mutex
 
 @nocopy
 class Appender:
-    shared: Arc[Mutex[list[Int32]]]
-    id: Int32
-    iters: Int32
+    shared: Arc[Mutex[list[int32]]]
+    id: int32
+    iters: int32
 
-    def __init__(self, shared: Own[Arc[Mutex[list[Int32]]]], id: Int32, iters: Int32) -> None:
+    def __init__(self, shared: Own[Arc[Mutex[list[int32]]]], id: int32, iters: int32) -> None:
         self.shared = shared
         self.id = id
         self.iters = iters

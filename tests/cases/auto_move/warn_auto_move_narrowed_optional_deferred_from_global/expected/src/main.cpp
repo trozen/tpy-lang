@@ -6,13 +6,13 @@ namespace tpyapp::main {
 // g: Point | None = Point()
 Point* g{};
 
-// def consume(p: Own[Point]) -> Int32:
+// def consume(p: Own[Point]) -> int32:
 int32_t consume(Point&& p) {
     // return p.x
     return p.x;
 }
 
-// def test() -> Int32:
+// def test() -> int32:
 int32_t test() {
     // q: Point | None
     Point* q = nullptr;
@@ -33,7 +33,7 @@ void __tpy_init() {
     // g: Point | None = Point()
     static Point __global_slot_1 = Point();
     g = &__global_slot_1;
-    // g.x = Int32(99)
+    // g.x = int32(99)
     g->x = 99;
 }
 

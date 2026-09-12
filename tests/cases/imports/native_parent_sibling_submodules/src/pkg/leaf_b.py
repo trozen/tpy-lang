@@ -1,8 +1,8 @@
-from tpy import Int32
+from tpy import int32
 
 
-def _seed_b() -> Int32:
-    return Int32(20) + Int32(2)
+def _seed_b() -> int32:
+    return int32(20) + int32(2)
 
 
-VAL_B: Int32 = _seed_b()  # tpyc: warning(/ALL_CAPS variable .* without Final/)
+VAL_B: int32 = _seed_b()  # tpyc: warning(/ALL_CAPS variable .* without Final/)

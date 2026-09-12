@@ -4,25 +4,25 @@
 namespace tpyapp::main {
 
 
-// def apply(f: Callable[[Int32], Int32], x: Int32) -> Int32:
+// def apply(f: Callable[[int32], int32], x: int32) -> int32:
 int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t x) {
     // return f(x)
     return f(x);
 }
 
-// def apply_void(f: Callable[[Int32], None], x: Int32) -> None:
+// def apply_void(f: Callable[[int32], None], x: int32) -> None:
 void apply_void(const std::function<void(int32_t)>& f, int32_t x) {
     // f(x)
     f(x);
 }
 
-// def apply_multi(f: Callable[[Int32, Int32], Int32], a: Int32, b: Int32) -> Int32:
+// def apply_multi(f: Callable[[int32, int32], int32], a: int32, b: int32) -> int32:
 int32_t apply_multi(const std::function<int32_t(int32_t, int32_t)>& f, int32_t a, int32_t b) {
     // return f(a, b)
     return f(a, b);
 }
 
-// def apply_zero(f: Callable[[], Int32]) -> Int32:
+// def apply_zero(f: Callable[[], int32]) -> int32:
 int32_t apply_zero(const std::function<int32_t()>& f) {
     // return f()
     return f();

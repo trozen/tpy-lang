@@ -27,16 +27,16 @@ void main() {
     std::cout << ::tpy::print_float((::tpy::fmod(-(0.0), 3.0))) << "\n";
     // print(0.0 % -3.0)       # -0.0  (raw fmod gives  0.0)
     std::cout << ::tpy::print_float((::tpy::fmod(0.0, -(3.0)))) << "\n";
-    // # Float32 path takes the fmod_f32 branch (both sign permutations).
-    // af: Float32 = Float32(-7.0)
+    // # float32 path takes the fmod_f32 branch (both sign permutations).
+    // af: float32 = float32(-7.0)
     float af = -(7.0f);
-    // bf: Float32 = Float32(3.0)
+    // bf: float32 = float32(3.0)
     float bf = 3.0f;
     // print(af % bf)          # 2.0
     std::cout << ::tpy::print_float(static_cast<double>((::tpy::fmod_f32(af, bf)))) << "\n";
-    // cf: Float32 = Float32(7.0)
+    // cf: float32 = float32(7.0)
     float cf = 7.0f;
-    // df: Float32 = Float32(-3.0)
+    // df: float32 = float32(-3.0)
     float df = -(3.0f);
     // print(cf % df)          # -2.0
     std::cout << ::tpy::print_float(static_cast<double>((::tpy::fmod_f32(cf, df)))) << "\n";

@@ -6,15 +6,15 @@
 # as the key's own PyObject, and an arithmetic/unary dunder returning
 # self/the operand crosses by identity through the nb_* slots -- matching
 # plain Python's aliasing, so the driver asserts everything in parity.
-from tpy import Int32, readonly
+from tpy import int32, readonly
 from tpy.extern import export
 
 
 @export
 class Node:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32):
+    def __init__(self, v: int32):
         self.v = v
 
 
@@ -25,7 +25,7 @@ class Grid:
     def __init__(self):
         self._cell = Node(5)
 
-    def __getitem__(self, i: Int32) -> Node:
+    def __getitem__(self, i: int32) -> Node:
         return self._cell
 
     def cell(self) -> Node:
@@ -36,12 +36,12 @@ class Grid:
 
 @export
 class Echo:
-    n: Int32
+    n: int32
 
     def __init__(self):
         self.n = 0
 
-    def __getitem__(self, i: Int32) -> "Echo":
+    def __getitem__(self, i: int32) -> "Echo":
         return self
 
 
@@ -63,9 +63,9 @@ class KeyEcho:
 
 @export
 class Acc:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
     def __add__(self, o: "Acc") -> "Acc":
@@ -77,9 +77,9 @@ class Acc:
 
 @export
 class RoPick:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
     def __add__(self, o: "RoPick") -> "readonly[RoPick]":

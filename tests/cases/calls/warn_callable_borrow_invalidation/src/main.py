@@ -13,13 +13,13 @@
 # is kept before the call so runtime output stays deterministic and matches
 # CPython (a genuine cross-call UAF would read reallocated storage).
 from typing import Callable
-from tpy import Fn, Int32
+from tpy import Fn, int32
 
 
 class P:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 

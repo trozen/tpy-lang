@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 from mypackage.nonexistent import X  # tpyc: error(/Module 'mypackage.nonexistent' not found/)
 
-def main() -> Int32:
-    return Int32(0)
+def main() -> int32:
+    return int32(0)
 
 main()

@@ -1,6 +1,6 @@
 # Readonly method with mutable output parameter.
 # The method is const (doesn't mutate self) but the writer param IS mutated.
-from tpy import Int32
+from tpy import int32
 
 class Writer:
     _parts: list[str]
@@ -15,10 +15,10 @@ class Writer:
         return ",".join(self._parts)
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32) -> None:
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 

@@ -5,11 +5,11 @@
 # brace-init binds there directly, so that path is intentionally left unwrapped.
 # Mutating the stored list after assignment forces the value-vs-reference
 # distinction -- a silent copy would not be observable on read alone.
-from tpy import Int32
+from tpy import int32
 
 
 def main() -> None:
-    groups: dict[str, list[Int32]] = {}
+    groups: dict[str, list[int32]] = {}
     groups["odds"] = [1, 3, 5, 7]  # tpyc: ok
     groups["odds"].append(9)
     print(len(groups["odds"]), groups["odds"][4])
@@ -21,7 +21,7 @@ def main() -> None:
     print(groups["calc"][0], groups["calc"][1], groups["calc"][2])
 
     # Same hazard via an integer index into a list-of-lists.
-    matrix: list[list[Int32]] = [[0]]
+    matrix: list[list[int32]] = [[0]]
     matrix[0] = [1, 2, 3]  # tpyc: ok
     matrix[0].append(4)
     print(len(matrix[0]), matrix[0][3])
@@ -29,7 +29,7 @@ def main() -> None:
     # Proven bounds-safe index: takes the `x[i] = value` lvalue path, which
     # binds a bare brace-init directly (no type prefix). Guards that the
     # deliberately-unwrapped path stays correct.
-    rows: list[list[Int32]] = [[0], [0], [0]]
+    rows: list[list[int32]] = [[0], [0], [0]]
     for i in range(len(rows)):
         rows[i] = [i, i + 1]  # tpyc: ok
     print(len(rows), rows[2][1])

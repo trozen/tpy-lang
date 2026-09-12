@@ -2,19 +2,19 @@
 # (a move-only self-iterator) must iterate it without copying it -- a copy is a
 # deleted-ctor build error, so compiling + running is the guard.
 from typing import Iterator, Iterable
-from tpy import Int32
+from tpy import int32
 
 
 # generic generator with a range-loop body -> a move-only resumable frame
-def repeat_n[T](obj: T, times: Int32) -> Iterator[T]:
+def repeat_n[T](obj: T, times: int32) -> Iterator[T]:
     for _ in range(times):
         yield obj
 
 
 # generator consuming a generic Iterable[T] param (the param's runtime value is
 # the move-only generator above) -- resumable (the break forces the frame)
-def take[T](it: Iterable[T], n: Int32) -> Iterator[T]:
-    c: Int32 = 0
+def take[T](it: Iterable[T], n: int32) -> Iterator[T]:
+    c: int32 = 0
     for x in it:
         if c >= n:
             break
@@ -23,15 +23,15 @@ def take[T](it: Iterable[T], n: Int32) -> Iterator[T]:
 
 
 # resumable consumer iterating a TEMPORARY generator source directly
-def wrap(n: Int32) -> Iterator[Int32]:
+def wrap(n: int32) -> Iterator[int32]:
     yield -1
     for x in repeat_n(5, n):
         yield x
 
 
 # inverse 1: Iterator[T] param (the `next` strategy -- source IS the iterator)
-def take_iter[T](it: Iterator[T], n: Int32) -> Iterator[T]:
-    c: Int32 = 0
+def take_iter[T](it: Iterator[T], n: int32) -> Iterator[T]:
+    c: int32 = 0
     for x in it:
         if c >= n:
             break
@@ -40,14 +40,14 @@ def take_iter[T](it: Iterator[T], n: Int32) -> Iterator[T]:
 
 
 # inverse 2: a plain list source in a generator (begin_end strategy, unchanged)
-def doubled(xs: list[Int32]) -> Iterator[Int32]:
+def doubled(xs: list[int32]) -> Iterator[int32]:
     for x in xs:
         yield x * 2
 
 
 def main() -> None:
     # Iterable[T] param consuming a move-only generator: for-loop and comprehension
-    out: list[Int32] = []
+    out: list[int32] = []
     for v in take(repeat_n(7, 5), 3):
         out.append(v)
     print(out)                                       # [7, 7, 7]

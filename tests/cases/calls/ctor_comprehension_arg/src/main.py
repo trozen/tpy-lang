@@ -11,19 +11,19 @@
 # append included. The hoisted temp evaluates
 # before its sibling arguments, so no section mixes it with a side-effecting
 # one (BUGS.md#subexpression-right-to-left-eval).
-from tpy import Int32, Own, ReturnException, error_return
+from tpy import int32, Own, ReturnException, error_return
 from tplib import Rc
 
 
 class Flat:
-    n: Int32
+    n: int32
 
     def __init__(self, data: list[bytes]) -> None:
         self.n = len(data)
 
 
 class Grow:
-    n: Int32
+    n: int32
 
     def __init__(self, data: list[bytes]) -> None:
         data.append(b"z")
@@ -41,14 +41,14 @@ class Keep:
 
 
 class Tally:
-    n: Int32
+    n: int32
 
-    def __init__(self, d: dict[str, Int32], s: set[Int32]) -> None:
+    def __init__(self, d: dict[str, int32], s: set[int32]) -> None:
         self.n = len(d) + len(s)
 
 
 class CM:
-    def __enter__(self) -> Int32:
+    def __enter__(self) -> int32:
         return 2
 
     def __exit__(self, et, ev, tb) -> None:
@@ -64,7 +64,7 @@ def take_own(data: Own[list[bytes]]) -> Own[list[bytes]]:
     return data
 
 
-def use_flat(f: Flat) -> Int32:
+def use_flat(f: Flat) -> int32:
     return f.n
 
 
@@ -93,7 +93,7 @@ def ctor_nested_call() -> None:
 
 
 # ... as a return value.
-def make(k: Int32) -> Own[Flat]:
+def make(k: int32) -> Own[Flat]:
     return Flat([bytes([i]) for i in range(k)])  # tpyc: ok
 
 
@@ -125,7 +125,7 @@ def own_stub_elem() -> None:
     table.append([2.0 * float(i) for i in range(3)])  # tpyc: ok
     table[0].append(9.0)
     print("own_stub_elem", len(table), table[0])
-    d: dict[Int32, list[Int32]] = {}
+    d: dict[int32, list[int32]] = {}
     got = d.setdefault(1, [x for x in range(3)])  # tpyc: ok
     got.append(7)
     print("own_stub_elem", d[1], len(got))
@@ -146,7 +146,7 @@ def own_marker_and_pending() -> None:
 
 # An rvalue-reassigned local: the temp lands before the rebind-slot
 # declaration and before each in-place slot rewrite.
-def rebind_slot_reseat(k: Int32) -> None:
+def rebind_slot_reseat(k: int32) -> None:
     f = Flat([bytes([i]) for i in range(k)])  # tpyc: ok
     print("rebind_slot_reseat", f.n)
     f = Flat([bytes([i]) for i in range(k + 1)])  # tpyc: ok
@@ -154,15 +154,15 @@ def rebind_slot_reseat(k: Int32) -> None:
 
 
 class Site:
-    n: Int32
+    n: int32
 
     # Constructor body (a local decl, not the field initializer itself).
-    def __init__(self, k: Int32) -> None:
+    def __init__(self, k: int32) -> None:
         f = Flat([bytes([i]) for i in range(k)])  # tpyc: ok
         self.n = f.n
 
     # Method body.
-    def bump(self, k: Int32) -> None:
+    def bump(self, k: int32) -> None:
         f = Flat([bytes([i]) for i in range(k)])  # tpyc: ok
         self.n += f.n
 
@@ -170,14 +170,14 @@ class Site:
 # Closure body (a literal element: `bytes([i])` inside a nested def is its
 # own gap, BUGS.md#nested-def-native-call-list-literal-arg).
 def closure() -> None:
-    def inner(k: Int32) -> Int32:
+    def inner(k: int32) -> int32:
         return Flat([b"x" for i in range(k)]).n  # tpyc: ok
 
     print("closure", inner(3))
 
 
 # With body, try body, match arm.
-def blocks(k: Int32) -> None:
+def blocks(k: int32) -> None:
     with CM() as n:
         f = Flat([bytes([i]) for i in range(n)])  # tpyc: ok
         print("with_body", f.n)
@@ -196,7 +196,7 @@ def blocks(k: Int32) -> None:
 
 # A reseat of a with-hoisted, reassigned record: the argument temp must land
 # BEFORE the rebind write (every valued reseat kind flushes first).
-def hoisted_reseat(k: Int32) -> None:
+def hoisted_reseat(k: int32) -> None:
     with CM() as n:
         f = Flat([b"a"])
         print("hoisted_reseat", f.n)
@@ -204,7 +204,7 @@ def hoisted_reseat(k: Int32) -> None:
     print("hoisted_reseat", f.n)
 
 
-def label(k: Int32) -> str:
+def label(k: int32) -> str:
     if k == 0:
         return ""
     return "k"
@@ -212,7 +212,7 @@ def label(k: Int32) -> str:
 
 # The str in-place append drains its value's temp first (the `or` operand
 # materializes one).
-def str_append_temp(k: Int32) -> None:
+def str_append_temp(k: int32) -> None:
     s = "start"
     s += label(k) or "none"  # tpyc: ok
     s += label(0) or "none"  # tpyc: ok
@@ -221,7 +221,7 @@ def str_append_temp(k: Int32) -> None:
 
 # @error_return body.
 @error_return(MyErr)
-def error_return_body(k: Int32) -> Int32:
+def error_return_body(k: int32) -> int32:
     f = Flat([bytes([i]) for i in range(k)])  # tpyc: ok
     return f.n
 

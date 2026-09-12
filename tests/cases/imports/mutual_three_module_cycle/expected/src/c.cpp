@@ -6,7 +6,7 @@
 namespace tpyapp::c {
 
 
-// def cc() -> Int32:
+// def cc() -> int32:
 int32_t cc() {
     // return 3 + aa()
     return (::tpy::add_check<int32_t>(3, ::tpyapp::a::aa()));

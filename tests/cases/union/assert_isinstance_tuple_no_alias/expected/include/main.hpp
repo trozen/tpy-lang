@@ -18,10 +18,10 @@ void main();
 
 // class Alpha:
 struct Alpha {
-    // x: Int32
+    // x: int32
     int32_t x;
 
-    // def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: int32) -> None:
     Alpha() = default;
     explicit Alpha(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Alpha";
@@ -34,10 +34,10 @@ inline std::ostream& operator<<(std::ostream& os, const Alpha& obj) {
 
 // class Beta:
 struct Beta {
-    // y: Int32
+    // y: int32
     int32_t y;
 
-    // def __init__(self, y: Int32) -> None:
+    // def __init__(self, y: int32) -> None:
     Beta() = default;
     explicit Beta(int32_t y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Beta";
@@ -50,10 +50,10 @@ inline std::ostream& operator<<(std::ostream& os, const Beta& obj) {
 
 // class Gamma:
 struct Gamma {
-    // z: Int32
+    // z: int32
     int32_t z;
 
-    // def __init__(self, z: Int32) -> None:
+    // def __init__(self, z: int32) -> None:
     Gamma() = default;
     explicit Gamma(int32_t z);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Gamma";
@@ -65,13 +65,13 @@ inline std::ostream& operator<<(std::ostream& os, const Gamma& obj) {
 }
 
 
-// def __init__(self, x: Int32) -> None:
+// def __init__(self, x: int32) -> None:
 inline Alpha::Alpha(int32_t x) : x(x) {}
 
-// def __init__(self, y: Int32) -> None:
+// def __init__(self, y: int32) -> None:
 inline Beta::Beta(int32_t y) : y(y) {}
 
-// def __init__(self, z: Int32) -> None:
+// def __init__(self, z: int32) -> None:
 inline Gamma::Gamma(int32_t z) : z(z) {}
 void __tpy_init();
 } // namespace tpyapp::main

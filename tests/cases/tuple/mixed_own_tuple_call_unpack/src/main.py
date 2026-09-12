@@ -1,12 +1,12 @@
 # Unpacking a call returning a tuple that mixes a borrowed record, an owned
 # copy and plain scalars: mutating the original shows through the borrow only.
-from tpy import Int32, Own, copy
+from tpy import int32, Own, copy
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
@@ -14,7 +14,7 @@ def split(p: Point) -> tuple[Point, Own[Point]]:
     return (p, copy(p))
 
 
-def split3(p: Point) -> tuple[Point, Own[Point], Int32, str]:
+def split3(p: Point) -> tuple[Point, Own[Point], int32, str]:
     return (p, copy(p), 7, "hi")
 
 

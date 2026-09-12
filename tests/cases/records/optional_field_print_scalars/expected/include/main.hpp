@@ -16,7 +16,7 @@ void main();
 // @dataclass
 // class Settings:
 struct Settings {
-    // count: Int32 | None = None
+    // count: int32 | None = None
     std::optional<int32_t> count = std::nullopt;
     // flag: bool | None = None
     std::optional<bool> flag = std::nullopt;

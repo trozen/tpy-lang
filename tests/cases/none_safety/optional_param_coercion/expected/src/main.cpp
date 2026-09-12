@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def show(x: Int32 | None) -> None:
+// def show(x: int32 | None) -> None:
 void show(std::optional<int32_t> x) {
     // if x is not None:
     if ((x.has_value())) {
@@ -23,7 +23,7 @@ void main() {
     show(42);
     // show(None)
     show(std::nullopt);
-    // n: Int32 = 10
+    // n: int32 = 10
     int32_t n = 10;
     // show(n)
     show(n);

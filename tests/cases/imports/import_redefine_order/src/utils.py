@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 
-MAX: Int32 = Int32(100)
-MIN: Int32 = Int32(1)
+MAX: int32 = int32(100)
+MIN: int32 = int32(1)

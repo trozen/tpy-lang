@@ -1,13 +1,13 @@
 # @nocopy: alias used after owner move point -- move suppressed, error fires.
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 
 
 @nocopy
 class Handle:
-    fd: Int32
+    fd: int32
 
 
-def close(h: Own[Handle]) -> Int32:
+def close(h: Own[Handle]) -> int32:
     return h.fd
 
 

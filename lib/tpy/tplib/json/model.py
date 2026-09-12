@@ -11,7 +11,7 @@ Usage:
     @model
     class User:
         name: str
-        age: Int32
+        age: int32
         score: float = 0.0
 
     u = User("Alice", 30, 9.5)
@@ -39,12 +39,12 @@ Generated methods:
   - to_json() -> str                          -- serialize to JSON string
   - from_json(s: str) -> Self                 -- deserialize, panics on error
   - try_from_json(s: str) -> Self             -- deserialize with @error_return(JsonError)
-  - save_json(path: str, indent: Int32 = 0) -> None  -- serialize and write to file
+  - save_json(path: str, indent: int32 = 0) -> None  -- serialize and write to file
   - load_json(path: str) -> Self              -- read file and deserialize, panics on error
   - try_load_json(path: str) -> Self          -- read file and deserialize with @error_return
 
 Supported field types:
-  - Primitives: str, bool, int/Int32/Int64/BigInt, float/Float32
+  - Primitives: str, bool, int/int32/int64/BigInt, float/float32
   - Containers: list[T], dict[str, V], tuple[T, ...]
   - Enum types
   - Optional[T]
@@ -55,14 +55,14 @@ User-defined type protocol -- any class with these two methods can be
 used as a field in @model classes:
 
     class Seconds:
-        _value: Int32
+        _value: int32
         def __json_encode__(self, writer: JsonWriter) -> None:
             writer.write_int32(self._value)
         @staticmethod
         @error_return(JsonError)
         def __json_decode__(reader: JsonReader) -> Own[Seconds]:
             raw = reader.read_int()
-            return Seconds(Int32(raw))
+            return Seconds(int32(raw))
 
     @model
     class Event:
@@ -176,12 +176,12 @@ def _try_build_read_stmts(fld_type: TypeInfo, reader: Expr, var_name: str) -> li
             raw = ast.fresh_tmp("raw")
             return [
                 ast.var_decl(raw, init=ast.method_call(reader, "read_float")),
-                ast.var_decl(var_name, init=ast.call("Float32", [ast.name(raw)])),
+                ast.var_decl(var_name, init=ast.call("float32", [ast.name(raw)])),
             ]
         return [ast.var_decl(var_name, init=ast.method_call(reader, "read_float"))]
     if fld_type.is_int:
         type_name = fld_type.int_type_name
-        if type_name != "Int64":
+        if type_name != "int64":
             raw = ast.fresh_tmp("raw")
             return [
                 ast.var_decl(raw, init=ast.method_call(reader, "read_int")),
@@ -615,7 +615,7 @@ def _build_json_encode(cls: ClassInfo, all_fields: list[FieldInfo]) -> Function:
 
 
 def _build_to_json(cls: ClassInfo) -> Function:
-    """Build to_json(self, indent: Int32 = 0) -> str method (public entry point)."""
+    """Build to_json(self, indent: int32 = 0) -> str method (public entry point)."""
     writer_type = types.named("JsonWriter")
     body: list[Stmt] = [
         ast.var_decl("__writer", type=writer_type,
@@ -630,7 +630,7 @@ def _build_to_json(cls: ClassInfo) -> Function:
 
 
 def _build_save_json(cls: ClassInfo) -> Function:
-    """Build save_json(self, path: str, indent: Int32 = 0) -> None."""
+    """Build save_json(self, path: str, indent: int32 = 0) -> None."""
     body: list[Stmt] = ast.quote("""
         with open(__path, "w") as __f:
             __f.write(self.to_json(indent))

@@ -16,14 +16,14 @@ void main();
 
 // class Guard:
 struct Guard {
-    // _tag: Int32
+    // _tag: int32
     int32_t _tag;
 
-    // def __init__(self, tag: Int32):
+    // def __init__(self, tag: int32):
     Guard() = default;
     explicit Guard(int32_t tag);
 
-    // def __enter__(self) -> Int32:
+    // def __enter__(self) -> int32:
     int32_t __enter__() const;
 
     // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
@@ -38,11 +38,11 @@ inline std::ostream& operator<<(std::ostream& os, const Guard& obj) {
 
 // class Resource:
 struct Resource {
-    // _id: Int32
+    // _id: int32
     int32_t _id;
     bool __tpy_owned_ = true;
 
-    // def __init__(self, id: Int32):
+    // def __init__(self, id: int32):
     explicit Resource(int32_t id);
     Resource(const Resource&) = delete;
     Resource& operator=(const Resource&) = delete;
@@ -60,10 +60,10 @@ inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
 }
 
 
-// def __init__(self, tag: Int32):
+// def __init__(self, tag: int32):
 inline Guard::Guard(int32_t tag) : _tag(tag) {}
 
-// def __enter__(self) -> Int32:
+// def __enter__(self) -> int32:
 inline int32_t Guard::__enter__() const {
     // print("enter", self._tag)
     std::cout << "enter" << " " << this->_tag << "\n";
@@ -77,7 +77,7 @@ inline void Guard::__exit__(std::monostate exc_type, const ::tpy::BaseException*
     std::cout << "exit" << " " << this->_tag << "\n";
 }
 
-// def __init__(self, id: Int32):
+// def __init__(self, id: int32):
 inline Resource::Resource(int32_t id) : _id(id) {}
 
 inline Resource::Resource(Resource&& other) noexcept : _id(std::move(other._id)) {

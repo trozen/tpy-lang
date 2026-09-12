@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def a() -> Int32:
+// async def a() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_a::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -27,12 +27,12 @@ namespace tpyapp::main {
 }
 
 
-// async def a() -> Int32:
+// async def a() -> int32:
 __coro_a a() {
     return __coro_a();
 }
 
-// async def b() -> Int32:
+// async def b() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_b::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -55,12 +55,12 @@ __coro_a a() {
 }
 
 
-// async def b() -> Int32:
+// async def b() -> int32:
 __coro_b b() {
     return __coro_b();
 }
 
-// async def shared() -> Int32:
+// async def shared() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_shared::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -85,7 +85,7 @@ __coro_b b() {
 }
 
 
-// async def shared() -> Int32:
+// async def shared() -> int32:
 __coro_shared shared() {
     return __coro_shared();
 }

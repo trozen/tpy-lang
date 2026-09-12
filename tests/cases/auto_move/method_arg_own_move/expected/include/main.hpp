@@ -18,10 +18,10 @@ void main();
 // @nocopy
 // class Payload:
 struct Payload {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Payload() = default;
     explicit Payload(int32_t n);
     // non-copyable (@nocopy)
@@ -39,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Payload& obj) {
 
 // class Sink:
 struct Sink {
-    // total: Int32
+    // total: int32
     int32_t total;
 
     // def __init__(self) -> None:
@@ -56,7 +56,7 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
 }
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Payload::Payload(int32_t n) : n(n) {}
 
 // def __init__(self) -> None:

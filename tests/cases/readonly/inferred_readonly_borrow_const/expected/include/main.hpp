@@ -19,7 +19,7 @@ void main();
 
 // class Cell:
 struct Cell {
-    // v: Int32
+    // v: int32
     int32_t v;
 
     // def __init__(self):
@@ -42,18 +42,18 @@ struct Store {
     // def __init__(self):
     Store();
 
-    // def __getitem__(self, k: Int32) -> Cell | None:
+    // def __getitem__(self, k: int32) -> Cell | None:
     Cell* __getitem__(int32_t k);
 
-    // def __getitem__(self, k: Int32) -> Cell | None:
+    // def __getitem__(self, k: int32) -> Cell | None:
     const Cell* __getitem__(int32_t k) const;
 
     // @auto_readonly
-    // def get(self, k: Int32) -> auto_readonly[Cell | None]:
+    // def get(self, k: int32) -> auto_readonly[Cell | None]:
     Cell* get(int32_t k);
 
     // @auto_readonly
-    // def get(self, k: Int32) -> auto_readonly[Cell | None]:
+    // def get(self, k: int32) -> auto_readonly[Cell | None]:
     const Cell* get(int32_t k) const;
 
     // @auto_readonly
@@ -87,10 +87,10 @@ struct Outer {
     // def __init__(self):
     Outer();
 
-    // def read_sub(self) -> Int32:
+    // def read_sub(self) -> int32:
     int32_t read_sub() const;
 
-    // def read_named(self) -> Int32:
+    // def read_named(self) -> int32:
     int32_t read_named();
 
     // def bump(self) -> None:
@@ -110,7 +110,7 @@ inline Cell::Cell() : v(7) {}
 // def __init__(self):
 inline Store::Store() : _cell(Cell()), _present(true) {}
 
-// def __getitem__(self, k: Int32) -> Cell | None:
+// def __getitem__(self, k: int32) -> Cell | None:
 inline Cell* Store::__getitem__(int32_t k) {
     // if self._present:
     if (this->_present) {
@@ -121,7 +121,7 @@ inline Cell* Store::__getitem__(int32_t k) {
     return nullptr;
 }
 
-// def __getitem__(self, k: Int32) -> Cell | None:
+// def __getitem__(self, k: int32) -> Cell | None:
 inline const Cell* Store::__getitem__(int32_t k) const {
     // if self._present:
     if (this->_present) {
@@ -133,7 +133,7 @@ inline const Cell* Store::__getitem__(int32_t k) const {
 }
 
 // @auto_readonly
-// def get(self, k: Int32) -> auto_readonly[Cell | None]:
+// def get(self, k: int32) -> auto_readonly[Cell | None]:
 inline Cell* Store::get(int32_t k) {
     // if self._present:
     if (this->_present) {
@@ -145,7 +145,7 @@ inline Cell* Store::get(int32_t k) {
 }
 
 // @auto_readonly
-// def get(self, k: Int32) -> auto_readonly[Cell | None]:
+// def get(self, k: int32) -> auto_readonly[Cell | None]:
 inline const Cell* Store::get(int32_t k) const {
     // if self._present:
     if (this->_present) {
@@ -173,7 +173,7 @@ inline const Cell& Store::first() const {
 // def __init__(self):
 inline Outer::Outer() : store(Store()) {}
 
-// def read_sub(self) -> Int32:
+// def read_sub(self) -> int32:
 inline int32_t Outer::read_sub() const {
     // # Inferred readonly; subscript resolves the const twin at C++ level.
     // p = self.store[5]
@@ -187,7 +187,7 @@ inline int32_t Outer::read_sub() const {
     return -1;
 }
 
-// def read_named(self) -> Int32:
+// def read_named(self) -> int32:
 inline int32_t Outer::read_named() {
     // # NOT inferred readonly: binding a NAMED accessor result keeps the
     // # receiver mutable (READONLY_DESIGN.md limitation), so the mutable

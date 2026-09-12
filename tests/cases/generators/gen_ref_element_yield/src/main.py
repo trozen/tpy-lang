@@ -6,31 +6,31 @@
 # SOURCE back, so a silent copy shows up as a diverging count.
 from typing import Iterator
 
-from tpy import Int32, readonly
+from tpy import int32, readonly
 
 
 class Box:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 
 class Rows:
-    buf: list[Int32]
+    buf: list[int32]
 
     def __init__(self) -> None:
         self.buf = [1]
 
     # 3. generator METHOD, container element off a list PARAM.
-    def each(self, xs: list[list[Int32]]) -> Iterator[list[Int32]]:
+    def each(self, xs: list[list[int32]]) -> Iterator[list[int32]]:
         for s in xs:
             yield s  # tpyc: ok
             yield s
 
     # 5. `self.<field>` at a container yield slot: the storage member binds
     #    the val_or_ref slot bare, the leg the record half already had.
-    def field_twice(self) -> Iterator[list[Int32]]:
+    def field_twice(self) -> Iterator[list[int32]]:
         yield self.buf  # tpyc: ok
         yield self.buf
 
@@ -45,7 +45,7 @@ class Guard:
 
 # 1. free generator, list-param loop var -- the container half of the axis,
 #    the cell this case exists for.
-def each_list(xs: list[list[Int32]]) -> Iterator[list[Int32]]:
+def each_list(xs: list[list[int32]]) -> Iterator[list[int32]]:
     for s in xs:
         yield s  # tpyc: ok
         yield s
@@ -60,7 +60,7 @@ def each_rec(xs: list[Box]) -> Iterator[Box]:
 
 
 # 4. `*args` pack element.
-def each_pack(*xs: list[Int32]) -> Iterator[list[Int32]]:
+def each_pack(*xs: list[int32]) -> Iterator[list[int32]]:
     for s in xs:
         yield s  # tpyc: ok
         yield s
@@ -69,8 +69,8 @@ def each_pack(*xs: list[Int32]) -> Iterator[list[Int32]]:
 # 6. a FRAME-LOCAL list: the yielded borrow points into frame-owned storage,
 #    which outlives every pull -- the frame reads its own view back after the
 #    consumer mutated through it.
-def each_local() -> Iterator[list[Int32]]:
-    own: list[list[Int32]] = [[1], [2]]
+def each_local() -> Iterator[list[int32]]:
+    own: list[list[int32]] = [[1], [2]]
     for s in own:
         yield s  # tpyc: ok
         yield s
@@ -96,27 +96,27 @@ def each_ternary(flag: bool) -> Iterator[Box]:
 
 
 # 9. the axis's other container members.
-def each_dict(xs: list[dict[Int32, Int32]]) -> Iterator[dict[Int32, Int32]]:
+def each_dict(xs: list[dict[int32, int32]]) -> Iterator[dict[int32, int32]]:
     for d in xs:
         yield d  # tpyc: ok
         yield d
 
 
-def each_set(xs: list[set[Int32]]) -> Iterator[set[Int32]]:
+def each_set(xs: list[set[int32]]) -> Iterator[set[int32]]:
     for s in xs:
         yield s  # tpyc: ok
         yield s
 
 
 # 10. position coverage: a `with` body and a `finally` body.
-def each_with(xs: list[list[Int32]]) -> Iterator[list[Int32]]:
+def each_with(xs: list[list[int32]]) -> Iterator[list[int32]]:
     with Guard():
         for s in xs:
             yield s  # tpyc: ok
             yield s
 
 
-def each_finally(xs: list[list[Int32]]) -> Iterator[list[Int32]]:
+def each_finally(xs: list[list[int32]]) -> Iterator[list[int32]]:
     try:
         print("finally-try")
     finally:
@@ -130,12 +130,12 @@ def each_finally(xs: list[list[Int32]]) -> Iterator[list[Int32]]:
 #     StopIteration>` and the consumer binds `const auto&`, so a pull hands out
 #     a pointer instead of copying the whole vector out of the source.
 class ROBag:
-    buf: list[Int32]
+    buf: list[int32]
 
     def __init__(self) -> None:
         self.buf = [1]
 
-    def twice(self) -> Iterator[readonly[list[Int32]]]:
+    def twice(self) -> Iterator[readonly[list[int32]]]:
         yield self.buf  # tpyc: ok
         yield self.buf
 
@@ -150,11 +150,11 @@ def boxes(xs: list[Box]) -> Iterator[Box]:
         yield b
 
 
-def relay(it: Iterator[Box]) -> Iterator[Int32]:
+def relay(it: Iterator[Box]) -> Iterator[int32]:
     for b in it:
         # Mutating through the borrowed element reaches the ORIGINAL list.
         b.v += 100
-        # `yield b.v` would copy an Int32, but the ephemeral-borrow escape
+        # `yield b.v` would copy an int32, but the ephemeral-borrow escape
         # check roots on `b` -- BUGS.md#ephemeral-value-read-escape.
         v = b.v
         yield v
@@ -164,7 +164,7 @@ def relay(it: Iterator[Box]) -> Iterator[Int32]:
 def sec_freelist() -> None:
     # A bare `[[1], [2]]` would infer Array, not list
     # (BUGS.md#copy-array-literal-into-list-slot).
-    a: list[list[Int32]] = [[1], [2]]
+    a: list[list[int32]] = [[1], [2]]
     for s in each_list(a):
         s.append(9)
     print("freelist", len(a[0]), len(a[1]))
@@ -178,15 +178,15 @@ def sec_freerec() -> None:
 
 
 def sec_method() -> None:
-    a: list[list[Int32]] = [[1], [2]]
+    a: list[list[int32]] = [[1], [2]]
     for s in Rows().each(a):
         s.append(9)
     print("method", len(a[0]), len(a[1]))
 
 
 def sec_pack() -> None:
-    a: list[Int32] = [1]
-    b: list[Int32] = [2]
+    a: list[int32] = [1]
+    b: list[int32] = [2]
     for s in each_pack(a, b):
         s.append(9)
     print("pack", len(a), len(b))
@@ -233,14 +233,14 @@ def sec_set() -> None:
 
 
 def sec_with() -> None:
-    a: list[list[Int32]] = [[1], [2]]
+    a: list[list[int32]] = [[1], [2]]
     for s in each_with(a):
         s.append(9)
     print("with", len(a[0]), len(a[1]))
 
 
 def sec_finally() -> None:
-    a: list[list[Int32]] = [[1], [2]]
+    a: list[list[int32]] = [[1], [2]]
     for s in each_finally(a):
         s.append(9)
     print("finally", len(a[0]), len(a[1]))

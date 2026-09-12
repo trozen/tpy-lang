@@ -1,13 +1,13 @@
-from tpy import Int32
+from tpy import int32
 class Rec:
-    n: Int32
-    def __init__(self, n: Int32) -> None:
+    n: int32
+    def __init__(self, n: int32) -> None:
         self.n = n
 class Other:
-    m: Int32
-    def __init__(self, m: Int32) -> None:
+    m: int32
+    def __init__(self, m: int32) -> None:
         self.m = m
-def f(v: Rec | Other) -> Int32:
+def f(v: Rec | Other) -> int32:
     match v:
         case Rec(n=1) if v.n > 0:
             return 1

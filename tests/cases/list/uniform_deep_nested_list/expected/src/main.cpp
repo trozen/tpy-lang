@@ -12,7 +12,7 @@ namespace tpyapp::main {
 void main() {
     // # type() pins all-Array explicitly: a snapshot alone is parity-blind to
     // # Array-vs-vector (both print identically), which once hid an over-demotion.
-    // xs = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]  # tpyc: type(/Array\[Array\[Array\[Int32, 2\], 2\], 2\]/)
+    // xs = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]  # tpyc: type(/Array\[Array\[Array\[int32, 2\], 2\], 2\]/)
     std::array<std::array<std::array<int32_t, 2>, 2>, 2> xs = {{{{{1, 2}, {3, 4}}}, {{{5, 6}, {7, 8}}}}};
     // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";

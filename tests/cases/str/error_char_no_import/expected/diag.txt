@@ -1,1 +1,1 @@
-main.py:3: error: 'Char' requires: from tpy import Char
+main.py:3: error: 'char' requires: from tpy import char

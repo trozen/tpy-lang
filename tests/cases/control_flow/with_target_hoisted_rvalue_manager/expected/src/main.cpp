@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def rvalue_manager(flag: bool) -> Int32:
+// def rvalue_manager(flag: bool) -> int32:
 int32_t rvalue_manager(bool flag) {
     std::optional<Reg> __slot_2;
     std::optional<Reg> __slot_3;
@@ -50,7 +50,7 @@ int32_t rvalue_manager(bool flag) {
     return view->n;
 }
 
-// def lvalue_manager(flag: bool) -> Int32:
+// def lvalue_manager(flag: bool) -> int32:
 int32_t lvalue_manager(bool flag) {
     // keep = Reg(33)
     Reg keep = Reg(33);

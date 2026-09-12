@@ -1,1 +1,1 @@
-TurboPython panic: uncaught tpy::TypeError: Char() expected a character, but string of length 5 found
+TurboPython panic: uncaught tpy::TypeError: char() expected a character, but string of length 5 found

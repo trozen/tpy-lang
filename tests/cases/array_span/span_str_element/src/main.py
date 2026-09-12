@@ -1,6 +1,6 @@
 # A `Span[str]` local: an owned-str span element decls as the plain spelled
 # copy and reads bare, exactly as the same element does off a list.
-from tpy import Int32, Span
+from tpy import int32, Span
 
 
 def first(words: Span[str]) -> str:

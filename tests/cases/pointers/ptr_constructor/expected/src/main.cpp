@@ -26,9 +26,9 @@ void test_null_constructors() {
     void* p1 = static_cast<void*>(nullptr);
     // p2: Ptr[readonly[None]] = Ptr[readonly[None]]()
     const void* p2 = static_cast<const void*>(nullptr);
-    // p3: Ptr[Int32] = Ptr[Int32]()
+    // p3: Ptr[int32] = Ptr[int32]()
     int32_t* p3 = static_cast<int32_t*>(nullptr);
-    // p4: Ptr[readonly[Int32]] = Ptr[readonly[Int32]]()
+    // p4: Ptr[readonly[int32]] = Ptr[readonly[int32]]()
     const int32_t* p4 = static_cast<const int32_t*>(nullptr);
     // print("null ok")
     std::cout << "null ok" << "\n";
@@ -80,7 +80,7 @@ void test_ptr_write() {
     Point pt = Point(1, 2);
     // pp: Ptr[Point] = pt
     Point* pp = &pt;
-    // pp.x = Int32(99)
+    // pp.x = int32(99)
     pp->x = 99;
     // print(pt.x)
     std::cout << pt.x << "\n";

@@ -5,7 +5,7 @@
 # are rejected by `_protocol_template_parts` until a concrete need
 # surfaces. This test guards that rejection path.
 import asyncio
-from tpy import Int32
+from tpy import int32
 from tpy.coro import Awaitable
 
 
@@ -13,12 +13,12 @@ async def maybe_await[T](coro: Awaitable[T] | None, default: T) -> T:  # tpyc: e
     return default
 
 
-async def inner() -> Int32:
-    return Int32(0)
+async def inner() -> int32:
+    return int32(0)
 
 
 async def main_coro() -> None:
-    v = await maybe_await(inner(), Int32(5))
+    v = await maybe_await(inner(), int32(5))
     print(v)
 
 

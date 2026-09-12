@@ -1,10 +1,10 @@
 # Final[tuple[...]] class constant: emit as static constexpr std::tuple<...>.
 from typing import Final
-from tpy import Int32
+from tpy import int32
 
 
 class Version:
-    SEMVER: Final[tuple[Int32, Int32, Int32]] = (1, 2, 3)
+    SEMVER: Final[tuple[int32, int32, int32]] = (1, 2, 3)
     LABEL: Final[tuple[str, bool]] = ("alpha", True)
 
 

@@ -2,7 +2,7 @@
 # The child overrides foo (from A) and bar (from B); both annotations find
 # their target via _find_mro_ancestor_with_method walking record.mro_ancestors.
 from typing import override
-from tpy import Int32
+from tpy import int32
 
 
 class A:

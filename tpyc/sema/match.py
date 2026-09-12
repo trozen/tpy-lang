@@ -624,7 +624,7 @@ class MatchAnalyzer:
         type. The arms' own disagreement keeps a name block-scoped, but a
         nested match binds the same enclosing local, so the two would share one
         slot: C++ then truncates silently wherever an implicit conversion
-        exists (Int32 <- Int64) instead of failing. The cross-arm shape is
+        exists (int32 <- int64) instead of failing. The cross-arm shape is
         already rejected, so this closes the same hole on the nested route.
         """
         def nested_binds(
@@ -1072,7 +1072,7 @@ class MatchAnalyzer:
         if isinstance(subject_type, NominalType) and subject_type.is_user_record:
             return [None]  # type: ignore[list-item]  # sentinel: no enumerable missing cases
 
-        # Non-enumerable subjects (int/str/float/Char/...): exhaustiveness
+        # Non-enumerable subjects (int/str/float/char/...): exhaustiveness
         # cannot be proven from literal arms, so a match without a catch-all
         # must not be marked exhaustive (codegen would emit an unreachable
         # tail on the fall-through path).
@@ -1174,7 +1174,7 @@ class MatchAnalyzer:
         """Resolve a type name in a match class pattern against a union subject.
 
         Resolution order:
-        1. Exact match: record NominalType or primitive (Int32, str, bool, ...)
+        1. Exact match: record NominalType or primitive (int32, str, bool, ...)
         2. Name-based member search: find the union member whose base name
            matches (handles parameterized types like list[T], Box[str])
 
@@ -1507,7 +1507,7 @@ class MatchAnalyzer:
             if pattern.value is None:
                 self._check_duplicate_literal(pattern, seen_values)
             else:
-                # Literal match on the inner type (e.g. case 42: on Optional[Int32])
+                # Literal match on the inner type (e.g. case 42: on Optional[int32])
                 self._validate_literal_pattern(pattern, subject_type.inner)
                 self._check_duplicate_literal(pattern, seen_values)
 

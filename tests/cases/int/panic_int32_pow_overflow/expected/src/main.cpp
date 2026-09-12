@@ -3,9 +3,9 @@
 
 namespace tpyapp::main {
 
-// x: Int32 = 2
+// x: int32 = 2
 int32_t x{};
-// y: Int32 = x ** 31  # Should panic - 2^31 overflows Int32
+// y: int32 = x ** 31  # Should panic - 2^31 overflows int32
 int32_t y{};
 
 void __tpy_init() {
@@ -13,9 +13,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // x: Int32 = 2
+    // x: int32 = 2
     x = 2;
-    // y: Int32 = x ** 31  # Should panic - 2^31 overflows Int32
+    // y: int32 = x ** 31  # Should panic - 2^31 overflows int32
     y = (::tpy::pow_check<int32_t>(x, 31));
     // print(y)
     std::cout << y << "\n";

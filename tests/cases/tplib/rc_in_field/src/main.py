@@ -1,17 +1,17 @@
 # Rc[T] as a field of a record. Mutation via clone is visible through
 # the record's clone too.
-from tpy import Int32, Own
+from tpy import int32, Own
 from tplib import Rc
 
 
 class Counter:
-    value: Int32
+    value: int32
 
     def __init__(self) -> None:
-        self.value = Int32(0)
+        self.value = int32(0)
 
     def bump(self) -> None:
-        self.value += Int32(1)
+        self.value += int32(1)
 
 
 class Holder:

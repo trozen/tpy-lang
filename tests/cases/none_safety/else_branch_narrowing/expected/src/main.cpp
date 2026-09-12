@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def describe(x: Int32 | None) -> Int32:
+// def describe(x: int32 | None) -> int32:
 int32_t describe(std::optional<int32_t> x) {
     // if x is None:
     if ((!x.has_value())) {

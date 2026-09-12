@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def from_list_of_tuples() -> None:
 void from_list_of_tuples() {
-    // pairs: list[tuple[str, Int32]] = [("a", 1), ("b", 2), ("c", 3)]
+    // pairs: list[tuple[str, int32]] = [("a", 1), ("b", 2), ("c", 3)]
     std::vector<std::tuple<std::string, int32_t>> pairs = {std::tuple<std::string, int32_t>{"a", 1}, std::tuple<std::string, int32_t>{"b", 2}, std::tuple<std::string, int32_t>{"c", 3}};
     // d = dict(pairs)
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_construct<std::string, int32_t>(::tpy::own_iter(std::move(pairs)));
@@ -22,7 +22,7 @@ void from_list_of_tuples() {
 
 // def from_items_view() -> None:
 void from_items_view() {
-    // original: dict[str, Int32] = {"x": 10, "y": 20, "z": 30}
+    // original: dict[str, int32] = {"x": 10, "y": 20, "z": 30}
     ::tpy::ordered_map<std::string, int32_t> original = ::tpy::ordered_map<std::string, int32_t>({{"x", 10}, {"y", 20}, {"z", 30}});
     // d = dict(original.items())
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_construct<std::string, int32_t>(::tpy::dict_items(original));
@@ -36,7 +36,7 @@ void from_items_view() {
 
 // def from_empty_list() -> None:
 void from_empty_list() {
-    // pairs: list[tuple[str, Int32]] = []
+    // pairs: list[tuple[str, int32]] = []
     std::vector<std::tuple<std::string, int32_t>> pairs = std::vector<std::tuple<std::string, int32_t>>{};
     // d = dict(pairs)
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_construct<std::string, int32_t>(::tpy::own_iter(std::move(pairs)));
@@ -48,7 +48,7 @@ void from_empty_list() {
 
 // def with_int_keys() -> None:
 void with_int_keys() {
-    // pairs: list[tuple[Int32, str]] = [(1, "one"), (2, "two")]
+    // pairs: list[tuple[int32, str]] = [(1, "one"), (2, "two")]
     std::vector<std::tuple<int32_t, std::string>> pairs = {std::tuple<int32_t, std::string>{1, "one"}, std::tuple<int32_t, std::string>{2, "two"}};
     // d = dict(pairs)
     ::tpy::ordered_map<int32_t, std::string> d = ::tpy::dict_construct<int32_t, std::string>(::tpy::own_iter(std::move(pairs)));
@@ -60,7 +60,7 @@ void with_int_keys() {
 
 // def with_duplicate_keys() -> None:
 void with_duplicate_keys() {
-    // pairs: list[tuple[str, Int32]] = [("a", 1), ("b", 2), ("a", 99)]
+    // pairs: list[tuple[str, int32]] = [("a", 1), ("b", 2), ("a", 99)]
     std::vector<std::tuple<std::string, int32_t>> pairs = {std::tuple<std::string, int32_t>{"a", 1}, std::tuple<std::string, int32_t>{"b", 2}, std::tuple<std::string, int32_t>{"a", 99}};
     // d = dict(pairs)
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_construct<std::string, int32_t>(::tpy::own_iter(std::move(pairs)));

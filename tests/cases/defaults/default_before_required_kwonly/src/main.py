@@ -2,14 +2,14 @@
 # Python but has no C++ default-argument spelling (defaults must be
 # trailing), so the default is dropped from the signature and materialized
 # at the call site instead.
-from tpy import Int64
+from tpy import int64
 
 
-def f(a: Int64, b: Int64 = 10, *, c: Int64) -> Int64:
+def f(a: int64, b: int64 = 10, *, c: int64) -> int64:
     return a * 100 + b * 10 + c
 
 
-def g(a: Int64, b: Int64 = 1, c: Int64 = 2, *, d: Int64, e: Int64 = 5) -> Int64:
+def g(a: int64, b: int64 = 1, c: int64 = 2, *, d: int64, e: int64 = 5) -> int64:
     return a * 10000 + b * 1000 + c * 100 + d * 10 + e
 
 

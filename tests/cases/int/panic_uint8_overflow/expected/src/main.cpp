@@ -6,9 +6,9 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // a: UInt8 = UInt8(255)
+    // a: uint8 = uint8(255)
     uint8_t a = 255;
-    // b: UInt8 = a + UInt8(1)
+    // b: uint8 = a + uint8(1)
     uint8_t b = (::tpy::add_check<uint8_t>(a, 1));
     // print(b)
     std::cout << static_cast<int>(b) << "\n";

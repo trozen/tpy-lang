@@ -4,20 +4,20 @@
 namespace tpyapp::main {
 
 
-// def consume(h: Own[Handle]) -> Int32:
+// def consume(h: Own[Handle]) -> int32:
 int32_t consume(Handle&& h) {
     // return h.value
     return h.value;
 }
 
-// def test() -> Int32:
+// def test() -> int32:
 int32_t test() {
     // h: Handle | None
     Handle* h = nullptr;
     // h = Handle()
     Handle __slot_1 = Handle();
     h = &__slot_1;
-    // h.value = Int32(77)
+    // h.value = int32(77)
     h->value = 77;
     // assert h is not None
     if (!((h != nullptr))) ::tpy::raise_assertion_error();

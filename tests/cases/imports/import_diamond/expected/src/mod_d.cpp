@@ -4,9 +4,9 @@
 namespace tpyapp::mod_d {
 
 
-// def d_value() -> Int32:
+// def d_value() -> int32:
 int32_t d_value() {
-    // return Int32(5)
+    // return int32(5)
     return 5;
 }
 

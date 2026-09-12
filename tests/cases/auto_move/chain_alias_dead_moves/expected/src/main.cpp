@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def take(o: Own[Outer]) -> Int32:
+// def take(o: Own[Outer]) -> int32:
 int32_t take(Outer&& o) {
     // store: list[Outer] = []
     std::vector<Outer> store = std::vector<Outer>{};

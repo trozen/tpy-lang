@@ -1,10 +1,10 @@
 # generic *args: type parameter T inferred from call-site args
-from tpy import Int32
+from tpy import int32
 
 def first[T](*args: T) -> T:
     return args[0]
 
-def count[T](*args: T) -> Int32:
+def count[T](*args: T) -> int32:
     return len(args)
 
 def main() -> None:

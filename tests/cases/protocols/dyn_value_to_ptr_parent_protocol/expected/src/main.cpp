@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def takes_pet_ptr(p: Ptr[Pet]) -> Int32:
+// def takes_pet_ptr(p: Ptr[Pet]) -> int32:
 int32_t takes_pet_ptr(Pet* p) {
     // return p.name()
     return ::tpy::deref_check(p).name();
 }
 
-// def forward(np: NamedPet) -> Int32:
+// def forward(np: NamedPet) -> int32:
 int32_t forward(NamedPet& np) {
     // return takes_pet_ptr(np)
     return takes_pet_ptr(&np);

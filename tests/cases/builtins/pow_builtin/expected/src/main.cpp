@@ -6,14 +6,14 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // # Int32 pow
-    // a: Int32 = pow(Int32(2), Int32(10))
+    // # int32 pow
+    // a: int32 = pow(int32(2), int32(10))
     int32_t a = ::tpy::pow_check<int32_t>(2, 10);
     // print(a)
     std::cout << a << "\n";
-    // print(pow(Int32(3), Int32(0)))
+    // print(pow(int32(3), int32(0)))
     std::cout << ::tpy::pow_check<int32_t>(3, 0) << "\n";
-    // print(pow(Int32(-2), Int32(3)))
+    // print(pow(int32(-2), int32(3)))
     std::cout << ::tpy::pow_check<int32_t>(-2, 3) << "\n";
     // # BigInt pow
     // b = pow(int(2), int(30))

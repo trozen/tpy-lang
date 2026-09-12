@@ -1,10 +1,10 @@
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 class Node:
-    v: Int32
-    def __init__(self, v: Int32) -> None:
+    v: int32
+    def __init__(self, v: int32) -> None:
         self.v = v
-def g(nodes: list[Node]) -> Iterator[Int32]:
+def g(nodes: list[Node]) -> Iterator[int32]:
     yield -1
     i = 0
     while i < len(nodes):

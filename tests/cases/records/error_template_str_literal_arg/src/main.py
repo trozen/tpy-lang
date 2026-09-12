@@ -1,12 +1,12 @@
 # A str LITERAL at a template-expanded dunder slot raises the view-vs-owned
 # parameter question the expansion does not answer, so it keeps rejecting.
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def __eq__(self, other: str) -> bool:

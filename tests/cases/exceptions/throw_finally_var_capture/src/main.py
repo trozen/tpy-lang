@@ -1,17 +1,17 @@
 # finally body references variables declared in the try body
-from tpy import Int32, Own
+from tpy import int32, Own
 
-def get_int() -> Int32:
+def get_int() -> int32:
     return 42
 
 def get_str() -> str:
     return "hello"
 
-def get_list() -> Own[list[Int32]]:
+def get_list() -> Own[list[int32]]:
     return [1, 2, 3]
 
 def main() -> None:
-    # Int32 -- trivial type
+    # int32 -- trivial type
     try:
         x = get_int()
     finally:

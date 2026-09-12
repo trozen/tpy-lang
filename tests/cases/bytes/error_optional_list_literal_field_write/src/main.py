@@ -1,12 +1,12 @@
 # The adjacent source shape that keeps rejecting at the same row: a local
-# seeded by a list LITERAL resolves to `Array[Int32, 2]`, not `list`, so the
+# seeded by a list LITERAL resolves to `Array[int32, 2]`, not `list`, so the
 # name does not spell the field's container and the write has no render. The
 # row keys on the SOURCE, not on which reference family the field is.
-from tpy import Int32
+from tpy import int32
 
 
 class Slot:
-    xs: list[Int32] | None
+    xs: list[int32] | None
 
     def __init__(self) -> None:
         self.xs = None

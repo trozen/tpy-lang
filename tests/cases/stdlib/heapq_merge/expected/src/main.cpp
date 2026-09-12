@@ -6,13 +6,13 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // a: list[Int32] = [1, 4, 7]
+    // a: list[int32] = [1, 4, 7]
     std::vector<int32_t> a = {1, 4, 7};
-    // b: list[Int32] = [2, 5]
+    // b: list[int32] = [2, 5]
     std::vector<int32_t> b = {2, 5};
-    // c: list[Int32] = [3, 6, 8]
+    // c: list[int32] = [3, 6, 8]
     std::vector<int32_t> c = {3, 6, 8};
-    // r1: list[Int32] = []
+    // r1: list[int32] = []
     std::vector<int32_t> r1 = std::vector<int32_t>{};
     // for x in heapq.merge(a, b, c):
     {
@@ -30,9 +30,9 @@ void main() {
     // print(r1)
     std::cout << ::tpy::ListPrinter(r1) << "\n";
     // # some inputs empty
-    // empty: list[Int32] = []
+    // empty: list[int32] = []
     std::vector<int32_t> empty = std::vector<int32_t>{};
-    // r2: list[Int32] = []
+    // r2: list[int32] = []
     std::vector<int32_t> r2 = std::vector<int32_t>{};
     // for x in heapq.merge(empty, b, empty):
     {
@@ -50,7 +50,7 @@ void main() {
     // print(r2)
     std::cout << ::tpy::ListPrinter(r2) << "\n";
     // # all inputs empty -> empty stream (post-init heap is empty)
-    // r2b: list[Int32] = []
+    // r2b: list[int32] = []
     std::vector<int32_t> r2b = std::vector<int32_t>{};
     // for x in heapq.merge(empty, empty):
     {
@@ -68,9 +68,9 @@ void main() {
     // print(r2b)
     std::cout << ::tpy::ListPrinter(r2b) << "\n";
     // # single input
-    // one: list[Int32] = [5]
+    // one: list[int32] = [5]
     std::vector<int32_t> one = {5};
-    // r3: list[Int32] = []
+    // r3: list[int32] = []
     std::vector<int32_t> r3 = std::vector<int32_t>{};
     // for x in heapq.merge(one):
     {
@@ -88,11 +88,11 @@ void main() {
     // print(r3)
     std::cout << ::tpy::ListPrinter(r3) << "\n";
     // # duplicates across inputs
-    // d1: list[Int32] = [1, 1, 3]
+    // d1: list[int32] = [1, 1, 3]
     std::vector<int32_t> d1 = {1, 1, 3};
-    // d2: list[Int32] = [1, 2]
+    // d2: list[int32] = [1, 2]
     std::vector<int32_t> d2 = {1, 2};
-    // r4: list[Int32] = []
+    // r4: list[int32] = []
     std::vector<int32_t> r4 = std::vector<int32_t>{};
     // for x in heapq.merge(d1, d2):
     {

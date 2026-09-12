@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 
-_SCALE: Int32 = 100
+_SCALE: int32 = 100
 
 
-def scaled(x: Int32) -> Int32:
+def scaled(x: int32) -> int32:
     return x * _SCALE

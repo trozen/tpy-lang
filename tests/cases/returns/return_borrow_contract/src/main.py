@@ -1,13 +1,13 @@
 # 8b: return_borrows_from -- track which params a returned reference borrows from.
 # Returned refs register the result as borrowing the source argument at call sites.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32) -> None:
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 
@@ -23,7 +23,7 @@ def identity(p: Point) -> Point:
 
 
 # No borrow: returns a newly constructed value
-def make_point(x: Int32) -> Own[Point]:
+def make_point(x: int32) -> Own[Point]:
     return Point(x, x)  # tpyc: ok
 
 
@@ -54,7 +54,7 @@ def main() -> None:
     print(q.x)
 
     # r owns its own storage (return_borrows_from = frozenset())
-    r = make_point(Int32(5))
+    r = make_point(int32(5))
     print(r.x)
 
     # first borrows from c (return_borrows_from = {-1})

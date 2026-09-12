@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def use_alias(flags: UInt32 = DEFAULT_FLAGS) -> Int32:
+// def use_alias(flags: uint32 = DEFAULT_FLAGS) -> int32:
 int32_t use_alias(uint32_t flags) {
-    // return Int32(flags)
+    // return int32(flags)
     return ::tpy::int_cast_check<int32_t>(flags);
 }
 
@@ -20,7 +20,7 @@ std::string greet(std::string_view prefix) {
 void main() {
     // print(use_alias())
     std::cout << use_alias() << "\n";
-    // print(use_alias(UInt32(0)))
+    // print(use_alias(uint32(0)))
     std::cout << use_alias(0) << "\n";
     // print(greet())
     std::cout << greet() << "\n";

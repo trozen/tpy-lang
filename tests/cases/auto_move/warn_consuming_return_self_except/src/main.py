@@ -5,13 +5,13 @@
 # the handler's own `return self` is the last use and moves silently. The copy
 # is the acknowledged divergence, so main prints only what both sides agree on.
 from typing import Self
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Widget:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def consume(self: Own[Self]) -> Own[Self]:

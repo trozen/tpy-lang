@@ -3,14 +3,14 @@
 
 namespace tpyapp::main {
 
-// g_a: dict[str, Node] = {"x": Node(Int32(0))}
+// g_a: dict[str, Node] = {"x": Node(int32(0))}
 ::tpy::ordered_map<std::string, Node>* g_a{};
-// g_b: dict[str, Node] = {"a": Node(Int32(1))}
+// g_b: dict[str, Node] = {"a": Node(int32(1))}
 ::tpy::ordered_map<std::string, Node>* g_b{};
 
 // def make_dict() -> Own[dict[str, Node]]:
 ::tpy::ordered_map<std::string, Node> make_dict() {
-    // return {"a": Node(Int32(1))}
+    // return {"a": Node(int32(1))}
     return ::tpy::ordered_map<std::string, Node>({{"a", Node(1)}});
 }
 
@@ -18,7 +18,7 @@ namespace tpyapp::main {
 void test_warn_update_not_last_use() {
     // a: dict[str, Node] = {}
     ::tpy::ordered_map<std::string, Node> a = ::tpy::ordered_map<std::string, Node>();
-    // b: dict[str, Node] = {"a": Node(Int32(1))}
+    // b: dict[str, Node] = {"a": Node(int32(1))}
     ::tpy::ordered_map<std::string, Node> b = ::tpy::ordered_map<std::string, Node>({{"a", Node(1)}});
     // a.update(b)  # tpyc: warning(/copies Node elements/)
     ::tpy::dict_update(a, b);
@@ -30,7 +30,7 @@ void test_warn_update_not_last_use() {
 void test_no_warn_update_last_use() {
     // a: dict[str, Node] = {}
     ::tpy::ordered_map<std::string, Node> a = ::tpy::ordered_map<std::string, Node>();
-    // b: dict[str, Node] = {"a": Node(Int32(1))}
+    // b: dict[str, Node] = {"a": Node(int32(1))}
     ::tpy::ordered_map<std::string, Node> b = ::tpy::ordered_map<std::string, Node>({{"a", Node(1)}});
     // a.update(b)  # tpyc: ok -- b's last use
     ::tpy::dict_update(a, b);
@@ -42,7 +42,7 @@ void test_no_warn_update_last_use() {
 void test_no_warn_update_explicit_copy() {
     // a: dict[str, Node] = {}
     ::tpy::ordered_map<std::string, Node> a = ::tpy::ordered_map<std::string, Node>();
-    // b: dict[str, Node] = {"a": Node(Int32(1))}
+    // b: dict[str, Node] = {"a": Node(int32(1))}
     ::tpy::ordered_map<std::string, Node> b = ::tpy::ordered_map<std::string, Node>({{"a", Node(1)}});
     // a.update(copy(b))  # tpyc: ok
     ::tpy::dict_update(a, ::tpy::ordered_map<std::string, Node>(b));
@@ -56,7 +56,7 @@ void test_no_warn_update_rvalue() {
     ::tpy::ordered_map<std::string, Node> a = ::tpy::ordered_map<std::string, Node>();
     // a.update(make_dict())  # tpyc: ok
     ::tpy::dict_update(a, make_dict());
-    // a.update({"b": Node(Int32(2))})  # tpyc: ok
+    // a.update({"b": Node(int32(2))})  # tpyc: ok
     ::tpy::dict_update(a, ::tpy::ordered_map<std::string, Node>({{"b", Node(2)}}));
     // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
@@ -64,9 +64,9 @@ void test_no_warn_update_rvalue() {
 
 // def test_no_warn_update_value_types() -> None:
 void test_no_warn_update_value_types() {
-    // a: dict[str, Int32] = {}
+    // a: dict[str, int32] = {}
     ::tpy::ordered_map<std::string, int32_t> a = ::tpy::ordered_map<std::string, int32_t>();
-    // b: dict[str, Int32] = {"a": Int32(1)}
+    // b: dict[str, int32] = {"a": int32(1)}
     ::tpy::ordered_map<std::string, int32_t> b = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
     // a.update(b)  # tpyc: ok
     ::tpy::dict_update(a, b);
@@ -78,7 +78,7 @@ void test_no_warn_update_value_types() {
 void test_warn_ior_not_last_use() {
     // a: dict[str, Node] = {}
     ::tpy::ordered_map<std::string, Node> a = ::tpy::ordered_map<std::string, Node>();
-    // b: dict[str, Node] = {"a": Node(Int32(1))}
+    // b: dict[str, Node] = {"a": Node(int32(1))}
     ::tpy::ordered_map<std::string, Node> b = ::tpy::ordered_map<std::string, Node>({{"a", Node(1)}});
     // a |= b  # tpyc: warning(/copies Node elements/)
     ::tpy::dict_update(a, b);
@@ -90,7 +90,7 @@ void test_warn_ior_not_last_use() {
 void test_no_warn_ior_last_use() {
     // a: dict[str, Node] = {}
     ::tpy::ordered_map<std::string, Node> a = ::tpy::ordered_map<std::string, Node>();
-    // b: dict[str, Node] = {"a": Node(Int32(1))}
+    // b: dict[str, Node] = {"a": Node(int32(1))}
     ::tpy::ordered_map<std::string, Node> b = ::tpy::ordered_map<std::string, Node>({{"a", Node(1)}});
     // a |= b  # tpyc: ok -- b's last use
     ::tpy::dict_update(a, b);
@@ -117,10 +117,10 @@ void __tpy_init() {
     test_warn_ior_not_last_use();
     // test_no_warn_ior_last_use()
     test_no_warn_ior_last_use();
-    // g_a: dict[str, Node] = {"x": Node(Int32(0))}
+    // g_a: dict[str, Node] = {"x": Node(int32(0))}
     static ::tpy::ordered_map<std::string, Node> __global_slot_1 = ::tpy::ordered_map<std::string, Node>({{"x", Node(0)}});
     g_a = &__global_slot_1;
-    // g_b: dict[str, Node] = {"a": Node(Int32(1))}
+    // g_b: dict[str, Node] = {"a": Node(int32(1))}
     static ::tpy::ordered_map<std::string, Node> __global_slot_2 = ::tpy::ordered_map<std::string, Node>({{"a", Node(1)}});
     g_b = &__global_slot_2;
     // test_warn_update_generic(g_a, g_b)

@@ -9,7 +9,7 @@
 # fire and the case would pass vacuously.
 from typing import Iterator
 import bags
-from tpy import Int32
+from tpy import int32
 
 
 class Bag:
@@ -18,7 +18,7 @@ class Bag:
     def __init__(self) -> None:
         self.src = bags.Bag()
 
-    def __iter__(self) -> Iterator[Int32]:
+    def __iter__(self) -> Iterator[int32]:
         for x in self.src:
             yield x
             yield x

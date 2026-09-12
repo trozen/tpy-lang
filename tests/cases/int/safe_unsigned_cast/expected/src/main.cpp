@@ -6,11 +6,11 @@ namespace tpyapp::main {
 
 // def test_assert_non_negative() -> None:
 void test_assert_non_negative() {
-    // x: Int32 = 42
+    // x: int32 = 42
     int32_t x = 42;
     // assert x >= 0
     if (!((x >= 0))) ::tpy::raise_assertion_error();
-    // y = UInt32(x)  # tpyc: cast_safe(UInt32)
+    // y = uint32(x)  # tpyc: cast_safe(uint32)
     uint32_t y = static_cast<uint32_t>(x);
     // print(y)
     std::cout << y << "\n";
@@ -18,11 +18,11 @@ void test_assert_non_negative() {
 
 // def test_if_positive() -> None:
 void test_if_positive() {
-    // x: Int32 = 10
+    // x: int32 = 10
     int32_t x = 10;
     // if x > 0:
     if ((x > 0)) {
-        // y = UInt64(x)  # tpyc: cast_safe(UInt64)
+        // y = uint64(x)  # tpyc: cast_safe(uint64)
         uint64_t y = static_cast<uint64_t>(x);
         // print(y)
         std::cout << y << "\n";
@@ -31,9 +31,9 @@ void test_if_positive() {
 
 // def test_no_elision_unchecked() -> None:
 void test_no_elision_unchecked() {
-    // x: Int32 = Int32(5)
+    // x: int32 = int32(5)
     int32_t x = 5;
-    // y = UInt32(x)  # tpyc: cast_checked(UInt32)
+    // y = uint32(x)  # tpyc: cast_checked(uint32)
     uint32_t y = ::tpy::int_cast_check<uint32_t>(x);
     // print(y)
     std::cout << y << "\n";
@@ -41,11 +41,11 @@ void test_no_elision_unchecked() {
 
 // def test_no_elision_narrowing() -> None:
 void test_no_elision_narrowing() {
-    // x: Int64 = 100
+    // x: int64 = 100
     int64_t x = 100;
     // assert x >= 0
     if (!((x >= 0))) ::tpy::raise_assertion_error();
-    // y = UInt32(x)  # tpyc: cast_checked(UInt32)
+    // y = uint32(x)  # tpyc: cast_checked(uint32)
     uint32_t y = ::tpy::int_cast_check<uint32_t>(x);
     // print(y)
     std::cout << y << "\n";
@@ -53,13 +53,13 @@ void test_no_elision_narrowing() {
 
 // def test_no_elision_after_reassign() -> None:
 void test_no_elision_after_reassign() {
-    // x: Int32 = 10
+    // x: int32 = 10
     int32_t x = 10;
     // assert x >= 0
     if (!((x >= 0))) ::tpy::raise_assertion_error();
-    // x = Int32(3)
+    // x = int32(3)
     x = 3;
-    // y = UInt32(x)  # tpyc: cast_checked(UInt32)
+    // y = uint32(x)  # tpyc: cast_checked(uint32)
     uint32_t y = ::tpy::int_cast_check<uint32_t>(x);
     // print(y)
     std::cout << y << "\n";
@@ -67,12 +67,12 @@ void test_no_elision_after_reassign() {
 
 // def test_for_range_index() -> None:
 void test_for_range_index() {
-    // n: Int32 = 5
+    // n: int32 = 5
     int32_t n = 5;
     // for i in range(n):
     int32_t __stop_0 = n;
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // u = UInt32(i)  # tpyc: cast_safe(UInt32)
+        // u = uint32(i)  # tpyc: cast_safe(uint32)
         uint32_t u = static_cast<uint32_t>(i);
         // print(u)
         std::cout << u << "\n";
@@ -81,11 +81,11 @@ void test_for_range_index() {
 
 // def test_int64_to_uint64() -> None:
 void test_int64_to_uint64() {
-    // x: Int64 = 1000
+    // x: int64 = 1000
     int64_t x = 1000;
     // assert x >= 0
     if (!((x >= 0))) ::tpy::raise_assertion_error();
-    // y = UInt64(x)  # tpyc: cast_safe(UInt64)
+    // y = uint64(x)  # tpyc: cast_safe(uint64)
     uint64_t y = static_cast<uint64_t>(x);
     // print(y)
     std::cout << y << "\n";

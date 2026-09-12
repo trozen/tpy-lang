@@ -115,7 +115,7 @@ std::string JsonError::describe(std::string_view data) const {
         // return "json error"
         return "json error";
     }
-    // ctx: Int32 = 20
+    // ctx: int32 = 20
     int32_t ctx = 20;
     // dlen = len(data)
     int32_t dlen = ::tpy::__len__(data);
@@ -318,7 +318,7 @@ std::expected<std::string_view, JsonError> JsonReader::read_str_raw() {
 }
 
 // @error_return(JsonError)
-// def read_int(self) -> Int64:
+// def read_int(self) -> int64:
 std::expected<int64_t, JsonError> JsonReader::read_int() {
     // self._skip_ws()
     this->_skip_ws();
@@ -331,7 +331,7 @@ std::expected<int64_t, JsonError> JsonReader::read_int() {
         // self._pos += 1
         this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
     }
-    // result: Int64 = 0
+    // result: int64 = 0
     int64_t result = 0;
     // start = self._pos
     int32_t start = this->_pos;
@@ -344,7 +344,7 @@ std::expected<int64_t, JsonError> JsonReader::read_int() {
             // break
             break;
         }
-        // result = result * 10 + Int64(ord(c) - ord("0"))
+        // result = result * 10 + int64(ord(c) - ord("0"))
         result = (::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(result, 10)), ::tpy::int_cast_check<int64_t>((::tpy::sub_check<int32_t>(static_cast<int32_t>(static_cast<unsigned char>(c)), 48)))));
         // self._pos += 1
         this->_pos = ::tpy::add_check<int32_t>(this->_pos, 1);
@@ -571,7 +571,7 @@ std::expected<std::string, JsonError> JsonReader::_read_raw_str() {
     return this->_unescape(start, end);
 }
 
-// def _unescape(self, start: Int32, end: Int32) -> str:
+// def _unescape(self, start: int32, end: int32) -> str:
 std::string JsonReader::_unescape(int32_t start, int32_t end) const {
     // result = ""
     std::string result = "";
@@ -673,13 +673,13 @@ std::string JsonReader::_unescape(int32_t start, int32_t end) const {
     return result;
 }
 
-// def _parse_hex4(self, pos: Int32) -> Int32:
+// def _parse_hex4(self, pos: int32) -> int32:
 int32_t JsonReader::_parse_hex4(int32_t pos) const {
     // # TODO: invalid hex digits silently contribute 0 instead of raising
     // # JsonError. CPython rejects with `Invalid \uXXXX escape`.
-    // result: Int32 = 0
+    // result: int32 = 0
     int32_t result = 0;
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < 4:
     while ((i < 4)) {

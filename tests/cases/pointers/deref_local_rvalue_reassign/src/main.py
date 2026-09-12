@@ -1,14 +1,14 @@
 # A record local initialized from a `Ptr[T]` deref and later reassigned from an
 # RVALUE: the reassign needs its own slot, so the alias and the fresh value must
 # stay distinct -- the original point keeps its own coordinates.
-from tpy import Int32, Ptr
+from tpy import int32, Ptr
 
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32) -> None:
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 

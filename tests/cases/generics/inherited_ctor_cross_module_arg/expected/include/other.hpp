@@ -13,10 +13,10 @@ inline constexpr std::string_view __name__ = "other";
 
 // class Key(ValueType):
 struct Key {
-    // x: Int32
+    // x: int32
     int32_t x;
 
-    // def __init__(self, x: Int32 = 0):
+    // def __init__(self, x: int32 = 0):
     explicit Key(int32_t x = 0);
 
     // def __eq__(self, other: "Key") -> bool:
@@ -40,7 +40,7 @@ namespace tpyapp::other {
 
 
 
-// def __init__(self, x: Int32 = 0):
+// def __init__(self, x: int32 = 0):
 inline Key::Key(int32_t x) : x(x) {}
 
 // def __eq__(self, other: "Key") -> bool:

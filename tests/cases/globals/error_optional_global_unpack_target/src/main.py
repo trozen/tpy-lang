@@ -1,16 +1,16 @@
 # A ptr-repr Optional GLOBAL as an unpack target: its slot carries the inner
 # spelling plus a pointer lift, which the unpack targets do not spell.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
-def make_opt() -> tuple[Int32, Own[Point | None]]:
+def make_opt() -> tuple[int32, Own[Point | None]]:
     return (1, Point(2))
 
 

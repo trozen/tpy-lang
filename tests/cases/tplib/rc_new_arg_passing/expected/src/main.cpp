@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def read_rc(c: Rc[Counter]) -> Int32:
+// def read_rc(c: Rc[Counter]) -> int32:
 int32_t read_rc(::tpystd::tplib::rc::Rc<Counter>& c) {
     // return c.get().value()
     return c.get().value();
 }
 
-// def read_box(c: Box[Counter]) -> Int32:
+// def read_box(c: Box[Counter]) -> int32:
 int32_t read_box(::tpystd::tplib::box::Box<Counter>& c) {
     // return c.get().value()
     return c.get().value();

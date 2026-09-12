@@ -22,11 +22,11 @@ void main();
 
 // class Cell:
 struct Cell {
-    // val: Int32
+    // val: int32
     int32_t val;
     bool __tpy_owned_ = true;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     explicit Cell(int32_t v);
     Cell(const Cell&) = delete;
     Cell& operator=(const Cell&) = delete;
@@ -44,7 +44,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Cell::Cell(int32_t v) : val(v) {}
 
 inline Cell::Cell(Cell&& other) noexcept : val(std::move(other.val)) {

@@ -24,7 +24,7 @@ __coro_amain amain();
 
 // class Runner:
 struct Runner {
-    // total: Int32
+    // total: int32
     int32_t total;
 
     // def __init__(self) -> None:
@@ -41,10 +41,10 @@ inline std::ostream& operator<<(std::ostream& os, const Runner& obj) {
 
 // class Gate:
 struct Gate {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Gate() = default;
     explicit Gate(int32_t n);
 
@@ -183,7 +183,7 @@ struct __coro_amain {
 // def __init__(self) -> None:
 inline Runner::Runner() : total(0) {}
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Gate::Gate(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

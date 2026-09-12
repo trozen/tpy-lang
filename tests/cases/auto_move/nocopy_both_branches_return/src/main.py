@@ -1,10 +1,10 @@
 # @nocopy with both if/else branches returning h, no post-if code.
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 
 
 @nocopy
 class Handle:
-    fd: Int32
+    fd: int32
 
 
 def test(cond: bool) -> Own[Handle]:

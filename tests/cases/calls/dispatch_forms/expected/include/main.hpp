@@ -26,14 +26,14 @@ void main();
 // # method: variants on one receiver
 // class Acc:
 struct Acc {
-    // total: Int32
+    // total: int32
     int32_t total;
 
     // def __init__(self) -> None:
     Acc();
 
     // @dispatch
-    // def add(self, x: Int32) -> None:  # tpyc: ok
+    // def add(self, x: int32) -> None:  # tpyc: ok
     void add(int32_t x);
 
     // @dispatch
@@ -52,7 +52,7 @@ inline std::ostream& operator<<(std::ostream& os, const Acc& obj) {
 inline Acc::Acc() : total(0) {}
 
 // @dispatch
-// def add(self, x: Int32) -> None:  # tpyc: ok
+// def add(self, x: int32) -> None:  # tpyc: ok
 inline void Acc::add(int32_t x) {
     // self.total += x
     this->total = ::tpy::add_check<int32_t>(this->total, x);

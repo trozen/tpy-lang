@@ -3,16 +3,16 @@
 # flavor, so an rvalue argument leaves only the by-value tuple. `enumerate` has
 # one and routes the same spelling (tests/cases/list/comp_combinator_source)
 # (BUGS.md#nested-combinator-yields-element-copies).
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Node:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
-    def bump(self, d: Int32) -> Int32:
+    def bump(self, d: int32) -> int32:
         self.v += d
         return self.v
 

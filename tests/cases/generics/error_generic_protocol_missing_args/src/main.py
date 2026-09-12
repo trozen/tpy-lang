@@ -1,6 +1,6 @@
 # Test that generic user-defined protocols require type arguments
 from typing import Protocol
-from tpy import Int32
+from tpy import int32
 
 class Container[T](Protocol):
     def get(self) -> T: ...

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def show(p: tuple[Point | None, Int32]) -> None:
+// def show(p: tuple[Point | None, int32]) -> None:
 void show(const std::tuple<const Point*, int32_t>& p) {
     // a, n = p
     auto& __tup_1 = p;

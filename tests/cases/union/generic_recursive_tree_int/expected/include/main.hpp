@@ -34,7 +34,7 @@ struct Tree {
     }
 };
 
-// def leaf_count[T](t: Tree[T]) -> Int32:  # tpyc: ok
+// def leaf_count[T](t: Tree[T]) -> int32:  # tpyc: ok
 template<typename T>
 int32_t leaf_count(const Tree<T>& t) {
     // match t:

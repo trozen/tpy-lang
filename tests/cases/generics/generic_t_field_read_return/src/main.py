@@ -1,6 +1,6 @@
 # A generic record's `T`-typed field reads, `T` returns and `T` parameter echo at
 # a scalar instantiation -- the open-type-param value arms. It prints values.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Cell[T]:
@@ -25,7 +25,7 @@ class Cell[T]:
 
 
 def main() -> None:
-    c = Cell[Int32](1, 2)
+    c = Cell[int32](1, 2)
     print(c.get(), c.pick(), c.echo(7))
     c.store(9)
     print(c.get())

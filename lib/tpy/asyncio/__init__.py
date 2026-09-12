@@ -10,7 +10,7 @@
 from typing import Final, Callable
 from builtins import BaseException, Exception, TimeoutError, EOFError
 from tpy import (
-    Own, Int32, UInt32, UInt64, Ptr,
+    Own, int32, uint32, uint64, Ptr,
     CancelledError, Throwable, nocopy, auto_readonly,
 )
 from tpy.coro import (
@@ -90,8 +90,8 @@ def _register_timer_at(deadline_seconds: float, waker: Waker) -> None:
 
 # epoll interest masks (Linux-stable), passed to the reactor by the fd
 # awaitables below. The EPOLL_CTL_* ops live in `_executor.py`.
-EPOLLIN: Final[UInt32] = UInt32(0x001)
-EPOLLOUT: Final[UInt32] = UInt32(0x004)
+EPOLLIN: Final[uint32] = uint32(0x001)
+EPOLLOUT: Final[uint32] = uint32(0x004)
 
 
 @nocopy
@@ -107,7 +107,7 @@ class _SignalScope:
     quiet while armed (CPython has no such guard)."""
 
     _armed: bool
-    _fd: Int32
+    _fd: int32
 
     def __init__(self, executor: Executor) -> None:
         self._armed = False
@@ -131,14 +131,14 @@ class _SignalScope:
 
 # Reactor access mirrors `_register_timer_at`: no-op when no executor is
 # running so a hand-driven awaitable doesn't crash outside `asyncio.run`.
-def _reactor_register_fd(fd: Int32, events: UInt32, waker: Waker) -> None:
+def _reactor_register_fd(fd: int32, events: uint32, waker: Waker) -> None:
     handle = _get_current_executor()
     if handle is None:
         return
     handle.register_fd(fd, events, waker)
 
 
-def _reactor_unregister_fd(fd: Int32) -> None:
+def _reactor_unregister_fd(fd: int32) -> None:
     handle = _get_current_executor()
     if handle is None:
         return
@@ -168,10 +168,10 @@ class _SockRecv:
     closed)."""
 
     _sock: Ptr[socket]
-    _n: Int32
+    _n: int32
     _cancel_pending: bool
 
-    def __init__(self, sock: Ptr[socket], n: Int32) -> None:
+    def __init__(self, sock: Ptr[socket], n: int32) -> None:
         self._sock = sock
         self._n = n
         self._cancel_pending = False
@@ -202,7 +202,7 @@ class _SockSendAll:
 
     _sock: Ptr[socket]
     _data: bytes
-    _sent: UInt64
+    _sent: uint64
     _cancel_pending: bool
 
     def __init__(self, sock: Ptr[socket], data: bytes) -> None:
@@ -219,14 +219,14 @@ class _SockSendAll:
             self._cancel_pending = False
             _reactor_unregister_fd(self._sock.fileno())
             raise CancelledError()
-        total: UInt64 = UInt64(len(self._data))
+        total: uint64 = uint64(len(self._data))
         while self._sent < total:
             try:
                 sent = self._sock._send_from(self._data, self._sent)
             except BlockingIOError:
                 _reactor_register_fd(self._sock.fileno(), EPOLLOUT, waker)
                 return poll_pending()
-            self._sent = self._sent + UInt64(sent)
+            self._sent = self._sent + uint64(sent)
         return poll_ready_none()
 
 
@@ -249,7 +249,7 @@ class _SockAccept:
         self._cancel_pending = True
 
     def __poll__(self, waker: Waker
-                 ) -> Own[Poll[tuple[Own[socket], tuple[str, Int32]]]]:
+                 ) -> Own[Poll[tuple[Own[socket], tuple[str, int32]]]]:
         if self._cancel_pending:
             self._cancel_pending = False
             _reactor_unregister_fd(self._sock.fileno())
@@ -270,11 +270,11 @@ class _SockConnect:
     Mirrors CPython's `loop.sock_connect`."""
 
     _sock: Ptr[socket]
-    _addr: tuple[str, Int32]
+    _addr: tuple[str, int32]
     _started: bool
     _cancel_pending: bool
 
-    def __init__(self, sock: Ptr[socket], addr: tuple[str, Int32]) -> None:
+    def __init__(self, sock: Ptr[socket], addr: tuple[str, int32]) -> None:
         self._sock = sock
         self._addr = addr
         self._started = False
@@ -504,11 +504,11 @@ class _GatherFuture[T]:
     """
 
     _tasks: list[Task[T]]
-    _completion_indices: list[Int32]
+    _completion_indices: list[int32]
     _completion_boxes: list[Box[T]]
     _settled: list[bool]
     _exc: Box[Throwable] | None
-    _completed: Int32
+    _completed: int32
     _cleanup: bool
     _cancel_pending: bool
 
@@ -560,7 +560,7 @@ class _GatherFuture[T]:
         # Poll every unsettled task with the shared waker. Multiple
         # wakes between polls coalesce at the executor (one runnable
         # flag per slot), so the O(N) re-poll per cycle is bounded.
-        i: Int32 = 0
+        i: int32 = 0
         while i < n:
             if not self._settled[i]:
                 try:
@@ -601,9 +601,9 @@ class _GatherFuture[T]:
         # order. O(n^2) walk -- n is typically small (handful of
         # concurrent operations); fine for v1.5.
         result: list[T] = []
-        orig_i: Int32 = 0
+        orig_i: int32 = 0
         while orig_i < n:
-            k: Int32 = 0
+            k: int32 = 0
             kn = len(self._completion_indices)
             while k < kn:
                 if self._completion_indices[k] == orig_i:
@@ -616,7 +616,7 @@ class _GatherFuture[T]:
         return poll_ready(result)
 
     def _propagate_cancel(self) -> None:
-        i: Int32 = 0
+        i: int32 = 0
         n = len(self._tasks)
         while i < n:
             if not self._settled[i]:
@@ -730,11 +730,11 @@ class _GatherSettledFuture[T]:
 
     _tasks: list[Task[T]]
     _settled: list[bool]
-    _result_indices: list[Int32]
+    _result_indices: list[int32]
     _result_boxes: list[Box[T]]
-    _exc_indices: list[Int32]
+    _exc_indices: list[int32]
     _exc_boxes: list[Box[Throwable]]
-    _completed: Int32
+    _completed: int32
     _cancel_pending: bool
 
     def __init__(self, tasks: list[Task[T]]) -> None:
@@ -770,13 +770,13 @@ class _GatherSettledFuture[T]:
         was_canceling = self._cancel_pending
         self._cancel_pending = False
         if was_canceling:
-            i: Int32 = 0
+            i: int32 = 0
             while i < n:
                 if not self._settled[i]:
                     self._tasks[i].cancel()
                 i += 1
 
-        i: Int32 = 0
+        i: int32 = 0
         while i < n:
             if not self._settled[i]:
                 try:
@@ -802,10 +802,10 @@ class _GatherSettledFuture[T]:
         # walk -- N is typically small (handful of concurrent
         # operations); fine for v1.5.
         result: list[Settled[T]] = []
-        orig_i: Int32 = 0
+        orig_i: int32 = 0
         while orig_i < n:
             settled_via_value = False
-            k: Int32 = 0
+            k: int32 = 0
             kn = len(self._result_indices)
             while k < kn:
                 if self._result_indices[k] == orig_i:
@@ -1110,15 +1110,15 @@ class Semaphore:
     `Lock`). Same fairness note as `Lock`.
     """
 
-    _value: Int32
+    _value: int32
     _waiters: list[Waker]
     # Upper bound for release(); -1 means unbounded (plain Semaphore). The
     # bound lives here, gated in release(), rather than in a BoundedSemaphore
     # override -- TPy uses static method dispatch, so an override would only
     # fire through a BoundedSemaphore-typed reference (and warns about it).
-    _bound: Int32
+    _bound: int32
 
-    def __init__(self, value: Int32 = 1) -> None:
+    def __init__(self, value: int32 = 1) -> None:
         if value < 0:
             raise ValueError("Semaphore initial value must be >= 0")
         self._value = value
@@ -1182,7 +1182,7 @@ class BoundedSemaphore(Semaphore):
     `Semaphore.release`; see the `_bound` field there.)
     """
 
-    def __init__(self, value: Int32 = 1) -> None:
+    def __init__(self, value: int32 = 1) -> None:
         if value < 0:
             raise ValueError("Semaphore initial value must be >= 0")
         self._value = value
@@ -1213,13 +1213,13 @@ class Queue[T]:
 
     _items: list[T]
     # Public, like CPython's Queue.maxsize; <= 0 means unbounded.
-    maxsize: Int32
+    maxsize: int32
     _getters: list[Waker]
     _putters: list[Waker]
     _joiners: list[Waker]
-    _unfinished: Int32
+    _unfinished: int32
 
-    def __init__(self, maxsize: Int32 = 0) -> None:
+    def __init__(self, maxsize: int32 = 0) -> None:
         self._items = []
         self.maxsize = maxsize
         self._getters = []
@@ -1227,7 +1227,7 @@ class Queue[T]:
         self._joiners = []
         self._unfinished = 0
 
-    def qsize(self) -> Int32:
+    def qsize(self) -> int32:
         return len(self._items)
 
     def empty(self) -> bool:
@@ -1273,7 +1273,7 @@ class Queue[T]:
     # True if the awaited condition holds now; else parks `waker` and
     # returns False. kind: 0 = get (non-empty), 1 = put (not full),
     # 2 = join (no unfinished tasks).
-    def _wait_ready(self, kind: Int32, waker: Waker) -> bool:
+    def _wait_ready(self, kind: int32, waker: Waker) -> bool:
         if kind == 0:
             if len(self._items) > 0:
                 return True
@@ -1298,9 +1298,9 @@ class _QueueWait[T]:
     """
 
     _q: Ptr[Queue[T]]
-    _kind: Int32
+    _kind: int32
 
-    def __init__(self, q: Ptr[Queue[T]], kind: Int32) -> None:
+    def __init__(self, q: Ptr[Queue[T]], kind: int32) -> None:
         self._q = q
         self._kind = kind
 
@@ -1329,7 +1329,7 @@ class EventLoop:
     def __init__(self) -> None:
         pass
 
-    def sock_recv(self, sock: socket, n: Int32) -> Own[_SockRecv]:
+    def sock_recv(self, sock: socket, n: int32) -> Own[_SockRecv]:
         return _SockRecv(sock, n)
 
     def sock_sendall(self, sock: socket, data: bytes) -> Own[_SockSendAll]:
@@ -1340,7 +1340,7 @@ class EventLoop:
         return _SockAccept(sock)
 
     def sock_connect(self, sock: socket,
-                     address: tuple[str, Int32]) -> Own[_SockConnect]:
+                     address: tuple[str, int32]) -> Own[_SockConnect]:
         return _SockConnect(sock, address)
 
 
@@ -1359,9 +1359,9 @@ class IncompleteReadError(EOFError):
     where the total length is not known up front)."""
 
     partial: bytes
-    expected: Int32 | None
+    expected: int32 | None
 
-    def __init__(self, partial: bytes, expected: Int32 | None) -> None:
+    def __init__(self, partial: bytes, expected: int32 | None) -> None:
         super().__init__("incomplete read")
         self.partial = partial
         self.expected = expected
@@ -1390,7 +1390,7 @@ class StreamReader:
         return self._eof and len(self._buf) == 0
 
     # Returns the chunk length so callers can distinguish EOF (0) from data.
-    async def _fill(self) -> Int32:
+    async def _fill(self) -> int32:
         loop = get_running_loop()
         chunk = await loop.sock_recv(self._sock.get(), 65536)
         if len(chunk) == 0:
@@ -1399,14 +1399,14 @@ class StreamReader:
             self._buf = self._buf + chunk
         return len(chunk)
 
-    def _take(self, n: Int32) -> bytes:
+    def _take(self, n: int32) -> bytes:
         # Materialize owned head before reassigning `_buf` (a no-step slice
         # is a borrow into the old buffer).
         head = bytes(self._buf[:n])
         self._buf = bytes(self._buf[n:])
         return head
 
-    async def read(self, n: Int32) -> bytes:
+    async def read(self, n: int32) -> bytes:
         """Read up to `n` bytes, returning as soon as any data is buffered
         (fewer than `n` is normal); empty at EOF. `n < 0` reads until EOF.
         Returns early like CPython -- does NOT wait for the full `n`."""
@@ -1419,7 +1419,7 @@ class StreamReader:
         take = n if n < len(self._buf) else len(self._buf)
         return self._take(take)
 
-    async def readexactly(self, n: Int32) -> bytes:
+    async def readexactly(self, n: int32) -> bytes:
         """Read exactly `n` bytes; raise `IncompleteReadError` if EOF comes
         first (carrying the partial bytes read)."""
         if n < 0:
@@ -1510,7 +1510,7 @@ class StreamWriter:
 # connection's socket is shared by the reader and writer via an `Rc[socket]`
 # cell so either can drive it and it outlives both across awaits.
 async def open_connection(
-        host: str, port: Int32) -> tuple[Own[StreamReader], Own[StreamWriter]]:
+        host: str, port: int32) -> tuple[Own[StreamReader], Own[StreamWriter]]:
     loop = get_running_loop()
     sock = socket(AF_INET, SOCK_STREAM)
     sock.setblocking(False)
@@ -1552,7 +1552,7 @@ class _ServerSockets:
         self._sock = sock
 
     @auto_readonly
-    def __getitem__(self, i: Int32) -> auto_readonly[socket]:
+    def __getitem__(self, i: int32) -> auto_readonly[socket]:
         return self._sock.get()
 
 
@@ -1620,7 +1620,7 @@ class Server:
 async def start_server(
         cb: Callable[[Own[StreamReader], Own[StreamWriter]],
                      Own[Cancellable[None]]],
-        host: str, port: Int32) -> Own[Server]:
+        host: str, port: int32) -> Own[Server]:
     listener = socket(AF_INET, SOCK_STREAM)
     listener.setsockopt_int(SOL_SOCKET, SO_REUSEADDR, 1)
     listener.bind((host, port))

@@ -2,26 +2,26 @@
 # inference, `take_mut` collapses to `varargs<const Box>`, so the loop var
 # `b` correctly binds as `const auto& b` and `&b` (`const Box*`) matches the
 # slot. The mutating-slot variant lives in varargs_auto_readonly_mutating_loop_var.
-from tpy import Int32, nocopy
+from tpy import int32, nocopy
 
 
 @nocopy
 class Box:
-    val: Int32
+    val: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 
-def take_mut(*items: Box) -> Int32:
-    n: Int32 = 0
+def take_mut(*items: Box) -> int32:
+    n: int32 = 0
     for b in items:
         n += b.val
     return n
 
 
-def via_loop(xs: list[Box]) -> Int32:
-    total: Int32 = 0
+def via_loop(xs: list[Box]) -> int32:
+    total: int32 = 0
     for b in xs:
         total += take_mut(b)  # tpyc: ok
     return total

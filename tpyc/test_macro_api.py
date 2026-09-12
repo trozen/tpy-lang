@@ -61,8 +61,8 @@ def test_note_param_mutated_rejects_method_host():
 
 
 @pytest.mark.parametrize("name", [
-    "bool", "int", "str", "String", "StrView", "Char",
-    "Int32", "UInt64", "float", "Float32", "Float64",
+    "bool", "int", "str", "String", "StrView", "char",
+    "int32", "uint64", "float", "float32", "float64",
     "bytes", "bytearray", "BytesView", "basic_slice", "slice"])
 def test_resolve_type_known_names(name):
     ti = _ctx().resolve_type(name)
@@ -76,7 +76,7 @@ def test_resolve_type_none_is_not_mintable():
 
 
 def test_resolve_type_int32_roundtrips_name():
-    assert _ctx().resolve_type("Int32").name == "Int32"
+    assert _ctx().resolve_type("int32").name == "int32"
 
 
 def test_resolve_type_bool_is_bool():
@@ -84,9 +84,9 @@ def test_resolve_type_bool_is_bool():
 
 
 def test_resolve_type_float64_aliases_float():
-    # Float64 is TPy `float`; it resolves to a real type but round-trips its
+    # float64 is TPy `float`; it resolves to a real type but round-trips its
     # name as "float" since there is no distinct FLOAT64 singleton.
-    ti = _ctx().resolve_type("Float64")
+    ti = _ctx().resolve_type("float64")
     assert ti is not None and ti.is_float
 
 
@@ -107,13 +107,13 @@ def test_from_tpy_type_int_type_arg_passthrough():
     box = NominalType("Box", (INT32, 8), _module_qname="testmod.Box")
     ti = TypeInfo.from_tpy_type(box)
     assert len(ti.type_args) == 2
-    assert ti.type_args[0].name == "Int32"
+    assert ti.type_args[0].name == "int32"
     assert ti.type_args[1] == 8
 
 
 def test_from_tpy_type_nested_int_type_arg():
     # The recursion re-enters the fixed branch: an int arg INSIDE a nested
-    # generic type arg (Box[Inner[Int32, 4], 8]) converts the same way.
+    # generic type arg (Box[Inner[int32, 4], 8]) converts the same way.
     from tpyc.macro_api import TypeInfo
     from tpyc.typesys import INT32, NominalType
 
@@ -123,5 +123,5 @@ def test_from_tpy_type_nested_int_type_arg():
     assert ti.type_args[1] == 8
     nested = ti.type_args[0]
     assert nested.name.startswith("Inner")
-    assert nested.type_args[0].name == "Int32"
+    assert nested.type_args[0].name == "int32"
     assert nested.type_args[1] == 4

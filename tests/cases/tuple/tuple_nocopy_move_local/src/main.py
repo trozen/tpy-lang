@@ -2,20 +2,20 @@
 # owns them, storage form `std::tuple<Handle, Handle>`). The move is what makes
 # this compile: a silent copy of a @nocopy type would be a compile error. The
 # not-last-use form is rejected up-front (see error_tuple_nocopy_ref_inference).
-from tpy import nocopy, Int32
+from tpy import nocopy, int32
 
 
 @nocopy
 class Handle:
-    fd: Int32
+    fd: int32
 
-    def __init__(self, fd: Int32) -> None:
+    def __init__(self, fd: int32) -> None:
         self.fd = fd
 
 
 def main() -> None:
-    a = Handle(Int32(1))
-    b = Handle(Int32(2))
+    a = Handle(int32(1))
+    b = Handle(int32(2))
     p = (a, b)  # tpyc: ok
     print(p[0].fd)
     print(p[1].fd)

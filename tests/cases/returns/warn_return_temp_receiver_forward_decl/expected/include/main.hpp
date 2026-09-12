@@ -18,13 +18,13 @@ void main();
 struct Wrapper {
 
 
-    // def build(self, n: Int32) -> Own['Point']:
+    // def build(self, n: int32) -> Own['Point']:
     Point build(int32_t n) const;
 
-    // def build_copy(self, n: Int32) -> Own['Point']:
+    // def build_copy(self, n: int32) -> Own['Point']:
     Point build_copy(int32_t n) const;
 
-    // def collect(self, n: Int32, xs: list['Point']) -> None:
+    // def collect(self, n: int32, xs: list['Point']) -> None:
     void collect(int32_t n, std::vector<Point>& xs) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
@@ -36,10 +36,10 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
 
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
 
-    // def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: int32) -> None:
     Point() = default;
     explicit Point(int32_t x);
 
@@ -54,27 +54,27 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 }
 
 
-// def build(self, n: Int32) -> Own['Point']:
+// def build(self, n: int32) -> Own['Point']:
 inline Point Wrapper::build(int32_t n) const {
     // # Own RETURN slot, forward-declared callee.
     // return Point(n).updated()  # tpyc: warning(/copies Point into owned storage/)
     return Point(n).updated();
 }
 
-// def build_copy(self, n: Int32) -> Own['Point']:
+// def build_copy(self, n: int32) -> Own['Point']:
 inline Point Wrapper::build_copy(int32_t n) const {
     // return copy(Point(n).updated())  # tpyc: ok
     return Point(Point(n).updated());
 }
 
-// def collect(self, n: Int32, xs: list['Point']) -> None:
+// def collect(self, n: int32, xs: list['Point']) -> None:
 inline void Wrapper::collect(int32_t n, std::vector<Point>& xs) const {
     // # Element slot, same forward-declared callee.
     // xs.append(Point(n).updated())  # tpyc: warning(/copies Point into owned storage/)
     xs.push_back(Point(n).updated());
 }
 
-// def __init__(self, x: Int32) -> None:
+// def __init__(self, x: int32) -> None:
 inline Point::Point(int32_t x) : x(x) {}
 
 // def updated(self) -> 'Point':

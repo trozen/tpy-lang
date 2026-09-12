@@ -4,15 +4,15 @@
 namespace tpyapp::main {
 
 
-// def value_only(p: readonly[tuple[Int32, Int32]]) -> Int32:
+// def value_only(p: readonly[tuple[int32, int32]]) -> int32:
 int32_t value_only(const std::tuple<int32_t, int32_t>& p) {
     // return p[0] + p[1]
     return (::tpy::add_check<int32_t>(std::get<0>(p), std::get<1>(p)));
 }
 
-// def mixed(p: readonly[tuple[Int32, Counter]]) -> Int32:
+// def mixed(p: readonly[tuple[int32, Counter]]) -> int32:
 int32_t mixed(const std::tuple<int32_t, const Counter*>& p) {
-    // a = p[0]  # tpyc: type(Int32)
+    // a = p[0]  # tpyc: type(int32)
     int32_t a = std::get<0>(p);
     // b = p[1]  # tpyc: type(/readonly/)
     const Counter& b = (*std::get<1>(p));

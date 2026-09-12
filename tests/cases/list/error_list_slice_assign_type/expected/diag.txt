@@ -1,1 +1,1 @@
-main.py:6: error: List literal element 1 has type float, incompatible with annotated element type Int32
+main.py:6: error: List literal element 1 has type float, incompatible with annotated element type int32

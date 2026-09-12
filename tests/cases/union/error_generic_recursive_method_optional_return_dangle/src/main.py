@@ -3,22 +3,22 @@
 # would emit `&(obj.method())` -- ill-formed C++. The TpyMethodCall branch of
 # is_dangling_return must reject it the same way the free-function branch does.
 from typing import Optional
-from tpy import Int32, Own
+from tpy import int32, Own
 
 type Tree[T] = T | list[Tree[T]]
 
 
 class Factory:
-    base: Int32
+    base: int32
 
-    def __init__(self, base: Int32) -> None:
+    def __init__(self, base: int32) -> None:
         self.base = base
 
-    def make(self) -> Own[Tree[Int32]]:
+    def make(self) -> Own[Tree[int32]]:
         return [self.base, 1]
 
 
-def g(f: Factory) -> Optional[Tree[Int32]]:
+def g(f: Factory) -> Optional[Tree[int32]]:
     return f.make()  # tpyc: error(/returned pointer would dangle/)
 
 

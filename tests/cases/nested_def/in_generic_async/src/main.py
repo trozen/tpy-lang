@@ -2,20 +2,20 @@
 # multiple nested defs, one taking a reference-type param.
 import asyncio
 from typing import Iterable
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Box:
-    n: Int32
+    n: int32
 
     def __init__(self) -> None:
         self.n = 10
 
 
-async def combine(xs: Iterable[Int32]) -> Own[Box]:
+async def combine(xs: Iterable[int32]) -> Own[Box]:
     b = Box()
 
-    def stash(target: Box, extra: Int32) -> None:
+    def stash(target: Box, extra: int32) -> None:
         target.n += extra
 
     def double() -> None:

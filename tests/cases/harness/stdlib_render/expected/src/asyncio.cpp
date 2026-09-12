@@ -71,7 +71,7 @@ void _register_timer_at(double deadline_seconds, ::tpystd::coro::Waker waker) {
 
 // # Reactor access mirrors `_register_timer_at`: no-op when no executor is
 // # running so a hand-driven awaitable doesn't crash outside `asyncio.run`.
-// def _reactor_register_fd(fd: Int32, events: UInt32, waker: Waker) -> None:
+// def _reactor_register_fd(fd: int32, events: uint32, waker: Waker) -> None:
 void _reactor_register_fd(int32_t fd, uint32_t events, ::tpystd::coro::Waker waker) {
     // handle = _get_current_executor()
     ::tpystd::asyncio::_executor::Executor* handle = ::tpystd::asyncio::_executor::_get_current_executor();
@@ -84,7 +84,7 @@ void _reactor_register_fd(int32_t fd, uint32_t events, ::tpystd::coro::Waker wak
     handle->register_fd(fd, events, waker);
 }
 
-// def _reactor_unregister_fd(fd: Int32) -> None:
+// def _reactor_unregister_fd(fd: int32) -> None:
 void _reactor_unregister_fd(int32_t fd) {
     // handle = _get_current_executor()
     ::tpystd::asyncio::_executor::Executor* handle = ::tpystd::asyncio::_executor::_get_current_executor();
@@ -153,7 +153,7 @@ EventLoop get_running_loop() {
 }
 
 // async def open_connection(
-// host: str, port: Int32) -> tuple[Own[StreamReader], Own[StreamWriter]]:
+// host: str, port: int32) -> tuple[Own[StreamReader], Own[StreamWriter]]:
 ::tpystd::tpy::Poll<std::tuple<StreamReader, StreamWriter>> __coro_open_connection::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -190,7 +190,7 @@ EventLoop get_running_loop() {
 
 
 // async def open_connection(
-// host: str, port: Int32) -> tuple[Own[StreamReader], Own[StreamWriter]]:
+// host: str, port: int32) -> tuple[Own[StreamReader], Own[StreamWriter]]:
 __coro_open_connection open_connection(std::string_view host, int32_t port) {
     return __coro_open_connection(host, port);
 }
@@ -251,7 +251,7 @@ __coro__accept_loop _accept_loop(::tpystd::tplib::rc::Rc<::tpystd::socket::socke
 // async def start_server(
 // cb: Callable[[Own[StreamReader], Own[StreamWriter]],
 // Own[Cancellable[None]]],
-// host: str, port: Int32) -> Own[Server]:
+// host: str, port: int32) -> Own[Server]:
 ::tpystd::tpy::Poll<Server> __coro_start_server::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
@@ -284,7 +284,7 @@ __coro__accept_loop _accept_loop(::tpystd::tplib::rc::Rc<::tpystd::socket::socke
 // async def start_server(
 // cb: Callable[[Own[StreamReader], Own[StreamWriter]],
 // Own[Cancellable[None]]],
-// host: str, port: Int32) -> Own[Server]:
+// host: str, port: int32) -> Own[Server]:
 __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::Cancellable<std::monostate>>(StreamReader&&, StreamWriter&&)> cb, std::string_view host, int32_t port) {
     return __coro_start_server(cb, host, port);
 }
@@ -444,7 +444,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 }
 
 
-// async def _fill(self) -> Int32:
+// async def _fill(self) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_StreamReader__fill::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -480,7 +480,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 }
 
 
-// async def read(self, n: Int32) -> bytes:
+// async def read(self, n: int32) -> bytes:
 ::tpystd::tpy::Poll<::tpy::Bytes> __coro_StreamReader_read::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -542,7 +542,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 }
 
 
-// async def readexactly(self, n: Int32) -> bytes:
+// async def readexactly(self, n: int32) -> bytes:
 ::tpystd::tpy::Poll<::tpy::Bytes> __coro_StreamReader_readexactly::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -892,7 +892,7 @@ _SignalScope::_SignalScope(::tpystd::asyncio::_executor::Executor& executor) : _
         // raise CancelledError()
         throw ::tpy::CancelledError{};
     }
-    // total: UInt64 = UInt64(len(self._data))
+    // total: uint64 = uint64(len(self._data))
     uint64_t total = ::tpy::int_cast_check<uint64_t>(::tpy::__len__(this->_data));
     // while self._sent < total:
     while ((this->_sent < total)) {
@@ -909,7 +909,7 @@ _SignalScope::_SignalScope(::tpystd::asyncio::_executor::Executor& executor) : _
                 return ::tpystd::coro::poll_pending<std::monostate>();
             }
         }
-        // self._sent = self._sent + UInt64(sent)
+        // self._sent = self._sent + uint64(sent)
         this->_sent = (::tpy::add_check<uint64_t>(this->_sent, ::tpy::int_cast_check<uint64_t>(sent)));
     }
     // return poll_ready_none()
@@ -917,7 +917,7 @@ _SignalScope::_SignalScope(::tpystd::asyncio::_executor::Executor& executor) : _
 }
 
 // def __poll__(self, waker: Waker
-// ) -> Own[Poll[tuple[Own[socket], tuple[str, Int32]]]]:
+// ) -> Own[Poll[tuple[Own[socket], tuple[str, int32]]]]:
 ::tpystd::tpy::Poll<std::tuple<::tpystd::socket::socket, std::tuple<std::string, int32_t>>> _SockAccept::__poll__(::tpystd::coro::Waker waker) {
     // if self._cancel_pending:
     if (this->_cancel_pending) {

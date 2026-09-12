@@ -1,27 +1,27 @@
 # Test type constructor conversions across all primitive types
-from tpy import Int32, Char
+from tpy import int32, char
 
-# --- Int32 constructors ---
-# Int32(float): truncate toward zero
-print(Int32(3.7))    # 3
-print(Int32(-3.7))   # -3
-print(Int32(0.0))    # 0
+# --- int32 constructors ---
+# int32(float): truncate toward zero
+print(int32(3.7))    # 3
+print(int32(-3.7))   # -3
+print(int32(0.0))    # 0
 
-# Int32(str): parse
-print(Int32("42"))    # 42
-print(Int32("-100"))  # -100
-print(Int32(" 7 "))   # 7 (whitespace stripped)
+# int32(str): parse
+print(int32("42"))    # 42
+print(int32("-100"))  # -100
+print(int32(" 7 "))   # 7 (whitespace stripped)
 
-# Int32(bool)
-print(Int32(True))    # 1
-print(Int32(False))   # 0
+# int32(bool)
+print(int32(True))    # 1
+print(int32(False))   # 0
 
 # --- int constructors ---
 # int(bool)
 print(int(True))      # 1
 print(int(False))     # 0
 
-# int(Char)
+# int(char)
 print(int(chr(65)))   # 65 (ASCII 'A')
 print(int(chr(0)))    # 0
 

@@ -1,16 +1,16 @@
 # **kwargs: .get() and "key" in kwargs for safe access on total=False TypedDict
 from typing import TypedDict, Unpack
-from tpy import Int32
+from tpy import int32
 
 class Config(TypedDict, total=False):
     host: str
-    port: Int32
+    port: int32
     verbose: bool
 
 def connect(**kwargs: Unpack[Config]) -> None:
     # "key" in kwargs
     host = kwargs.get("host", "localhost")
-    port = kwargs.get("port", Int32(3000))
+    port = kwargs.get("port", int32(3000))
     if "verbose" in kwargs:
         print("verbose mode")
     print(host)
@@ -28,7 +28,7 @@ def show_config(**kwargs: Unpack[Config]) -> None:
         print("no port")
 
 def main() -> None:
-    connect(host="example.com", port=Int32(8080), verbose=True)
+    connect(host="example.com", port=int32(8080), verbose=True)
     connect()
     show_config(host="myhost")
     show_config()

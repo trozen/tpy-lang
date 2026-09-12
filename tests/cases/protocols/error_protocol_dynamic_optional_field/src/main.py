@@ -4,7 +4,7 @@
 # validates fields before protocols register, so the check has to run
 # in a second pass.
 from typing import Protocol, Optional
-from tpy import Int32, dynamic
+from tpy import int32, dynamic
 
 
 @dynamic

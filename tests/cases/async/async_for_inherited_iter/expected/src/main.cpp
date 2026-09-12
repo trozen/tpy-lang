@@ -8,7 +8,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // total: Int32 = 0
+        // total: int32 = 0
         total = 0;
         __for_itr_0.emplace((DerivedAIter()).__aiter__());
         __state = S_JOIN_0;
@@ -66,7 +66,7 @@ void main() {
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
-// async def __anext__(self) -> Int32:
+// async def __anext__(self) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_BaseAIter___anext__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {

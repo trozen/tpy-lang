@@ -1,8 +1,8 @@
 # A BigInt list literal with a >int32 element must render that element via the
 # ambiguity-safe BigInt(static_cast<int64_t>(...)) ctor, not a bare C++ `long`
 # (which converts to BigInt ambiguously on macOS, where int64_t is long long).
-# Small elements stay bare; a fixed-width Int64 list must NOT wrap.
-from tpy import Int64
+# Small elements stay bare; a fixed-width int64 list must NOT wrap.
+from tpy import int64
 
 
 def main() -> None:
@@ -34,9 +34,9 @@ def main() -> None:
     tbig: int = 18446744073709551616
     print(tmin, tbig)
 
-    # Inverse: a fixed-width Int64 list stays a plain integer brace-init (no
+    # Inverse: a fixed-width int64 list stays a plain integer brace-init (no
     # BigInt wrap), which the fix must not disturb.
-    fixed: list[Int64] = [1234567890123456789, 5]
+    fixed: list[int64] = [1234567890123456789, 5]
     print(fixed[0], fixed[1])
 
 

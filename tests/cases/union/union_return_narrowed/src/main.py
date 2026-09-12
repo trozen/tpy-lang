@@ -1,5 +1,5 @@
 # Return narrowed member from isinstance branch (pointer variant)
-from tpy import Int32
+from tpy import int32
 
 class Dog:
     name: str

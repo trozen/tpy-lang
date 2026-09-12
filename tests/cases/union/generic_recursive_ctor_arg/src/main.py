@@ -1,12 +1,12 @@
 # A record constructor parameter typed as a generic recursive alias instance
-# (Tree[Int32]) must accept a Tree[Int32] argument. Stores a derived scalar so
+# (Tree[int32]) must accept a Tree[int32] argument. Stores a derived scalar so
 # the wrapper struct is not embedded in the record.
-from tpy import Int32
+from tpy import int32
 
 type Tree[T] = T | list[Tree[T]]
 
 
-def count_leaves(t: Tree[Int32]) -> Int32:
+def count_leaves(t: Tree[int32]) -> int32:
     match t:
         case list() as branches:
             n = 0
@@ -18,17 +18,17 @@ def count_leaves(t: Tree[Int32]) -> Int32:
 
 
 class Summary:
-    n: Int32
+    n: int32
 
-    def __init__(self, t: Tree[Int32]) -> None:
+    def __init__(self, t: Tree[int32]) -> None:
         self.n = count_leaves(t)
 
 
 def main() -> None:
-    seed: Tree[Int32] = [1, [2, 3], 4]
+    seed: Tree[int32] = [1, [2, 3], 4]
     s = Summary(seed)  # tpyc: ok
     print(s.n)
-    leaf: Tree[Int32] = 7
+    leaf: Tree[int32] = 7
     print(Summary(leaf).n)  # tpyc: ok
 
 

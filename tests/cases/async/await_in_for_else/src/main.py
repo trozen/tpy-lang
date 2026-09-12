@@ -3,14 +3,14 @@
 # suspension in the else clause is supported for async too). The else runs on
 # normal loop exit and is skipped by `break`; both arms are exercised.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
 async def tick(label: str) -> None:
     print(label)
 
 
-async def drive(brk: Int32) -> None:
+async def drive(brk: int32) -> None:
     for i in range(3):
         if i == brk:
             break

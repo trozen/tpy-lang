@@ -1,1 +1,1 @@
-main.py:13: error: 'str' is not a member of union 'Cat | Int32'
+main.py:13: error: 'str' is not a member of union 'Cat | int32'

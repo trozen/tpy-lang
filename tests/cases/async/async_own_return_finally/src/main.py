@@ -2,17 +2,17 @@
 # (and mutates) the local, so the return must not move it early -- the
 # deferred capture materializes after the finally, CPython-identical.
 import asyncio
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Box:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 
-async def make(v: Int32) -> Own[Box]:
+async def make(v: int32) -> Own[Box]:
     b = Box(v)
     try:
         return b
@@ -21,7 +21,7 @@ async def make(v: Int32) -> Own[Box]:
         print(b.v)
 
 
-async def driver() -> Int32:
+async def driver() -> int32:
     b = await make(7)
     return b.v
 

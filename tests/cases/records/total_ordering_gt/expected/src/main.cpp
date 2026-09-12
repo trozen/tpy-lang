@@ -3,9 +3,9 @@
 
 namespace tpyapp::main {
 
-// a = Rank(Int32(7))
+// a = Rank(int32(7))
 Rank* a{};
-// b = Rank(Int32(3))
+// b = Rank(int32(3))
 Rank* b{};
 
 void __tpy_init() {
@@ -18,10 +18,10 @@ void __tpy_init() {
     // # `total_ordering_lt` doesn't reach.
     // from functools import total_ordering
     ::tpystd::functools::__tpy_init();
-    // a = Rank(Int32(7))
+    // a = Rank(int32(7))
     static Rank __global_slot_1 = Rank(7);
     a = &__global_slot_1;
-    // b = Rank(Int32(3))
+    // b = Rank(int32(3))
     static Rank __global_slot_2 = Rank(3);
     b = &__global_slot_2;
     // print(a > b)
@@ -32,7 +32,7 @@ void __tpy_init() {
     std::cout << ::tpy::print_bool((((*a)) < ((*b)))) << "\n";
     // print(a <= b)
     std::cout << ::tpy::print_bool((((*a)) <= ((*b)))) << "\n";
-    // print(a == Rank(Int32(7)))
+    // print(a == Rank(int32(7)))
     std::cout << ::tpy::print_bool((((*a)) == (Rank(7)))) << "\n";
 }
 

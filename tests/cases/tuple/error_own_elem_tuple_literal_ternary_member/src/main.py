@@ -1,17 +1,17 @@
 # A TERNARY member inside a tuple literal at an Own-element tuple slot: it is
 # neither an rvalue source nor a movable name, so the element has no arm and
 # this is rejected today.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class A:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
-def read_owned(p: tuple[Own[A], Int32]) -> Int32:
+def read_owned(p: tuple[Own[A], int32]) -> int32:
     return p[1]
 
 

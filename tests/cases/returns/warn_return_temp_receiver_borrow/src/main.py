@@ -4,13 +4,13 @@
 # below warn. The copy is the ACKNOWLEDGED CPython divergence (CPython hands
 # back the very Point), so main prints only what both sides agree on and the
 # WARNING is the pin; the `copy()` twin of each spelling is silent.
-from tpy import Int32, Own, copy
+from tpy import int32, Own, copy
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
     def updated(self) -> 'Point':
@@ -18,29 +18,29 @@ class Point:
         return self
 
 
-def make(n: Int32) -> Own[Point]:
+def make(n: int32) -> Own[Point]:
     # Constructor receiver: `Point(n)` is a temporary, and still a borrow.
     return Point(n).updated()  # tpyc: warning(/copies Point into owned storage/)
 
 
-def make_copy(n: Int32) -> Own[Point]:
+def make_copy(n: int32) -> Own[Point]:
     return copy(Point(n).updated())  # tpyc: ok
 
 
-def owned(n: Int32) -> Own[Point]:
+def owned(n: int32) -> Own[Point]:
     # Owning FREE-call receiver: `make(n)` hands back a value, and `updated`
     # still hands back a borrow of it.
     return make(n).updated()  # tpyc: warning(/copies Point into owned storage/)
 
 
-def owned_copy(n: Int32) -> Own[Point]:
+def owned_copy(n: int32) -> Own[Point]:
     return copy(make(n).updated())  # tpyc: ok
 
 
 class Factory:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def make(self) -> Own[Point]:

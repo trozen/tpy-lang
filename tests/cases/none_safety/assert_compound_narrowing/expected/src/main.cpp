@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def clamp_positive(x: Int32 | None) -> Int32:
+// def clamp_positive(x: int32 | None) -> int32:
 int32_t clamp_positive(std::optional<int32_t> x) {
     // assert x is not None and x > 0, "need positive"
     if (!(((x.has_value()) && ((*x) > 0)))) ::tpy::raise_assertion_error("need positive");

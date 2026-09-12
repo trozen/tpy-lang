@@ -15,9 +15,9 @@ void main();
 
 // class HttpClient:
 struct HttpClient {
-    // TIMEOUT: ClassVar[Final[Int32]] = 30
+    // TIMEOUT: ClassVar[Final[int32]] = 30
     static constexpr int32_t TIMEOUT = 30;
-    // MAX_RETRIES: ClassVar[Final[Int32]] = 5
+    // MAX_RETRIES: ClassVar[Final[int32]] = 5
     static constexpr int32_t MAX_RETRIES = 5;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.HttpClient";

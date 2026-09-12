@@ -17,13 +17,13 @@ void main();
 
 // class Counter:
 struct Counter {
-    // n: Int32
+    // n: int32
     int32_t n;
 
     // def __init__(self) -> None:
     Counter();
 
-    // def bump(self) -> Int32:
+    // def bump(self) -> int32:
     int32_t bump();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
@@ -39,7 +39,7 @@ inline Counter::Counter() : n(0) {
     // # comment before a constructor docstring
 }
 
-// def bump(self) -> Int32:
+// def bump(self) -> int32:
 inline int32_t Counter::bump() {
     // # comment before a method docstring
     // self.n += 1

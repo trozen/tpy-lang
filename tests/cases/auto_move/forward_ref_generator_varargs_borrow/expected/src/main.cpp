@@ -8,10 +8,10 @@ namespace tpyapp::main {
 void main() {
     // # forward-referenced generator: the frame views the caller's arg array,
     // # so the pack elements stay borrowed while the generator is alive.
-    // # Annotated: a bare list literal infers Array[Int32, N], not list.
-    // a: list[Int32] = [1, 2, 3]
+    // # Annotated: a bare list literal infers Array[int32, N], not list.
+    // a: list[int32] = [1, 2, 3]
     std::vector<int32_t> a = {1, 2, 3};
-    // b: list[Int32] = [4]
+    // b: list[int32] = [4]
     std::vector<int32_t> b = {4};
     // g = gen(a, b)
     std::array<const std::vector<int32_t>*, 2> __tmp_1{&a, &b};
@@ -31,9 +31,9 @@ void main() {
     }
     // # plain function (no frame): the returned borrow of a pack element keeps
     // # the whole pack borrowed just the same.
-    // c: list[Int32] = [5, 6]
+    // c: list[int32] = [5, 6]
     std::vector<int32_t> c = {5, 6};
-    // d: list[Int32] = [7]
+    // d: list[int32] = [7]
     std::vector<int32_t> d = {7};
     // r = first(c, d)
     std::array<std::vector<int32_t>*, 2> __tmp_3{&c, &d};
@@ -52,11 +52,11 @@ void main() {
     std::cout << "method:" << " " << Caller().run() << "\n";
     // # keyword-only borrow behind the pack: its borrow index is the one the
     // # pack would shift, so the sink on it must still demote
-    // e: list[Int32] = [1, 2]
+    // e: list[int32] = [1, 2]
     std::vector<int32_t> e = {1, 2};
-    // f: list[Int32] = [3]
+    // f: list[int32] = [3]
     std::vector<int32_t> f = {3};
-    // h: list[Int32] = [4, 5, 6, 7]
+    // h: list[int32] = [4, 5, 6, 7]
     std::vector<int32_t> h = {4, 5, 6, 7};
     // gk = kwgen(e, f, extra=h)
     std::array<const std::vector<int32_t>*, 2> __tmp_5{&e, &f};
@@ -75,11 +75,11 @@ void main() {
         std::cout << "kwonly:" << " " << v << "\n";
     }
     // # ... and the pack elements in front of it keep their own indices
-    // p: list[Int32] = [1, 2]
+    // p: list[int32] = [1, 2]
     std::vector<int32_t> p = {1, 2};
-    // q: list[Int32] = [3]
+    // q: list[int32] = [3]
     std::vector<int32_t> q = {3};
-    // s: list[Int32] = [9]
+    // s: list[int32] = [9]
     std::vector<int32_t> s = {9};
     // gp = kwgen(p, q, extra=s)
     std::array<const std::vector<int32_t>*, 2> __tmp_7{&p, &q};
@@ -99,9 +99,9 @@ void main() {
     }
     // # transitive return: forward's result borrows a pack element of first(),
     // # which reaches the caller's argument through the forwarded pack
-    // t: list[Int32] = [8, 9, 10]
+    // t: list[int32] = [8, 9, 10]
     std::vector<int32_t> t = {8, 9, 10};
-    // u: list[Int32] = [11]
+    // u: list[int32] = [11]
     std::vector<int32_t> u = {11};
     // fr = forward(t, u)
     std::array<std::vector<int32_t>*, 2> __tmp_9{&t, &u};
@@ -116,9 +116,9 @@ void main() {
     std::cout << "fwd:" << " " << ::tpy::__len__(t) << " " << ::tpy::__len__(fr) << "\n";
     // # two hops of forwarding: the pack is re-spelled at every hop, so the
     // # borrow must still land on the caller's own argument.
-    // w: list[Int32] = [1, 2]
+    // w: list[int32] = [1, 2]
     std::vector<int32_t> w = {1, 2};
-    // y: list[Int32] = [3]
+    // y: list[int32] = [3]
     std::vector<int32_t> y = {3};
     // f2 = forward2(w, y)
     std::array<std::vector<int32_t>*, 2> __tmp_11{&w, &y};
@@ -132,7 +132,7 @@ void main() {
     std::cout << "fwd2:" << " " << ::tpy::__len__(w) << " " << ::tpy::__len__(f2) << "\n";
 }
 
-// def gen(*xs: list[Int32]) -> Iterator[Int32]:
+// def gen(*xs: list[int32]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -170,12 +170,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
 }
 
 
-// def gen(*xs: list[Int32]) -> Iterator[Int32]:
+// def gen(*xs: list[int32]) -> Iterator[int32]:
 __gen_gen gen(::tpy::varargs<const std::vector<int32_t>> xs) {
     return __gen_gen(xs);
 }
 
-// def kwgen(*xs: list[Int32], extra: list[Int32]) -> Iterator[Int32]:
+// def kwgen(*xs: list[int32], extra: list[int32]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_kwgen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -213,32 +213,32 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_kwgen::__next__() {
 }
 
 
-// def kwgen(*xs: list[Int32], extra: list[Int32]) -> Iterator[Int32]:
+// def kwgen(*xs: list[int32], extra: list[int32]) -> Iterator[int32]:
 __gen_kwgen kwgen(::tpy::varargs<const std::vector<int32_t>> xs, std::vector<int32_t>& extra) {
     return __gen_kwgen(xs, extra);
 }
 
-// def first(*xs: list[Int32]) -> list[Int32]:
+// def first(*xs: list[int32]) -> list[int32]:
 std::vector<int32_t>& first(::tpy::varargs<std::vector<int32_t>> xs) {
     // return xs[0]
     return ::tpy::__getitem__(xs, 0);
 }
 
-// def forward(*xs: list[Int32]) -> list[Int32]:
+// def forward(*xs: list[int32]) -> list[int32]:
 std::vector<int32_t>& forward(::tpy::varargs<std::vector<int32_t>> xs) {
     // return first(*xs)
     return first(::tpy::varargs<std::vector<int32_t>>(xs));
 }
 
-// def forward2(*zs: list[Int32]) -> list[Int32]:
+// def forward2(*zs: list[int32]) -> list[int32]:
 std::vector<int32_t>& forward2(::tpy::varargs<std::vector<int32_t>> zs) {
     // return forward(*zs)
     return forward(::tpy::varargs<std::vector<int32_t>>(zs));
 }
 
-// def drop(xs: Own[list[Int32]]) -> Int32:
+// def drop(xs: Own[list[int32]]) -> int32:
 int32_t drop(std::vector<int32_t>&& xs) {
-    // store: list[list[Int32]] = []
+    // store: list[list[int32]] = []
     std::vector<std::vector<int32_t>> store = std::vector<std::vector<int32_t>>{};
     // store.append(xs)
     store.push_back(std::move(xs));
@@ -246,7 +246,7 @@ int32_t drop(std::vector<int32_t>&& xs) {
     return ::tpy::__len__(::tpy::__getitem__(store, 0));
 }
 
-// def sizes(self, *xs: list[Int32]) -> Iterator[Int32]:
+// def sizes(self, *xs: list[int32]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_Collector_sizes::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -287,11 +287,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Collector_sizes::__next__() {
 
 // # Defined BEFORE Collector, so the method generator is forward-referenced
 // # and only the registration-time borrow stamp can see the pack.
-// def run(self) -> Int32:
+// def run(self) -> int32:
 int32_t Caller::run() const {
-    // a: list[Int32] = [1, 2, 3]
+    // a: list[int32] = [1, 2, 3]
     std::vector<int32_t> a = {1, 2, 3};
-    // b: list[Int32] = [4]
+    // b: list[int32] = [4]
     std::vector<int32_t> b = {4};
     // c = Collector()
     Collector c = Collector();

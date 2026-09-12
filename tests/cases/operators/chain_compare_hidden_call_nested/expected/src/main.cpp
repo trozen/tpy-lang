@@ -11,7 +11,7 @@ void main() {
     // global calls
     // p = P()
     P p = P();
-    // # The Int8 result widens for the comparison, wrapping the property access
+    // # The int8 result widens for the comparison, wrapping the property access
     // # in a coercion the check has to see through.
     // calls = 0
     calls = 0;

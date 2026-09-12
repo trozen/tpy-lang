@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def make() -> Int32:
+// def make() -> int32:
 int32_t make() {
     // p: Point | None = Point(7)
     Point __slot_1 = Point(7);

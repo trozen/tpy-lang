@@ -1,11 +1,11 @@
 # Consuming a @nocopy local in a `try` body whose handler reads it must be
 # rejected -- an exception can reach the handler at any point (value stays live).
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 
 
 @nocopy
 class Handle:
-    fd: Int32
+    fd: int32
 
 
 def consume(h: Own[Handle]) -> None:

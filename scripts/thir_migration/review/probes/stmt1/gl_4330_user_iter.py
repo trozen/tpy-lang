@@ -1,10 +1,10 @@
-from tpy import Int32
+from tpy import int32
 from typing import Iterator
 class Cyc:
-    n: Int32
+    n: int32
     def __init__(self) -> None:
         self.n = 0
-    def __iter__(self) -> Iterator[Int32]:
+    def __iter__(self) -> Iterator[int32]:
         i = 0
         while i < 2:
             yield i

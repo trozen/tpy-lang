@@ -240,7 +240,7 @@ template<typename T> using val_or_cptr_t = typename detail::val_or_cptr_impl<T>:
 
 // The `T | None` PARAMETER form for a generic T -- the nullable sibling of
 // param_val_or_ref_t. A value T takes std::optional<T> by value, which is what
-// the monomorphic twin (`def f(v: Int32 | None)`) already takes, so a caller
+// the monomorphic twin (`def f(v: int32 | None)`) already takes, so a caller
 // passes the value straight through instead of materializing a temp to point
 // at. A reference T stays a pointer, so a mutation inside the body is visible
 // to the caller (std::optional<T> would copy it). Return position is NOT this

@@ -337,7 +337,7 @@ int tpy_tls_classify(int rc)
 }
 
 // Render an mbedTLS error code into buf (NUL-terminated) for diagnostics.
-// buf is unsigned char* to match the TPy Ptr[UInt8] binding.
+// buf is unsigned char* to match the TPy Ptr[uint8] binding.
 void tpy_tls_strerror(int code, unsigned char *buf, size_t len)
 {
     mbedtls_strerror(code, (char *)buf, len);

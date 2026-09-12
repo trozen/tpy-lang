@@ -4,17 +4,17 @@
 # CPython's cell reads it live (101/102 there, 2/3 here), which is why the
 # case is no_cpython -- the warning is the acknowledgment.
 from typing import Callable, Iterator
-from tpy import Int32
+from tpy import int32
 
 
-def apply(f: Callable[[Int32], Int32], v: Int32) -> Int32:
+def apply(f: Callable[[int32], int32], v: int32) -> int32:
     return f(v)
 
 
 # Two yields, so the body renders as a frame and `step` is a frame member.
-def cell() -> Iterator[Int32]:
+def cell() -> Iterator[int32]:
     step = 1
-    f: Callable[[Int32], Int32] = lambda x: x + step  # tpyc: warning(/reassigned after the closure is created/)
+    f: Callable[[int32], int32] = lambda x: x + step  # tpyc: warning(/reassigned after the closure is created/)
     step = 100
     yield apply(f, 1)
     yield apply(f, 2)
@@ -27,8 +27,8 @@ def cell() -> Iterator[Int32]:
 # mutation (BUGS.md#escaping-capture-mutation-snapshot). The sync free function
 # and the single-yield peephole copy identically, so this is the frame position
 # of one divergence, not a frame-only one.
-def copied(xs: list[Int32]) -> Iterator[Int32]:
-    f: Callable[[Int32], Int32] = lambda i: xs[i]
+def copied(xs: list[int32]) -> Iterator[int32]:
+    f: Callable[[int32], int32] = lambda i: xs[i]
     yield apply(f, 0)
     xs[0] = 99
     yield apply(f, 0)

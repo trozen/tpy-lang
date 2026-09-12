@@ -1,12 +1,12 @@
 # Class with list[NocopyType] field is implicitly nocopy
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 
 
 @nocopy
 class Handle:
-    fd: Int32
+    fd: int32
 
-    def __init__(self, fd: Int32):
+    def __init__(self, fd: int32):
         self.fd = fd
 
 

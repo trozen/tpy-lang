@@ -35,14 +35,14 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
 
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
 
-    // def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: int32) -> None:
     Point() = default;
     explicit Point(int32_t x);
 
-    // def __hash__(self) -> UInt64:
+    // def __hash__(self) -> uint64:
     uint64_t __hash__() const;
 
     // def __eq__(self, other: "Point") -> bool:
@@ -85,12 +85,12 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 }
 
 
-// def __init__(self, x: Int32) -> None:
+// def __init__(self, x: int32) -> None:
 inline Point::Point(int32_t x) : x(x) {}
 
-// def __hash__(self) -> UInt64:
+// def __hash__(self) -> uint64:
 inline uint64_t Point::__hash__() const {
-    // return UInt64(self.x)
+    // return uint64(self.x)
     return ::tpy::int_cast_check<uint64_t>(this->x);
 }
 

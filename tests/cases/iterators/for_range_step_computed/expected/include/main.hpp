@@ -18,10 +18,10 @@ void main();
 
 // class Grid:
 struct Grid {
-    // step: Int32
+    // step: int32
     int32_t step;
 
-    // def __init__(self, step: Int32):
+    // def __init__(self, step: int32):
     Grid() = default;
     explicit Grid(int32_t step);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Grid";
@@ -33,7 +33,7 @@ inline std::ostream& operator<<(std::ostream& os, const Grid& obj) {
 }
 
 
-// def __init__(self, step: Int32):
+// def __init__(self, step: int32):
 inline Grid::Grid(int32_t step) : step(step) {}
 void __tpy_init();
 } // namespace tpyapp::main

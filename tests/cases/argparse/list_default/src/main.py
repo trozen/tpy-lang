@@ -4,7 +4,7 @@
 # list rather than None or []; when the flag is given, the values
 # replace (store + nargs=+) or append onto the default (action=append).
 # Two parsers because builder-trace requires one parse_args per parser.
-from tpy import Int32
+from tpy import int32
 from argparse import ArgumentParser
 
 
@@ -26,7 +26,7 @@ def present_case() -> None:
     print(args.count)
 
 
-def main() -> Int32:
+def main() -> int32:
     absent_case()
     present_case()
     return 0

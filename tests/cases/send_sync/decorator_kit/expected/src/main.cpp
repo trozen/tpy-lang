@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def forced(xs: list[Int32]) -> Int32:    # tpyc: frame_send(yes)
+// async def forced(xs: list[int32]) -> int32:    # tpyc: frame_send(yes)
 ::tpystd::tpy::Poll<int32_t> __coro_forced::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
@@ -20,7 +20,7 @@ namespace tpyapp::main {
 }
 
 
-// async def forced(xs: list[Int32]) -> Int32:    # tpyc: frame_send(yes)
+// async def forced(xs: list[int32]) -> int32:    # tpyc: frame_send(yes)
 __coro_forced forced(std::vector<int32_t>& xs) {
     return __coro_forced(xs);
 }

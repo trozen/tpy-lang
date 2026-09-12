@@ -16,11 +16,11 @@ std::string_view pick_view(std::string_view s) {
     return s;
 }
 
-// def param_then_trusted(seed: Point, n: Int32) -> Point:
+// def param_then_trusted(seed: Point, n: int32) -> Point:
 Point& param_then_trusted(Point& seed, int32_t n) {
     // result = seed                    # param-derived
     Point* result = &(seed);
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < n:
     while ((i < n)) {
@@ -33,11 +33,11 @@ Point& param_then_trusted(Point& seed, int32_t n) {
     return (*result);
 }
 
-// def trusted_then_param(seed: Point, n: Int32) -> Point:
+// def trusted_then_param(seed: Point, n: int32) -> Point:
 Point& trusted_then_param(Point& seed, int32_t n) {
     // result = trusted(seed)           # trusted call return
     Point* result = &(trusted(seed));
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < n:
     while ((i < n)) {
@@ -50,11 +50,11 @@ Point& trusted_then_param(Point& seed, int32_t n) {
     return (*result);
 }
 
-// def strview_param_then_trusted(p: str, n: Int32) -> StrView:
+// def strview_param_then_trusted(p: str, n: int32) -> StrView:
 std::string_view strview_param_then_trusted(std::string_view p, int32_t n) {
     // sv: StrView = p                            # param-derived
     std::string_view sv = p;
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < n:
     while ((i < n)) {

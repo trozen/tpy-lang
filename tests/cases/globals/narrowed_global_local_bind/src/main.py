@@ -1,9 +1,9 @@
 # The narrow-keeping shapes around the global call-kill: a local bind of
 # the global survives calls, and a local SHADOWING the global keeps its
 # own narrow across a call.
-from tpy import Int32
+from tpy import int32
 
-GO: Int32 | None = None
+GO: int32 | None = None
 
 
 def clear() -> None:
@@ -16,7 +16,7 @@ def enable() -> None:
     GO = 5
 
 
-def local_bind() -> Int32:
+def local_bind() -> int32:
     v = GO
     if v is not None:
         clear()
@@ -24,8 +24,8 @@ def local_bind() -> Int32:
     return -1
 
 
-def shadowed() -> Int32:
-    GO: Int32 | None = 9
+def shadowed() -> int32:
+    GO: int32 | None = 9
     if GO is not None:
         clear()
         return GO

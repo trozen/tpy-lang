@@ -16,7 +16,7 @@ void main();
 
 // class Storage:
 struct Storage {
-    // buf: UninitHeapStorage[Int32]
+    // buf: UninitHeapStorage[int32]
     ::tpy::UninitHeapStorage<int32_t> buf;
     bool __tpy_owned_ = true;
 
@@ -31,7 +31,7 @@ struct Storage {
     // def __del__(self):
     ~Storage();
 
-    // def get(self) -> Int32:
+    // def get(self) -> int32:
     int32_t get() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Storage";
 };
@@ -66,7 +66,7 @@ inline Storage::~Storage() {
     this->buf.drop0();
 }
 
-// def get(self) -> Int32:
+// def get(self) -> int32:
 inline int32_t Storage::get() const {
     // return self.buf.load0()
     return this->buf.load0();

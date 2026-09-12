@@ -3,11 +3,11 @@
 # are newly tracked, so this pins that a GENUINE cycle through one still reaches
 # the clean located diagnostic instead of a raw C++ incomplete-type error.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
 class Gate:
-    async def __aenter__(self) -> Int32:  # tpyc: error(/recursive coroutine embedding/)
+    async def __aenter__(self) -> int32:  # tpyc: error(/recursive coroutine embedding/)
         async with self as v:
             return v + 1
 

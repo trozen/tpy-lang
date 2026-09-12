@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // w = Widget("button", Int32(5), "ui")
+    // w = Widget("button", int32(5), "ui")
     Widget w = Widget("button", 5, "ui");
     // print(w.name)
     std::cout << w.name << "\n";

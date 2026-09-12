@@ -1,7 +1,7 @@
 from tpy.extern import native_global
-from tpy import Int32
+from tpy import int32
 
-x: Int32 = native_global(123, binding="C")  # tpyc: error(/argument must be a string literal/)
+x: int32 = native_global(123, binding="C")  # tpyc: error(/argument must be a string literal/)
 
 def main() -> None:
     pass

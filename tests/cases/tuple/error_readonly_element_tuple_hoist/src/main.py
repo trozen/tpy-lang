@@ -1,16 +1,16 @@
 # A readonly element source sets the borrow-decl const bit, so a branch-hoisted
 # tuple over it falls outside the non-const slice.
-from tpy import Int32, readonly
+from tpy import int32, readonly
 
 
 class Box:
-    val: Int32
+    val: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 
-def pick(b: readonly[Box], c: bool) -> Int32:
+def pick(b: readonly[Box], c: bool) -> int32:
     if c:  # tpyc: error(/if.hoist_type/)
         t = (1, b)
     else:

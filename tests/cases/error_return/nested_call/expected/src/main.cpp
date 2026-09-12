@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // @error_return(NotFound)
-// def find(items: list[Int32], target: Int32) -> Int32:
+// def find(items: list[int32], target: int32) -> int32:
 std::expected<int32_t, NotFound> find(const std::vector<int32_t>& items, int32_t target) {
     // for i in range(len(items)):
     int32_t __stop_0 = ::tpy::__len__(items);
@@ -22,7 +22,7 @@ std::expected<int32_t, NotFound> find(const std::vector<int32_t>& items, int32_t
 
 // def main() -> None:
 void main() {
-    // items: list[Int32] = [10, 20, 30]
+    // items: list[int32] = [10, 20, 30]
     std::vector<int32_t> items = {10, 20, 30};
     // try:
     int32_t idx;

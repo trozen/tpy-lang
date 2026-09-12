@@ -34,16 +34,16 @@ class TestTupleDestructureMutationPropagation:
 
     def test_tuple_of_record_destructure_field_write(self):
         source = """
-from tpy import Int32
+from tpy import int32
 
 class T:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 def f(p: tuple[T, T]) -> None:
     a, b = p
-    a.x = Int32(1)
+    a.x = int32(1)
 """
         module = _compile(source)
         f = _get_func(module, "f")
@@ -55,17 +55,17 @@ def f(p: tuple[T, T]) -> None:
 
     def test_tuple_of_optional_record_destructure_narrowing_field_write(self):
         source = """
-from tpy import Int32
+from tpy import int32
 
 class T:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 def f(p: tuple[T | None, T | None]) -> None:
     a, b = p
     if a is not None:
-        a.x = Int32(1)
+        a.x = int32(1)
 """
         module = _compile(source)
         f = _get_func(module, "f")
@@ -78,14 +78,14 @@ def f(p: tuple[T | None, T | None]) -> None:
     def test_tuple_of_record_destructure_no_write_not_mutated(self):
         """Negative: pure read through destructure must not mark mutated."""
         source = """
-from tpy import Int32
+from tpy import int32
 
 class T:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
-def f(p: tuple[T, T]) -> Int32:
+def f(p: tuple[T, T]) -> int32:
     a, b = p
     return a.x + b.x
 """
@@ -104,16 +104,16 @@ class TestTupleTransitiveMutationPropagation:
 
     def test_transitive_through_tuple_param(self):
         source = """
-from tpy import Int32
+from tpy import int32
 
 class T:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 def inner(p: tuple[T, T]) -> None:
     a, b = p
-    a.x = Int32(1)
+    a.x = int32(1)
 
 def outer(p: tuple[T, T]) -> None:
     inner(p)
@@ -129,17 +129,17 @@ def outer(p: tuple[T, T]) -> None:
 
     def test_transitive_through_optional_tuple_param(self):
         source = """
-from tpy import Int32
+from tpy import int32
 
 class T:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 def inner(p: tuple[T | None, T | None]) -> None:
     a, b = p
     if a is not None:
-        a.x = Int32(1)
+        a.x = int32(1)
 
 def outer(p: tuple[T | None, T | None]) -> None:
     inner(p)
@@ -156,18 +156,18 @@ def outer(p: tuple[T | None, T | None]) -> None:
     def test_no_propagation_when_inner_does_not_mutate(self):
         """Negative: if inner only reads the tuple, outer is not marked."""
         source = """
-from tpy import Int32
+from tpy import int32
 
 class T:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
-def inner(p: tuple[T, T]) -> Int32:
+def inner(p: tuple[T, T]) -> int32:
     a, b = p
     return a.x + b.x
 
-def outer(p: tuple[T, T]) -> Int32:
+def outer(p: tuple[T, T]) -> int32:
     return inner(p)
 """
         module = _compile(source)
@@ -182,16 +182,16 @@ class TestTupleLiteralRhsDestructure:
 
     def test_tuple_literal_rhs_propagates(self):
         source = """
-from tpy import Int32
+from tpy import int32
 
 class T:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 def f(x: T, y: T) -> None:
     a, b = (x, y)
-    a.x = Int32(1)
+    a.x = int32(1)
 """
         module = _compile(source)
         f = _get_func(module, "f")

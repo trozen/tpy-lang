@@ -2,12 +2,12 @@
 # reference type, a wrapper tuple element is borrow form, so a fresh value
 # needs Own[] (lowers by value); the readonly wrapper param exercises const
 # wrapper access (const Tree<int32_t>&) alongside the by-value Own tuple return.
-from tpy import Int32, readonly, Own
+from tpy import int32, readonly, Own
 
 type Tree[T] = T | list[Tree[T]]
 
 
-def leaf_count(t: readonly[Tree[Int32]]) -> Int32:
+def leaf_count(t: readonly[Tree[int32]]) -> int32:
     match t:
         case list() as branches:
             n = 0
@@ -18,7 +18,7 @@ def leaf_count(t: readonly[Tree[Int32]]) -> Int32:
             return 1
 
 
-def f() -> tuple[Own[Tree[Int32]], Int32]:
+def f() -> tuple[Own[Tree[int32]], int32]:
     return ([1, 2], 0)
 
 

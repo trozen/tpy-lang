@@ -4,13 +4,13 @@
 # of the branches, which used to pick a pointer form the const borrow
 # couldn't bind (C++ build failure); straight-line and single-branch
 # bindings don't hoist and never tripped it.
-from tpy import Int32
+from tpy import int32
 
 
 class Acc:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
     def __add__(self, o: "Acc") -> "Acc":

@@ -17,13 +17,13 @@ void main();
 
 // class Holder:
 struct Holder {
-    // items: list[Int32]
+    // items: list[int32]
     std::vector<int32_t> items;
 
     // def __init__(self) -> None:
     Holder();
 
-    // def peek(self) -> list[Int32]:
+    // def peek(self) -> list[int32]:
     std::vector<int32_t>& peek();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
@@ -35,20 +35,20 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 // class Grid:
 struct Grid {
-    // cells: list[Int32]
+    // cells: list[int32]
     std::vector<int32_t> cells;
-    // tags: list[Int32]
+    // tags: list[int32]
     std::vector<int32_t> tags;
-    // data: list[Int32]
+    // data: list[int32]
     std::vector<int32_t> data;
-    // mirror: list[Int32]
+    // mirror: list[int32]
     std::vector<int32_t> mirror;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Grid() = default;
     explicit Grid(int32_t n);
 
-    // def fill_own(self, n: Int32) -> None:
+    // def fill_own(self, n: int32) -> None:
     void fill_own(int32_t n);
 
     // # The mirror write COPIES where CPython aliases; sema warns on the line, so
@@ -68,16 +68,16 @@ inline std::ostream& operator<<(std::ostream& os, const Grid& obj) {
 // def __init__(self) -> None:
 inline Holder::Holder() : items(std::vector<int32_t>{}) {}
 
-// def peek(self) -> list[Int32]:
+// def peek(self) -> list[int32]:
 inline std::vector<int32_t>& Holder::peek() {
     // return self.items
     return this->items;
 }
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Grid::Grid(int32_t n) : cells(::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(8, {0}))), tags(::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(4, {n}))), data(std::vector<int32_t>{}), mirror(std::vector<int32_t>{}) {}
 
-// def fill_own(self, n: Int32) -> None:
+// def fill_own(self, n: int32) -> None:
 inline void Grid::fill_own(int32_t n) {
     // self.data = make_list(n)  # the Own return lands by value, no copy
     this->data = make_list(n);
@@ -88,7 +88,7 @@ inline void Grid::fill_own(int32_t n) {
 // # afterwards, which is what keeps the printed output identical.
 // def fill_borrow(self, h: Holder) -> None:
 inline void Grid::fill_borrow(Holder& h) {
-    // self.mirror = h.peek()  # tpyc: warning(/copies list\[Int32\] into field/)
+    // self.mirror = h.peek()  # tpyc: warning(/copies list\[int32\] into field/)
     this->mirror = h.peek();
 }
 void __tpy_init();

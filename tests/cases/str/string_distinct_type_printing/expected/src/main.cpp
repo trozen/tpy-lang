@@ -31,7 +31,7 @@ void container_element(const ::tpy::String& s) {
 void dict_key(const ::tpy::String& s) {
     // # a dict keyed on String, probed with a `str` key: the lookup must compare
     // # and hash in the stored type's domain rather than building an element
-    // d: dict[String, Int32] = {}
+    // d: dict[String, int32] = {}
     ::tpy::ordered_map<::tpy::String, int32_t> d = ::tpy::ordered_map<::tpy::String, int32_t>();
     // d[s] = 1
     ::tpy::__setitem__(d, s, 1);

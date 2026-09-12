@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def make_getter(cfg: Own[Config]) -> Callable[[], Int32]:
+// def make_getter(cfg: Own[Config]) -> Callable[[], int32]:
 std::function<int32_t()> make_getter(Config&& cfg) {
-    // def get_value() -> Int32:  # tpyc: ok
+    // def get_value() -> int32:  # tpyc: ok
     auto get_value = [cfg = std::move(cfg)]() -> int32_t {
         // return cfg.value
         return cfg.value;
@@ -15,7 +15,7 @@ std::function<int32_t()> make_getter(Config&& cfg) {
     return get_value;
 }
 
-// def apply(f: Callable[[Int32], Int32], v: Int32) -> Int32:
+// def apply(f: Callable[[int32], int32], v: int32) -> int32:
 int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t v) {
     // return f(v)
     return f(v);
@@ -25,7 +25,7 @@ int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t v) {
 // # PAYLOAD C++ can copy: the wrapper is peeled before the copyability verdict,
 // # so this keeps its `[p]` entry. The peel is what error_lambda_nocopy_snapshot
 // # pins from the other side.
-// def own_value(p: Own[Pt]) -> Int32:  # tpyc: ok
+// def own_value(p: Own[Pt]) -> int32:  # tpyc: ok
 int32_t own_value(Pt p) {
     // return apply(lambda i: i + p.x, 1)
     return apply([p](int32_t i) -> int32_t { return (::tpy::add_check<int32_t>(i, p.x)); }, 1);

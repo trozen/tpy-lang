@@ -1,6 +1,6 @@
 # Test enum iteration with for-each loop
 from enum import Enum
-from tpy import Int32
+from tpy import int32
 
 class Color(Enum):
     Red = 0
@@ -17,7 +17,7 @@ def print_colors() -> None:
         print(c)
 
 def count_members() -> None:
-    count: Int32 = 0
+    count: int32 = 0
     for s in Status:
         count += 1
     print(count)

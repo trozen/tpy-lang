@@ -1,13 +1,13 @@
 # A readonly Rc clone has a readonly payload -- augmented-assign through the
 # auto-__deref__ (c.n += 1) is rejected, like plain assign.
-from tpy import Int32, readonly
+from tpy import int32, readonly
 from tplib import Rc
 
 
 class Counter:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 

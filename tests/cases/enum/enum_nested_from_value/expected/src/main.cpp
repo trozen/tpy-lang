@@ -42,7 +42,7 @@ std::optional<::tpyapp::main::Message::Kind> EnumUtil<::tpyapp::main::Message::K
 namespace tpyapp::main {
 
 
-// def lookup(n: Int32) -> Message.Kind:
+// def lookup(n: int32) -> Message.Kind:
 Message::Kind lookup(int32_t n) {
     // k = Message.Kind(n)
     Message::Kind k = ::tpy::EnumUtil<Message::Kind>::from_value(n);

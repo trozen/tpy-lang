@@ -1,14 +1,14 @@
-from tpy import Int32
+from tpy import int32
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32):
+    def __init__(self, x: int32):
         self.x = x
 
 
-def make() -> Int32:
+def make() -> int32:
     p: Point | None = Point(7)
     return p.x
 

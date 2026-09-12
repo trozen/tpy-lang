@@ -86,7 +86,7 @@ silent -- see docs/LANGUAGE_FEATURES.md):
 
 from __future__ import annotations
 from typing import Final
-from tpy import Ptr, UInt8, UInt32, Int32, Int64, UInt64, readonly, Own, nocopy
+from tpy import Ptr, uint8, uint32, int32, int64, uint64, readonly, Own, nocopy
 from tpy.mem import UninitHeapStorage
 from tpy.unsafe import (
     unsafe_ptr, unsafe_ptr_add, unsafe_cast,
@@ -99,8 +99,8 @@ from tplib import Rc
 from io import BufferedReader
 
 # CPython ssl.CERT_* values.
-CERT_NONE: Final[Int32] = 0
-CERT_REQUIRED: Final[Int32] = 2
+CERT_NONE: Final[int32] = 0
+CERT_REQUIRED: Final[int32] = 2
 
 # Well-known platform CA-bundle locations (the curl/Go probe conventions),
 # tried in order by load_default_certs(); SSL_CERT_FILE overrides the probe.
@@ -164,9 +164,9 @@ class SSLZeroReturnError(SSLError):
     pass
 
 
-def _errstr(rc: Int32) -> str:
-    buf = UninitHeapStorage[UInt8](UInt32(160))
-    mbedtls.tls_strerror(rc, buf.ptr(), UInt64(160))
+def _errstr(rc: int32) -> str:
+    buf = UninitHeapStorage[uint8](uint32(160))
+    mbedtls.tls_strerror(rc, buf.ptr(), uint64(160))
     return unsafe_str_from_cstr(unsafe_cast(buf.ptr()))
 
 
@@ -177,7 +177,7 @@ def _fail(s: Ptr[mbedtls.Session], msg: str) -> None:
     raise SSLError(msg)
 
 
-def _raise_io_error(rc: Int32) -> None:
+def _raise_io_error(rc: int32) -> None:
     """Map a negative mbedTLS I/O return to the CPython ssl exception:
     WANT_READ/WANT_WRITE -> SSLWantReadError/SSLWantWriteError (non-blocking
     socket needs I/O), close_notify -> SSLZeroReturnError, else SSLError.
@@ -218,30 +218,30 @@ class _SslSession:
     def raw(self) -> Ptr[mbedtls.Session]:
         return self._s
 
-    def fileno(self) -> Int32:
+    def fileno(self) -> int32:
         return self._sock.fileno()
 
     def setblocking(self, flag: bool) -> None:
         self._sock.setblocking(flag)
 
-    def read_into(self, size: Int32) -> bytes:
+    def read_into(self, size: int32) -> bytes:
         """Decrypt up to `size` bytes; b"" on a clean close_notify (EOF)."""
-        if size <= Int32(0):
+        if size <= int32(0):
             return b""
-        buf = UninitHeapStorage[UInt8](UInt32.trunc(size))
-        rc = mbedtls.tls_read(self._s, buf.ptr(), UInt64(size))
+        buf = UninitHeapStorage[uint8](uint32.trunc(size))
+        rc = mbedtls.tls_read(self._s, buf.ptr(), uint64(size))
         if mbedtls.tls_classify(rc) == 3:  # peer close_notify -> EOF
             return b""
-        if rc < Int32(0):
+        if rc < int32(0):
             _raise_io_error(rc)
-        return unsafe_bytes_from_buf(buf.ptr(), UInt64(rc))
+        return unsafe_bytes_from_buf(buf.ptr(), uint64(rc))
 
 
 class SSLContext:
     """TLS configuration, role-agnostic. Secure-by-default client config
     (verify + hostname on); the server role is opted into per-wrap via
     `wrap_socket(server_side=True)` over a `load_cert_chain` cert."""
-    verify_mode: Int32
+    verify_mode: int32
     check_hostname: bool
     _cafile: str
     _use_bundled_ca: bool
@@ -318,7 +318,7 @@ class SSLContext:
             # raise.
             host = server_hostname
             if mbedtls.tls_set_hostname(s, unsafe_cast(unsafe_ptr(host)),
-                                        UInt64(len(host))) != 0:
+                                        uint64(len(host))) != 0:
                 _fail(s, "could not set TLS hostname")
         wrapped = SSLSocket(Rc.new(_SslSession(s, sock)))
         if do_handshake_on_connect:
@@ -328,10 +328,10 @@ class SSLContext:
     def _config_client(self, s: Ptr[mbedtls.Session]) -> None:
         """Apply the verifying-client config (trust store + verify mode) to a
         fresh session. Frees `s` and raises on failure."""
-        verify = Int32(1) if self.verify_mode == CERT_REQUIRED else Int32(0)
+        verify = int32(1) if self.verify_mode == CERT_REQUIRED else int32(0)
         ca = self._cafile  # "" -> no trust store loaded (len 0; shim skips it)
         rc = mbedtls.tls_config_client(
-            s, unsafe_cast(unsafe_ptr(ca)), UInt64(len(ca)), verify)
+            s, unsafe_cast(unsafe_ptr(ca)), uint64(len(ca)), verify)
         if rc != 0:
             _fail(s, _errstr(rc))
         if self._use_bundled_ca:
@@ -344,7 +344,7 @@ class SSLContext:
             # apply. load_verify_locations() is the loud explicit tool.
             sp = self._system_cafile
             mbedtls.tls_add_ca_file(s, unsafe_cast(unsafe_ptr(sp)),
-                                    UInt64(len(sp)))
+                                    uint64(len(sp)))
 
     def _config_server(self, s: Ptr[mbedtls.Session]) -> None:
         """Apply the server config (own cert chain + key) to a fresh session.
@@ -354,8 +354,8 @@ class SSLContext:
         cf = self._certfile
         kf = self._keyfile
         rc = mbedtls.tls_config_server(
-            s, unsafe_cast(unsafe_ptr(cf)), UInt64(len(cf)),
-            unsafe_cast(unsafe_ptr(kf)), UInt64(len(kf)))
+            s, unsafe_cast(unsafe_ptr(cf)), uint64(len(cf)),
+            unsafe_cast(unsafe_ptr(kf)), uint64(len(kf)))
         if rc != 0:
             _fail(s, _errstr(rc))
 
@@ -371,7 +371,7 @@ def create_default_context() -> Own[SSLContext]:
     return ctx
 
 
-def _bundled_ca_count() -> Int32:
+def _bundled_ca_count() -> int32:
     """Number of roots in the compiled-in Mozilla bundle (-1 on parse error).
     Test hook: a real public-root handshake can't run offline, so this is how
     a test proves the default trust store is embedded and non-empty."""
@@ -416,31 +416,31 @@ class SSLSocket:
         while not self.do_handshake():
             pass
 
-    def recv(self, bufsize: Int32) -> bytes:
+    def recv(self, bufsize: int32) -> bytes:
         """Receive up to `bufsize` decrypted bytes; b"" means the peer sent
         a clean close_notify."""
         return self._session.get().read_into(bufsize)
 
-    def send(self, data: bytes) -> Int32:
+    def send(self, data: bytes) -> int32:
         """Encrypt + send some of `data`; returns bytes sent."""
         rc = mbedtls.tls_write(self._session.get().raw(), unsafe_ptr(data),
-                               UInt64(len(data)))
-        if rc < Int32(0):
+                               uint64(len(data)))
+        if rc < int32(0):
             _raise_io_error(rc)
         return rc
 
     def sendall(self, data: bytes) -> None:
         """Encrypt + send every byte in `data`."""
-        total: UInt64 = UInt64(len(data))
-        sent: UInt64 = 0
-        data_ptr: Ptr[readonly[UInt8]] = unsafe_ptr(data)
+        total: uint64 = uint64(len(data))
+        sent: uint64 = 0
+        data_ptr: Ptr[readonly[uint8]] = unsafe_ptr(data)
         while sent < total:
             rc = mbedtls.tls_write(self._session.get().raw(),
-                                   unsafe_ptr_add(data_ptr, Int64.trunc(sent)),
+                                   unsafe_ptr_add(data_ptr, int64.trunc(sent)),
                                    total - sent)
-            if rc < Int32(0):
+            if rc < int32(0):
                 _raise_io_error(rc)
-            sent = sent + UInt64(rc)
+            sent = sent + uint64(rc)
 
     def makefile(self) -> Own[BufferedReader]:
         """A buffered binary reader over this TLS session (CPython's
@@ -453,7 +453,7 @@ class SSLSocket:
         return unsafe_str_from_cstr(unsafe_cast(
             mbedtls.tls_version(self._session.get().raw())))
 
-    def fileno(self) -> Int32:
+    def fileno(self) -> int32:
         return self._session.get().fileno()
 
     def setblocking(self, flag: bool) -> None:
@@ -480,8 +480,8 @@ class SSLRawIO:
     def __init__(self, session: Own[Rc[_SslSession]]) -> None:
         self._session = session
 
-    def read(self, size: Int32 = -1) -> bytes:
-        n = size if size > Int32(0) else 8192
+    def read(self, size: int32 = -1) -> bytes:
+        n = size if size > int32(0) else 8192
         return self._session.get().read_into(n)
 
     def close(self) -> None:

@@ -10,7 +10,7 @@ std::tuple<Box, Box*> make_mixed(Box& b) {
     return std::tuple<Box, Box*>{Box(1), &(b)};
 }
 
-// def rebind(b: Box, c: Box) -> Int32:
+// def rebind(b: Box, c: Box) -> int32:
 int32_t rebind(Box& b, Box& c) {
     // p = make_mixed(b)
     std::tuple<Box, Box*> p = make_mixed(b);
@@ -24,7 +24,7 @@ int32_t rebind(Box& b, Box& c) {
     return std::get<0>(p).val;
 }
 
-// def branch_hoisted(b: Box, c: Box, pick: bool) -> Int32:
+// def branch_hoisted(b: Box, c: Box, pick: bool) -> int32:
 int32_t branch_hoisted(Box& b, Box& c, bool pick) {
     // if pick:
     std::tuple<Box, Box*> p;
@@ -42,7 +42,7 @@ int32_t branch_hoisted(Box& b, Box& c, bool pick) {
     return std::get<0>(p).val;
 }
 
-// def loop_carried(b: Box, c: Box) -> Int32:
+// def loop_carried(b: Box, c: Box) -> int32:
 int32_t loop_carried(Box& b, Box& c) {
     // total = 0
     int32_t total = 0;
@@ -67,7 +67,7 @@ int32_t loop_carried(Box& b, Box& c) {
     return total;
 }
 
-// def try_hoisted(b: Box) -> Int32:
+// def try_hoisted(b: Box) -> int32:
 int32_t try_hoisted(Box& b) {
     // try:
     std::tuple<Box, Box*> p;
@@ -86,7 +86,7 @@ int32_t try_hoisted(Box& b) {
     return std::get<0>(p).val;
 }
 
-// def walrus(b: Box) -> Int32:
+// def walrus(b: Box) -> int32:
 int32_t walrus(Box& b) {
     // if (p := make_mixed(b))[0].val > 0:  # tpyc: ok
     std::tuple<Box, Box*> p;

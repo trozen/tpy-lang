@@ -25,7 +25,7 @@
 #     and bare merge() needs an explicit type (heapq.merge[T]()) since T
 #     is uninferable.
 #     TODO(perf): the cursor scan is O(inputs) per element. A custom
-#     index-heap (heap array of Int32 list-indices, sift comparing via
+#     index-heap (heap array of int32 list-indices, sift comparing via
 #     iterables[li][cursor[li]]) would reach O(log inputs) without storing
 #     a per-entry copy/pointer -- the generic heappush/heappop can't, since
 #     its comparator can't index back into the source lists. Port once
@@ -43,13 +43,13 @@
 #     every idiomatic alternative pays a real cost. See IR_DESIGN.md for the
 #     design landscape.
 # tpy: cpp_namespace("tpystd::heapq")
-from tpy import Int32, Comparable, Own, copy
+from tpy import int32, Comparable, Own, copy
 from typing import Iterator
 
-def _siftdown[T: Comparable](heap: list[T], startpos: Int32, pos: Int32) -> None:
+def _siftdown[T: Comparable](heap: list[T], startpos: int32, pos: int32) -> None:
     newitem: T = copy(heap[pos])
     while pos > startpos:
-        parentpos: Int32 = (pos - 1) >> 1
+        parentpos: int32 = (pos - 1) >> 1
         if newitem < heap[parentpos]:
             heap[pos] = copy(heap[parentpos])
             pos = parentpos
@@ -57,13 +57,13 @@ def _siftdown[T: Comparable](heap: list[T], startpos: Int32, pos: Int32) -> None
         break
     heap[pos] = newitem
 
-def _siftup[T: Comparable](heap: list[T], pos: Int32) -> None:
-    endpos: Int32 = Int32(len(heap))
-    startpos: Int32 = pos
+def _siftup[T: Comparable](heap: list[T], pos: int32) -> None:
+    endpos: int32 = int32(len(heap))
+    startpos: int32 = pos
     newitem: T = copy(heap[pos])
-    childpos: Int32 = 2 * pos + 1
+    childpos: int32 = 2 * pos + 1
     while childpos < endpos:
-        rightpos: Int32 = childpos + 1
+        rightpos: int32 = childpos + 1
         if rightpos < endpos and not heap[childpos] < heap[rightpos]:
             childpos = rightpos
         heap[pos] = copy(heap[childpos])
@@ -74,7 +74,7 @@ def _siftup[T: Comparable](heap: list[T], pos: Int32) -> None:
 
 def heappush[T: Comparable](heap: list[T], item: Own[T]) -> None:
     heap.append(item)
-    _siftdown(heap, 0, Int32(len(heap)) - 1)
+    _siftdown(heap, 0, int32(len(heap)) - 1)
 
 def heappop[T: Comparable](heap: list[T]) -> Own[T]:
     lastelt = heap.pop()
@@ -86,8 +86,8 @@ def heappop[T: Comparable](heap: list[T]) -> Own[T]:
     return returnitem
 
 def heapify[T: Comparable](x: list[T]) -> None:
-    n: Int32 = Int32(len(x))
-    i: Int32 = n // 2 - 1
+    n: int32 = int32(len(x))
+    i: int32 = n // 2 - 1
     while i >= 0:
         _siftup(x, i)
         i -= 1
@@ -106,27 +106,27 @@ def heappushpop[T: Comparable](heap: list[T], item: Own[T]) -> Own[T]:
         return result
     return item
 
-def nsmallest[T: Comparable](n: Int32, a: list[T]) -> Own[list[T]]:
+def nsmallest[T: Comparable](n: int32, a: list[T]) -> Own[list[T]]:
     h: list[T] = a.copy()
     heapify(h)
     result: list[T] = []
-    total: Int32 = Int32(len(h))
-    k: Int32 = n if n < total else total
-    i: Int32 = 0
+    total: int32 = int32(len(h))
+    k: int32 = n if n < total else total
+    i: int32 = 0
     while i < k:
         result.append(heappop(h))
         i += 1
     return result
 
-def nlargest[T: Comparable](n: Int32, a: list[T]) -> Own[list[T]]:
+def nlargest[T: Comparable](n: int32, a: list[T]) -> Own[list[T]]:
     # Sort-based; a size-k heap variant (O(n log k)) is a perf follow-up.
     h: list[T] = a.copy()
     h.sort()
     h.reverse()
     result: list[T] = []
-    total: Int32 = Int32(len(h))
-    k: Int32 = n if n < total else total
-    i: Int32 = 0
+    total: int32 = int32(len(h))
+    k: int32 = n if n < total else total
+    i: int32 = 0
     while i < k:
         result.append(copy(h[i]))
         i += 1
@@ -148,14 +148,14 @@ def nlargest[T: Comparable](n: Int32, a: list[T]) -> Own[list[T]]:
 # inline rather than bound to a local: a non-const local alias of the const
 # vararg element won't compile.
 def merge[T: Comparable](*iterables: list[T]) -> Iterator[Own[T]]:
-    cursors: list[Int32] = []
+    cursors: list[int32] = []
     for src in iterables:
         cursors.append(0)
     while True:
-        best: Int32 = -1
-        i: Int32 = 0
+        best: int32 = -1
+        i: int32 = 0
         for src in iterables:
-            c: Int32 = cursors[i]
+            c: int32 = cursors[i]
             if c < len(src) and (best < 0 or src[c] < iterables[best][cursors[best]]):
                 best = i
             i += 1

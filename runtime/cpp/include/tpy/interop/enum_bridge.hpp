@@ -83,7 +83,7 @@ inline E enum_from_py(cpy::PyObject *o, cpy::PyObject *enum_type) {
 // `EnumType(value)`. TPy enums are closed (no aliases, every value declared), so
 // the lookup always resolves to a member -- never None/ValueError. Returns a new
 // reference (or null with the error set if construction somehow fails). Templated
-// on the enum's underlying integer type so a UInt64 enum value above INT64_MAX
+// on the enum's underlying integer type so a uint64 enum value above INT64_MAX
 // crosses unsigned ("(K)") instead of wrapping to a negative `long long` ("(L)")
 // -- which would build a value the closed enum has no member for.
 template <class U>

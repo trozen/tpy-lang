@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def main() -> Int32:
+// def main() -> int32:
 int32_t main() {
     // args = parser.parse_args(["--width", "42", "--depth", "9999999999"])
     std::vector<std::string> __tmp_1 = {"--width", "42", "--depth", "9999999999"};

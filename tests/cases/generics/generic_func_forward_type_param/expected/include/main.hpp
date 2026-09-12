@@ -26,7 +26,7 @@ void main();
 
 // class Box:
 struct Box {
-    // value: Int32
+    // value: int32
     int32_t value;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";

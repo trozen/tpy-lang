@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def negate(x: Int32) -> Int32:
+// def negate(x: int32) -> int32:
 int32_t negate(int32_t x) {
     // return -x
     return ::tpy::neg_check<int32_t>(x);
@@ -12,9 +12,9 @@ int32_t negate(int32_t x) {
 
 // def main() -> None:
 void main() {
-    // a: Int32 = 3
+    // a: int32 = 3
     int32_t a = 3;
-    // b: Int32 = -5
+    // b: int32 = -5
     int32_t b = -5;
     // # min/max by absolute value
     // print(min(a, b, key=lambda x: x if x >= 0 else -x))
@@ -27,7 +27,7 @@ void main() {
     // print(max(a, b, key=negate))
     std::cout << ::tpy::max_key(a, b, negate) << "\n";
     // # 3-arg min/max with key
-    // c: Int32 = -1
+    // c: int32 = -1
     int32_t c = -1;
     // print(min(a, b, c, key=lambda x: x if x >= 0 else -x))
     std::cout << ::tpy::min3_key(a, b, c, [](int32_t x) -> int32_t { return (((x >= 0)) ? (x) : (::tpy::neg_check<int32_t>(x))); }) << "\n";

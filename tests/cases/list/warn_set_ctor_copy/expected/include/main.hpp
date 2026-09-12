@@ -20,14 +20,14 @@ void test_set_ctor_rvalue_no_warn();
 
 // class Node:
 struct Node {
-    // val: Int32
+    // val: int32
     int32_t val;
 
-    // def __init__(self, val: Int32) -> None:
+    // def __init__(self, val: int32) -> None:
     Node() = default;
     explicit Node(int32_t val);
 
-    // def __hash__(self) -> Int32:
+    // def __hash__(self) -> int32:
     int32_t __hash__() const;
 
     // def __eq__(self, other: Node) -> bool:
@@ -55,10 +55,10 @@ namespace tpyapp::main {
 
 
 
-// def __init__(self, val: Int32) -> None:
+// def __init__(self, val: int32) -> None:
 inline Node::Node(int32_t val) : val(val) {}
 
-// def __hash__(self) -> Int32:
+// def __hash__(self) -> int32:
 inline int32_t Node::__hash__() const {
     // return self.val
     return this->val;

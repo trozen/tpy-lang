@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def takes_optional(p: P | None) -> Int32:
+// async def takes_optional(p: P | None) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_takes_optional::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
@@ -27,7 +27,7 @@ namespace tpyapp::main {
 }
 
 
-// async def takes_optional(p: P | None) -> Int32:
+// async def takes_optional(p: P | None) -> int32:
 __coro_takes_optional takes_optional(P* p) {
     return __coro_takes_optional(p);
 }

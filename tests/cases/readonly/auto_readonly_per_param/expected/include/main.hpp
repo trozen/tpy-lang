@@ -16,18 +16,18 @@ void main();
 
 // class Buffer:
 struct Buffer {
-    // _data: list[Int32]
+    // _data: list[int32]
     std::vector<int32_t> _data;
 
     // def __init__(self) -> None:
     Buffer();
 
     // # Per-param: only self is auto_readonly; dest stays mutable in both overloads.
-    // def copy_into(self: auto_readonly[Self], dest: list[Int32]) -> Span[auto_readonly[Int32]]:
+    // def copy_into(self: auto_readonly[Self], dest: list[int32]) -> Span[auto_readonly[int32]]:
     std::span<int32_t> copy_into(std::vector<int32_t>& dest);
 
     // # Per-param: only self is auto_readonly; dest stays mutable in both overloads.
-    // def copy_into(self: auto_readonly[Self], dest: list[Int32]) -> Span[auto_readonly[Int32]]:
+    // def copy_into(self: auto_readonly[Self], dest: list[int32]) -> Span[auto_readonly[int32]]:
     std::span<const int32_t> copy_into(std::vector<int32_t>& dest) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Buffer";
 };
@@ -42,7 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {
 inline Buffer::Buffer() : _data(std::vector<int32_t>{1, 2, 3}) {}
 
 // # Per-param: only self is auto_readonly; dest stays mutable in both overloads.
-// def copy_into(self: auto_readonly[Self], dest: list[Int32]) -> Span[auto_readonly[Int32]]:
+// def copy_into(self: auto_readonly[Self], dest: list[int32]) -> Span[auto_readonly[int32]]:
 inline std::span<int32_t> Buffer::copy_into(std::vector<int32_t>& dest) {
     // for i in range(len(self._data)):
     int32_t __stop_0 = ::tpy::__len__(this->_data);
@@ -55,7 +55,7 @@ inline std::span<int32_t> Buffer::copy_into(std::vector<int32_t>& dest) {
 }
 
 // # Per-param: only self is auto_readonly; dest stays mutable in both overloads.
-// def copy_into(self: auto_readonly[Self], dest: list[Int32]) -> Span[auto_readonly[Int32]]:
+// def copy_into(self: auto_readonly[Self], dest: list[int32]) -> Span[auto_readonly[int32]]:
 inline std::span<const int32_t> Buffer::copy_into(std::vector<int32_t>& dest) const {
     // for i in range(len(self._data)):
     int32_t __stop_0 = ::tpy::__len__(this->_data);

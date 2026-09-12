@@ -1,43 +1,43 @@
-from tpy import Int32, Int8, UInt8
+from tpy import int32, int8, uint8
 
 # --- Non-panic boundary cases ---
 
 # Large step, one iteration (step > range width)
-for i in range(Int32(0), Int32(2147483647), Int32(2147483647)):
+for i in range(int32(0), int32(2147483647), int32(2147483647)):
     print(i)
 
 # Step exactly divides range: exit value = stop = INT32_MAX
-count: Int32 = Int32(0)
-for i in range(Int32(1), Int32(2147483647), Int32(2)):
-    count += Int32(1)
+count: int32 = int32(0)
+for i in range(int32(1), int32(2147483647), int32(2)):
+    count += int32(1)
 print(count)  # 1073741823
 
 # Negative step at INT32_MIN boundary, step=-1
-for i in range(Int32(-2147483647), Int32(-2147483648), Int32(-1)):
+for i in range(int32(-2147483647), int32(-2147483648), int32(-1)):
     print(i)
 
 # Large negative step, one iteration
-for i in range(Int32(0), Int32(-1), Int32(-2147483648)):
+for i in range(int32(0), int32(-1), int32(-2147483648)):
     print(i)
 
 # One iteration near max, step > 1
-for i in range(Int32(0), Int32(1), Int32(2147483647)):
+for i in range(int32(0), int32(1), int32(2147483647)):
     print(i)
 
 # Empty range (start >= stop with positive step) — no check needed
-for i in range(Int32(2147483647), Int32(0), Int32(2)):
+for i in range(int32(2147483647), int32(0), int32(2)):
     print(i)
 
-# Int8: step divides evenly, exit = stop = 127
-for i in range(Int8(0), Int8(127), Int8(127)):
+# int8: step divides evenly, exit = stop = 127
+for i in range(int8(0), int8(127), int8(127)):
     print(i)
 
-# Int8: negative step at boundary
-for i in range(Int8(0), Int8(-1), Int8(-128)):
+# int8: negative step at boundary
+for i in range(int8(0), int8(-1), int8(-128)):
     print(i)
 
-# UInt8: step divides evenly, exit = stop = 250
-for i in range(UInt8(0), UInt8(250), UInt8(50)):
+# uint8: step divides evenly, exit = stop = 250
+for i in range(uint8(0), uint8(250), uint8(50)):
     print(i)
 
 print("all safe cases done")

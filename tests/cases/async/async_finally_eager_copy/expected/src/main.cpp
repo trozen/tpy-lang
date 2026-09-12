@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def total_up(k: Int32) -> int:
+// async def total_up(k: int32) -> int:
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_total_up::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
@@ -44,7 +44,7 @@ namespace tpyapp::main {
 }
 
 
-// async def total_up(k: Int32) -> int:
+// async def total_up(k: int32) -> int:
 __coro_total_up total_up(int32_t k) {
     return __coro_total_up(k);
 }
@@ -63,7 +63,7 @@ void __tpy_init() {
     // # A movable (BigInt) local returned under a NON-suspending finally: the
     // # eager pre-finally capture must not move (the snapshot pins the bare
     // # render `= total;`) -- only the direct-ready site moves. The annotation
-    // # makes total a genuine BigInt; an inferred Int32 would render through a
+    // # makes total a genuine BigInt; an inferred int32 would render through a
     // # BigInt(...) coercion, which the bare-name gate excludes at every site.
     // import asyncio
     ::tpystd::asyncio::__tpy_init();

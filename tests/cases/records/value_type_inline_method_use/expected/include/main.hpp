@@ -19,10 +19,10 @@ void main();
 struct TimerEntry {
     // deadline: float
     double deadline;
-    // tid: Int32
+    // tid: int32
     int32_t tid;
 
-    // def __init__(self, deadline: float, tid: Int32) -> None:
+    // def __init__(self, deadline: float, tid: int32) -> None:
     TimerEntry() = default;
     explicit TimerEntry(double deadline, int32_t tid);
 
@@ -54,7 +54,7 @@ struct Owner {
     // def __init__(self) -> None:
     Owner();
 
-    // def add(self, d: float, t: Int32) -> None:
+    // def add(self, d: float, t: int32) -> None:
     void add(double d, int32_t t);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Owner";
 };
@@ -65,7 +65,7 @@ inline std::ostream& operator<<(std::ostream& os, const Owner& obj) {
 }
 
 
-// def __init__(self, deadline: float, tid: Int32) -> None:
+// def __init__(self, deadline: float, tid: int32) -> None:
 inline TimerEntry::TimerEntry(double deadline, int32_t tid) : deadline(deadline), tid(tid) {}
 
 // def __lt__(self, o: 'TimerEntry') -> bool:
@@ -77,7 +77,7 @@ inline bool TimerEntry::__lt__(TimerEntry o) const {
 // def __init__(self) -> None:
 inline Owner::Owner() : heap(std::vector<TimerEntry>{}) {}
 
-// def add(self, d: float, t: Int32) -> None:
+// def add(self, d: float, t: int32) -> None:
 inline void Owner::add(double d, int32_t t) {
     // heapq.heappush(self.heap, TimerEntry(d, t))
     ::tpystd::heapq::heappush<TimerEntry>(this->heap, TimerEntry(d, t));

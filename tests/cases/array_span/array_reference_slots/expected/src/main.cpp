@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def fresh() -> Own[Array[Int32, 3]]:
+// def fresh() -> Own[Array[int32, 3]]:
 std::array<int32_t, 3> fresh() {
     // return [7, 8, 9]                          # the Own[Array] storage return slot
     return {7, 8, 9};
 }
 
-// def first_or_none(g: Grid, want: bool) -> Array[Int32, 3] | None:
+// def first_or_none(g: Grid, want: bool) -> Array[int32, 3] | None:
 std::array<int32_t, 3>* first_or_none(Grid& g, bool want) {
     // if want:
     if (want) {
@@ -50,15 +50,15 @@ void main() {
     std::cout << ::tpy::__getitem__(a.cells, 1) << "\n";
     // print(first_or_none(a, False) is None)
     std::cout << ::tpy::print_bool((first_or_none(a, false) == nullptr)) << "\n";
-    // xs: Array[Int32, 3] = [5, 6, 7]
+    // xs: Array[int32, 3] = [5, 6, 7]
     std::array<int32_t, 3> xs = {5, 6, 7};
-    // al = ArrayList[Int32, 8](xs)              # an Array NAME at a protocol slot
+    // al = ArrayList[int32, 8](xs)              # an Array NAME at a protocol slot
     ::tpystd::tplib::array_list::ArrayList<int32_t, 8> al = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>(&(xs));
     // print(al[0], len(al))
     std::cout << al[0] << " " << ::tpy::__len__(al) << "\n";
     // ba = bytearray(b"abc")                    # ... and the bytearray leg
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("abc", 3));
-    // bl = ArrayList[UInt8, 8](ba)
+    // bl = ArrayList[uint8, 8](ba)
     ::tpystd::tplib::array_list::ArrayList<uint8_t, 8> bl = ::tpystd::tplib::array_list::ArrayList<uint8_t, 8>(&(ba));
     // print(bl[0], len(bl))
     std::cout << static_cast<int>(bl[0]) << " " << ::tpy::__len__(bl) << "\n";

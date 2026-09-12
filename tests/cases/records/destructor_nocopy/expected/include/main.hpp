@@ -17,11 +17,11 @@ void main();
 // @nocopy
 // class Handle:
 struct Handle {
-    // id: Int32
+    // id: int32
     int32_t id;
     bool __tpy_owned_ = true;
 
-    // def __init__(self, id: Int32):
+    // def __init__(self, id: int32):
     explicit Handle(int32_t id);
     // non-copyable (@nocopy)
     Handle(const Handle&) = delete;
@@ -40,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
 }
 
 
-// def __init__(self, id: Int32):
+// def __init__(self, id: int32):
 inline Handle::Handle(int32_t id) : id(id) {}
 
 inline Handle::Handle(Handle&& other) noexcept : id(std::move(other.id)) {

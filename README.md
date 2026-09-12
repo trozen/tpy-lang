@@ -17,14 +17,14 @@ A compiler that translates Python to C++.
 Main differences from CPython:
 
 - Type annotations required on functions (parameters + return) and class fields; local variables are inferred
-- `Int32` for integer literals (overrideable), `Int32`/`Int64` for explicit fixed-width, `int` = `BigInt` for arbitrary precision
-- Value types (`Int32`, `bool`, `str`, ...) are copied; reference types (classes, containers) are passed by reference to functions but stored inline in fields and containers. `Own[T]` transfers ownership (move) at function boundaries. The distinction is one axis, not a list of blessed types: `bytearray` and `Array[T, N]` are reference types alongside `list`/`dict`/`set` and your own classes, and reach the same slots by the same rule
+- `int32` for integer literals (overrideable), `int32`/`int64` for explicit fixed-width, `int` = `BigInt` for arbitrary precision
+- Value types (`int32`, `bool`, `str`, ...) are copied; reference types (classes, containers) are passed by reference to functions but stored inline in fields and containers. `Own[T]` transfers ownership (move) at function boundaries. The distinction is one axis, not a list of blessed types: `bytearray` and `Array[T, N]` are reference types alongside `list`/`dict`/`set` and your own classes, and reach the same slots by the same rule
 - No GIL, no refcounting, no GC -- deterministic destruction via RAII
 
 ```python
-from tpy import Int32
+from tpy import int32
 
-def fib(n: Int32) -> Int32:
+def fib(n: int32) -> int32:
     if n <= 1:
         return n
     return fib(n - 1) + fib(n - 2)
@@ -45,14 +45,14 @@ not referenced:
 
 ```python
 from dataclasses import dataclass
-from tpy import Own, Int32
+from tpy import Own, int32
 
 @dataclass
 class Event:
-    timestamp: Int32
-    code: Int32
+    timestamp: int32
+    code: int32
 
-def make_batch(n: Int32) -> Own[list[Event]]:
+def make_batch(n: int32) -> Own[list[Event]]:
     # list comprehension creates a new list; Own means it is moved out to the caller
     return [Event(i, i * 2) for i in range(n)]
 

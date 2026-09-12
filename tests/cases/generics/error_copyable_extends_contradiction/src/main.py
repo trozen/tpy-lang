@@ -6,13 +6,13 @@
 # makes the Copyable marker arm authoritative: predicate denial returns None
 # without consulting the extends list, so the existing registration-time
 # validator catches the contradiction at the class declaration.
-from tpy import Int32, Copyable
+from tpy import int32, Copyable
 
 
 class Bad(Copyable):  # tpyc: error(/Class 'Bad' declares implementation of protocol 'Copyable'/)
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
     def __del__(self) -> None:

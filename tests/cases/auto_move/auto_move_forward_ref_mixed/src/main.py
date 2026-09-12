@@ -1,9 +1,9 @@
 # Only Own[T] params get forwarding refs (T&&), not regular generic params.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Box:
-    value: Int32
+    value: int32
 
 
 def mixed[T](x: Own[T], y: T) -> None:

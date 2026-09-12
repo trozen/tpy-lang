@@ -1,9 +1,9 @@
-from tpy import Int32
+from tpy import int32
 from mypackage.utils import add
 
-def main() -> Int32:
-    result: Int32 = add(Int32(10), Int32(32))
+def main() -> int32:
+    result: int32 = add(int32(10), int32(32))
     print(result)
-    return Int32(0)
+    return int32(0)
 
 main()

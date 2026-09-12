@@ -1,3 +1,3 @@
-main.py:10: warning: Own[list[Int32]] param 'a' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:10: warning: Own[list[Int32]] param 'b' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:10: warning: Own[list[int32]] param 'a' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:10: warning: Own[list[int32]] param 'b' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
 main.py:14: error: in function 'first': this construct is not yet supported by C++ code generation (stmt.return:return.record_source.subscript.borrow)

@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // w = Widget("x", Int32(1))
+    // w = Widget("x", int32(1))
     Widget w = Widget("x", 1);
     // # Both folds resolve at compile time via MRO membership.
     // if isinstance(w, Named):  # tpyc: ok

@@ -1,5 +1,5 @@
-from tpy import Int32
+from tpy import int32
 from ..utils import add
 
-def compute() -> Int32:
-    return add(Int32(100), Int32(23))
+def compute() -> int32:
+    return add(int32(100), int32(23))

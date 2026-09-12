@@ -1,7 +1,7 @@
 # The owned-str span element's sibling: a VIEW-typed element keeps rejecting,
 # because a view read carries the static-storage literal pin the owned form
 # does not.
-from tpy import Int32, StrView
+from tpy import int32, StrView
 
 
 def main() -> None:

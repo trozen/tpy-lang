@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def all_arm(v: Int32 | None) -> None:
+// def all_arm(v: int32 | None) -> None:
 void all_arm(std::optional<int32_t> v) {
     // match v:  # tpyc: ok
     auto& __match_subject_1 = v;
@@ -15,7 +15,7 @@ void all_arm(std::optional<int32_t> v) {
     }
 }
 
-// def none_or_five(v: Int32 | None) -> None:
+// def none_or_five(v: int32 | None) -> None:
 void none_or_five(std::optional<int32_t> v) {
     // match v:
     auto& __match_subject_1 = v;

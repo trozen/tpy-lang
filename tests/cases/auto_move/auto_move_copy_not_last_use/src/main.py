@@ -1,12 +1,12 @@
 # copy(x) where x is NOT at last use -- no warning (copy is needed)
-from tpy import Int32, Own, copy
+from tpy import int32, Own, copy
 
 
 class Box:
-    value: Int32
+    value: int32
 
 
-def consume(b: Own[Box]) -> Int32:
+def consume(b: Own[Box]) -> int32:
     return b.value
 
 

@@ -1,5 +1,5 @@
 # Test @native, @native(function=True), and @cpp_template on @native class methods
-from tpy import Int32, Own, pure, readonly
+from tpy import int32, Own, pure, readonly
 from tpy.extern import native, cpp_template
 
 @native("std::vector")
@@ -16,15 +16,15 @@ class Vec[T]:
     @cpp_template("static_cast<int32_t>({self}.size())")
     @pure
     @readonly
-    def count(self) -> Int32: ...
+    def count(self) -> int32: ...
 
     @cpp_template("{self}[{0}]")
     @pure
     @readonly
-    def get(self, index: Int32) -> T: ...
+    def get(self, index: int32) -> T: ...
 
 def main() -> None:
-    v: Vec[Int32] = Vec[Int32]()
+    v: Vec[int32] = Vec[int32]()
     v.add(10)
     v.add(20)
     v.add(30)

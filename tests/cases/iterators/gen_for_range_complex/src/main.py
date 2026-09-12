@@ -1,8 +1,8 @@
 # Complex generator: yield before + yield inside for-loop over range
-from tpy import Int32
+from tpy import int32
 from typing import Iterator
 
-def squares_plus(n: Int32) -> Iterator[Int32]:
+def squares_plus(n: int32) -> Iterator[int32]:
     yield -1
     for i in range(n):
         yield i * i

@@ -1,11 +1,11 @@
 # unsafe_store with a record variable (no copy() needed)
-from tpy import Ptr, Int32, UInt32, Array
+from tpy import Ptr, int32, uint32, Array
 from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32) -> None:
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 

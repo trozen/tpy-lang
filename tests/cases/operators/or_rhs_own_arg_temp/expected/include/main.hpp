@@ -30,10 +30,10 @@ void main();
 
 // class Bag:
 struct Bag {
-    // vals: list[Int32]
+    // vals: list[int32]
     std::vector<int32_t> vals;
 
-    // def __init__(self, vals: list[Int32]) -> None:
+    // def __init__(self, vals: list[int32]) -> None:
     Bag() = default;
     explicit Bag(const std::vector<int32_t>& vals);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";
@@ -45,7 +45,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 }
 
 
-// def __init__(self, vals: list[Int32]) -> None:
+// def __init__(self, vals: list[int32]) -> None:
 inline Bag::Bag(const std::vector<int32_t>& vals) {
     // # The print makes a constructor run in a SKIPPED branch visible.
     // print("bag", len(vals))

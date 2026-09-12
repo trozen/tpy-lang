@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def slow(start: Event) -> Int32:
+// async def slow(start: Event) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_slow::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -20,7 +20,7 @@ namespace tpyapp::main {
         __sub_0 = nullptr;
         // print("slow done")
         std::cout << "slow done" << "\n";
-        // return Int32(100)
+        // return int32(100)
         __state = S_DONE;
         int32_t __tpy_async_ret = 100;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -31,12 +31,12 @@ namespace tpyapp::main {
 }
 
 
-// async def slow(start: Event) -> Int32:
+// async def slow(start: Event) -> int32:
 __coro_slow slow(::tpystd::asyncio::Event& start) {
     return __coro_slow(start);
 }
 
-// async def fast(start: Event) -> Int32:
+// async def fast(start: Event) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_fast::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
@@ -45,7 +45,7 @@ __coro_slow slow(::tpystd::asyncio::Event& start) {
         start.set();
         // print("fast done")
         std::cout << "fast done" << "\n";
-        // return Int32(200)
+        // return int32(200)
         __state = S_DONE;
         int32_t __tpy_async_ret = 200;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -56,7 +56,7 @@ __coro_slow slow(::tpystd::asyncio::Event& start) {
 }
 
 
-// async def fast(start: Event) -> Int32:
+// async def fast(start: Event) -> int32:
 __coro_fast fast(::tpystd::asyncio::Event& start) {
     return __coro_fast(start);
 }
@@ -67,7 +67,7 @@ __coro_fast fast(::tpystd::asyncio::Event& start) {
     case S_INITIAL: {
         // start = Event()
         start.emplace(::tpystd::asyncio::Event());
-        // tasks: list[asyncio.Task[Int32]] = []
+        // tasks: list[asyncio.Task[int32]] = []
         tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<int32_t>>{});
         // tasks.append(asyncio.create_task(slow(start)))
         (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(slow((*start)))));

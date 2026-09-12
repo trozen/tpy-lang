@@ -1,14 +1,14 @@
 # Generator with mutable state: fibonacci sequence
-from tpy import Int32
+from tpy import int32
 from typing import Iterator
 
-def fibonacci(n: Int32) -> Iterator[Int32]:
-    a: Int32 = 0
-    b: Int32 = 1
-    count: Int32 = 0
+def fibonacci(n: int32) -> Iterator[int32]:
+    a: int32 = 0
+    b: int32 = 1
+    count: int32 = 0
     while count < n:
         yield a
-        temp: Int32 = a
+        temp: int32 = a
         a = b
         b = temp + b
         count += 1

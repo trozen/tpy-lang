@@ -1,9 +1,9 @@
 # Test error: non-value type used as type argument for ValueType bound.
-from tpy import Int32, ValueType
+from tpy import int32, ValueType
 
 
 class NotValue:
-    x: Int32
+    x: int32
 
 
 class Box[T: ValueType]:

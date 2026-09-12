@@ -1,12 +1,12 @@
 # Test generic ValueType record: bound checking and template specialization.
-from tpy import Int32, ValueType
+from tpy import int32, ValueType
 
 
 class Vec2(ValueType):
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32) -> None:
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 
@@ -20,13 +20,13 @@ class Pair[T: ValueType](ValueType):
         self.second = second
 
 
-def swap(p: Pair[Int32]) -> Pair[Int32]:
-    return Pair[Int32](p.second, p.first)
+def swap(p: Pair[int32]) -> Pair[int32]:
+    return Pair[int32](p.second, p.first)
 
 
 def main() -> None:
     # Builtin value type as bound
-    p = Pair[Int32](1, 2)
+    p = Pair[int32](1, 2)
     q = p                      # copy (value type)
     print(p.first)
     print(q.first)

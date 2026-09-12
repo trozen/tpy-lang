@@ -16,10 +16,10 @@ void main();
 
 // class Cell:
 struct Cell {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Cell() = default;
     explicit Cell(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cell";
@@ -32,16 +32,16 @@ inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
 
 // class Grid:
 struct Grid {
-    // n: Int32
+    // n: int32
     int32_t n;
     // cells: list[Cell]
     std::vector<Cell> cells;
-    // seen: set[Int32]
+    // seen: set[int32]
     ::tpy::ordered_set<int32_t> seen;
-    // index: dict[Int32, Int32]
+    // index: dict[int32, int32]
     ::tpy::ordered_map<int32_t, int32_t> index;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Grid() = default;
     explicit Grid(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Grid";
@@ -53,10 +53,10 @@ inline std::ostream& operator<<(std::ostream& os, const Grid& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Cell::Cell(int32_t v) : v(v) {}
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Grid::Grid(int32_t n) : n(n), cells(({
     std::vector<Cell> __result;
     const int32_t __stop_0 = this->n;

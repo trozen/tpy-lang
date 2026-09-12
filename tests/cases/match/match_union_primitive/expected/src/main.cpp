@@ -5,12 +5,12 @@ namespace tpyapp::main {
 
 
 // # Primitive + record members
-// def describe(x: Int32 | str | Cat | Dog) -> str:
+// def describe(x: int32 | str | Cat | Dog) -> str:
 std::string describe(::tpy::Union<const Cat*, const Dog*, const int32_t*, const std::string*> x) {
     // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
-    // case Int32() as n:
+    // case int32() as n:
     case 2: {
         auto& __case_0 = *std::get<2>(__match_subject_1);
         auto n = __case_0;
@@ -46,12 +46,12 @@ std::string describe(::tpy::Union<const Cat*, const Dog*, const int32_t*, const 
     ::std::unreachable();
 }
 
-// def depth(t: Tree) -> Int32:
+// def depth(t: Tree) -> int32:
 int32_t depth(const Tree& t) {
     // match t:
     auto& __match_subject_1 = t;
     switch (__match_subject_1.value.index()) {
-    // case Int32():
+    // case int32():
     case 0: {
         auto& __case_0 = std::get<0>(__match_subject_1.value);
         // return 0
@@ -62,7 +62,7 @@ int32_t depth(const Tree& t) {
     case 1: {
         auto& __case_1 = std::get<1>(__match_subject_1.value);
         auto& children = __case_1;
-        // m: Int32 = 0
+        // m: int32 = 0
         int32_t m = 0;
         // for child in children:
         auto& __obj_0 = children;
@@ -86,12 +86,12 @@ int32_t depth(const Tree& t) {
     ::std::unreachable();
 }
 
-// def unbox(x: Int32 | Box[str]) -> str:
+// def unbox(x: int32 | Box[str]) -> str:
 std::string unbox(::tpy::Union<const Box<std::string>*, const int32_t*> x) {
     // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
-    // case Int32() as n:
+    // case int32() as n:
     case 1: {
         auto& __case_0 = *std::get<1>(__match_subject_1);
         auto n = __case_0;
@@ -113,16 +113,16 @@ std::string unbox(::tpy::Union<const Box<std::string>*, const int32_t*> x) {
 
 // def main() -> None:
 void main() {
-    // a: Int32 | str | Cat | Dog = 42
+    // a: int32 | str | Cat | Dog = 42
     ::tpy::Union<Cat, Dog, int32_t, std::string> __slot_1 = 42;
     ::tpy::Union<Cat*, Dog*, int32_t*, std::string*> a = ::tpy::to_ptr_variant(__slot_1);
-    // b: Int32 | str | Cat | Dog = "hello"
+    // b: int32 | str | Cat | Dog = "hello"
     ::tpy::Union<Cat, Dog, int32_t, std::string> __slot_2 = "hello";
     ::tpy::Union<Cat*, Dog*, int32_t*, std::string*> b = ::tpy::to_ptr_variant(__slot_2);
-    // c: Int32 | str | Cat | Dog = Cat("Whiskers")
+    // c: int32 | str | Cat | Dog = Cat("Whiskers")
     ::tpy::Union<Cat, Dog, int32_t, std::string> __slot_3 = Cat("Whiskers");
     ::tpy::Union<Cat*, Dog*, int32_t*, std::string*> c = ::tpy::to_ptr_variant(__slot_3);
-    // d: Int32 | str | Cat | Dog = Dog("Rex")
+    // d: int32 | str | Cat | Dog = Dog("Rex")
     ::tpy::Union<Cat, Dog, int32_t, std::string> __slot_4 = Dog("Rex");
     ::tpy::Union<Cat*, Dog*, int32_t*, std::string*> d = ::tpy::to_ptr_variant(__slot_4);
     // print(describe(a))
@@ -145,10 +145,10 @@ void main() {
     std::cout << depth(branch) << "\n";
     // print(depth(nested))
     std::cout << depth(nested) << "\n";
-    // e: Int32 | Box[str] = 99
+    // e: int32 | Box[str] = 99
     ::tpy::Union<Box<std::string>, int32_t> __slot_5 = 99;
     ::tpy::Union<Box<std::string>*, int32_t*> e = ::tpy::to_ptr_variant(__slot_5);
-    // f: Int32 | Box[str] = Box("hello")
+    // f: int32 | Box[str] = Box("hello")
     ::tpy::Union<Box<std::string>, int32_t> __slot_6 = Box<std::string>("hello");
     ::tpy::Union<Box<std::string>*, int32_t*> f = ::tpy::to_ptr_variant(__slot_6);
     // print(unbox(e))

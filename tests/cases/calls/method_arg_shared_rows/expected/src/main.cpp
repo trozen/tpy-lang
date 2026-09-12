@@ -43,10 +43,10 @@ void main() {
     }));
     // print(k.n)
     std::cout << k.n << "\n";
-    // # An f-string at an Own[str] slot, and a BigInt name at an Own[Int32]
+    // # An f-string at an Own[str] slot, and a BigInt name at an Own[int32]
     // # one: both are conversions, so the prvalue binds the by-value slot with
     // # no copy temp. `wide` is spelled `int` because the row under test is the
-    // # BigInt narrowing (`to_fixed_check<int32_t>`), which an inferred Int32
+    // # BigInt narrowing (`to_fixed_check<int32_t>`), which an inferred int32
     // # would never reach.
     // k.store_name(f"v{k.n}")  # tpyc: ok
     k.store_name(std::format("v{}", (k.n).to_string()));
@@ -80,7 +80,7 @@ void main() {
     // # Own[tuple] slot. The element MOVES into the storage tuple, so the case
     // # reads it back out of the container rather than through the moved-from
     // # name.
-    // pairs: list[tuple[Tag, Int32]] = []
+    // pairs: list[tuple[Tag, int32]] = []
     std::vector<std::tuple<Tag, int32_t>> pairs = std::vector<std::tuple<Tag, int32_t>>{};
     // moved = Tag(5)
     Tag moved = Tag(5);

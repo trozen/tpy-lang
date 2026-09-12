@@ -10,7 +10,7 @@ void main() {
     std::cout << ::repro::pkg::constants::VERSION << "\n";
     // print(LIMIT)
     std::cout << ::repro::pkg::constants::LIMIT << "\n";
-    // print(Int32(LIMIT) + Int32(1))
+    // print(int32(LIMIT) + int32(1))
     std::cout << (::tpy::add_check<int32_t>(::repro::pkg::constants::LIMIT, 1)) << "\n";
 }
 

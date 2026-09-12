@@ -4,7 +4,7 @@ from .._typing import Self, Iterator, Iterable
 from tpy import Span, Ptr
 from .._bootstrap._decorators import readonly, pure, nocopy, Own, dispatch
 from .._bootstrap._extern import native, cpp_template, builtin_type
-from ._types import Int32, Comparable, Deref, Spannable, NativeIterable
+from ._types import int32, Comparable, Deref, Spannable, NativeIterable
 
 
 @builtin_type("tpy.Span")
@@ -12,7 +12,7 @@ from ._types import Int32, Comparable, Deref, Spannable, NativeIterable
 class Span[T](Iterable[T], NativeIterable[T], Spannable[T]):
     @dispatch
     @cpp_template("{cpp}({0}, static_cast<size_t>({1}))")
-    def __init__(self, ptr: Ptr[T], length: Int32) -> None: ...
+    def __init__(self, ptr: Ptr[T], length: int32) -> None: ...
 
     @dispatch
     @cpp_template("{cpp}({0})")
@@ -26,18 +26,18 @@ class Span[T](Iterable[T], NativeIterable[T], Spannable[T]):
     @native("tpy::__len__", function=True)
     @pure
     @readonly
-    def __len__(self) -> Int32: ...
+    def __len__(self) -> int32: ...
 
     @cpp_template("{self}[{0}]")
     @pure
     @readonly
-    def unchecked_get(self, index: Int32) -> T: ...
+    def unchecked_get(self, index: int32) -> T: ...
 
     @dispatch
     @native("tpy::__getitem__", function=True)
     @pure
     @readonly
-    def __getitem__(self, index: Int32) -> T: ...
+    def __getitem__(self, index: int32) -> T: ...
 
     @dispatch
     @cpp_template("::tpy::list_slice({self}, {0})")
@@ -52,7 +52,7 @@ class Span[T](Iterable[T], NativeIterable[T], Spannable[T]):
     def __getitem__(self, index: slice) -> Own[list[T]]: ...
 
     @native("tpy::__setitem__", function=True)
-    def __setitem__(self, index: Int32, value: Own[T]) -> None: ...
+    def __setitem__(self, index: int32, value: Own[T]) -> None: ...
 
     @native("tpy::as_span", function=True)
     @pure
@@ -80,18 +80,18 @@ class varargs[T](Iterable[T], NativeIterable[T]):
     @native("tpy::__len__", function=True)
     @pure
     @readonly
-    def __len__(self) -> Int32: ...
+    def __len__(self) -> int32: ...
 
     @cpp_template("{self}[{0}]")
     @pure
     @readonly
-    def unchecked_get(self, index: Int32) -> T: ...
+    def unchecked_get(self, index: int32) -> T: ...
 
     @dispatch
     @native("tpy::__getitem__", function=True)
     @pure
     @readonly
-    def __getitem__(self, index: Int32) -> T: ...
+    def __getitem__(self, index: int32) -> T: ...
 
     @dispatch
     @cpp_template("::tpy::list_slice({self}, {0})")
@@ -117,18 +117,18 @@ class Array[T, N: int](Iterable[T], NativeIterable[T], Spannable[T]):
     @native("tpy::__len__", function=True)
     @pure
     @readonly
-    def __len__(self) -> Int32: ...
+    def __len__(self) -> int32: ...
 
     @cpp_template("{self}[{0}]")
     @pure
     @readonly
-    def unchecked_get(self, index: Int32) -> T: ...
+    def unchecked_get(self, index: int32) -> T: ...
 
     @dispatch
     @native("tpy::__getitem__", function=True)
     @pure
     @readonly
-    def __getitem__(self, index: Int32) -> T: ...
+    def __getitem__(self, index: int32) -> T: ...
 
     @dispatch
     @cpp_template("::tpy::list_slice({self}, {0})")
@@ -143,7 +143,7 @@ class Array[T, N: int](Iterable[T], NativeIterable[T], Spannable[T]):
     def __getitem__(self, index: slice) -> Own[list[T]]: ...
 
     @native("tpy::__setitem__", function=True)
-    def __setitem__(self, index: Int32, value: Own[T]) -> None: ...
+    def __setitem__(self, index: int32, value: Own[T]) -> None: ...
 
     @native("tpy::as_span", function=True)
     @pure
@@ -163,7 +163,7 @@ class Ptr[T](Deref[T]):
     @cpp_template("std::span({self}, static_cast<size_t>({0}))")
     @readonly
     @pure
-    def span(self, length: Int32) -> Span[T]: ...
+    def span(self, length: int32) -> Span[T]: ...
 
 
 @builtin_type("tpy.SpanIter")

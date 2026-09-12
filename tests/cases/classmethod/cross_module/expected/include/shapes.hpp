@@ -16,7 +16,7 @@ struct Point {
     // self.x = x
     int32_t x;
 
-    // def __init__(self, x: Int32):
+    // def __init__(self, x: int32):
     Point() = default;
     explicit Point(int32_t x);
 
@@ -25,7 +25,7 @@ struct Point {
     static Point origin();
 
     // @classmethod
-    // def at(cls, x: Int32) -> Own[Self]:
+    // def at(cls, x: int32) -> Own[Self]:
     static Point at(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "shapes.Point";
 };
@@ -36,7 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 }
 
 
-// def __init__(self, x: Int32):
+// def __init__(self, x: int32):
 inline Point::Point(int32_t x) : x(x) {}
 
 // @classmethod
@@ -47,7 +47,7 @@ inline Point Point::origin() {
 }
 
 // @classmethod
-// def at(cls, x: Int32) -> Own[Self]:
+// def at(cls, x: int32) -> Own[Self]:
 inline Point Point::at(int32_t x) {
     // return cls(x)
     return Point(x);

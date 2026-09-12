@@ -1,15 +1,15 @@
 # A per-element-Own tuple renders MIXED (`std::tuple<A, B*>`), so subscripting
 # its plain ref element must use `->` while its Own element stays `.`.
-from tpy import Int32, Own, copy
+from tpy import int32, Own, copy
 
 
 class Box:
-    val: Int32
+    val: int32
 
-    def __init__(self, val: Int32) -> None:
+    def __init__(self, val: int32) -> None:
         self.val = val
 
-    def bump(self) -> Int32:
+    def bump(self) -> int32:
         self.val = self.val + 1
         return self.val
 
@@ -22,45 +22,45 @@ def make_owned() -> Own[tuple[Box, Box]]:
     return (Box(3), Box(4))
 
 
-def take(t: tuple[Box, Box]) -> Int32:
+def take(t: tuple[Box, Box]) -> int32:
     return t[0].val + t[1].val
 
 
-def read_borrow_elem(b: Box) -> Int32:
+def read_borrow_elem(b: Box) -> int32:
     p = make_mixed(b)
     return p[1].val
 
 
-def read_own_elem(b: Box) -> Int32:
+def read_own_elem(b: Box) -> int32:
     p = make_mixed(b)
     return p[0].val
 
 
-def write_borrow_elem(b: Box) -> Int32:
+def write_borrow_elem(b: Box) -> int32:
     p = make_mixed(b)
     p[1].val = 99
     # Observed on the ORIGINAL: element 1 aliases `b`, it is not a copy.
     return b.val
 
 
-def read_direct(b: Box) -> Int32:
+def read_direct(b: Box) -> int32:
     # No local: the call result is subscripted in place, the other shape whose
     # whole-tuple storage verdict used to veto the per-element answer.
     return make_mixed(b)[1].val
 
 
-def read_param(p: tuple[Own[Box], Box]) -> Int32:
+def read_param(p: tuple[Own[Box], Box]) -> int32:
     # A param is not storage-form to begin with, so this shape always worked --
     # it is the inverse guarding against the fix over-reaching.
     return p[1].val
 
 
-def unpack_mixed(b: Box) -> Int32:
+def unpack_mixed(b: Box) -> int32:
     owned, borrowed = make_mixed(b)
     return owned.val + borrowed.val
 
 
-def method_on_borrow_elem(b: Box) -> Int32:
+def method_on_borrow_elem(b: Box) -> int32:
     # A method receiver composes the arrow decision separately from the
     # field-access site, over the same predicate.
     p = make_mixed(b)
@@ -68,7 +68,7 @@ def method_on_borrow_elem(b: Box) -> Int32:
     return b.val
 
 
-def pass_whole(b: Box) -> Int32:
+def pass_whole(b: Box) -> int32:
     p = make_mixed(b)
     n = take(p)
     # The whole-tuple lift must alias too, not snapshot: mutate after it and
@@ -77,7 +77,7 @@ def pass_whole(b: Box) -> Int32:
     return n + b.val
 
 
-def wholly_owned_still_dots() -> Int32:
+def wholly_owned_still_dots() -> int32:
     p = make_owned()
     return p[1].val
 
@@ -98,17 +98,17 @@ def wholly_owned_still_dots() -> Int32:
 # sibling `mixed_own_tuple_store_copies` (no_cpython). These read only, so this
 # case stays cpy-visible; the annotations are what pin the copy here. Do NOT
 # add no_cpython.txt to this case.
-def in_list(b: Box) -> Int32:
+def in_list(b: Box) -> int32:
     xs = [make_mixed(b)]  # tpyc: warning(/copies Box into owned storage/)
     return xs[0][1].val
 
 
-def in_dict(b: Box) -> Int32:
+def in_dict(b: Box) -> int32:
     d = {1: make_mixed(b)}  # tpyc: warning(/copies Box into owned storage/)
     return d[1][1].val
 
 
-def in_nested_tuple(b: Box) -> Int32:
+def in_nested_tuple(b: Box) -> int32:
     # The member is itself a value tuple, so its borrowed element sits a level
     # below the direct members -- the per-member check walks into it and names
     # the depth in the element path.
@@ -116,7 +116,7 @@ def in_nested_tuple(b: Box) -> Int32:
     return q[0][1].val
 
 
-def as_loop_var(b: Box) -> Int32:
+def as_loop_var(b: Box) -> int32:
     xs = [make_mixed(b)]  # tpyc: warning(/copies Box into owned storage/)
     n = 0
     for t in xs:
@@ -124,7 +124,7 @@ def as_loop_var(b: Box) -> Int32:
     return n
 
 
-def in_list_copy_ack(b: Box) -> Int32:
+def in_list_copy_ack(b: Box) -> int32:
     # The acknowledgement silences the warning; copy() of a mixed tuple yields
     # the fully-owned storage form, so this is the same copy, made explicit --
     # and CPython's copy() deep-copies, so this shape agrees with CPython.
@@ -133,14 +133,14 @@ def in_list_copy_ack(b: Box) -> Int32:
     return b.val
 
 
-def via_ternary(b: Box, c: Box, flag: bool) -> Int32:
+def via_ternary(b: Box, c: Box, flag: bool) -> int32:
     # Both arms are the borrow render, so the ternary is too -- the sibling
     # composition rule `is_storage_form_source` already spells.
     p = make_mixed(b) if flag else make_mixed(c)
     return p[1].val
 
 
-def rebound_in_branch(b: Box, c: Box, flag: bool) -> Int32:
+def rebound_in_branch(b: Box, c: Box, flag: bool) -> int32:
     # Reads the mixed local inside both arms, so the per-branch snapshot and
     # restore of the local sets has to carry the binding across.
     p = make_mixed(b)

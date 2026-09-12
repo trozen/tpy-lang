@@ -1,10 +1,10 @@
 # A literal-seeded local that a later `int`-returning assignment retro-widens to
-# BigInt still types Int32 at every EARLIER use. Codegen must key the checked
+# BigInt still types int32 at every EARLIER use. Codegen must key the checked
 # `.to_fixed_check<T>()` narrows on the local's DECLARED type -- keying on
 # sema's per-occurrence type emits a bare BigInt into an int32 slot (no viable
 # overload). One case per narrow position.
 from enum import Enum
-from tpy import Int32
+from tpy import int32
 
 
 class Color(Enum):
@@ -16,8 +16,8 @@ def widen() -> int:
     return 1
 
 
-def subscript_positions(data: str, xs: list[Int32],
-                        d: dict[Int32, Int32]) -> None:
+def subscript_positions(data: str, xs: list[int32],
+                        d: dict[int32, int32]) -> None:
     p = 0
     print(data[p])       # read index
     print(xs[p])
@@ -33,7 +33,7 @@ def value_positions(data: str) -> None:
     p = 1
     print(data[p:])      # slice lower bound
     print(data[:p])      # slice upper bound
-    q: Int32 = 7
+    q: int32 = 7
     q += p               # FixedInt += (declared) BigInt
     print(q)
     print(f"{p}")        # f-string arg -> .to_string()

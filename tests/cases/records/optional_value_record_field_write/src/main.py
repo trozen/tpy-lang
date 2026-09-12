@@ -1,12 +1,12 @@
 # A VALUE-record inner needs no form convert at an Optional field write: borrow
 # and storage forms coincide, so the field takes the bare store.
-from tpy import Int32, ValueType
+from tpy import int32, ValueType
 
 
 class Point(ValueType):
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 

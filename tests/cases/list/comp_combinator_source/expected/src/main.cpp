@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def dbl(v: Int32) -> Int32:
+// def dbl(v: int32) -> int32:
 int32_t dbl(int32_t v) {
     // return v * 2
     return (::tpy::mul_check<int32_t>(v, 2));
 }
 
-// def odd(v: Int32) -> bool:
+// def odd(v: int32) -> bool:
 bool odd(int32_t v) {
     // return v % 2 == 1
     return ((::tpy::mod_floor<int32_t>(v, 2)) == 1);
@@ -30,9 +30,9 @@ std::vector<Node> make_nodes() {
 
 // def main() -> None:
 void main() {
-    // xs: list[Int32] = [1, 2, 3]
+    // xs: list[int32] = [1, 2, 3]
     std::vector<int32_t> xs = {1, 2, 3};
-    // ys: list[Int32] = [10, 20, 30]
+    // ys: list[int32] = [10, 20, 30]
     std::vector<int32_t> ys = {10, 20, 30};
     // ws = ["a", "bb"]
     std::array<std::string, 2> ws = {"a", "bb"};

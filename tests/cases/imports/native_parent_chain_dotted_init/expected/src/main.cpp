@@ -8,7 +8,7 @@ namespace tpyapp::main {
 void main() {
     // print(COUNTER)
     std::cout << ::dotted_init::pkg::inner::leaf::COUNTER << "\n";
-    // print(COUNTER + Int32(1))
+    // print(COUNTER + int32(1))
     std::cout << (::tpy::add_check<int32_t>(::dotted_init::pkg::inner::leaf::COUNTER, 1)) << "\n";
 }
 

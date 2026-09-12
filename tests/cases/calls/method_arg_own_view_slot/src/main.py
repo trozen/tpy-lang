@@ -3,11 +3,11 @@
 # temp no row builds. That fence is about the INSERT, so it rejects at a
 # builtin-stub slot only: a user record's `Own[StrView]` param is an ordinary
 # by-value slot whose NAME source the Own cascade rows answer for.
-from tpy import Int32, Own, StrView
+from tpy import int32, Own, StrView
 
 
 class Bag:
-    n: Int32
+    n: int32
 
     def __init__(self) -> None:
         self.n = 0

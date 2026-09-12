@@ -1,5 +1,5 @@
 # A `with` target whose field is a VALUE type that nonetheless carries a pointer
-# into the manager: a borrow-form tuple, rendered `std::tuple<Item*, Int32>`. It is
+# into the manager: a borrow-form tuple, rendered `std::tuple<Item*, int32>`. It is
 # not an alias, not a pointer-repr Optional and not a view spelling, so a
 # predicate enumerating those three misses it -- and an owned manager then dies at
 # the end of its case block while the field still points into it. Read after a
@@ -11,30 +11,30 @@
 # `take_ptr(...).span(n)` (see BUGS.md), so the shape cannot be cpy-compared yet.
 from typing import Iterator
 
-from tpy import Int32
+from tpy import int32
 
 
 class Item:
-    def __init__(self, v: Int32):
+    def __init__(self, v: int32):
         self.v = v
 
 
 class Pair:
     item: Item
-    tag: Int32
+    tag: int32
 
-    def __init__(self, v: Int32):
+    def __init__(self, v: int32):
         self.item = Item(v)
         self.tag = v
 
-    def __enter__(self) -> tuple[Item, Int32]:
+    def __enter__(self) -> tuple[Item, int32]:
         return (self.item, self.tag)
 
     def __exit__(self, et, ev, tb) -> None:
         pass
 
 
-def gen() -> Iterator[Int32]:
+def gen() -> Iterator[int32]:
     pr = Pair(7)
     with pr as p:
         pass

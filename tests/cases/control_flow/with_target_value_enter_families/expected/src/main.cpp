@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def sum_pair(t: tuple[Int32, Int32]) -> Int32:
+// def sum_pair(t: tuple[int32, int32]) -> int32:
 int32_t sum_pair(const std::tuple<int32_t, int32_t>& t) {
     // return t[0] + t[1]
     return (::tpy::add_check<int32_t>(std::get<0>(t), std::get<1>(t)));
 }
 
-// def first_byte(b: bytes) -> Int32:
+// def first_byte(b: bytes) -> int32:
 int32_t first_byte(::tpy::BytesView b) {
     // return b[0]
     return static_cast<int32_t>(::tpy::bytes_getitem(b, 0));

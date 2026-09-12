@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 
 
-def add_pair(a: Int32 | None, b: Int32 | None) -> Int32:
+def add_pair(a: int32 | None, b: int32 | None) -> int32:
     return a + b  # tpyc: warning(/Potential None access/)
 
 

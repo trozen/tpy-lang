@@ -1,11 +1,11 @@
 # A field-access alias (a = o.inner) references o's storage: a consume of
 # o while a is live must copy (with warning), not move -- a move would let
 # a observe the moved-from field.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Inner:
-    vals: list[Int32]
+    vals: list[int32]
 
     def __init__(self):
         self.vals = [7, 8]

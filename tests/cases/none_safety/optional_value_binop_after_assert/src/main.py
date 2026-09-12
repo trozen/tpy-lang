@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 
 
-def add_one(x: Int32 | None) -> Int32:
+def add_one(x: int32 | None) -> int32:
     assert x is not None
     return x + 1
 

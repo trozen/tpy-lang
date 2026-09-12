@@ -26,13 +26,13 @@ void main();
 
 // class C:
 struct C {
-    // x: Int32
+    // x: int32
     int32_t x;
 
     // def __init__(self) -> None:
     C();
 
-    // def m(self) -> Int32:
+    // def m(self) -> int32:
     int32_t m() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.C";
 };
@@ -49,7 +49,7 @@ inline C::C() {
     this->x = ::tpyapp::helper::G;
 }
 
-// def m(self) -> Int32:
+// def m(self) -> int32:
 inline int32_t C::m() const {
     // return G * 2
     return (::tpy::mul_check<int32_t>(::tpyapp::helper::G, 2));

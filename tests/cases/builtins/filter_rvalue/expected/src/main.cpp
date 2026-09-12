@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def make_nums() -> Own[list[Int32]]:
+// def make_nums() -> Own[list[int32]]:
 std::vector<int32_t> make_nums() {
     // return [1, 2, 3, 4, 5, 6]
     return {1, 2, 3, 4, 5, 6};
 }
 
-// def is_even(x: Int32) -> bool:
+// def is_even(x: int32) -> bool:
 bool is_even(int32_t x) {
     // return x % 2 == 0
     return ((::tpy::mod_floor<int32_t>(x, 2)) == 0);

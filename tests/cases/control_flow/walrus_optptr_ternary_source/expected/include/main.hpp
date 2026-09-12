@@ -21,10 +21,10 @@ void main();
 
 // class Node:
 struct Node {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Node() = default;
     explicit Node(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Node";
@@ -40,7 +40,7 @@ struct Holder {
     // opt: Node | None
     std::optional<Node> opt;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Holder() = default;
     explicit Holder(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
@@ -79,10 +79,10 @@ struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, int32_t> {
 };
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Node::Node(int32_t v) : v(v) {}
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Holder::Holder(int32_t v) : opt(Node(v)) {}
 void __tpy_init();
 } // namespace tpyapp::main

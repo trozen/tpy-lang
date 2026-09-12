@@ -1,11 +1,11 @@
 # @dataclass with user-defined __repr__ suppresses auto-generation
 from dataclasses import dataclass
-from tpy import Int32
+from tpy import int32
 
 @dataclass
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
     def __repr__(self) -> str:
         return f"Point[{self.x},{self.y}]"

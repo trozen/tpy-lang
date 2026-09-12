@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 
 
-def shrink(x: Int32 | None) -> Int32:
+def shrink(x: int32 | None) -> int32:
     while x is not None and x > 0:
         x = x - 1  # tpyc: ok
     return 0

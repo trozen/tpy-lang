@@ -1,20 +1,20 @@
 """Test that local variables correctly shadow class names for method calls."""
-from tpy import Int32
+from tpy import int32
 
 class Helper:
-    value: Int32
+    value: int32
 
-    def __init__(self, v: Int32):
+    def __init__(self, v: int32):
         self.value = v
 
     @staticmethod
-    def add(a: Int32, b: Int32) -> Int32:
+    def add(a: int32, b: int32) -> int32:
         return a + b
 
-    def get(self) -> Int32:
+    def get(self) -> int32:
         return self.value
 
-def use_helper(Helper: Helper) -> Int32:
+def use_helper(Helper: Helper) -> int32:
     # Inside this function, 'Helper' is the parameter (an instance), not the class
     # So Helper.get() should call the instance method, not try to find a static method
     return Helper.get()

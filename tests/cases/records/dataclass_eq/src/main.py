@@ -1,21 +1,21 @@
 # @dataclass auto-generated __eq__ (field-by-field comparison)
 from dataclasses import dataclass
-from tpy import Int32
+from tpy import int32
 from typing import Optional
 
 @dataclass
 class Id:
-    value: Int32
+    value: int32
 
 @dataclass
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 @dataclass
 class Config:
     name: str
-    value: Int32
+    value: int32
     label: Optional[str] = None
 
 def main() -> None:

@@ -8,7 +8,7 @@
 # this one. Add the leg here when that entry is fixed.
 from typing import Any, cast
 
-from tpy import Int32
+from tpy import int32
 
 
 class Bag:
@@ -45,7 +45,7 @@ def main() -> None:
     b.port = n  # a bare local: the into_any wrap over the name
     a: Any = 9
     b.raw = a  # already Any: no wrap at all
-    print(cast(int, b.lit), cast(Int32, b.port), cast(int, b.raw))
+    print(cast(int, b.lit), cast(int32, b.port), cast(int, b.raw))
 
     s = Strict()
     v = "host"

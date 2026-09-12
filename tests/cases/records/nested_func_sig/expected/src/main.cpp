@@ -42,13 +42,13 @@ std::optional<::tpyapp::main::Container::Kind> EnumUtil<::tpyapp::main::Containe
 namespace tpyapp::main {
 
 
-// def make_inner(v: Int32) -> Own[Container.Inner]:
+// def make_inner(v: int32) -> Own[Container.Inner]:
 Container::Inner make_inner(int32_t v) {
     // return Container.Inner(v)
     return Container::Inner(v);
 }
 
-// def take_inner(i: Container.Inner) -> Int32:
+// def take_inner(i: Container.Inner) -> int32:
 int32_t take_inner(const Container::Inner& i) {
     // return i.val
     return i.val;

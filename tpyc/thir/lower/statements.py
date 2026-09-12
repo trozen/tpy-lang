@@ -867,7 +867,7 @@ def _container_scalar_tuple_iter(t: TpyType | None, analyzer, *,
                     # REFERENCE-typed element aliases into an is_ref target
                     # via the loop element's tuple_to_pointer lift -- a
                     # record or a container alike (`for n, xs in pairs:`
-                    # over `list[tuple[Int32, list[Int32]]]`), the same ref
+                    # over `list[tuple[int32, list[int32]]]`), the same ref
                     # alias the target gate's ref family already admits.
                     or (allow_record and _f1_ref(
                         unwrap_readonly(unwrap_ref_type(
@@ -885,14 +885,14 @@ def _range_bound_literal_value(arg: TpyExpr) -> int | None:
     # literal (possibly behind the int_literal coerce) vs a name/expr hoisted
     # to a temp. No magnitude clamp: both forms render the bound through the
     # shared literal rules, so only this choice must agree with
-    # _extract_int_literal, including fixed-int ctor literals (`Int32(3)`).
+    # _extract_int_literal, including fixed-int ctor literals (`int32(3)`).
     return fixed_int_literal_value_from_expr(arg)
 
 def _lower_range_arg(arg: TpyExpr, et: TpyType, lc: _LowerCtx,
                      declared: dict[str, TpyType]) -> THIRExpr:
     """Lower one range bound/step. A folded fixed-int-ctor literal
-    (`Int32(3)`) lowers to the bare-token literal directly -- lowering the
-    ctor CALL would render `Int32(3)`'s call shape, but a range bound inlines
+    (`int32(3)`) lowers to the bare-token literal directly -- lowering the
+    ctor CALL would render `int32(3)`'s call shape, but a range bound inlines
     the folded token. Every other admitted shape lowers normally; the counter
     slot retype applies either way."""
     peeled = _unwrap_lit_coerce(arg)
@@ -910,14 +910,14 @@ def _range_step_kind(step_arg: TpyExpr, declared: dict[str, TpyType],
     # step is not lowered here. Conservative slice over the fixed-int subset
     # the emitter renders:
     #   * a bare (possibly negated) int literal or a fixed-int-ctor literal
-    #     (`Int32(2)` -- folded like _extract_int_literal) -> plus_one (+1) /
+    #     (`int32(2)` -- folded like _extract_int_literal) -> plus_one (+1) /
     #     unit_neg (-1) / literal_pos / literal_neg; a zero step is rejected
     #     (a zero step takes the Range ctor, not this counter loop).
     #   * any other fixed-int-typed expression -> variable (captured once into
     #     `__step_N`, which is what makes an arbitrary expression safe here:
     #     Python reads range()'s step at call time and the C++ head would
     #     otherwise re-evaluate it every iteration).
-    # A ctor-literal step (`Int32(2)`) folds like a bound: the fold yields
+    # A ctor-literal step (`int32(2)`) folds like a bound: the fold yields
     # the same bare token as a plain literal, so the stepped arms' overflow
     # helpers receive an identical render (pinned by the ctor-literal-step
     # unit and the corpus exec run).
@@ -1134,8 +1134,8 @@ def _for_each_container_route(
         tparam_bounds: 'dict | None' = None) -> '_ForEachRoute | None':
     # `for v in <container>` over a NativeIterable with a value-scalar (`list[scalar]` /
     # `dict[fixed-int-key]`, a typed copy; bytes/BytesView are
-    # NativeIterable[UInt8] -- the same typed-copy loop var), Char (str/StrView,
-    # NativeIterable[Char]),
+    # NativeIterable[uint8] -- the same typed-copy loop var), char (str/StrView,
+    # NativeIterable[char]),
     # str (a `list[str]` element / owned-str dict key -- the loop var is a fresh
     # view var, usage-resolved to `std::string_view` or an owned `std::string`
     # copy; `loop_var_binding` spells both), or F1-record (`list[record]`, a
@@ -1181,7 +1181,7 @@ def _for_each_container_route(
     if isinstance(it, TpyStrLiteral):
         # `for ch in "abc"`: the str literal is an rvalue captured as
         # `std::string_view("abc")` (C string literals carry the NUL
-        # terminator, so the wrap trims it); Char elements.
+        # terminator, so the wrap trims it); char elements.
         it_type = _resolved_str_value(analyzer.get_expr_type(it), analyzer)
         if it_type is None:
             return None
@@ -1367,7 +1367,7 @@ def _for_each_container_route(
             container_field = True
             if isinstance(it_type, TypeParamRef):
                 # An open-T FIELD whose bound is NativeIterable/Spannable
-                # (`Wrap[T: NativeIterable[Int32]]`, `for x in self.items:`):
+                # (`Wrap[T: NativeIterable[int32]]`, `for x in self.items:`):
                 # the begin/end peephole reads the bound off
                 # current_type_param_bounds, so the member takes the same
                 # `auto& __obj_N =` begin/end loop a concrete container does.
@@ -1810,7 +1810,7 @@ def _for_iter_proto_route(
             return None
         if isinstance(u, TypeParamRef):
             # An open-T FIELD (`for x in self.items:` on `Summer[T:
-            # Iterable[Int32]]`): the C++ member is the deduced `T`, so the
+            # Iterable[int32]]`): the C++ member is the deduced `T`, so the
             # loop captures it bare and `::tpy::__iter__` resolves through
             # the bound -- the same universal render a protocol-typed param
             # name takes, and gated the same way (SYNC bodies only, no
@@ -1921,7 +1921,7 @@ def _for_iter_proto_route(
             pass
         elif (isinstance(u, NominalType) and u.is_protocol
                 and not is_dyn_protocol(u)):
-            # A STRUCTURAL protocol-typed param (`it: Iterator[Int32]`) in a
+            # A STRUCTURAL protocol-typed param (`it: Iterator[int32]`) in a
             # SYNC body: the deduced `T_it&` param is a plain C++ lvalue, so
             # the loop captures it bare (`auto& __src_N = it;`) and
             # `::tpy::__iter__` resolves via ADL -- the same render as a
@@ -1972,7 +1972,7 @@ def _for_iter_proto_route(
                 return None
         elif isinstance(u, TypeParamRef):
             # An open-T PARAM iterable (`for x in items:` on
-            # `[T: Iterable[Int32]]`): the bare `param_val_or_ref_t<T>`
+            # `[T: Iterable[int32]]`): the bare `param_val_or_ref_t<T>`
             # lvalue takes the same universal loop, gated like the open-T
             # FIELD flavor (SYNC bodies, Iterable bound only).
             if not protocol_param_ok or not _open_t_iterable_bound(
@@ -2271,7 +2271,7 @@ def _standalone_unpack_target_binds(
                 and stmt.is_new[i] and name not in declared
                 and _wrapper_union_like(tt, analyzer) is not None):
             # A NON-owned recursive-wrapper element (`a, n = pair(seed)` off
-            # `-> tuple[Tree[Int32], Int32]`): the capture's slot IS a live
+            # `-> tuple[Tree[int32], int32]`): the capture's slot IS a live
             # `X&`, so the target re-binds it through `unwrap_ref` -- a
             # reference alias. The OWNED flavor moves out instead ("move").
             out.append((tt, "unwrap_ref"))
@@ -2403,7 +2403,7 @@ def _tuple_unpack_source(
                 and not (isinstance(_bcall_b, TupleType)
                          and _bcall_b.has_pointer_repr_element())
                 # ... and the REFERENCE-element flavor (`-> tuple[Tree[T],
-                # Int32]` -> `std::tuple<Tree<int32_t>&, int32_t>`): the
+                # int32]` -> `std::tuple<Tree<int32_t>&, int32_t>`): the
                 # same bare capture, whose wrapper slot is a live `X&` the
                 # target re-binds through `unwrap_ref`.
                 # ... and a value tuple carrying an owned-inner
@@ -2490,7 +2490,7 @@ def _tuple_unpack_source(
                # (`std::optional<P>`), read out by a plain value copy --
                # the source binds the plain name const-ref, no lift.
                or _own_opt_storage_binding(e)
-               # A recursive-wrapper element (`Tree[Int32]`): the slot is
+               # A recursive-wrapper element (`Tree[int32]`): the slot is
                # a live `X&` reference member; the target re-binds it with
                # `unwrap_ref`, no lift on the capture. CALL sources only --
                # a NAME source of the same tuple needs the `auto& __tup_N`
@@ -2613,7 +2613,7 @@ def _with_target_arm(item, declared: dict[str, TpyType], prescan: _Prescan,
             return WithTargetArm.ASSIGN_PTR, resolved
         return None
     if et.is_value_type():
-        # `auto <name> = __enter__();` -- a value copy. Scalars, Char, enums,
+        # `auto <name> = __enter__();` -- a value copy. Scalars, char, enums,
         # and str-slice values route; the declared entry carries the RESOLVED
         # enter type, so body reads classify off it (an owned `str`
         # return deduces
@@ -3979,7 +3979,7 @@ def _ptr_union_slot_kind(init: TpyExpr, ptr_u: 'UnionType',
         it_u = unwrap_readonly(it_u.wrapped)
     # A scalar/str LITERAL init takes the bare-literal slot render whatever
     # type sema stamped on it (the member or the coerced whole union --
-    # `a: Int32 | str | Cat | Dog = 42` -> `std::variant<...> __slot_N =
+    # `a: int32 | str | Cat | Dog = 42` -> `std::variant<...> __slot_N =
     # 42;`, the converting ctor picking the SINGLE matching member; the
     # single-member-of-family key is what keeps an ambiguous variant out).
     lit = init
@@ -4005,8 +4005,8 @@ def _ptr_union_slot_kind(init: TpyExpr, ptr_u: 'UnionType',
         if not any(m == it_u for m in ptr_u.members):
             return None
         if not _f1_record(it_u, analyzer):
-            # A scalar MEMBER of a mixed union (`a: Int32 | Dog | None =
-            # Int32(42)`): a type-ctor RVALUE takes the same value-variant
+            # A scalar MEMBER of a mixed union (`a: int32 | Dog | None =
+            # int32(42)`): a type-ctor RVALUE takes the same value-variant
             # `__slot_N` + lift (the rvalue branch is member-shape-blind,
             # the slot init being the ctor's folded render). Scalar NAME
             # sources stay out (unwitnessed). A non-value NON-record member
@@ -5052,7 +5052,7 @@ def _lower_nested_def(stmt: TpyNestedDef, scope: '_LowerScope') -> THIRStmt:
             note_detail("nesteddef.param_unresolved")
             raise ThirUnsupported(stmt_reject_reason(stmt))
         # Param families the lambda BODY renders like a top-level function
-        # without any param seeding: value scalars / Char / enums, str
+        # without any param seeding: value scalars / char / enums, str
         # family, and every REFERENCE type -- records and containers alike
         # bind `T&` and are read bare, so the body renders the same with or
         # without seeding. The SIGNATURE does not: a lambda
@@ -7803,7 +7803,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             _witness("top_level.global_no_init")
             return THIRNoOpStmt(trivia_loc=loc)
         if stmt.init is None:
-            # An annotation-only decl (`x: str` / `x: Int32`) default-
+            # An annotation-only decl (`x: str` / `x: int32`) default-
             # constructs the resolved slot (`std::string x;` / `int32_t x;`)
             # and the later assignment writes it. VALUE families only -- a
             # non-value no-init decl (record/container/Optional) needs the
@@ -9564,7 +9564,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             and isinstance(stmt.init.index, TpySlice))
         if storage_src:
             # An owning non-value-element tuple call result (`t = make_pair(5)`
-            # for `-> Own[tuple[Int32, Box]]`, or a nested per-element-Own
+            # for `-> Own[tuple[int32, Box]]`, or a nested per-element-Own
             # return): the name registers in `storage_form_tuple_locals` and
             # decls the storage copy -- `auto` when the tuple has ref
             # elements (like the storage_record literal arm), the spelled
@@ -9846,7 +9846,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         name=stmt.name, resolved_type=bt, init=value,
                         cpp_type=borrow_cpp, form=Form.BORROW, loc=loc)
         # `x = None` at a value-union binding renders the monostate member --
-        # target-typed at lowering, like the Char decl below (F4 U1). At a
+        # target-typed at lowering, like the char decl below (F4 U1). At a
         # `Ptr[T]` value binding it renders `nullptr` (a VALUE-form None --
         # _emit_literal's non-STORAGE arm; the gate pinned the binding type).
         # A borrow-tuple local bound from a name (`s = r`) or a borrow-tuple
@@ -9924,7 +9924,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                        analyzer)
                     if src_bt is None:
                         # The REFERENCE-element tuple call (`p =
-                        # keep_param(tree)` off `-> tuple[Tree, Int32]`
+                        # keep_param(tree)` off `-> tuple[Tree, int32]`
                         # returning `std::tuple<Tree&, int32_t>`): the
                         # `auto` decl binds the reference-member result
                         # whole, aliasing like the plain borrow tuple.
@@ -10098,7 +10098,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     if (wide_t.has_pointer_repr_element()
                             # A WRAPPER-member tuple owns its members too
                             # (`pair = (leaf, 0)` at `tuple[Own[Tree],
-                            # Int32]` -- the LOCAL's slot spells the bare
+                            # int32]` -- the LOCAL's slot spells the bare
                             # wrapper): downstream reads are storage (`.`),
                             # and the owned-storage return leg keys on the
                             # membership.
@@ -10171,7 +10171,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                                        analyzer)
                              or _wrapper_member_literal_slot(
                                  stmt.init, vtype, analyzer)))
-                    # A value-repr Optional[scalar] slot (`y: Int32 | None =
+                    # A value-repr Optional[scalar] slot (`y: int32 | None =
                     # items[i]`): the whole `std::optional<T>` lands bare, the
                     # value-repr twin of the plain-scalar decl. The owned-view
                     # twin (`cmd: str | None = acc` -> `std::optional
@@ -10273,7 +10273,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     # is the plain spelled copy like a value tuple.
                     or _own_record_tuple(vtype, analyzer) is not None
                     # ... and the OPEN-T tuple slot (`p = s.pair()` on a
-                    # `tuple[T, Int32]` protocol result) spells the bare
+                    # `tuple[T, int32]` protocol result) spells the bare
                     # `std::tuple<T, int32_t>` copy the same way.
                     or (_open_t_tuple_slot(vtype, analyzer) is not None
                         and _witness("decl.open_t_tuple_slot"))
@@ -10297,10 +10297,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     note_detail("decl.branch_slot_type" if in_branch_first
                                 else "decl.slot_type")
                     raise ThirUnsupported(stmt_reject_reason(stmt))
-            # A Char-annotated decl init lowers target-aware: `c: Char = 'x'` ->
+            # A char-annotated decl init lowers target-aware: `c: char = 'x'` ->
             # `char c = 'x';` (the decl type threads into the render);
-            # a float literal into a Float32 binding (annotated decl or
-            # reassign of a Float32 local) takes the `f` suffix the same way.
+            # a float literal into a float32 binding (annotated decl or
+            # reassign of a float32 local) takes the `f` suffix the same way.
             # A flushable statement position: a direct call init may hoist
             # arg temps (temp_args, inert for non-call inits).
             src = _peel_stale_view_owned_coerce(
@@ -10335,7 +10335,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         allow_whole_optional=True))
             else:
                 # A value-repr Optional[scalar] slot consumes a WHOLE-optional
-                # init source bare (`y: Int32 | None = items[i]` -- the
+                # init source bare (`y: int32 | None = items[i]` -- the
                 # `std::optional<T>` element / call result lands directly), so
                 # thread allow_whole_optional to admit those reads at their
                 # gate. The owned-view twin (`str | None` ->
@@ -10676,7 +10676,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # write form). The target lowers through the record_getitem READ arm
             # (NOT subscript_prechecked, which is the container-element path):
             # its receiver/index feed the checked write emit; the value renders
-            # against the elem slot bare (a value scalar / Char / enum, or a
+            # against the elem slot bare (a value scalar / char / enum, or a
             # record whose source moves or copies whole).
             target = _lower_expr(
                 stmt.target, lc, declared,
@@ -10899,7 +10899,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 elif (not isinstance(v, TpyNoneLiteral)
                       and _value_opt_scalar_elem_arg(v, eu, analyzer)):
                     # A SCALAR source into the optional element slot
-                    # (`xs[0] = 5` on `list[Int32 | None]`): the scalar
+                    # (`xs[0] = 5` on `list[int32 | None]`): the scalar
                     # renders bare and std::optional's converting ctor
                     # wraps it -- the same row the append/insert arg table
                     # already admits for this slot.
@@ -10995,7 +10995,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             elif (isinstance(eu, TupleType) and eu.has_pointer_repr_element()
                     and not _tuple_elem_slots_ptr_optional(eu)):
                 # Plain RECORD-element tuple value slot (`d[1] =
-                # make_borrow(b)` on `dict[Int32, tuple[Box, Box]]`): only
+                # make_borrow(b)` on `dict[int32, tuple[Box, Box]]`): only
                 # the borrow-tuple CALL source is witnessed -- the non-move
                 # `tuple_to_storage` copy lift (the store COPIES; sema warns
                 # per element). Literals/names/subscripts reject.
@@ -11572,7 +11572,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # Optional slot, a ptr-variant union, and a property getter all
             # exit early and never see it). Gating on the field alone would
             # ADD a move where none belongs: `def take(self: Own[Self]) ->
-            # Int32 | None: return self.x` is exactly that pair, and no
+            # int32 | None: return self.x` is exactly that pair, and no
             # corpus case has it.
             fld_t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                 analyzer.get_expr_type(stmt.value))))
@@ -11596,7 +11596,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # documents which one the `Own` belongs to rather than guarding a
             # reachable case.
             # A BUILTIN-record field moving into its own Own[same-type]
-            # return (`_slot: Own[Poll[Int32]]` -> `-> Own[Poll[Int32]]`):
+            # return (`_slot: Own[Poll[int32]]` -> `-> Own[Poll[int32]]`):
             # the identity pair guarantees the bare
             # `return std::move(this->_slot);` -- container/str families
             # excluded (their consuming renders differ).
@@ -12875,7 +12875,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         ret_wrt = lc.prescan.ret_wrapper_ref_tuple
         if stmt.value is not None and ret_wrt is not None:
             # The REFERENCE-element tuple return (`return (t, 0)` at
-            # `-> tuple[Tree[Int32], Int32]` -> `return std::tuple<
+            # `-> tuple[Tree[int32], int32]` -> `return std::tuple<
             # Tree<int32_t>&, int32_t>{t, 0};`): wrapper members are plain
             # lvalue NAMES rendered bare (the reference member binds the
             # lvalue), scalar members ride the container-elem rows. The
@@ -12944,7 +12944,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             if ost_ok:
                 for i, sub in enumerate(source.elements):
                     # A per-element-own slot carries the Own on the ELEMENT
-                    # (`tuple[Own[P | None], Int32]`); peel it so the element
+                    # (`tuple[Own[P | None], int32]`); peel it so the element
                     # families gate on the stored shape (the Own[tuple[..]]
                     # flavor already arrives element-bare).
                     mslot = _unwrap_own(ret_ost.element_types[i])
@@ -12988,7 +12988,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             while isinstance(source, TpyCoerce):
                 source = source.expr
             # An owned-str FIELD read (`return self.data_name` into
-            # `Int32 | str`) renders bare -- the variant constructs from the
+            # `int32 | str`) renders bare -- the variant constructs from the
             # std::string lvalue directly, so no materialization is
             # emitted. Sema types the read `str` exactly when the
             # field's storage is owned; StrView fields (and every other
@@ -13205,7 +13205,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 raise ThirUnsupported(stmt_reject_reason(stmt))
             _witness("ret.generic_tuple_call")
         if stmt.value is not None and lc.prescan.ret_genrec is not None:
-            # An `Own[Tree[Int32]]` return: the wrapper struct returns by
+            # An `Own[Tree[int32]]` return: the wrapper struct returns by
             # value. A container literal takes the ru-instance spelled
             # render (`return std::vector<Tree<int32_t>>{1, 2, 3};`); a
             # scalar member value returns bare through the generic tail
@@ -13330,7 +13330,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         # sinks already thread.
                         field_owned_str_ok=field_owned_str))
                  if stmt.value else None)
-        # A float literal returned from a Float32 function takes the `f`
+        # A float literal returned from a float32 function takes the `f`
         # suffix (the return type threads into the render).
         ret_t = _fn_return_type(lc)
         value = _slot_literal_retype(value, ret_t, lc)
@@ -15756,7 +15756,7 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
                 arm_et = (WithTargetArm.FRAME_FIELD, resolved)
             elif item.target in lc.borrow_tuple_frame_locals:
                 # A borrow-form tuple frame field (`std::tuple<Item*,
-                # Int32>`): it subtracts itself from plain_frame_fields
+                # int32>`): it subtracts itself from plain_frame_fields
                 # because its DECL/reassign render differs, but the
                 # with-bind is the plain member assign
                 # (`p = __ctx_N.__enter__();`) like any other frame

@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def gen(k: Int32) -> Iterator[Int32]:
+// def gen(k: int32) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         // base = 100
         base = 100;
-        // def scale(x: Int32) -> Int32:
+        // def scale(x: int32) -> int32:
         // def scale: frame member
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(k));
@@ -41,7 +41,7 @@ int32_t __gen_gen::scale(int32_t x) {
     return (::tpy::add_check<int32_t>(x, base));
 }
 
-// def gen(k: Int32) -> Iterator[Int32]:
+// def gen(k: int32) -> Iterator[int32]:
 __gen_gen gen(int32_t k) {
     return __gen_gen(k);
 }

@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // @readonly
-// def build() -> Int32:
+// def build() -> int32:
 int32_t build() {
     // b = Box(3)
     Box b = Box(3);

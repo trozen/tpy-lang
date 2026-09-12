@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def use(c: Counter) -> Int32:
+// def use(c: Counter) -> int32:
 int32_t use(const ::repro_rec::pkg::types::Counter& c) {
     // return c.n
     return c.n;
@@ -12,7 +12,7 @@ int32_t use(const ::repro_rec::pkg::types::Counter& c) {
 
 // def main() -> None:
 void main() {
-    // print(use(Counter(Int32(42))))
+    // print(use(Counter(int32(42))))
     ::repro_rec::pkg::types::Counter __tmp_1 = ::repro_rec::pkg::types::Counter(42);
     std::cout << use(__tmp_1) << "\n";
 }

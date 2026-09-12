@@ -3,17 +3,17 @@
 # element as `T*` and must stay valid across the suspension -- exercised by
 # reading `it` again on the second yield of each iteration.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
 class Node:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
-def doubled(items: list[Node]) -> Iterator[Int32]:
+def doubled(items: list[Node]) -> Iterator[int32]:
     for it in items:
         yield it.x
         yield it.x + 100

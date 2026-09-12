@@ -1,17 +1,17 @@
 # `copy()` of an Own PARAM as a tuple-field element in a constructor's member
 # init: the copy row takes plain params, so this member init rejects.
-from tpy import Int32, Own, copy
+from tpy import int32, Own, copy
 
 
 class Box:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 
 class M:
-    pair: tuple[Int32, Box]
+    pair: tuple[int32, Box]
     other: Box
 
     def __init__(self, b: Own[Box]) -> None:

@@ -2,16 +2,16 @@
 # param tuple). cond=False selects t (member b), so mutating the yielded element
 # is visible in b -- the alias holds through the ternary.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    val: Int32
-    def __init__(self, v: Int32) -> None:
+    val: int32
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 
-def gen(p: tuple[Int32, Box], b: Box, cond: bool) -> Iterator[tuple[Int32, Box]]:
+def gen(p: tuple[int32, Box], b: Box, cond: bool) -> Iterator[tuple[int32, Box]]:
     t = (1, b)
     u = p if cond else t
     yield u

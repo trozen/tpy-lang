@@ -10,22 +10,22 @@ double accepts_float(double x) {
     return ((x) + (1.0));
 }
 
-// def accepts_f32(x: Float32) -> Float32:
+// def accepts_f32(x: float32) -> float32:
 float accepts_f32(float x) {
-    // return x + Float32(1.0)
+    // return x + float32(1.0)
     return ((x) + (1.0f));
 }
 
-// def returns_f32() -> Float32:
+// def returns_f32() -> float32:
 float returns_f32() {
-    // return Float32(3.0)
+    // return float32(3.0)
     return 3.0f;
 }
 
 // def test_widening_assignment() -> None:
 void test_widening_assignment() {
-    // # Float32 -> float (implicit widening)
-    // a: Float32 = Float32(2.5)
+    // # float32 -> float (implicit widening)
+    // a: float32 = float32(2.5)
     float a = 2.5f;
     // b: float = a  # tpyc: ok
     double b = static_cast<double>(a);
@@ -35,10 +35,10 @@ void test_widening_assignment() {
 
 // def test_narrowing_assignment() -> None:
 void test_narrowing_assignment() {
-    // # float -> Float32 (implicit narrowing, allowed for convenience)
+    // # float -> float32 (implicit narrowing, allowed for convenience)
     // a: float = 2.5
     double a = 2.5;
-    // b: Float32 = a  # tpyc: ok
+    // b: float32 = a  # tpyc: ok
     float b = static_cast<float>(a);
     // print(b)
     std::cout << ::tpy::print_float(static_cast<double>(b)) << "\n";
@@ -46,17 +46,17 @@ void test_narrowing_assignment() {
 
 // def test_param_coercion() -> None:
 void test_param_coercion() {
-    // # Pass Float32 where float expected (widening)
-    // v: Float32 = Float32(4.0)
+    // # Pass float32 where float expected (widening)
+    // v: float32 = float32(4.0)
     float v = 4.0f;
     // r = accepts_float(v)  # tpyc: type(float)
     double r = accepts_float(static_cast<double>(v));
     // print(r)
     std::cout << ::tpy::print_float(r) << "\n";
-    // # Pass float where Float32 expected (narrowing)
+    // # Pass float where float32 expected (narrowing)
     // w: float = 4.0
     double w = 4.0;
-    // r2 = accepts_f32(w)  # tpyc: type(Float32)
+    // r2 = accepts_f32(w)  # tpyc: type(float32)
     float r2 = accepts_f32(static_cast<float>(w));
     // print(r2)
     std::cout << ::tpy::print_float(static_cast<double>(r2)) << "\n";
@@ -64,7 +64,7 @@ void test_param_coercion() {
 
 // def test_return_coercion() -> None:
 void test_return_coercion() {
-    // # Return Float32 into float variable
+    // # Return float32 into float variable
     // f: float = returns_f32()  # tpyc: ok
     double f = static_cast<double>(returns_f32());
     // print(f)
@@ -73,11 +73,11 @@ void test_return_coercion() {
 
 // def test_mixed_type_inference() -> None:
 void test_mixed_type_inference() {
-    // a: Float32 = Float32(1.0)
+    // a: float32 = float32(1.0)
     float a = 1.0f;
-    // b: Float32 = Float32(2.0)
+    // b: float32 = float32(2.0)
     float b = 2.0f;
-    // c = a + b  # tpyc: type(Float32)
+    // c = a + b  # tpyc: type(float32)
     float c = ((a) + (b));
     // print(c)
     std::cout << ::tpy::print_float(static_cast<double>(c)) << "\n";
@@ -87,7 +87,7 @@ void test_mixed_type_inference() {
     double e = (static_cast<double>(a) + (d));
     // print(e)
     std::cout << ::tpy::print_float(e) << "\n";
-    // f = a + Int32(5)  # tpyc: type(Float32)
+    // f = a + int32(5)  # tpyc: type(float32)
     float f = ((a) + static_cast<float>(5));
     // print(f)
     std::cout << ::tpy::print_float(static_cast<double>(f)) << "\n";
@@ -95,16 +95,16 @@ void test_mixed_type_inference() {
 
 // def test_int_to_float32_coercion() -> None:
 void test_int_to_float32_coercion() {
-    // # Various int types -> Float32 via coercion
-    // a: Float32 = Int32(10)  # tpyc: ok
+    // # Various int types -> float32 via coercion
+    // a: float32 = int32(10)  # tpyc: ok
     float a = static_cast<float>(10);
     // print(a)
     std::cout << ::tpy::print_float(static_cast<double>(a)) << "\n";
-    // b: Float32 = Int64(20)  # tpyc: ok
+    // b: float32 = int64(20)  # tpyc: ok
     float b = static_cast<float>(20);
     // print(b)
     std::cout << ::tpy::print_float(static_cast<double>(b)) << "\n";
-    // c: Float32 = UInt8(30)  # tpyc: ok
+    // c: float32 = uint8(30)  # tpyc: ok
     float c = static_cast<float>(30);
     // print(c)
     std::cout << ::tpy::print_float(static_cast<double>(c)) << "\n";
@@ -112,10 +112,10 @@ void test_int_to_float32_coercion() {
 
 // def test_chained_coercion() -> None:
 void test_chained_coercion() {
-    // # Float32 -> float -> used in float arithmetic
-    // a: Float32 = Float32(1.5)
+    // # float32 -> float -> used in float arithmetic
+    // a: float32 = float32(1.5)
     float a = 1.5f;
-    // b: float = a * 2.0  # Float32 * float_literal -> Float32 (literal adapts), widened to float
+    // b: float = a * 2.0  # float32 * float_literal -> float32 (literal adapts), widened to float
     double b = static_cast<double>(((a) * (2.0f)));
     // c: float = b + 1.0
     double c = ((b) + (1.0));

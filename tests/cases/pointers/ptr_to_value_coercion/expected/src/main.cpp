@@ -12,7 +12,7 @@ void print_point(const Point& p) {
     std::cout << p.y << "\n";
 }
 
-// def get_sum(p: Point) -> Int32:
+// def get_sum(p: Point) -> int32:
 int32_t get_sum(const Point& p) {
     // return p.x + p.y
     return (::tpy::add_check<int32_t>(p.x, p.y));
@@ -40,7 +40,7 @@ void test_ptr_to_value() {
     // # Ptr[Point] -> Point coercion in function call
     // print_point(ptr)
     print_point(::tpy::deref_check(ptr));
-    // result: Int32 = get_sum(ptr)
+    // result: int32 = get_sum(ptr)
     int32_t result = get_sum(::tpy::deref_check(ptr));
     // print(result)
     std::cout << result << "\n";

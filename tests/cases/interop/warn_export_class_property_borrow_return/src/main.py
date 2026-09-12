@@ -6,13 +6,13 @@
 # aliasing borrow view (no warning), and Own[...] of a fresh or copy()'d
 # value stays quiet.
 # tpy: ext_module
-from tpy import Int64, Own
+from tpy import int64, Own
 from tpy.extern import export
 
 
 @export
 class Inner:
-    x: Int64
+    x: int64
 
     def __init__(self) -> None:
         self.x = 0
@@ -20,7 +20,7 @@ class Inner:
 
 @export
 class Box:
-    _items: list[Int64]
+    _items: list[int64]
     _inner: Inner
     _alt: Inner
 
@@ -33,7 +33,7 @@ class Box:
         self._alt = Inner()
 
     @property
-    def items(self) -> list[Int64]:
+    def items(self) -> list[int64]:
         return self._items  # tpyc: warning(/property 'items': returns a list by reference.*copied across the CPython boundary.*return Own/)
 
     @property
@@ -47,8 +47,8 @@ class Box:
         return self._alt  # tpyc: warning(/property 'alt': returns exposed class 'Inner' by reference.*identity and write-through aliasing are not preserved/)
 
     @property
-    def snapshot(self) -> Own[list[Int64]]:  # tpyc: ok
-        out: list[Int64] = []
+    def snapshot(self) -> Own[list[int64]]:  # tpyc: ok
+        out: list[int64] = []
         for x in self._items:
             out.append(x)
         return out

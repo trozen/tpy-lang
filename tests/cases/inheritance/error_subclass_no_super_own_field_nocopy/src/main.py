@@ -2,15 +2,15 @@
 # Resource is @nocopy+__del__. The field's type controls the enclosing
 # default ctor: Resource has __del__ and a required __init__, so Base has
 # no default ctor. Subclass without super() must be rejected.
-from tpy import Own, Ptr, Int32, nocopy
+from tpy import Own, Ptr, int32, nocopy
 from tpy.unsafe import unsafe_alloc, unsafe_free, unsafe_init, unsafe_drop
 
 
 @nocopy
 class Resource:
-    _ptr: Ptr[Int32]
+    _ptr: Ptr[int32]
 
-    def __init__(self, value: Int32) -> None:
+    def __init__(self, value: int32) -> None:
         self._ptr = unsafe_alloc()
         unsafe_init(self._ptr, value)
 

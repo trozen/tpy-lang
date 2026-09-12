@@ -17,10 +17,10 @@ void main();
 // @nocopy
 // class Cell:
 struct Cell {
-    // val: Int32
+    // val: int32
     int32_t val;
 
-    // def __init__(self, val: Int32) -> None:
+    // def __init__(self, val: int32) -> None:
     Cell() = default;
     explicit Cell(int32_t val);
     // non-copyable (@nocopy)
@@ -38,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
 
 // class Maker:
 struct Maker {
-    // n: Int32
+    // n: int32
     int32_t n;
 
     // def __init__(self) -> None:
@@ -67,7 +67,7 @@ inline std::ostream& operator<<(std::ostream& os, const Maker& obj) {
 }
 
 
-// def __init__(self, val: Int32) -> None:
+// def __init__(self, val: int32) -> None:
 inline Cell::Cell(int32_t val) : val(val) {}
 
 // def __init__(self) -> None:

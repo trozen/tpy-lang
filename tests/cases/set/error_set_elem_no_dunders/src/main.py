@@ -1,12 +1,12 @@
 # Plain class with neither __hash__ nor __eq__ as set element -- exercises
 # the "missing __hash__ and __eq__; ... define them explicitly" branch.
-from tpy import Int32
+from tpy import int32
 
 
 class Bare:
-    val: Int32
+    val: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 

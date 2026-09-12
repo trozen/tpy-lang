@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // @error_return(ParseError)
-// def parse(s: str) -> Int32:
+// def parse(s: str) -> int32:
 std::expected<int32_t, ParseError> parse(std::string_view s) {
     // if s == "ok":
     if ((s == "ok")) {

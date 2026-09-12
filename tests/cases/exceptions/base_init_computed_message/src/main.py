@@ -1,13 +1,13 @@
 # An exception subclass whose base initializer takes a COMPUTED message: the
 # str concat and the str() conversion are pure expressions, so they render
 # inside the member-init list, which has no place to hoist a temp.
-from tpy import Int32
+from tpy import int32
 
 
 class Tagged(Exception):
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         super().__init__("tag" + str(n))  # concat + conversion in the base cell
         self.n = n
 
@@ -19,18 +19,18 @@ class Labelled(Exception):
 
 
 class Numbered(Exception):
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         # The conversion standing alone, with no concat around it.
         super().__init__(str(n))
         self.n = n
 
 
 class Formatted(Exception):
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         # std::format is a pure expression too, so the f-string spelling of
         # the same message lands in the member-init list as well.
         super().__init__(f"tag{n}")

@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // @error_return(E)
-// def make_data(v: Int32) -> Own[Data]:
+// def make_data(v: int32) -> Own[Data]:
 std::expected<Data, E> make_data(int32_t v) {
     // if v < 0:
     if ((v < 0)) {
@@ -17,7 +17,7 @@ std::expected<Data, E> make_data(int32_t v) {
 }
 
 // @error_return(E)
-// def get_value(v: Int32) -> Int32:
+// def get_value(v: int32) -> int32:
 std::expected<int32_t, E> get_value(int32_t v) {
     // # The receiver of `.value` is the unwrapped call result.
     // return make_data(v).value

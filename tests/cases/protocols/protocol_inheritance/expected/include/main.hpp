@@ -39,7 +39,7 @@ struct Message {
     // def to_str(self) -> str:
     std::string to_str() const;
 
-    // def __len__(self) -> Int32:
+    // def __len__(self) -> int32:
     int32_t __len__() const;
 
     size_t size() const {
@@ -91,9 +91,9 @@ inline std::string Message::to_str() const {
     return this->text;
 }
 
-// def __len__(self) -> Int32:
+// def __len__(self) -> int32:
 inline int32_t Message::__len__() const {
-    // return Int32(5)
+    // return int32(5)
     return 5;
 }
 void __tpy_init();

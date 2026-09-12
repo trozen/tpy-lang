@@ -24,14 +24,14 @@ void main();
 
 // class Wrapper:
 struct Wrapper {
-    // val: Int32
+    // val: int32
     int32_t val;
 
-    // def __init__(self, v: Int32):
+    // def __init__(self, v: int32):
     Wrapper() = default;
     explicit Wrapper(int32_t v);
 
-    // def get_val(self) -> Int32:
+    // def get_val(self) -> int32:
     int32_t get_val() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
@@ -42,10 +42,10 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
 }
 
 
-// def __init__(self, v: Int32):
+// def __init__(self, v: int32):
 inline Wrapper::Wrapper(int32_t v) : val(v) {}
 
-// def get_val(self) -> Int32:
+// def get_val(self) -> int32:
 inline int32_t Wrapper::get_val() const {
     // return self.val
     return this->val;

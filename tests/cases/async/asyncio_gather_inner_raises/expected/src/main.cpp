@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def good() -> Int32:
+// async def good() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_good::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -20,7 +20,7 @@ namespace tpyapp::main {
         __sub_0.reset();
         // print("good finished")
         std::cout << "good finished" << "\n";
-        // return Int32(99)
+        // return int32(99)
         __state = S_DONE;
         int32_t __tpy_async_ret = 99;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -31,12 +31,12 @@ namespace tpyapp::main {
 }
 
 
-// async def good() -> Int32:
+// async def good() -> int32:
 __coro_good good() {
     return __coro_good();
 }
 
-// async def bad() -> Int32:
+// async def bad() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_bad::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
@@ -52,7 +52,7 @@ __coro_good good() {
 }
 
 
-// async def bad() -> Int32:
+// async def bad() -> int32:
 __coro_bad bad() {
     return __coro_bad();
 }
@@ -61,7 +61,7 @@ __coro_bad bad() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // tasks: list[asyncio.Task[Int32]] = []
+        // tasks: list[asyncio.Task[int32]] = []
         tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<int32_t>>{});
         // tasks.append(asyncio.create_task(bad()))
         (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(bad())));

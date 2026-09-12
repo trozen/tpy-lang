@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def countdown(start: Int32) -> Iterator[Int32]:
+// def countdown(start: int32) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_countdown::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -41,7 +41,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_countdown::__next__() {
 }
 
 
-// def countdown(start: Int32) -> Iterator[Int32]:
+// def countdown(start: int32) -> Iterator[int32]:
 __gen_countdown countdown(int32_t start) {
     return __gen_countdown(start);
 }

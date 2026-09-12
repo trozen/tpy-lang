@@ -4,7 +4,7 @@
 # get/set and RwLock read/write guards. (Distinct guard names per block: the
 # with as-variable persists after the block, so reusing one name across guards
 # of different payload type would collide.)
-from tpy import Int32
+from tpy import int32
 from tpy.sync import Mutex, RwLock
 
 
@@ -15,7 +15,7 @@ def main() -> None:
     with m.lock() as ml2:
         print(sorted(ml2.get()))    # [1, 2, 3, 4] -- the append survived
 
-    counter = Mutex.new(Int32(5))
+    counter = Mutex.new(int32(5))
     with counter.lock() as c:
         c.set(c.get() + 1)          # value-type payload: explicit get/set
     with counter.lock() as c2:

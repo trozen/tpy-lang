@@ -4,37 +4,37 @@
 namespace tpyapp::main {
 
 
-// def print_i16(x: Int16) -> None:
+// def print_i16(x: int16) -> None:
 void print_i16(int16_t x) {
     // print(x)
     std::cout << x << "\n";
 }
 
-// def print_i32(x: Int32) -> None:
+// def print_i32(x: int32) -> None:
 void print_i32(int32_t x) {
     // print(x)
     std::cout << x << "\n";
 }
 
-// def print_i64(x: Int64) -> None:
+// def print_i64(x: int64) -> None:
 void print_i64(int64_t x) {
     // print(x)
     std::cout << x << "\n";
 }
 
-// def print_u16(x: UInt16) -> None:
+// def print_u16(x: uint16) -> None:
 void print_u16(uint16_t x) {
     // print(x)
     std::cout << x << "\n";
 }
 
-// def print_u32(x: UInt32) -> None:
+// def print_u32(x: uint32) -> None:
 void print_u32(uint32_t x) {
     // print(x)
     std::cout << x << "\n";
 }
 
-// def print_u64(x: UInt64) -> None:
+// def print_u64(x: uint64) -> None:
 void print_u64(uint64_t x) {
     // print(x)
     std::cout << x << "\n";
@@ -42,8 +42,8 @@ void print_u64(uint64_t x) {
 
 // def main() -> None:
 void main() {
-    // # Signed widening: Int8 -> Int16 -> Int32 -> Int64
-    // a: Int8 = Int8(42)
+    // # Signed widening: int8 -> int16 -> int32 -> int64
+    // a: int8 = int8(42)
     int8_t a = 42;
     // print_i16(a)
     print_i16(static_cast<int16_t>(a));
@@ -51,18 +51,18 @@ void main() {
     print_i32(static_cast<int32_t>(a));
     // print_i64(a)
     print_i64(static_cast<int64_t>(a));
-    // b: Int16 = Int16(1000)
+    // b: int16 = int16(1000)
     int16_t b = 1000;
     // print_i32(b)
     print_i32(static_cast<int32_t>(b));
     // print_i64(b)
     print_i64(static_cast<int64_t>(b));
-    // c: Int32 = Int32(100000)
+    // c: int32 = int32(100000)
     int32_t c = 100000;
     // print_i64(c)
     print_i64(static_cast<int64_t>(c));
-    // # Unsigned widening: UInt8 -> UInt16 -> UInt32 -> UInt64
-    // d: UInt8 = UInt8(200)
+    // # Unsigned widening: uint8 -> uint16 -> uint32 -> uint64
+    // d: uint8 = uint8(200)
     uint8_t d = 200;
     // print_u16(d)
     print_u16(static_cast<uint16_t>(d));
@@ -70,26 +70,26 @@ void main() {
     print_u32(static_cast<uint32_t>(d));
     // print_u64(d)
     print_u64(static_cast<uint64_t>(d));
-    // e: UInt16 = UInt16(50000)
+    // e: uint16 = uint16(50000)
     uint16_t e = 50000;
     // print_u32(e)
     print_u32(static_cast<uint32_t>(e));
     // print_u64(e)
     print_u64(static_cast<uint64_t>(e));
-    // f: UInt32 = UInt32(3000000000)
+    // f: uint32 = uint32(3000000000)
     uint32_t f = static_cast<uint32_t>(3000000000);
     // print_u64(f)
     print_u64(static_cast<uint64_t>(f));
-    // # Cross-sign widening: UInt8 -> Int16, UInt16 -> Int32, UInt32 -> Int64
-    // print_i16(d)   # UInt8(200) -> Int16
+    // # Cross-sign widening: uint8 -> int16, uint16 -> int32, uint32 -> int64
+    // print_i16(d)   # uint8(200) -> int16
     print_i16(static_cast<int16_t>(d));
-    // print_i32(d)   # UInt8(200) -> Int32
+    // print_i32(d)   # uint8(200) -> int32
     print_i32(static_cast<int32_t>(d));
-    // g: UInt16 = UInt16(60000)
+    // g: uint16 = uint16(60000)
     uint16_t g = 60000;
-    // print_i32(g)   # UInt16(60000) -> Int32
+    // print_i32(g)   # uint16(60000) -> int32
     print_i32(static_cast<int32_t>(g));
-    // print_i64(f)   # UInt32(3000000000) -> Int64
+    // print_i64(f)   # uint32(3000000000) -> int64
     print_i64(static_cast<int64_t>(f));
 }
 

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def step(x: int | None, y: Int32 | None, lst: list[int] | None) -> None:
+// def step(x: int | None, y: int32 | None, lst: list[int] | None) -> None:
 void step(std::optional<::tpy::BigInt> x, std::optional<int32_t> y, std::vector<::tpy::BigInt>* lst) {
     // if x is None:
     if ((!x.has_value())) {
@@ -38,7 +38,7 @@ void step(std::optional<::tpy::BigInt> x, std::optional<int32_t> y, std::vector<
 void local_path() {
     // a: int | None = 10
     std::optional<::tpy::BigInt> a = 10;
-    // b: Int32 | None = 3
+    // b: int32 | None = 3
     std::optional<int32_t> b = 3;
     // if a is None:
     if ((!a.has_value())) {

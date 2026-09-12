@@ -28,18 +28,18 @@ void main();
 
 // class CounterIter:
 struct CounterIter {
-    // current: Int32
+    // current: int32
     int32_t current;
-    // limit: Int32
+    // limit: int32
     int32_t limit;
 
-    // def __init__(self, start: Int32, limit: Int32) -> None:
+    // def __init__(self, start: int32, limit: int32) -> None:
     CounterIter() = default;
     explicit CounterIter(int32_t start, int32_t limit);
 
     auto& __iter__() { return *this; }
 
-    // def __next__(self) -> Int32:
+    // def __next__(self) -> int32:
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     static constexpr std::string_view __tpy_class_name__ = "__main__.CounterIter";
 };
@@ -52,12 +52,12 @@ inline std::ostream& operator<<(std::ostream& os, const CounterIter& obj) {
 // @nocopy
 // class Counter:
 struct Counter {
-    // start: Int32
+    // start: int32
     int32_t start;
-    // limit: Int32
+    // limit: int32
     int32_t limit;
 
-    // def __init__(self, start: Int32, limit: Int32) -> None:
+    // def __init__(self, start: int32, limit: int32) -> None:
     Counter() = default;
     explicit Counter(int32_t start, int32_t limit);
     // non-copyable (@nocopy)
@@ -104,7 +104,7 @@ struct __coro_consume {
         return os << "<coroutine consume>";
     }
 };
-// async def consume(it: Iterable[Int32]) -> None:
+// async def consume(it: Iterable[int32]) -> None:
 template <::tpystd::typing::Iterable<int32_t> T_it>
 ::tpystd::tpy::Poll<::std::monostate> __coro_consume<T_it>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
@@ -141,7 +141,7 @@ template <::tpystd::typing::Iterable<int32_t> T_it>
 }
 
 
-// async def consume(it: Iterable[Int32]) -> None:
+// async def consume(it: Iterable[int32]) -> None:
 template <::tpystd::typing::Iterable<int32_t> T_it>
 __coro_consume<T_it> consume(T_it&& it) {
     return __coro_consume<T_it>(std::forward<T_it>(it));
@@ -171,7 +171,7 @@ struct __coro_driver {
         return os << "<coroutine driver>";
     }
 };
-// async def driver(it: Iterable[Int32]) -> None:
+// async def driver(it: Iterable[int32]) -> None:
 template <::tpystd::typing::Iterable<int32_t> T_it>
 ::tpystd::tpy::Poll<::std::monostate> __coro_driver<T_it>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
@@ -195,17 +195,17 @@ template <::tpystd::typing::Iterable<int32_t> T_it>
 }
 
 
-// async def driver(it: Iterable[Int32]) -> None:
+// async def driver(it: Iterable[int32]) -> None:
 template <::tpystd::typing::Iterable<int32_t> T_it>
 __coro_driver<T_it> driver(T_it&& it) {
     return __coro_driver<T_it>(std::forward<T_it>(it));
 }
 
 
-// def __init__(self, start: Int32, limit: Int32) -> None:
+// def __init__(self, start: int32, limit: int32) -> None:
 inline CounterIter::CounterIter(int32_t start, int32_t limit) : current(start), limit(limit) {}
 
-// def __next__(self) -> Int32:
+// def __next__(self) -> int32:
 inline std::expected<int32_t, ::tpy::StopIteration> CounterIter::__next__() {
     // if self.current < self.limit:
     if ((this->current < this->limit)) {
@@ -220,7 +220,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> CounterIter::__next__() {
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }
 
-// def __init__(self, start: Int32, limit: Int32) -> None:
+// def __init__(self, start: int32, limit: int32) -> None:
 inline Counter::Counter(int32_t start, int32_t limit) : start(start), limit(limit) {}
 
 // def __iter__(self) -> Own[CounterIter]:

@@ -1,5 +1,5 @@
-from tpy import Int32
-def go(u: list[tuple[Int32, Int32]] | Int32) -> Int32:
+from tpy import int32
+def go(u: list[tuple[int32, int32]] | int32) -> int32:
     t = 0
     if isinstance(u, list):
         for a, b in u:

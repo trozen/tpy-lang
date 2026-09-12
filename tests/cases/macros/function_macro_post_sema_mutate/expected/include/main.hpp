@@ -17,13 +17,13 @@ void main();
 
 // class Counter:
 struct Counter {
-    // n: Int32
+    // n: int32
     int32_t n;
 
     // def __init__(self) -> None:
     Counter();
 
-    // def bump(self) -> Int32:
+    // def bump(self) -> int32:
     int32_t bump();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
@@ -37,7 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 // def __init__(self) -> None:
 inline Counter::Counter() : n(0) {}
 
-// def bump(self) -> Int32:
+// def bump(self) -> int32:
 inline int32_t Counter::bump() {
     // self.n += 1
     this->n = ::tpy::add_check<int32_t>(this->n, 1);

@@ -17,10 +17,10 @@ inline constexpr std::string_view __name__ = "__main__";
 // @total_ordering
 // class Bid:
 struct Bid {
-    // amount: Int32
+    // amount: int32
     int32_t amount;
 
-    // def __init__(self, a: Int32) -> None:
+    // def __init__(self, a: int32) -> None:
     Bid() = default;
     explicit Bid(int32_t a);
 
@@ -64,7 +64,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bid& obj) {
 }
 
 
-// def __init__(self, a: Int32) -> None:
+// def __init__(self, a: int32) -> None:
 inline Bid::Bid(int32_t a) : amount(a) {}
 
 // def __eq__(self, other: "Bid") -> bool:

@@ -6,10 +6,10 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // b = Box[Int32](Int32(42))
+    // b = Box[int32](int32(42))
     Box<int32_t> b = Box<int32_t>(42);
-    // # A=Box[Int32] explicit, B=Int32 inferred from second arg
-    // w = wrap_with_tag[Box[Int32]](b, Int32(99))
+    // # A=Box[int32] explicit, B=int32 inferred from second arg
+    // w = wrap_with_tag[Box[int32]](b, int32(99))
     Wrapper<Box<int32_t>, int32_t> w = wrap_with_tag<Box<int32_t>, int32_t>(std::move(b), 99);
     // print(w.inner.val)
     std::cout << w.inner.val << "\n";

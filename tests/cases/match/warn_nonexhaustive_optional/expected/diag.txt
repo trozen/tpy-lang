@@ -1,1 +1,1 @@
-main.py:6: warning: non-exhaustive match on 'Int32 | None'; missing: None, Int32 (add 'case _: pass' to suppress)
+main.py:6: warning: non-exhaustive match on 'int32 | None'; missing: None, int32 (add 'case _: pass' to suppress)

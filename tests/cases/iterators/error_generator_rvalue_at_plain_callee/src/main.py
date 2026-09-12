@@ -1,11 +1,11 @@
 # A generator-factory rvalue at a PLAIN (non-generator) callee slot: the argument
 # temp is keyed on both sides being generator-like, so this has no hoist.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 import itertools
 
 
-def first_or(it: Iterator[int], d: Int32) -> Int32:
+def first_or(it: Iterator[int], d: int32) -> int32:
     for x in it:
         return x
     return d

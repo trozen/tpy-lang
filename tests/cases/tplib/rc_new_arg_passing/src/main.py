@@ -1,25 +1,25 @@
 # A freshly-built Own[...] rvalue (Rc.new(...), Box(...)) passed directly to a
 # borrow param: the materialized temp outlives the call, so create-lend-drop
 # is safe for any Own-rvalue.
-from tpy import Int32
+from tpy import int32
 from tplib import Rc, Box
 
 
 class Counter:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
-    def value(self) -> Int32:
+    def value(self) -> int32:
         return self.n
 
 
-def read_rc(c: Rc[Counter]) -> Int32:
+def read_rc(c: Rc[Counter]) -> int32:
     return c.get().value()
 
 
-def read_box(c: Box[Counter]) -> Int32:
+def read_box(c: Box[Counter]) -> int32:
     return c.get().value()
 
 

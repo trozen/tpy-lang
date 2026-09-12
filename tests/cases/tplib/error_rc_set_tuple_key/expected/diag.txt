@@ -1,1 +1,1 @@
-main.py:13: error: Type 'tuple[Rc[Int32], Int32]' is non-copyable and cannot be used as a set element; set elements must be copy-constructible
+main.py:13: error: Type 'tuple[Rc[int32], int32]' is non-copyable and cannot be used as a set element; set elements must be copy-constructible

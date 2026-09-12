@@ -1,11 +1,11 @@
 # A copy-shaped record NAME at an ArrayList element slot: the `Own[T]` slot binds
 # an rvalue or a move source, never a name that would have to copy.
-from tpy import Int32
+from tpy import int32
 from tplib import ArrayList
 
 
 class Row:
-    x: Int32
+    x: int32
 
     def __init__(self) -> None:
         self.x = 1

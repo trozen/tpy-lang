@@ -1,11 +1,11 @@
 # D16 Phase 1: __getattr__ cannot return a view/borrowed type (Span/Ptr/Ref/StrView/BytesView).
-from tpy import Int32, Span
+from tpy import int32, Span
 
 class Bad:
-    _items: list[Int32]
+    _items: list[int32]
 
     def __init__(self) -> None:
-        self._items = [Int32(1), Int32(2)]
+        self._items = [int32(1), int32(2)]
 
-    def __getattr__(self, name: str) -> Span[Int32]:  # tpyc: error(/value type, Any, or Own/)
+    def __getattr__(self, name: str) -> Span[int32]:  # tpyc: error(/value type, Any, or Own/)
         return self._items

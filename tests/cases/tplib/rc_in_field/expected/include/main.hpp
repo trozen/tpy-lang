@@ -20,7 +20,7 @@ void main();
 
 // class Counter:
 struct Counter {
-    // value: Int32
+    // value: int32
     int32_t value;
 
     // def __init__(self) -> None:
@@ -64,7 +64,7 @@ inline Counter::Counter() : value(0) {}
 
 // def bump(self) -> None:
 inline void Counter::bump() {
-    // self.value += Int32(1)
+    // self.value += int32(1)
     this->value = ::tpy::add_check<int32_t>(this->value, 1);
 }
 

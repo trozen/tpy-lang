@@ -1,10 +1,10 @@
 # @nocopy not-at-last-use error for generic constructor with Own[T] param
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 
 
 @nocopy
 class Handle:
-    fd: Int32
+    fd: int32
 
 
 class GenericHolder[T]:

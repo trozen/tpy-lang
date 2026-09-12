@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 // # Test with Leaf[str]
-// leaf: Leaf[str] = Leaf[str]("hello", Int32(42), "bonus")
+// leaf: Leaf[str] = Leaf[str]("hello", int32(42), "bonus")
 Leaf<std::string>* leaf{};
 
 void __tpy_init() {
@@ -13,7 +13,7 @@ void __tpy_init() {
     initialized = true;
 
     // # Test with Leaf[str]
-    // leaf: Leaf[str] = Leaf[str]("hello", Int32(42), "bonus")
+    // leaf: Leaf[str] = Leaf[str]("hello", int32(42), "bonus")
     static Leaf<std::string> __global_slot_1 = Leaf<std::string>("hello", 42, "bonus");
     leaf = &__global_slot_1;
     // # Inherited method with type param in parameter (from Base)
@@ -22,7 +22,7 @@ void __tpy_init() {
     // # Inherited method with forwarded type param return (from Base, through Middle)
     // print(leaf.get_first())
     std::cout << leaf->get_first() << "\n";
-    // # Inherited method with concrete type param return (U=Int32 from Middle)
+    // # Inherited method with concrete type param return (U=int32 from Middle)
     // print(leaf.get_second())
     std::cout << leaf->get_second() << "\n";
     // # Own method

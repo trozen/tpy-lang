@@ -55,7 +55,7 @@ inline std::ostream& operator<<(std::ostream& os, const Number& obj) {
 
 // class Counter:
 struct Counter {
-    // calls: Int32
+    // calls: int32
     int32_t calls;
 
     // def __init__(self) -> None:

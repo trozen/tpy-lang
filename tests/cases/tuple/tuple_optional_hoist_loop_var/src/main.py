@@ -1,12 +1,12 @@
 # Hoisted loop variable iterating a storage-form container: the
 # storage_form_tuple_locals flag from the outer var-decl must persist
 # past the loop, and the rebound var holds the LAST element (CPython).
-from tpy import Int32
+from tpy import int32
 
 
 class T:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 

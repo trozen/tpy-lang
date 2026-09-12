@@ -1,4 +1,4 @@
-Explicit type args on a generic-function call (pick[Int32, IntBox](...)) are
+Explicit type args on a generic-function call (pick[int32, IntBox](...)) are
 required here -- R cannot be inferred without associated-type inference -- but
 CPython cannot subscript a function object at runtime ('function' object is not
 subscriptable). Comp-phase-only regression guard for sibling-referencing bounds.

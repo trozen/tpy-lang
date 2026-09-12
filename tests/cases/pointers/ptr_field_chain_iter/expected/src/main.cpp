@@ -4,14 +4,14 @@
 namespace tpyapp::main {
 
 
-// def head_floor(subsectors: list[Ptr[SubSector]]) -> Int32:
+// def head_floor(subsectors: list[Ptr[SubSector]]) -> int32:
 int32_t head_floor(const std::vector<SubSector*>& subsectors) {
     // # Two Ptr hops under a subscript: the whole chain is one read.
     // return subsectors[0].segs[0].sector_front.floor_h  # tpyc: ok
     return ::tpy::deref_check(::tpy::deref_check(::tpy::__getitem__(::tpy::deref_check(::tpy::__getitem__(subsectors, 0)).segs, 0)).sector_front).floor_h;
 }
 
-// def via_local(ss: Ptr[SubSector]) -> Int32:
+// def via_local(ss: Ptr[SubSector]) -> int32:
 int32_t via_local(SubSector* ss) {
     // seg = ss.segs[0]
     Seg* seg = ::tpy::__getitem__(::tpy::deref_check(ss).segs, 0);
@@ -20,7 +20,7 @@ int32_t via_local(SubSector* ss) {
     return ::tpy::deref_check(::tpy::deref_check(seg).sector_front).floor_h;
 }
 
-// def total(subsectors: list[Ptr[SubSector]]) -> Int32:
+// def total(subsectors: list[Ptr[SubSector]]) -> int32:
 int32_t total(const std::vector<SubSector*>& subsectors) {
     // acc = 0
     int32_t acc = 0;

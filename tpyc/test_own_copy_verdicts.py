@@ -11,24 +11,24 @@ from .diagnostics import DiagnosticLevel
 _STDLIB_DIRS = [get_lib_dir() / "tpy"]
 
 _SLOTS = (
-    "from tpy import Int32\n"
+    "from tpy import int32\n"
     "\n"
     "\n"
-    "def insert_slot[T](v: T) -> Int32:\n"
+    "def insert_slot[T](v: T) -> int32:\n"
     "    xs: list[T] = []\n"
     "    xs.append(v)\n"
     "    return len(xs)\n"
 )
 
 _NONCOPYABLE_MAIN = (
-    "from tpy import Int32\n"
+    "from tpy import int32\n"
     "from slots import insert_slot\n"
     "\n"
     "\n"
     "class Pinned:\n"
-    "    n: Int32\n"
+    "    n: int32\n"
     "\n"
-    "    def __init__(self, n: Int32) -> None:\n"
+    "    def __init__(self, n: int32) -> None:\n"
     "        self.n = n\n"
     "\n"
     "    def __del__(self) -> None:\n"
@@ -98,9 +98,9 @@ def test_copyable_instantiation_leaves_no_verdict(tmp_path):
 
 _LOCKED = (
     "class Locked:\n"
-    "    n: Int32\n"
+    "    n: int32\n"
     "\n"
-    "    def __init__(self, n: Int32) -> None:\n"
+    "    def __init__(self, n: int32) -> None:\n"
     "        self.n = n\n"
     "\n"
     "    def __del__(self) -> None:\n"
@@ -136,10 +136,10 @@ def test_clones_of_one_body_collapse_to_one_report(tmp_path):
     lib = tmp_path / "lib"
     lib.mkdir(exist_ok=True)
     (lib / "slots.py").write_text(
-        "from tpy import Int32\n"
+        "from tpy import int32\n"
         "\n"
         "\n"
-        "def insert_slot[T](v: T) -> Int32:\n"
+        "def insert_slot[T](v: T) -> int32:\n"
         "    xs: list[T] = []\n"
         "    try:\n"
         "        raise ValueError('x')\n"
@@ -162,10 +162,10 @@ def test_withdrawn_hedge_takes_no_verdict(tmp_path):
     lib = tmp_path / "lib"
     lib.mkdir(exist_ok=True)
     (lib / "slots.py").write_text(
-        "from tpy import Int32, Own\n"
+        "from tpy import int32, Own\n"
         "\n"
         "\n"
-        "def drain[T](xs: Own[list[T]]) -> Int32:\n"
+        "def drain[T](xs: Own[list[T]]) -> int32:\n"
         "    out: list[T] = []\n"
         "    for x in xs:\n"
         "        out.append(x)\n"

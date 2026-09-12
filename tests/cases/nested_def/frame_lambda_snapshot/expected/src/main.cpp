@@ -4,19 +4,19 @@
 namespace tpyapp::main {
 
 
-// def apply(f: Callable[[Int32], Int32], v: Int32) -> Int32:
+// def apply(f: Callable[[int32], int32], v: int32) -> int32:
 int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t v) {
     // return f(v)
     return f(v);
 }
 
-// def cell() -> Iterator[Int32]:
+// def cell() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_cell::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         // step = 1
         step = 1;
-        // f: Callable[[Int32], Int32] = lambda x: x + step  # tpyc: warning(/reassigned after the closure is created/)
+        // f: Callable[[int32], int32] = lambda x: x + step  # tpyc: warning(/reassigned after the closure is created/)
         f = [step = step](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, step)); };
         // step = 100
         step = 100;
@@ -39,16 +39,16 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_cell::__next__() {
 }
 
 
-// def cell() -> Iterator[Int32]:
+// def cell() -> Iterator[int32]:
 __gen_cell cell() {
     return __gen_cell();
 }
 
-// def copied(xs: list[Int32]) -> Iterator[Int32]:
+// def copied(xs: list[int32]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_copied::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // f: Callable[[Int32], Int32] = lambda i: xs[i]
+        // f: Callable[[int32], int32] = lambda i: xs[i]
         f = [xs = xs](int32_t i) -> int32_t { return ::tpy::__getitem__(xs, i); };
         // yield apply(f, 0)
         __state = S_RESUME_0;
@@ -71,7 +71,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_copied::__next__() {
 }
 
 
-// def copied(xs: list[Int32]) -> Iterator[Int32]:
+// def copied(xs: list[int32]) -> Iterator[int32]:
 __gen_copied copied(std::vector<int32_t>& xs) {
     return __gen_copied(xs);
 }

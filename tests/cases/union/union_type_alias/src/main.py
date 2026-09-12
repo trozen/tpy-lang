@@ -1,19 +1,19 @@
 # Type alias for union types using old-style assignment syntax
-from tpy import Int32
+from tpy import int32
 
 
 class Circle:
-    radius: Int32
+    radius: int32
 
-    def __init__(self, radius: Int32) -> None:
+    def __init__(self, radius: int32) -> None:
         self.radius = radius
 
 
 class Rect:
-    width: Int32
-    height: Int32
+    width: int32
+    height: int32
 
-    def __init__(self, width: Int32, height: Int32) -> None:
+    def __init__(self, width: int32, height: int32) -> None:
         self.width = width
         self.height = height
 
@@ -29,8 +29,8 @@ def describe(s: Shape) -> str:
 
 
 def main() -> None:
-    c: Shape = Circle(Int32(10))
-    r: Shape = Rect(Int32(3), Int32(4))
+    c: Shape = Circle(int32(10))
+    r: Shape = Rect(int32(3), int32(4))
     print(describe(c))
     print(describe(r))
 

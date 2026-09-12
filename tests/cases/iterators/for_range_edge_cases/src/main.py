@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 
 # Empty ranges -- body should never execute
 for i in range(0):
@@ -31,7 +31,7 @@ for i in range(0, 10, 100):
 for i in range(10, 0, -100):
     print(i)
 
-# Compound expression -- constant-folded to Int32
+# Compound expression -- constant-folded to int32
 for i in range(1 + 2):
     print(i)
 

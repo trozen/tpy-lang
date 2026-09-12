@@ -1,20 +1,20 @@
 # readonly[T] with @readonly methods: read-only access to fields and
 # readonly method calls through a readonly reference.
-from tpy import Int32, readonly
+from tpy import int32, readonly
 
 class Container:
-    _items: list[Int32]
+    _items: list[int32]
 
     def __init__(self) -> None:
-        self._items = [Int32(10), Int32(20), Int32(30)]
+        self._items = [int32(10), int32(20), int32(30)]
 
     @readonly
-    def items(self) -> list[Int32]:
+    def items(self) -> list[int32]:
         return self._items
 
     @readonly
-    def count(self) -> Int32:
-        return Int32(len(self._items))
+    def count(self) -> int32:
+        return int32(len(self._items))
 
 def read_items(c: readonly[Container]) -> None:
     items = c.items()

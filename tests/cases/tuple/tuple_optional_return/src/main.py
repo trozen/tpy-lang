@@ -2,12 +2,12 @@
 # Lowers to std::tuple<T*, T*> -- pointer form, matching the top-level
 # T | None -> T* convention. Destructuring binds T* locals; access via
 # the pointer is a non-copying borrow.
-from tpy import Int32
+from tpy import int32
 
 
 class T:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 

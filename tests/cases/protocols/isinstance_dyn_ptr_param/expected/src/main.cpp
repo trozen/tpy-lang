@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def reading(p: Ptr[Awaker]) -> Int32:
+// def reading(p: Ptr[Awaker]) -> int32:
 int32_t reading(Awaker* p) {
     // if isinstance(p, Loud):      # tpyc: ok
     if (Loud* __p_ptr = dynamic_cast<Loud*>(p); (__p_ptr != nullptr)) {

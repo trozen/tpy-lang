@@ -2,11 +2,11 @@
 # class's class_constants; codegen emits `<Class>::<X>` (the instance is a
 # carrier only).
 from typing import Final
-from tpy import Int32
+from tpy import int32
 
 
 class C:
-    LIMIT: Final[Int32] = 10
+    LIMIT: Final[int32] = 10
     NAME: Final[str] = "C"
 
     def __init__(self) -> None:

@@ -19,7 +19,7 @@ __tpy_builder_counter_1 __tpy_builder_build_counter_1();
 struct Holder {
 
 
-    // def make(self) -> Int32:
+    // def make(self) -> int32:
     int32_t make() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
@@ -48,7 +48,7 @@ inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_counter_1&
 }
 
 
-// def make(self) -> Int32:
+// def make(self) -> int32:
 inline int32_t Holder::make() const {
     // res = c.build()
     __tpy_builder_counter_1 res = __tpy_builder_build_counter_1();

@@ -18,10 +18,10 @@ void main();
 // @nocopy
 // class Node:
 struct Node {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Node() = default;
     explicit Node(int32_t v);
     // non-copyable (@nocopy)
@@ -39,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 
 // class Graph:
 struct Graph {
-    // total: Int32
+    // total: int32
     int32_t total;
     // slot: Node | None
     std::optional<Node> slot;
@@ -66,7 +66,7 @@ inline std::ostream& operator<<(std::ostream& os, const Graph& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Node::Node(int32_t v) : v(v) {}
 
 // def __init__(self) -> None:

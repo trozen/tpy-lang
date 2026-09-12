@@ -2,14 +2,14 @@
 # local. @nocopy forces the issue: a copy at any of these sinks is a C++
 # build error, so a passing run proves the move happened.
 import asyncio
-from tpy import Own, nocopy, Int32
+from tpy import Own, nocopy, int32
 
 
 @nocopy
 class Payload:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
@@ -20,33 +20,33 @@ class Holder:
         self.item = item
 
 
-async def make(n: Int32) -> Own[Payload]:
+async def make(n: int32) -> Own[Payload]:
     return Payload(n)
 
 
-def take(p: Own[Payload]) -> Int32:
+def take(p: Own[Payload]) -> int32:
     return p.n
 
 
-async def into_container() -> Int32:
+async def into_container() -> int32:
     out: list[Payload] = []
     p = await make(1)
     out.append(p)                 # last use -> moves into the element slot
     return out[0].n
 
 
-async def into_call_arg() -> Int32:
+async def into_call_arg() -> int32:
     p = await make(2)
     return take(p)                # last use -> moves into the Own param
 
 
-async def into_field() -> Int32:
+async def into_field() -> int32:
     p = await make(3)
     h = Holder(p)                 # last use -> moves into the field
     return h.item.n
 
 
-async def in_a_loop() -> Int32:
+async def in_a_loop() -> int32:
     out: list[Payload] = []
     i = 0
     while i < 3:

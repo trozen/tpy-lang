@@ -5,11 +5,11 @@
 # C++ callee, so both must carry the default.
 from typing import Iterator, Iterable, Final
 from enum import Enum
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
-DEFAULT_STOP: Final[Int32] = 4
-WIDTH: Final[Int32] = 7
+DEFAULT_STOP: Final[int32] = 4
+WIDTH: Final[int32] = 7
 
 
 class Mode(Enum):
@@ -18,32 +18,32 @@ class Mode(Enum):
 
 
 class Rec:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 
 # Simple generator (single yield in a tail while-loop), two literal defaults.
-def upto(stop: Int32 = 3, step: Int32 = 1) -> Iterator[Int32]:
-    i: Int32 = 0
+def upto(stop: int32 = 3, step: int32 = 1) -> Iterator[int32]:
+    i: int32 = 0
     while i < stop:
         yield i
         i += step
 
 
 # Default referencing a module-level Final constant.
-def upto_final(stop: Int32 = DEFAULT_STOP) -> Iterator[Int32]:
-    i: Int32 = 0
+def upto_final(stop: int32 = DEFAULT_STOP) -> Iterator[int32]:
+    i: int32 = 0
     while i < stop:
         yield i
         i += 1
 
 
 # Resumable generator (two yields), one default.
-def bounded(limit: Int32 = 2) -> Iterator[Int32]:
+def bounded(limit: int32 = 2) -> Iterator[int32]:
     yield 0
-    i: Int32 = 1
+    i: int32 = 1
     while i <= limit:
         yield i
         i += 1
@@ -51,8 +51,8 @@ def bounded(limit: Int32 = 2) -> Iterator[Int32]:
 
 # Generic generator (protocol param) with a default -- the proto-param
 # default-threading path, resumable via the break.
-def head[T](it: Iterable[T], n: Int32 = 2) -> Iterator[T]:
-    c: Int32 = 0
+def head[T](it: Iterable[T], n: int32 = 2) -> Iterator[T]:
+    c: int32 = 0
     for x in it:
         if c >= n:
             break
@@ -61,30 +61,30 @@ def head[T](it: Iterable[T], n: Int32 = 2) -> Iterator[T]:
 
 
 class Box:
-    base: Int32
+    base: int32
 
     def __init__(self) -> None:
         self.base = 0
 
     # Simple generator METHOD with a default (the record_name peephole path).
-    def upto_m(self, stop: Int32 = 2) -> Iterator[Int32]:
-        i: Int32 = 0
+    def upto_m(self, stop: int32 = 2) -> Iterator[int32]:
+        i: int32 = 0
         while i < stop:
             yield i
             i += 1
 
     # Resumable generator METHOD (two yields) -- the reproducer.
-    def bounded_m(self, limit: Int32 = 2) -> Iterator[Int32]:
+    def bounded_m(self, limit: int32 = 2) -> Iterator[int32]:
         yield self.base
-        i: Int32 = 1
+        i: int32 = 1
         while i <= limit:
             yield self.base + i
             i += 1
 
     # Every default shape at the resumable-method position, in one signature.
     def shapes(self, tag: str = "t", flag: bool = True, ratio: float = 0.5,
-               m: Mode = Mode.B, r: Rec | None = None, w: Int32 = Int32(3),
-               neg: Int32 = -1, f: Int32 = WIDTH) -> Iterator[Int32]:
+               m: Mode = Mode.B, r: Rec | None = None, w: int32 = int32(3),
+               neg: int32 = -1, f: int32 = WIDTH) -> Iterator[int32]:
         yield self.base
         print("shapes", tag, flag, ratio, m == Mode.B,
               -1 if r is None else r.v, w, neg, f)
@@ -98,8 +98,8 @@ class Box2[T]:
         self.items = items
 
     # Resumable generator method on a GENERIC class -- the monomorphic twin.
-    def take(self, n: Int32 = 2) -> Iterator[T]:
-        c: Int32 = 0
+    def take(self, n: int32 = 2) -> Iterator[T]:
+        c: int32 = 0
         for x in self.items:
             if c >= n:
                 break
@@ -127,7 +127,7 @@ def main() -> None:
     for v in bounded(1):
         print(v)
     print("--")
-    nums: list[Int32] = [10, 20, 30, 40]
+    nums: list[int32] = [10, 20, 30, 40]
     for v in head(nums):
         print(v)
     print("--")

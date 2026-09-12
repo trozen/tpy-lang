@@ -2,11 +2,11 @@
 # manager after the body, so a consume inside the body must copy (with
 # warning), not move.
 import asyncio
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Guard:
-    vals: list[Int32]
+    vals: list[int32]
 
     def __init__(self):
         self.vals = [1, 2]

@@ -1,8 +1,8 @@
-from tpy import Int32
+from tpy import int32
 from pkg.mod import test
 
-def main() -> Int32:
+def main() -> int32:
     print(test())
-    return Int32(0)
+    return int32(0)
 
 main()

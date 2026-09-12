@@ -142,7 +142,7 @@ inline void Repo::save_json(std::string_view __path, int32_t indent) const {
     __ctx_1.__exit__({}, nullptr, {});
     // # not quoted strings -- matching stdlib json.dumps/loads and CPython. A
     // # bare-number payload must parse, to_json must emit an unquoted number, and
-    // # arbitrary precision (values beyond Int64) must survive a round-trip.
+    // # arbitrary precision (values beyond int64) must survive a round-trip.
 }
 
 inline Repo Repo::load_json(std::string_view __path) {
@@ -168,7 +168,7 @@ inline Repo Repo::load_json(std::string_view __path) {
     // # not quoted strings -- matching stdlib json.dumps/loads and CPython. A
     // # bare-number payload must parse, to_json must emit an unquoted number, and
     return Repo::from_json(__data);
-    // # arbitrary precision (values beyond Int64) must survive a round-trip.
+    // # arbitrary precision (values beyond int64) must survive a round-trip.
 }
 
 inline std::expected<Repo, ::tpystd::tplib::json::parser::JsonError> Repo::try_load_json(std::string_view __path) {
@@ -194,7 +194,7 @@ inline std::expected<Repo, ::tpystd::tplib::json::parser::JsonError> Repo::try_l
     // # not quoted strings -- matching stdlib json.dumps/loads and CPython. A
     // # bare-number payload must parse, to_json must emit an unquoted number, and
     return Repo::try_from_json(__data);
-    // # arbitrary precision (values beyond Int64) must survive a round-trip.
+    // # arbitrary precision (values beyond int64) must survive a round-trip.
 }
 void __tpy_init();
 } // namespace tpyapp::main

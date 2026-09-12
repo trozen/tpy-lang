@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 
 class Box[T]:
     value: T
@@ -14,8 +14,8 @@ class Box[T]:
 
 
 def main() -> None:
-    # Test with Int32
-    box_int: Box[Int32] = Box[Int32](42)
+    # Test with int32
+    box_int: Box[int32] = Box[int32](42)
     print(box_int.get())
     box_int.set(100)
     print(box_int.get())
@@ -27,7 +27,7 @@ def main() -> None:
     print(box_str.get())
 
     # Test type deduction (no explicit annotation)
-    box_deduced = Box[Int32](999)
+    box_deduced = Box[int32](999)
     print(box_deduced.get())
 
 

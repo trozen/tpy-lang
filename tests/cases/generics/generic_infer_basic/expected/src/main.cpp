@@ -6,8 +6,8 @@ namespace tpyapp::main {
 // # Inference from int literal -> Box[int]
 // box = Box(42)
 Box<int32_t>* box{};
-// # Inference from Int32 -> Box[Int32]
-// x: Int32 = 10
+// # Inference from int32 -> Box[int32]
+// x: int32 = 10
 int32_t x{};
 // box32 = Box(x)
 Box<int32_t>* box32{};
@@ -23,8 +23,8 @@ void __tpy_init() {
     box = &__global_slot_1;
     // print(box.value)
     std::cout << box->value << "\n";
-    // # Inference from Int32 -> Box[Int32]
-    // x: Int32 = 10
+    // # Inference from int32 -> Box[int32]
+    // x: int32 = 10
     x = 10;
     // box32 = Box(x)
     static Box<int32_t> __global_slot_2 = Box<int32_t>(x);

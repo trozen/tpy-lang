@@ -25,7 +25,7 @@ void test_get_str_param_default(std::string_view s);
 struct Required {
     // name: str
     std::string name;
-    // age: Int32
+    // age: int32
     int32_t age;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.Required";
@@ -40,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Required& obj) {
 struct NullableField {
     // name: Optional[str]
     std::optional<std::string> name;
-    // count: Int32
+    // count: int32
     int32_t count;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.NullableField";
@@ -55,7 +55,7 @@ inline std::ostream& operator<<(std::ostream& os, const NullableField& obj) {
 struct Partial {
     // name: str
     std::optional<std::string> name = std::nullopt;
-    // age: Int32
+    // age: int32
     std::optional<int32_t> age = std::nullopt;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.Partial";

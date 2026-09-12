@@ -1,34 +1,34 @@
 # Properties accessed via self inside class methods
-from tpy import Int32
+from tpy import int32
 
 class Rect:
-    _w: Int32
-    _h: Int32
+    _w: int32
+    _h: int32
 
-    def __init__(self, w: Int32, h: Int32) -> None:
+    def __init__(self, w: int32, h: int32) -> None:
         self._w = w
         self._h = h
 
     @property
-    def width(self) -> Int32:
+    def width(self) -> int32:
         return self._w
 
     @width.setter
-    def width(self, v: Int32) -> None:
+    def width(self, v: int32) -> None:
         self._w = v
 
     @property
-    def height(self) -> Int32:
+    def height(self) -> int32:
         return self._h
 
     @property
-    def area(self) -> Int32:
+    def area(self) -> int32:
         return self.width * self.height
 
     def describe(self) -> str:
         return f"{self.width}x{self.height}={self.area}"
 
-    def scale(self, factor: Int32) -> None:
+    def scale(self, factor: int32) -> None:
         self.width = self._w * factor
 
 def main() -> None:

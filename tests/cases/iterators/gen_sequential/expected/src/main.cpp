@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def triple() -> Iterator[Int32]:
+// def triple() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_triple::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -32,7 +32,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_triple::__next__() {
 }
 
 
-// def triple() -> Iterator[Int32]:
+// def triple() -> Iterator[int32]:
 __gen_triple triple() {
     return __gen_triple();
 }

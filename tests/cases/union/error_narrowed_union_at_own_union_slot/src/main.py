@@ -1,20 +1,20 @@
 # A ptr-variant union name at an `Own[A | B]` slot: outside a narrow the arm
 # copies the active member out, but INSIDE one the concrete alternative is what
 # is bound, which the variant lift has no arm for, so `consume(p)` is rejected.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class A:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
 class B:
-    y: Int32
+    y: int32
 
-    def __init__(self, y: Int32) -> None:
+    def __init__(self, y: int32) -> None:
         self.y = y
 
 

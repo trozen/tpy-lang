@@ -17,14 +17,14 @@ void main();
 
 // class Box:
 struct Box {
-    // _val: Int32
+    // _val: int32
     int32_t _val;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Box() = default;
     explicit Box(int32_t v);
 
-    // def __deref__(self) -> Int32:
+    // def __deref__(self) -> int32:
     int32_t __deref__() const;
 
     auto operator*() -> decltype(__deref__()) {
@@ -39,15 +39,15 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Box::Box(int32_t v) : _val(v) {}
 
-// def __deref__(self) -> Int32:
+// def __deref__(self) -> int32:
 inline int32_t Box::__deref__() const {
     // return self._val
     return this->_val;
 }
-// def deref_protocol(p: Deref[Int32]) -> Int32:
+// def deref_protocol(p: Deref[int32]) -> int32:
 template<::tpystd::tpy::Deref<int32_t> T_p>
 int32_t deref_protocol(const T_p& p) {
     // return deref(p)

@@ -1,9 +1,9 @@
 # Optional subject: wildcard and literal arms; `case _:` must also match None
 # (the None side may not be silently dropped by the has_value partition).
-from tpy import Int32
+from tpy import int32
 
 
-def label(v: Int32 | None) -> None:
+def label(v: int32 | None) -> None:
     match v:
         case 5:
             print("five")
@@ -11,7 +11,7 @@ def label(v: Int32 | None) -> None:
             print("other")
 
 
-def pick(v: Int32 | None) -> Int32:
+def pick(v: int32 | None) -> int32:
     match v:
         case 5:
             return 50

@@ -2,15 +2,15 @@
 # the sub-iterator lives in a __for_src frame field typed as the callee's
 # struct, advanced in place across suspensions.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
-def src() -> Iterator[Int32]:
+def src() -> Iterator[int32]:
     yield 1
     yield 2
 
 
-def gen() -> Iterator[Int32]:
+def gen() -> Iterator[int32]:
     yield 0
     for x in src():  # tpyc: ok
         yield x

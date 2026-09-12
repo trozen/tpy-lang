@@ -2,11 +2,11 @@
 # address. tpyc's default `const T&` perf emission for non-mutated ref-params
 # must be suppressed in this case -- `&a` on a `const T&` yields `const T*`,
 # which won't implicitly convert to the field's `T*`.
-from tpy import Ptr, Int32, readonly
+from tpy import Ptr, int32, readonly
 
 class A:
-    v: Int32
-    def __init__(self, v: Int32) -> None:
+    v: int32
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 class Mut:

@@ -1,11 +1,11 @@
 # Return-tier try/except with finally block (goto-based + catch-all)
-from tpy import Int32, error_return, ReturnException
+from tpy import int32, error_return, ReturnException
 
 class NotFound(Exception, ReturnException):
     pass
 
 @error_return(NotFound)
-def lookup(key: str) -> Int32:
+def lookup(key: str) -> int32:
     if key == "x":
         return 42
     raise NotFound

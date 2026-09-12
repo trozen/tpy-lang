@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // xs: list[Int32] = [1, 2, 3, 4, 5]
+    // xs: list[int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> xs = {1, 2, 3, 4, 5};
     // w = Wrap(xs)
     Wrap<std::vector<int32_t>> w = Wrap<std::vector<int32_t>>(xs);

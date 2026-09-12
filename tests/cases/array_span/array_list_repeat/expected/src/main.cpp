@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def test_basic() -> None:
 void test_basic() {
-    // buf: Array[Int16, 5] = [0] * 5
+    // buf: Array[int16, 5] = [0] * 5
     std::array<int16_t, 5> buf = ({
         int16_t __rep_0 = 0;
         ::tpy::array_from_index<int16_t, 5>([&](std::size_t) -> int16_t { return __rep_0; });
@@ -19,7 +19,7 @@ void test_basic() {
 
 // def test_nonzero() -> None:
 void test_nonzero() {
-    // arr: Array[Int32, 4] = [42] * 4
+    // arr: Array[int32, 4] = [42] * 4
     std::array<int32_t, 4> arr = ({
         int32_t __rep_0 = 42;
         ::tpy::array_from_index<int32_t, 4>([&](std::size_t) -> int32_t { return __rep_0; });
@@ -30,7 +30,7 @@ void test_nonzero() {
 
 // def test_multi_element() -> None:
 void test_multi_element() {
-    // arr: Array[Int32, 6] = [1, 2, 3] * 2
+    // arr: Array[int32, 6] = [1, 2, 3] * 2
     std::array<int32_t, 6> arr = ({
         std::array<int32_t, 3> __rep_0{1, 2, 3};
         ::tpy::array_from_index<int32_t, 6>([&](std::size_t __i_0) -> int32_t { return __rep_0[__i_0 % 3]; });

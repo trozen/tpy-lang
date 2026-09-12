@@ -1,8 +1,8 @@
 from typing import Optional
-from tpy import Int32
+from tpy import int32
 
 class H:
-    ol: Optional[list[Int32]]
+    ol: Optional[list[int32]]
     def __init__(self) -> None:
         self.ol = [1, 2]
 

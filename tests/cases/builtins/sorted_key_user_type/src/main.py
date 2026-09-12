@@ -1,10 +1,10 @@
 # sorted/min/max with key returning a user-defined Comparable type
 from __future__ import annotations
-from tpy import Int32, Own
+from tpy import int32, Own
 
 class Score:
-    val: Int32
-    def __init__(self, val: Int32) -> None:
+    val: int32
+    def __init__(self, val: int32) -> None:
         self.val = val
     def __lt__(self, other: Score) -> bool:
         return self.val < other.val

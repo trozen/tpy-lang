@@ -26,10 +26,10 @@ void main();
 // @nocopy
 // class Counter:
 struct Counter {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Counter() = default;
     explicit Counter(int32_t n);
     // non-copyable (@nocopy)
@@ -51,7 +51,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 // @nocopy
 // class _OwnPair:
 struct _OwnPair {
-    // _polls: Int32
+    // _polls: int32
     int32_t _polls;
 
     // def __init__(self) -> None:
@@ -65,7 +65,7 @@ struct _OwnPair {
     // def cancel(self) -> None:
     void cancel() const;
 
-    // def __poll__(self, w: Waker) -> Own[Poll[tuple[Own[Counter], Int32]]]:
+    // def __poll__(self, w: Waker) -> Own[Poll[tuple[Own[Counter], int32]]]:
     ::tpystd::tpy::Poll<std::tuple<Counter, int32_t>> __poll__(::tpystd::coro::Waker w);
     static constexpr std::string_view __tpy_class_name__ = "__main__._OwnPair";
 };
@@ -89,7 +89,7 @@ struct _ValPair {
     // def cancel(self) -> None:
     void cancel() const;
 
-    // def __poll__(self, w: Waker) -> Own[Poll[tuple[Int32, Int32]]]:
+    // def __poll__(self, w: Waker) -> Own[Poll[tuple[int32, int32]]]:
     ::tpystd::tpy::Poll<std::tuple<int32_t, int32_t>> __poll__(::tpystd::coro::Waker w) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__._ValPair";
 };
@@ -113,7 +113,7 @@ struct _RefPair {
     // def cancel(self) -> None:
     void cancel() const;
 
-    // def __poll__(self, w: Waker) -> Own[Poll[tuple[list[Int32], Int32]]]:
+    // def __poll__(self, w: Waker) -> Own[Poll[tuple[list[int32], int32]]]:
     ::tpystd::tpy::Poll<std::tuple<std::vector<int32_t>, int32_t>> __poll__(::tpystd::coro::Waker w) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__._RefPair";
 };
@@ -167,7 +167,7 @@ struct __coro_main_coro {
 };
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Counter::Counter(int32_t n) : n(n) {}
 
 // def bump(self) -> None:
@@ -184,7 +184,7 @@ inline void _OwnPair::cancel() const {
     // pass
 }
 
-// def __poll__(self, w: Waker) -> Own[Poll[tuple[Own[Counter], Int32]]]:
+// def __poll__(self, w: Waker) -> Own[Poll[tuple[Own[Counter], int32]]]:
 inline ::tpystd::tpy::Poll<std::tuple<Counter, int32_t>> _OwnPair::__poll__(::tpystd::coro::Waker w) {
     // self._polls += 1
     this->_polls = ::tpy::add_check<int32_t>(this->_polls, 1);
@@ -197,11 +197,11 @@ inline void _ValPair::cancel() const {
     // pass
 }
 
-// def __poll__(self, w: Waker) -> Own[Poll[tuple[Int32, Int32]]]:
+// def __poll__(self, w: Waker) -> Own[Poll[tuple[int32, int32]]]:
 inline ::tpystd::tpy::Poll<std::tuple<int32_t, int32_t>> _ValPair::__poll__(::tpystd::coro::Waker w) const {
-    // # Explicit Int32: poll_ready[T]'s arg isn't target-typed by the return,
-    // # so bare literals stay IntLiteral and mismatch tuple[Int32, Int32].
-    // return poll_ready((Int32(1), Int32(2)))
+    // # Explicit int32: poll_ready[T]'s arg isn't target-typed by the return,
+    // # so bare literals stay IntLiteral and mismatch tuple[int32, int32].
+    // return poll_ready((int32(1), int32(2)))
     return ::tpystd::coro::poll_ready<std::tuple<int32_t, int32_t>>(std::tuple<int32_t, int32_t>{1, 2});
 }
 
@@ -210,11 +210,11 @@ inline void _RefPair::cancel() const {
     // pass
 }
 
-// def __poll__(self, w: Waker) -> Own[Poll[tuple[list[Int32], Int32]]]:
+// def __poll__(self, w: Waker) -> Own[Poll[tuple[list[int32], int32]]]:
 inline ::tpystd::tpy::Poll<std::tuple<std::vector<int32_t>, int32_t>> _RefPair::__poll__(::tpystd::coro::Waker w) const {
-    // xs: list[Int32] = [10, 20]
+    // xs: list[int32] = [10, 20]
     std::vector<int32_t> xs = {10, 20};
-    // return poll_ready((xs, Int32(2)))
+    // return poll_ready((xs, int32(2)))
     return ::tpystd::coro::poll_ready<std::tuple<std::vector<int32_t>, int32_t>>(::tpy::tuple_to_storage_move<std::tuple<std::vector<int32_t>, int32_t>>(std::tuple<std::vector<int32_t>*, int32_t>{std::move(&(xs)), 2}));
 }
 void __tpy_init();

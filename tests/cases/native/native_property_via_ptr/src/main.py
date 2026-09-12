@@ -3,12 +3,12 @@
 # the plain-value path does; otherwise generated code references a member the
 # C++ class does not have.
 # tpy: include("native_types.hpp")
-from tpy import Int32, Ptr, readonly, pure
+from tpy import int32, Ptr, readonly, pure
 from tpy.extern import native, cpp_template
 
 @native("x::A")
 class A:
-    v: Int32
+    v: int32
 
 @native("x::S")
 class S:

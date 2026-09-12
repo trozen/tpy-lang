@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def negate(x: Int32 | None) -> Int32:
+// def negate(x: int32 | None) -> int32:
 int32_t negate(std::optional<int32_t> x) {
     // return -x
     return ::tpy::neg_check<int32_t>(::tpy::deref_optional_check(x));

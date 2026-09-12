@@ -4,19 +4,19 @@
 # pointee is pinned by
 # tests/cases/records/annotation_only_optional_record_local.
 from typing import Protocol
-from tpy import Int32
+from tpy import int32
 
 
 class HasValue(Protocol):
-    def value(self) -> Int32: ...
+    def value(self) -> int32: ...
 
 
 class Impl:
-    def value(self) -> Int32:
+    def value(self) -> int32:
         return 3
 
 
-def proto_slot() -> Int32:
+def proto_slot() -> int32:
     p: HasValue | None  # tpyc: error(/decl\.opt_slot_pointee/)
     p = Impl()
     if p is not None:

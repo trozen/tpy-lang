@@ -6,13 +6,13 @@ namespace tpyapp::main {
 
 // def too_big() -> int:
 ::tpy::BigInt too_big() {
-    // return 10_000_000_000  # > Int32 max
+    // return 10_000_000_000  # > int32 max
     return ::tpy::BigInt(static_cast<int64_t>(10000000000LL));
 }
 
 // def main() -> None:
 void main() {
-    // xs: list[Int32] = [too_big()]
+    // xs: list[int32] = [too_big()]
     std::vector<int32_t> xs = {(too_big()).to_fixed_check<int32_t>()};
     // print(len(xs))
     std::cout << ::tpy::__len__(xs) << "\n";

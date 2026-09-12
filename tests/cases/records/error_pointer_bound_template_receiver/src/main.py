@@ -2,16 +2,16 @@
 # have to render the deref, which the template-expansion arm does not spell, so
 # it is rejected.
 from typing import Optional
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
-    def __eq__(self, other: Int32) -> bool:
+    def __eq__(self, other: int32) -> bool:
         return self.n == other
 
 

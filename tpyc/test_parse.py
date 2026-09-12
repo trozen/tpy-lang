@@ -46,7 +46,7 @@ class TestTpyExports:
 
     def test_contains_core_types(self):
         exports = get_tpy_exports()
-        for name in ["Int32", "Float32", "Span", "Array", "Ptr", "Own"]:
+        for name in ["int32", "float32", "Span", "Array", "Ptr", "Own"]:
             assert name in exports, f"{name} missing from tpy exports"
 
     def test_contains_decorators(self):
@@ -72,23 +72,23 @@ class TestStarImportResolution:
     def test_star_import_resolves_types(self):
         p = Parser()
         # All core tpy types should resolve with star import
-        module = p.parse("from tpy import *\ndef f(x: Span[Int32]) -> Int32:\n    return x[0]\n")
+        module = p.parse("from tpy import *\ndef f(x: Span[int32]) -> int32:\n    return x[0]\n")
         assert module.tpy_star_import is True
 
     def test_star_import_resolves_decorators(self):
         p = Parser()
-        module = p.parse("from tpy import *\n@readonly\ndef f(x: Int32) -> Int32:\n    return x\n")
+        module = p.parse("from tpy import *\n@readonly\ndef f(x: int32) -> int32:\n    return x\n")
         assert module.tpy_star_import is True
 
     def test_star_import_does_not_resolve_unknown(self):
         """Names not in __all__ should not resolve as tpy imports."""
         p = Parser()
-        module = p.parse("from tpy import *\ndef f(x: Int32) -> Int32:\n    return x\n")
-        # Int32 should resolve, but a name not in exports should not
+        module = p.parse("from tpy import *\ndef f(x: int32) -> int32:\n    return x\n")
+        # int32 should resolve, but a name not in exports should not
         source = module.imports.get("tpy")
         assert source is not None
         exported_locals = {local for _, local in source}
-        assert "Int32" in exported_locals
+        assert "int32" in exported_locals
         assert "not_a_tpy_name" not in exported_locals
 
 
@@ -111,9 +111,9 @@ class TestParserStateIsolation:
     def test_module_alias_does_not_leak(self):
         p = Parser()
         # First parse has 'import typing as t'
-        p.parse("import typing as t\nfrom tpy import Int32\ndef f(x: t.Optional[Int32]) -> Int32:\n    return Int32(0)\n")
+        p.parse("import typing as t\nfrom tpy import int32\ndef f(x: t.Optional[int32]) -> int32:\n    return int32(0)\n")
         # Second parse has no typing import -- t.Optional must fail to resolve
-        m = p.parse("from tpy import Int32\ndef f(x: t.Optional[Int32]) -> Int32:\n    return Int32(0)\n")
+        m = p.parse("from tpy import int32\ndef f(x: t.Optional[int32]) -> int32:\n    return int32(0)\n")
         assert "typing" not in m.imports
         func = next(f for f in m.functions if f.name == "f")
         with pytest.raises(ParseError):
@@ -122,9 +122,9 @@ class TestParserStateIsolation:
     def test_tpy_star_import_does_not_leak(self):
         p = Parser()
         # First parse has 'from tpy import *'
-        p.parse("from tpy import *\ndef f(x: Int32) -> Int32:\n    return x\n")
-        # Second parse has no tpy import -- Int32 must fail to resolve
-        m = p.parse("def f(x: Int32) -> Int32:\n    return x\n")
+        p.parse("from tpy import *\ndef f(x: int32) -> int32:\n    return x\n")
+        # Second parse has no tpy import -- int32 must fail to resolve
+        m = p.parse("def f(x: int32) -> int32:\n    return x\n")
         assert not m.tpy_star_import
         func = next(f for f in m.functions if f.name == "f")
         with pytest.raises(ParseError):
@@ -133,9 +133,9 @@ class TestParserStateIsolation:
     def test_typing_import_does_not_leak(self):
         p = Parser()
         # First parse has 'from typing import Optional'
-        p.parse("from typing import Optional\nfrom tpy import Int32\ndef f(x: Optional[Int32]) -> Int32:\n    return Int32(0)\n")
+        p.parse("from typing import Optional\nfrom tpy import int32\ndef f(x: Optional[int32]) -> int32:\n    return int32(0)\n")
         # Second parse has no typing import -- Optional must fail to resolve
-        m = p.parse("from tpy import Int32\ndef f(x: Optional[Int32]) -> Int32:\n    return Int32(0)\n")
+        m = p.parse("from tpy import int32\ndef f(x: Optional[int32]) -> int32:\n    return int32(0)\n")
         typing_source = m.imports.get("typing")
         assert typing_source is None or "Optional" not in {orig for orig, _ in (typing_source or set())}
         func = next(f for f in m.functions if f.name == "f")
@@ -299,7 +299,7 @@ class TestUserModuleStarImport:
 
     def test_tpy_star_import_still_tracked(self):
         p = Parser()
-        module = p.parse("from tpy import *\ndef f(x: Int32) -> Int32:\n    return x\n")
+        module = p.parse("from tpy import *\ndef f(x: int32) -> int32:\n    return x\n")
         assert module.tpy_star_import is True
         assert "tpy" in module.star_imports
 
@@ -379,7 +379,7 @@ class TestValidateCppTemplate:
         with pytest.raises(ParseError, match="more than once"):
             p.parse(
                 "from tpy.extern import cpp_template\n"
-                "from tpy import Int32\n"
+                "from tpy import int32\n"
                 "class K:\n"
                 "    @cpp_template(\"{self} + {self}\")\n"
-                "    def dbl(self) -> Int32: ...\n")
+                "    def dbl(self) -> int32: ...\n")

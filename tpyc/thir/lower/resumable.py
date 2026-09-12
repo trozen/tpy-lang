@@ -203,7 +203,7 @@ from .statements import (
 
 
 def _res_value_ok(t: 'TpyType | None', analyzer) -> bool:
-    """Foundation value families: plain value scalars, Char, and enums.
+    """Foundation value families: plain value scalars, char, and enums.
 
     A resumable param is captured as a frame FIELD, and only these families
     capture and read
@@ -1111,7 +1111,7 @@ def _payload_reject(payload: 'rcfg.SuspensionPayload', analyzer) -> str | None:
         own_dyn_slot = (isinstance(pt_u, OwnType)
                         and is_dyn_protocol(pt_u.wrapped))
         # An `Own[value]` slot (a generic Own[T] param at a value
-        # instantiation, e.g. a Queue[Int32] put): the emplace arg is the sync
+        # instantiation, e.g. a Queue[int32] put): the emplace arg is the sync
         # call-arg render (arg temp + std::move), so it rides the same
         # `_lower_call_arg` rows.
         own_val_slot = (isinstance(pt_u, OwnType)
@@ -1287,7 +1287,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         yt_tuple = (_unwrap_own(unwrap_readonly(unwrap_ref_type(
                         unwrap_send_sync(yt_t))))
                     if yt_t is not None else None)
-        # A VALUE-repr Optional yield slot (`Iterator[Int32 | None]`) is the
+        # A VALUE-repr Optional yield slot (`Iterator[int32 | None]`) is the
         # whole `std::optional<T>` by value, so it admits on its INNER's
         # capture -- the yield sink then passes the optional bare (no deref,
         # no monostate). Scoped to this gate: `_res_param_ok` and the async
@@ -1460,7 +1460,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             # value-opt scalars). An OWNED_STR field is `std::string`, but
             # its reads/writes are the same sema-resolved str renders the
             # view field takes. Value types beyond the admitted families
-            # (value records, Ptr, Char arrays) have no lowered render.
+            # (value records, Ptr, char arrays) have no lowered render.
             if _res_local_ok(ltype, analyzer):
                 continue
             # A `std::optional<Record>` VALUE frame field (the await-bind
@@ -2004,7 +2004,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         if isinstance(stmt, TpyVarDecl) and stmt.name in frame_fields:
             begin_stmt()
             if stmt.init is None:
-                # An annotation-only decl (`x: Int32`) of a name the frame
+                # An annotation-only decl (`x: int32`) of a name the frame
                 # already declares as a field: nothing is emitted for it and
                 # only leading trivia survives -- the sync global no-init
                 # arm's shape, for the same reason (the slot exists already).
@@ -2089,8 +2089,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             # Plain frame-field write -- the shared position-blind member
             # assign (also the branch-nested decl arm's render). No char/None
             # reject guards it: a reassign or multi-char char literal, and
-            # None at a scalar/Char slot, are sema type errors that never
-            # reach lowering; a single-char `c: Char = 'a'` first decl
+            # None at a scalar/char slot, are sema type errors that never
+            # reach lowering; a single-char `c: char = 'a'` first decl
             # renders position-blind like any other frame write.
             return _lower_frame_field_assign(stmt, lc, declared)
         return _lower_stmt(stmt, lc, declared)
@@ -2471,7 +2471,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                             declared.get(yv_src.name)))) == yt_bare):
                     # A pointer-to-STORAGE tuple loop var at the slot's BORROW
                     # form (`yield pair` off `for pair in items` over
-                    # `list[tuple[Int32, C]]`): the same storage->borrow lift
+                    # `list[tuple[int32, C]]`): the same storage->borrow lift
                     # the container-ELEMENT arm below takes, over the loop
                     # var's deref. The pointer is into the CALLER's container,
                     # so the consumer aliases the source element exactly as the
@@ -2661,8 +2661,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                                                       analyzer)
                             and _witness("res.yield_str_field"))
             # SLOT-keyed, never source-keyed: the same narrowed value-opt
-            # NAME must deref at an `Int32` slot (`return (*val);`) and pass
-            # whole at an `Int32 | None` one.
+            # NAME must deref at an `int32` slot (`return (*val);`) and pass
+            # whole at an `int32 | None` one.
             yv_lowered = _lower_expr(
                 ys.value, lc, declared, field_prechecked=yv_str_field,
                 allow_whole_optional=yv_valopt is not None)

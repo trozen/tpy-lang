@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def risky(fail: bool) -> Int32:
+// def risky(fail: bool) -> int32:
 int32_t risky(bool fail) {
     // if fail:
     if (fail) {
@@ -15,7 +15,7 @@ int32_t risky(bool fail) {
     return 5;
 }
 
-// def run(fail: bool) -> Int32:
+// def run(fail: bool) -> int32:
 int32_t run(bool fail) {
     // try:
     int32_t x;

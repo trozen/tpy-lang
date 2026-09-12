@@ -1,5 +1,5 @@
 # Test panic on missing required field in @model deserialization.
-from tpy import Int32, try_parse
+from tpy import int32, try_parse
 from enum import Enum
 from tplib.json.model import model
 

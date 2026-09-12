@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def gen() -> Iterator[Own[Int32]]:
+// def gen() -> Iterator[Own[int32]]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -27,14 +27,14 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
 }
 
 
-// def gen() -> Iterator[Own[Int32]]:
+// def gen() -> Iterator[Own[int32]]:
 __gen_gen gen() {
     return __gen_gen();
 }
 
 // def collect_scoped() -> None:
 void collect_scoped() {
-    // out: list[Int32] = []
+    // out: list[int32] = []
     std::vector<int32_t> out = std::vector<int32_t>{};
     // for x in gen():  # tpyc: ok -- the loop-scoped binding, moved per element
     {

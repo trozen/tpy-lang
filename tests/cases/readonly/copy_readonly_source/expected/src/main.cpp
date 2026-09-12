@@ -50,7 +50,7 @@ void sec_generic(const Cell& c) {
     std::cout << "generic:" << " " << g.get().n << " " << g2.get().n << "\n";
 }
 
-// def gen_copies(c: readonly[Cell]) -> Iterator[Int32]:
+// def gen_copies(c: readonly[Cell]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_copies::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -75,14 +75,14 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_copies::__next__() {
 }
 
 
-// def gen_copies(c: readonly[Cell]) -> Iterator[Int32]:
+// def gen_copies(c: readonly[Cell]) -> Iterator[int32]:
 __gen_gen_copies gen_copies(const Cell& c) {
     return __gen_gen_copies(c);
 }
 
 // def sec_generator(c: readonly[Cell]) -> None:
 void sec_generator(const Cell& c) {
-    // out: list[Int32] = []
+    // out: list[int32] = []
     std::vector<int32_t> out = std::vector<int32_t>{};
     // for n in gen_copies(c):
     {
@@ -100,7 +100,7 @@ void sec_generator(const Cell& c) {
     std::cout << "generator:" << " " << ::tpy::__getitem__(out, 1) << " " << ::tpy::__getitem__(out, 0) << "\n";
 }
 
-// async def copy_in_task(c: readonly[Cell]) -> Int32:
+// async def copy_in_task(c: readonly[Cell]) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_copy_in_task::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
@@ -118,7 +118,7 @@ void sec_generator(const Cell& c) {
 }
 
 
-// async def copy_in_task(c: readonly[Cell]) -> Int32:
+// async def copy_in_task(c: readonly[Cell]) -> int32:
 __coro_copy_in_task copy_in_task(const Cell& c) {
     return __coro_copy_in_task(c);
 }
@@ -152,7 +152,7 @@ void sec_comprehension(const std::vector<Cell>& cs) {
 // # closure: the copy is inside a nested function.
 // def sec_closure(c: readonly[Cell]) -> None:
 void sec_closure(const Cell& c) {
-    // def inner() -> Int32:
+    // def inner() -> int32:
     auto inner = [&c]() -> int32_t {
         // return bump(copy(c)).n  # tpyc: ok
         return bump(Cell(c)).n;
@@ -206,7 +206,7 @@ void sec_try_finally(const Cell& c) {
 
 // # @error_return body.
 // @error_return(Missing)
-// def ret_copy(c: readonly[Cell]) -> Int32:
+// def ret_copy(c: readonly[Cell]) -> int32:
 std::expected<int32_t, Missing> ret_copy(const Cell& c) {
     // d = bump(copy(c))  # tpyc: ok
     Cell d = bump(Cell(c));
@@ -230,7 +230,7 @@ void sec_error_return(const Cell& c) {
 }
 
 // # match arm.
-// def sec_match(c: readonly[Cell], k: Int32) -> None:
+// def sec_match(c: readonly[Cell], k: int32) -> None:
 void sec_match(const Cell& c, int32_t k) {
     // match k:
     auto& __match_subject_1 = k;

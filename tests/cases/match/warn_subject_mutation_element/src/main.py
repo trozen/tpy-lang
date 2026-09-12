@@ -1,7 +1,7 @@
 # An invalidating container method on the subject's base while arm
 # bindings borrow an element warns (realloc dangles the bindings).
 # Runtime takes the non-mutating arm.
-from tpy import Int32
+from tpy import int32
 
 
 class Dog:
@@ -12,9 +12,9 @@ class Dog:
 
 
 class Cat:
-    age: Int32
+    age: int32
 
-    def __init__(self, age: Int32) -> None:
+    def __init__(self, age: int32) -> None:
         self.age = age
 
 

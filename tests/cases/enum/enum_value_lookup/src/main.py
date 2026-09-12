@@ -1,13 +1,13 @@
 # Test enum construction from integer value
 from enum import Enum
-from tpy import Int32
+from tpy import int32
 
 class Color(Enum):
     Red = 0
     Green = 1
     Blue = 2
 
-def lookup(v: Int32) -> Color:
+def lookup(v: int32) -> Color:
     return Color(v)
 
 def from_int(v: int) -> Color:

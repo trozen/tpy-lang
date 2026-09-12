@@ -1,9 +1,9 @@
 # List comprehension: filter with if clause
-from tpy import Int32
+from tpy import int32
 
 def main() -> None:
     # Filter: keep only positive
-    data: list[Int32] = [3, -1, 4, -2, 5]
+    data: list[int32] = [3, -1, 4, -2, 5]
     pos = [x for x in data if x > 0]
     print(pos)
 

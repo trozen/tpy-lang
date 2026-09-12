@@ -4,11 +4,11 @@
 namespace tpyapp::main {
 
 
-// def matrix() -> Iterator[Int32]:
+// def matrix() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_matrix::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i: Int32 = 0
+        // i: int32 = 0
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -21,7 +21,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_matrix::__next__() {
     }
     case S_JOIN_0: {
         if ((i < 3)) {
-            // j: Int32 = 0
+            // j: int32 = 0
             j = 0;
             __state = S_JOIN_1;
             continue;
@@ -48,7 +48,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_matrix::__next__() {
 }
 
 
-// def matrix() -> Iterator[Int32]:
+// def matrix() -> Iterator[int32]:
 __gen_matrix matrix() {
     return __gen_matrix();
 }

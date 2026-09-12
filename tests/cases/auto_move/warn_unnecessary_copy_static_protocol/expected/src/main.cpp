@@ -11,7 +11,7 @@ void test_static() {
     // p.x = 10
     p.x = 10;
     // # copy() at last use -- should warn unnecessary
-    // result: Int32 = Factory.consume(copy(p))  # tpyc: warning(/unnecessary copy/)
+    // result: int32 = Factory.consume(copy(p))  # tpyc: warning(/unnecessary copy/)
     int32_t result = Factory::consume(Point(p));
     // print(result)
     std::cout << result << "\n";

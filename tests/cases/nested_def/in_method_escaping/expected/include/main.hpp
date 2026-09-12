@@ -16,16 +16,16 @@ void main();
 
 // class Src:
 struct Src {
-    // n: Int32
+    // n: int32
     int32_t n;
 
     // def __init__(self) -> None:
     Src();
 
-    // def reader(self) -> Callable[[Int32], Int32]:
+    // def reader(self) -> Callable[[int32], int32]:
     std::function<int32_t(int32_t)> reader() const;
 
-    // def offset(self, k: Int32) -> Int32:
+    // def offset(self, k: int32) -> int32:
     int32_t offset(int32_t k) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Src";
 };
@@ -39,9 +39,9 @@ inline std::ostream& operator<<(std::ostream& os, const Src& obj) {
 // def __init__(self) -> None:
 inline Src::Src() : n(5) {}
 
-// def reader(self) -> Callable[[Int32], Int32]:
+// def reader(self) -> Callable[[int32], int32]:
 inline std::function<int32_t(int32_t)> Src::reader() const {
-    // def get(x: Int32) -> Int32:
+    // def get(x: int32) -> int32:
     auto get = [this](int32_t x) -> int32_t {
         // return x + self.n
         return (::tpy::add_check<int32_t>(x, this->n));
@@ -50,7 +50,7 @@ inline std::function<int32_t(int32_t)> Src::reader() const {
     return get;
 }
 
-// def offset(self, k: Int32) -> Int32:
+// def offset(self, k: int32) -> int32:
 inline int32_t Src::offset(int32_t k) const {
     // return apply(lambda x: x + k + self.n, 1)
     return apply([k, this](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(x, k)), this->n)); }, 1);

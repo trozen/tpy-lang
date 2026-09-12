@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 
-x = "oops"  # tpyc: error(/incompatible with later annotation 'Int32' at line 4/)
-x: Int32 = Int32(1)
+x = "oops"  # tpyc: error(/incompatible with later annotation 'int32' at line 4/)
+x: int32 = int32(1)

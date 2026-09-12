@@ -7,58 +7,58 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // # shl_wrap signed: high bits drop silently
-    // print(Int8.shl_wrap(Int8(64), Int8(2)))
+    // print(int8.shl_wrap(int8(64), int8(2)))
     std::cout << static_cast<int>(static_cast<int8_t>(static_cast<uint8_t>(64) << (2))) << "\n";
-    // print(Int8.shl_wrap(Int8(1), Int8(7)))
+    // print(int8.shl_wrap(int8(1), int8(7)))
     std::cout << static_cast<int>(static_cast<int8_t>(static_cast<uint8_t>(1) << (7))) << "\n";
-    // print(Int8.shl_wrap(Int8(-2), Int8(7)))      # 0xFE << 7 -> 0
+    // print(int8.shl_wrap(int8(-2), int8(7)))      # 0xFE << 7 -> 0
     std::cout << static_cast<int>(static_cast<int8_t>(static_cast<uint8_t>(-2) << (7))) << "\n";
-    // print(Int16.shl_wrap(Int16(0x4000), Int16(2)))
+    // print(int16.shl_wrap(int16(0x4000), int16(2)))
     std::cout << static_cast<int16_t>(static_cast<uint16_t>(16384) << (2)) << "\n";
-    // print(Int32.shl_wrap(Int32(0x40000000), Int32(2)))
+    // print(int32.shl_wrap(int32(0x40000000), int32(2)))
     std::cout << static_cast<int32_t>(static_cast<uint32_t>(1073741824) << (2)) << "\n";
-    // print(Int64.shl_wrap(Int64(1), Int64(63)))
+    // print(int64.shl_wrap(int64(1), int64(63)))
     std::cout << static_cast<int64_t>(static_cast<uint64_t>(1) << (63)) << "\n";
     // # shl_wrap unsigned
-    // print(UInt8.shl_wrap(UInt8(0x80), UInt8(1)))
+    // print(uint8.shl_wrap(uint8(0x80), uint8(1)))
     std::cout << static_cast<int>(static_cast<uint8_t>(static_cast<uint8_t>(128) << (1))) << "\n";
-    // print(UInt16.shl_wrap(UInt16(0x8000), UInt16(1)))
+    // print(uint16.shl_wrap(uint16(0x8000), uint16(1)))
     std::cout << static_cast<uint16_t>(static_cast<uint16_t>(32768) << (1)) << "\n";
-    // print(UInt32.shl_wrap(UInt32(0x80000000), UInt32(1)))
+    // print(uint32.shl_wrap(uint32(0x80000000), uint32(1)))
     std::cout << static_cast<uint32_t>(static_cast<uint32_t>(static_cast<uint32_t>(2147483648)) << (1)) << "\n";
-    // print(UInt32.shl_wrap(UInt32(1), UInt32(31)))
+    // print(uint32.shl_wrap(uint32(1), uint32(31)))
     std::cout << static_cast<uint32_t>(static_cast<uint32_t>(1) << (31)) << "\n";
-    // print(UInt64.shl_wrap(UInt64(1), UInt64(63)))
+    // print(uint64.shl_wrap(uint64(1), uint64(63)))
     std::cout << static_cast<uint64_t>(static_cast<uint64_t>(1) << (63)) << "\n";
     // # shr_wrap signed: logical, NOT sign-extending. Most-negative value
     // # is the sharpest test (single sign bit, all other bits zero).
-    // print(Int8.shr_wrap(Int8(-128), Int8(1)))    # 0x80 >>logical 1 = 64
+    // print(int8.shr_wrap(int8(-128), int8(1)))    # 0x80 >>logical 1 = 64
     std::cout << static_cast<int>(static_cast<int8_t>(static_cast<uint8_t>(-128) >> (1))) << "\n";
-    // print(Int8.shr_wrap(Int8(-1), Int8(1)))
+    // print(int8.shr_wrap(int8(-1), int8(1)))
     std::cout << static_cast<int>(static_cast<int8_t>(static_cast<uint8_t>(-1) >> (1))) << "\n";
-    // print(Int16.shr_wrap(Int16(-32768), Int16(1)))
+    // print(int16.shr_wrap(int16(-32768), int16(1)))
     std::cout << static_cast<int16_t>(static_cast<uint16_t>(-32768) >> (1)) << "\n";
-    // print(Int32.shr_wrap(Int32(-2147483648), Int32(1)))
+    // print(int32.shr_wrap(int32(-2147483648), int32(1)))
     std::cout << static_cast<int32_t>(static_cast<uint32_t>(-2147483648) >> (1)) << "\n";
-    // print(Int32.shr_wrap(Int32(-1), Int32(1)))
+    // print(int32.shr_wrap(int32(-1), int32(1)))
     std::cout << static_cast<int32_t>(static_cast<uint32_t>(-1) >> (1)) << "\n";
-    // print(Int32.shr_wrap(Int32(-256), Int32(8))) # 0xFFFFFF00 >>logical 8 = 0xFFFFFF
+    // print(int32.shr_wrap(int32(-256), int32(8))) # 0xFFFFFF00 >>logical 8 = 0xFFFFFF
     std::cout << static_cast<int32_t>(static_cast<uint32_t>(-256) >> (8)) << "\n";
-    // print(Int64.shr_wrap(Int64(-1), Int64(1)))
+    // print(int64.shr_wrap(int64(-1), int64(1)))
     std::cout << static_cast<int64_t>(static_cast<uint64_t>(-1) >> (1)) << "\n";
     // # shr_wrap unsigned: matches `>>`
-    // print(UInt8.shr_wrap(UInt8(0xFF), UInt8(1)))
+    // print(uint8.shr_wrap(uint8(0xFF), uint8(1)))
     std::cout << static_cast<int>(static_cast<uint8_t>(static_cast<uint8_t>(255) >> (1))) << "\n";
-    // print(UInt16.shr_wrap(UInt16(0xFFFF), UInt16(1)))
+    // print(uint16.shr_wrap(uint16(0xFFFF), uint16(1)))
     std::cout << static_cast<uint16_t>(static_cast<uint16_t>(65535) >> (1)) << "\n";
-    // print(UInt32.shr_wrap(UInt32(0xFFFFFFFF), UInt32(1)))
+    // print(uint32.shr_wrap(uint32(0xFFFFFFFF), uint32(1)))
     std::cout << static_cast<uint32_t>(static_cast<uint32_t>(static_cast<uint32_t>(4294967295)) >> (1)) << "\n";
-    // print(UInt64.shr_wrap(UInt64(0xFFFFFFFFFFFFFFFF), UInt64(63)))
+    // print(uint64.shr_wrap(uint64(0xFFFFFFFFFFFFFFFF), uint64(63)))
     std::cout << static_cast<uint64_t>(static_cast<uint64_t>(static_cast<uint64_t>(18446744073709551615ull)) >> (63)) << "\n";
     // # n=0 round-trip
-    // print(Int32.shl_wrap(Int32(42), Int32(0)))
+    // print(int32.shl_wrap(int32(42), int32(0)))
     std::cout << static_cast<int32_t>(static_cast<uint32_t>(42) << (0)) << "\n";
-    // print(Int32.shr_wrap(Int32(-42), Int32(0)))
+    // print(int32.shr_wrap(int32(-42), int32(0)))
     std::cout << static_cast<int32_t>(static_cast<uint32_t>(-42) >> (0)) << "\n";
 }
 

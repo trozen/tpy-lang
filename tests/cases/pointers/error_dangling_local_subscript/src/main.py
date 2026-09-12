@@ -1,8 +1,8 @@
-from tpy import Int32
+from tpy import int32
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 # ERROR: returning reference to element of local container
 def bad_local_subscript() -> Point:

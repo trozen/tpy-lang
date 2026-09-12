@@ -21,7 +21,7 @@ void main() {
     // print(ord(s))
     std::cout << ::tpy::ord_str(s) << "\n";
     // # Verify values match expected ASCII codes
-    // a: Int32 = ord("z")
+    // a: int32 = ord("z")
     int32_t a = 122;
     // print(a)
     std::cout << a << "\n";

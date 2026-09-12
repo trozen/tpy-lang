@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def make(b: Box) -> tuple[Int32, Box]:
+// def make(b: Box) -> tuple[int32, Box]:
 std::tuple<int32_t, Box*> make(Box& b) {
     // t = (1, b)
     auto t = std::tuple<int32_t, Box*>{1, &(b)};

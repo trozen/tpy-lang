@@ -4,14 +4,14 @@
 namespace tpyapp::main {
 
 
-// def sentinel(c: Counter) -> Int32:
+// def sentinel(c: Counter) -> int32:
 int32_t sentinel(const Counter& c) {
     // return 0
     return 0;
 }
 
 // @resolve_bump
-// def poke(c: Counter) -> Int32:
+// def poke(c: Counter) -> int32:
 int32_t poke(Counter& c) {
     // return sentinel(c)
     return c.bump();

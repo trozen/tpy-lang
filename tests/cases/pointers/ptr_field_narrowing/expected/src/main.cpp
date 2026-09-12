@@ -11,19 +11,19 @@ Node* get_ptr(Node* n) {
 }
 
 // # Free function: local.field narrowing
-// def read_field(c: Container) -> Int32:
+// def read_field(c: Container) -> int32:
 int32_t read_field(const Container& c) {
     // if c.node is not None:
     if ((c.node != nullptr)) {
         // return c.node.value  # tpyc: non_null(c.node)
         return c.node->value;
     }
-    // return Int32(-1)
+    // return int32(-1)
     return -1;
 }
 
 // # Assert narrows field
-// def read_after_assert(c: Container) -> Int32:
+// def read_after_assert(c: Container) -> int32:
 int32_t read_after_assert(const Container& c) {
     // assert c.node is not None
     if (!((c.node != nullptr))) ::tpy::raise_assertion_error();
@@ -32,11 +32,11 @@ int32_t read_after_assert(const Container& c) {
 }
 
 // # Early return narrows field
-// def read_after_early_return(c: Container) -> Int32:
+// def read_after_early_return(c: Container) -> int32:
 int32_t read_after_early_return(const Container& c) {
     // if c.node is None:
     if ((c.node == nullptr)) {
-        // return Int32(-1)
+        // return int32(-1)
         return -1;
     }
     // return c.node.value  # tpyc: non_null(c.node)
@@ -44,7 +44,7 @@ int32_t read_after_early_return(const Container& c) {
 }
 
 // # Passing a field value (not the container) preserves narrowing
-// def read_after_field_pass(c: Container) -> Int32:
+// def read_after_field_pass(c: Container) -> int32:
 int32_t read_after_field_pass(const Container& c) {
     // if c.node is not None:
     if ((c.node != nullptr)) {
@@ -53,7 +53,7 @@ int32_t read_after_field_pass(const Container& c) {
         // return c.node.value  # tpyc: non_null(c.node)
         return c.node->value;
     }
-    // return Int32(-1)
+    // return int32(-1)
     return -1;
 }
 
@@ -63,7 +63,7 @@ void mutate_container(const Container& c) {
     // pass
 }
 
-// def read_after_container_pass(c: Container) -> Int32:
+// def read_after_container_pass(c: Container) -> int32:
 int32_t read_after_container_pass(const Container& c) {
     // if c.node is not None:
     if ((c.node != nullptr)) {
@@ -72,13 +72,13 @@ int32_t read_after_container_pass(const Container& c) {
         // return c.node.value  # tpyc: nullable(c.node)
         return ::tpy::deref_check(c.node).value;
     }
-    // return Int32(-1)
+    // return int32(-1)
     return -1;
 }
 
 // def main() -> None:
 void main() {
-    // n = Node(Int32(42))
+    // n = Node(int32(42))
     Node n = Node(42);
     // p: Ptr[Node] = n
     Node* p = &n;

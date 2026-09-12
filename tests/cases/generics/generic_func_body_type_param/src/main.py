@@ -1,11 +1,11 @@
 # Test: type parameters used in local variable annotations inside generic functions
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Box:
-    value: Int32
+    value: int32
 
-    def __init__(self, value: Int32) -> None:
+    def __init__(self, value: int32) -> None:
         self.value = value
 
 
@@ -17,11 +17,11 @@ def collect[T](a: T, b: T) -> Own[list[T]]:
 
 
 def main() -> None:
-    xs = collect(Int32(10), Int32(20))
+    xs = collect(int32(10), int32(20))
     print(len(xs))
     print(xs[0])
     print(xs[1])
-    ys = collect(Box(Int32(1)), Box(Int32(2)))
+    ys = collect(Box(int32(1)), Box(int32(2)))
     print(len(ys))
     print(ys[0].value)
 

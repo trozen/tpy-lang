@@ -1,12 +1,12 @@
 # User-defined generators preserve references via val_or_ref<T> when
 # yield type is Ref[T]. Composition between user generators works correctly.
-from tpy import Int32, Fn
+from tpy import int32, Fn
 from typing import Iterable, Iterator
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32) -> None:
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
     def __str__(self) -> str:
@@ -16,8 +16,8 @@ def my_map[T, U](fn: Fn[[T], U], it: Iterable[T]) -> Iterator[U]:
     for x in it:
         yield fn(x)
 
-def my_enumerate[T](it: Iterable[T]) -> Iterator[tuple[Int32, T]]:
-    i: Int32 = 0
+def my_enumerate[T](it: Iterable[T]) -> Iterator[tuple[int32, T]]:
+    i: int32 = 0
     for x in it:
         yield (i, x)
         i += 1
@@ -25,12 +25,12 @@ def my_enumerate[T](it: Iterable[T]) -> Iterator[tuple[Int32, T]]:
 def identity(p: Point) -> Point:
     return p
 
-def double(v: Int32) -> Int32:
+def double(v: int32) -> int32:
     return v * 2
 
 def main() -> None:
     pts: list[Point] = [Point(1, 2), Point(3, 4)]
-    vals: list[Int32] = [10, 20]
+    vals: list[int32] = [10, 20]
 
     # my_map: non-value type
     for p in my_map(identity, pts):

@@ -148,9 +148,9 @@ void main() {
     // try:
     {
         try {
-            // a: Int32 = Int32(1)
+            // a: int32 = int32(1)
             int32_t a = 1;
-            // b: Int32 = Int32(-1)
+            // b: int32 = int32(-1)
             int32_t b = -1;
             // print(a << b)
             std::cout << (::tpy::lshift_check<int32_t>(a, b)) << "\n";

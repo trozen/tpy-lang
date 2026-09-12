@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def pick(h: Holder, c: bool) -> tuple[Int32, Box]:
+// def pick(h: Holder, c: bool) -> tuple[int32, Box]:
 std::tuple<int32_t, Box*> pick(Holder& h, bool c) {
     // return h.a if c else h.b
     return ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(((c) ? (h.a) : (h.b)));

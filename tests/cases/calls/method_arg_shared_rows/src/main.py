@@ -2,16 +2,16 @@
 # a shape written for a builtin-stub slot decides the same shape at a user
 # record's slot -- and the other way round. Every marked line below is a shape
 # that reaches its receiver kind only because the two listings are one.
-from tpy import Int32, Own, nocopy, readonly
+from tpy import int32, Own, nocopy, readonly
 
 
 @nocopy
 class Tag:
     # @nocopy so a silent COPY at either stub-slot leg below is a compile
     # error rather than an invisible extra object.
-    ident: Int32
+    ident: int32
 
-    def __init__(self, ident: Int32) -> None:
+    def __init__(self, ident: int32) -> None:
         self.ident = ident
 
     def __eq__(self, other: 'Tag') -> bool:
@@ -27,7 +27,7 @@ class Sink:
     def store_name(self, s: Own[str]) -> None:
         self.n = len(s)
 
-    def store_width(self, w: Own[Int32]) -> None:
+    def store_width(self, w: Own[int32]) -> None:
         self.n = int(w)
 
     def store_blob(self, b: Own[bytes]) -> None:
@@ -60,10 +60,10 @@ def main() -> None:
     k.soak([2.0 * float(i) for i in range(4)])  # tpyc: ok
     print(k.n)
 
-    # An f-string at an Own[str] slot, and a BigInt name at an Own[Int32]
+    # An f-string at an Own[str] slot, and a BigInt name at an Own[int32]
     # one: both are conversions, so the prvalue binds the by-value slot with
     # no copy temp. `wide` is spelled `int` because the row under test is the
-    # BigInt narrowing (`to_fixed_check<int32_t>`), which an inferred Int32
+    # BigInt narrowing (`to_fixed_check<int32_t>`), which an inferred int32
     # would never reach.
     k.store_name(f"v{k.n}")  # tpyc: ok
     print(k.n)
@@ -86,7 +86,7 @@ def main() -> None:
     # Own[tuple] slot. The element MOVES into the storage tuple, so the case
     # reads it back out of the container rather than through the moved-from
     # name.
-    pairs: list[tuple[Tag, Int32]] = []
+    pairs: list[tuple[Tag, int32]] = []
     moved = Tag(5)
     pairs.append((moved, 3))  # tpyc: ok
     for held, width in pairs:

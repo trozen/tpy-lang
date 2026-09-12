@@ -8,14 +8,14 @@
 # value to a local first, which says the same thing in the source and silences
 # the warning. The `comp_rhs` section is the inverse: a comprehension body
 # carries its own region, so nothing in it is built early and no warning fires.
-from tpy import Int32, Own, nomove
+from tpy import int32, Own, nomove
 
 
 @nomove
 class Pinned:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def __del__(self) -> None:
@@ -24,7 +24,7 @@ class Pinned:
         self.n = 0
 
 
-def take(p: Pinned | None) -> Int32:
+def take(p: Pinned | None) -> int32:
     """Reference param, so a `Pinned(...)` rvalue argument needs a hoisted temp."""
     return p.n if p is not None else 0
 
@@ -49,26 +49,26 @@ def or_rhs_hatch(flag: bool) -> bool:
     return flag or take(p) > 0  # tpyc: ok
 
 
-def ternary_arm(flag: bool) -> Int32:
+def ternary_arm(flag: bool) -> int32:
     return take(Pinned(9)) if flag else -1  # tpyc: warning(/builds Pinned even when the branch is not taken/)
 
 
-def ternary_arm_hatch(flag: bool) -> Int32:
+def ternary_arm_hatch(flag: bool) -> int32:
     p = Pinned(9)
     return take(p) if flag else -1  # tpyc: ok
 
 
-def chained(a: Int32, b: Int32) -> bool:
+def chained(a: int32, b: int32) -> bool:
     # Later comparator of a chained compare: also a conditional operand.
     return a < b < take(Pinned(10))  # tpyc: warning(/builds Pinned even when the branch is not taken/)
 
 
-def chained_hatch(a: Int32, b: Int32) -> bool:
+def chained_hatch(a: int32, b: int32) -> bool:
     p = Pinned(10)
     return a < b < take(p)  # tpyc: ok
 
 
-def take_ref(p: Pinned) -> Int32:
+def take_ref(p: Pinned) -> int32:
     """Plain reference param -- a different temp row from the optional one."""
     return p.n
 
@@ -82,7 +82,7 @@ def ref_param_hatch(flag: bool) -> bool:
     return flag or take_ref(p) > 0  # tpyc: ok
 
 
-def take_own(p: Own[Pinned]) -> Int32:  # tpyc: warning(/never consumed/)
+def take_own(p: Own[Pinned]) -> int32:  # tpyc: warning(/never consumed/)
     """An `Own[T]` slot. The `never consumed` warning is unrelated: `Pinned`
     is `@nomove`, so the param cannot be forwarded or returned anywhere."""
     return p.n
@@ -97,9 +97,9 @@ def own_param(flag: bool) -> bool:
 
 @nomove
 class Noisy:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         # Prints from the CONSTRUCTION itself, so a temp hoisted ahead of the
         # guard would show as a "built" line under the SKIPPED call.
         print("  built", n)
@@ -109,7 +109,7 @@ class Noisy:
         self.n = 0
 
 
-def use(p: Noisy) -> Int32:
+def use(p: Noisy) -> int32:
     return p.n
 
 

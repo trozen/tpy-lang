@@ -1,1 +1,1 @@
-main.py:7: error: Type list[str] does not conform to protocol Iterable[Int32] in '+=' operand
+main.py:7: error: Type list[str] does not conform to protocol Iterable[int32] in '+=' operand

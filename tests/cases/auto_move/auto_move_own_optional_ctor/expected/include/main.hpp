@@ -16,9 +16,9 @@ void main();
 
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
-    // y: Int32
+    // y: int32
     int32_t y;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
@@ -31,10 +31,10 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 // class Wrapper:
 struct Wrapper {
-    // tag: Int32
+    // tag: int32
     int32_t tag;
 
-    // def __init__(self, p: Own[Point] | None, tag: Int32):
+    // def __init__(self, p: Own[Point] | None, tag: int32):
     Wrapper() = default;
     explicit Wrapper(std::optional<Point> p, int32_t tag);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
@@ -46,7 +46,7 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
 }
 
 
-// def __init__(self, p: Own[Point] | None, tag: Int32):
+// def __init__(self, p: Own[Point] | None, tag: int32):
 inline Wrapper::Wrapper(std::optional<Point> p, int32_t tag) {
     // if p is not None:
     if ((p.has_value())) {
@@ -54,7 +54,7 @@ inline Wrapper::Wrapper(std::optional<Point> p, int32_t tag) {
         this->tag = tag;
     // else:
     } else {
-        // self.tag = Int32(-1)
+        // self.tag = int32(-1)
         this->tag = -1;
     }
 }

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def use(x: Int32, y: Int32) -> Int32:
+// def use(x: int32, y: int32) -> int32:
 int32_t use(int32_t x, int32_t y) {
     // return helpers.Util.second(x, y)
     return ::tpyapp::helpers::Util::second<int32_t>(x, y);

@@ -1,5 +1,5 @@
 from typing import Final
-from tpy import UInt32
+from tpy import uint32
 
-CASELESS: Final[UInt32] = UInt32(8)
+CASELESS: Final[uint32] = uint32(8)
 DEFAULT_GREETING: Final[str] = "hello"

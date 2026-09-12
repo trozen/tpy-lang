@@ -1,10 +1,10 @@
 # argparse store_true / store_false / count actions (Phase 7D2).
 # These actions do not consume an argv token after the flag.
-from tpy import Int32
+from tpy import int32
 from argparse import ArgumentParser
 
 
-def main() -> Int32:
+def main() -> int32:
     parser = ArgumentParser()
     parser.add_argument("-v", "--verbose", action="store_true")
     parser.add_argument("--no-cache", action="store_false")

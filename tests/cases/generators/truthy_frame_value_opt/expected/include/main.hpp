@@ -27,10 +27,10 @@ void main();
 
 // class Box:
 struct Box {
-    // f: Int32 | None
+    // f: int32 | None
     std::optional<int32_t> f;
 
-    // def __init__(self, v: Int32 | None) -> None:
+    // def __init__(self, v: int32 | None) -> None:
     Box() = default;
     explicit Box(std::optional<int32_t> v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
@@ -162,7 +162,7 @@ struct __gen_frame_local : public ::tpy::next_iter_mixin<__gen_frame_local, int3
 };
 
 
-// def __init__(self, v: Int32 | None) -> None:
+// def __init__(self, v: int32 | None) -> None:
 inline Box::Box(std::optional<int32_t> v) : f(v) {}
 inline auto peephole_while(std::optional<int32_t> v) {
     return ::tpy::make_generator<int32_t>(

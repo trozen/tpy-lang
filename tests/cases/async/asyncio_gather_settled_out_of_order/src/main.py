@@ -7,19 +7,19 @@
 # input-order reassembly with a permuted arrival array. Deadlines are absolute
 # (executor min-heap), so the settle order is deterministic, not load-sensitive.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
-async def fetch(n: Int32, delay: float) -> Int32:
+async def fetch(n: int32, delay: float) -> int32:
     await asyncio.sleep(delay)
     return n
 
 
 async def main_coro() -> None:
-    tasks: list[asyncio.Task[Int32]] = []
-    tasks.append(asyncio.create_task(fetch(Int32(0), 0.005)))   # settles last
-    tasks.append(asyncio.create_task(fetch(Int32(1), 0.003)))   # settles middle
-    tasks.append(asyncio.create_task(fetch(Int32(2), 0.001)))   # settles first
+    tasks: list[asyncio.Task[int32]] = []
+    tasks.append(asyncio.create_task(fetch(int32(0), 0.005)))   # settles last
+    tasks.append(asyncio.create_task(fetch(int32(1), 0.003)))   # settles middle
+    tasks.append(asyncio.create_task(fetch(int32(2), 0.001)))   # settles first
     results = await asyncio.gather_list_settled(tasks)
     for r in results:
         if r.value is not None:

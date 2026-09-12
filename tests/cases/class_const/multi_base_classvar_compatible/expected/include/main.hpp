@@ -17,7 +17,7 @@ void main();
 
 // class A:
 struct A {
-    // X: ClassVar[Int32] = 1
+    // X: ClassVar[int32] = 1
     static inline int32_t X = 1;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.A";
@@ -30,7 +30,7 @@ inline std::ostream& operator<<(std::ostream& os, const A& obj) {
 
 // class B:
 struct B {
-    // X: ClassVar[Int32] = 2
+    // X: ClassVar[int32] = 2
     static inline int32_t X = 2;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.B";
@@ -43,7 +43,7 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 
 // class C(A, B):
 struct C : A, B {
-    // X: ClassVar[Int32] = 3
+    // X: ClassVar[int32] = 3
     static inline int32_t X = 3;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.C";

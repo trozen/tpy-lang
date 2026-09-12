@@ -14,13 +14,13 @@
 # sections cover the two positions with a different variable model.
 from __future__ import annotations
 from typing import Iterator
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Thing:
     x: float
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = float(x)
 
     def __eq__(self, o: Thing) -> bool:
@@ -73,13 +73,13 @@ class Map:
 
     # The doom shape: a field write in the constructor body, off a field
     # container a method filled; the second write mutates the element.
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.things = []
         self.fill(n)
         self.player = Player(self.things[0])  # tpyc: ok
         self.bumped = Bump(self.things[0])  # tpyc: ok
 
-    def fill(self, n: Int32) -> None:
+    def fill(self, n: int32) -> None:
         for i in range(n):
             self.things.append(Thing(i + 4))
 

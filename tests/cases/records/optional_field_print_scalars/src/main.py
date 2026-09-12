@@ -1,10 +1,10 @@
-from tpy import Int32
+from tpy import int32
 from dataclasses import dataclass
 
 
 @dataclass
 class Settings:
-    count: Int32 | None = None
+    count: int32 | None = None
     flag: bool | None = None
     ratio: float | None = None
     label: str | None = None

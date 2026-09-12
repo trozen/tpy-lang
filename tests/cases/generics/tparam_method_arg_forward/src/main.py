@@ -1,6 +1,6 @@
 # A generic class forwarding its method argument into a nested generic object's
 # method, where both sides spell the same bare open `T`.
-from tpy import Int32
+from tpy import int32
 
 
 class Inner[T]:
@@ -24,7 +24,7 @@ class Outer[T]:
 
 
 def main() -> None:
-    o = Outer[Int32](1)
+    o = Outer[int32](1)
     o.put(7)
     print(o._in.v)
 

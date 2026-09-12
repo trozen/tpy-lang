@@ -1,14 +1,14 @@
 # Alias created AFTER source reassignment (copyable type) -- alias tracks
 # the current value. Auto-move suppressed, implicit copy error fires.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 
-def consume(p: Own[Point]) -> Int32:
+def consume(p: Own[Point]) -> int32:
     return p.x + p.y
 
 

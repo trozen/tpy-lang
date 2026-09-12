@@ -1,14 +1,14 @@
 # Test expression callees: calling results of expressions, not just named functions.
 from typing import Callable
-from tpy import Int32
+from tpy import int32
 
-def make_adder(n: Int32) -> Callable[[Int32], Int32]:
-    def add(x: Int32) -> Int32:
+def make_adder(n: int32) -> Callable[[int32], int32]:
+    def add(x: int32) -> int32:
         return x + n
     return add
 
-def make_negator() -> Callable[[Int32], Int32]:
-    def negate(x: Int32) -> Int32:
+def make_negator() -> Callable[[int32], int32]:
+    def negate(x: int32) -> int32:
         return -x
     return negate
 
@@ -18,7 +18,7 @@ def main() -> None:
     print(result)
 
     # Store and chain
-    fns: list[Callable[[Int32], Int32]] = [make_adder(1), make_adder(2), make_negator()]
+    fns: list[Callable[[int32], int32]] = [make_adder(1), make_adder(2), make_negator()]
 
     # Subscript call via local variable: list[index](args)
     # (fns is resolved as a name, fns[i] is a subscript expression)
@@ -27,7 +27,7 @@ def main() -> None:
     print(fns[2](100))
 
     # Uppercase variable name -- must not be confused with generic type call
-    Handlers: list[Callable[[Int32], Int32]] = [make_adder(100)]
+    Handlers: list[Callable[[int32], int32]] = [make_adder(100)]
     print(Handlers[0](5))
 
 main()

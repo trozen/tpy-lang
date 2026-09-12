@@ -3,20 +3,20 @@
 # keeps the borrow, and the yield hands it out -- so a post-boundary mutation
 # reaches the original object through the whole chain.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    val: Int32
-    def __init__(self, v: Int32) -> None:
+    val: int32
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 
-def make(b: Box) -> tuple[Int32, Box]:
+def make(b: Box) -> tuple[int32, Box]:
     return (1, b)
 
 
-def gen(b: Box) -> Iterator[tuple[Int32, Box]]:
+def gen(b: Box) -> Iterator[tuple[int32, Box]]:
     u = make(b)
     yield u
 

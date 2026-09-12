@@ -1,13 +1,13 @@
 # Auto-move in branches: both if/else paths are last use.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 
-def consume(p: Own[Point]) -> Int32:
+def consume(p: Own[Point]) -> int32:
     return p.x + p.y
 
 

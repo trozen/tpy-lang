@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def gen(b: Box) -> Iterator[tuple[Int32, Box]]:
+// def gen(b: Box) -> Iterator[tuple[int32, Box]]:
 std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -22,14 +22,14 @@ std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_gen::__next
 }
 
 
-// def gen(b: Box) -> Iterator[tuple[Int32, Box]]:
+// def gen(b: Box) -> Iterator[tuple[int32, Box]]:
 __gen_gen gen(Box& b) {
     return __gen_gen(b);
 }
 
 // def main() -> None:
 void main() {
-    // shared = Box(Int32(5))
+    // shared = Box(int32(5))
     Box shared = Box(5);
     // for pair in gen(shared):
     {

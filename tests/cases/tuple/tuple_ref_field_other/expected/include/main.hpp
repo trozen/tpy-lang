@@ -17,12 +17,12 @@ void main();
 
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
-    // y: Int32
+    // y: int32
     int32_t y;
 
-    // def __init__(self, x: Int32, y: Int32) -> None:
+    // def __init__(self, x: int32, y: int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
@@ -35,10 +35,10 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 // class Holder:
 struct Holder {
-    // data: tuple[Point, Int32]
+    // data: tuple[Point, int32]
     std::tuple<Point, int32_t> data;
 
-    // def __init__(self, p: Point, n: Int32) -> None:
+    // def __init__(self, p: Point, n: int32) -> None:
     Holder() = default;
     explicit Holder(const Point& p, int32_t n);
 
@@ -53,10 +53,10 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 }
 
 
-// def __init__(self, x: Int32, y: Int32) -> None:
+// def __init__(self, x: int32, y: int32) -> None:
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
-// def __init__(self, p: Point, n: Int32) -> None:
+// def __init__(self, p: Point, n: int32) -> None:
 inline Holder::Holder(const Point& p, int32_t n) : data(::tpy::tuple_to_storage<std::tuple<Point, int32_t>>(std::tuple<Point, int32_t>{Point(p), n})) {}
 
 // def __repr__(self) -> str:

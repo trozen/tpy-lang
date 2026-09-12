@@ -37,10 +37,10 @@ void main();
 
 // class Bag:
 struct Bag {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Bag() = default;
     explicit Bag(int32_t n);
 
@@ -62,7 +62,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 struct Dog : Pet {
 
 
-    // def sound(self) -> Int32:
+    // def sound(self) -> int32:
     int32_t sound() override;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
 };
@@ -92,10 +92,10 @@ struct tpy::RefAdapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
 namespace tpyapp::main {
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Bag::Bag(int32_t n) : n(n) {}
 
-// def sound(self) -> Int32:
+// def sound(self) -> int32:
 inline int32_t Dog::sound() {
     // return 7
     return 7;

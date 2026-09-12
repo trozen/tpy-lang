@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def parse_a() -> Int32:
+// def parse_a() -> int32:
 int32_t parse_a() {
     // args = parser.parse_args(["alice"])
     std::vector<std::string> __tmp_1 = {"alice"};
@@ -15,7 +15,7 @@ int32_t parse_a() {
     return 0;
 }
 
-// def parse_b() -> Int32:
+// def parse_b() -> int32:
 int32_t parse_b() {
     // args = parser.parse_args(["--count", "7"])
     std::vector<std::string> __tmp_2 = {"--count", "7"};
@@ -26,7 +26,7 @@ int32_t parse_b() {
     return 0;
 }
 
-// def main() -> Int32:
+// def main() -> int32:
 int32_t main() {
     // parse_a()
     parse_a();

@@ -1,11 +1,11 @@
 # A nested def captures p by reference: a consume AFTER the def must not
 # auto-move p (the closure still reads it). Copy semantics at the consume
 # are intended -- the copy warning is the designed diagnostic.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Point:
-    items: list[Int32]
+    items: list[int32]
 
     def __init__(self):
         self.items = [1, 2, 3]

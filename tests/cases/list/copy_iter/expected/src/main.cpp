@@ -22,9 +22,9 @@ void test_extend_copy_iter_no_warn() {
 
 // def test_extend_copy_iter_value_type() -> None:
 void test_extend_copy_iter_value_type() {
-    // a: list[Int32] = []
+    // a: list[int32] = []
     std::vector<int32_t> a = std::vector<int32_t>{};
-    // b: list[Int32] = [1, 2, 3]
+    // b: list[int32] = [1, 2, 3]
     std::vector<int32_t> b = {1, 2, 3};
     // a.extend(copy_iter(b))  # tpyc: ok
     ::tpy::list_extend(a, ::tpy::copy_iter<int32_t>(b));
@@ -74,7 +74,7 @@ void test_extend_no_copy_iter_warns() {
 void test_for_loop_copy_iter() {
     // b: list[Node] = [Node(10), Node(20)]
     std::vector<Node> b = {Node(10), Node(20)};
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for x in copy_iter(b):
     auto __obj_0 = ::tpy::copy_iter<Node>(b);

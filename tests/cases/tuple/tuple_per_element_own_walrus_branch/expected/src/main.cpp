@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def make_pair(v: Int32) -> tuple[Int32, Own[Box]]:
+// def make_pair(v: int32) -> tuple[int32, Own[Box]]:
 std::tuple<int32_t, Box> make_pair(int32_t v) {
     // return (v, Box(v))
     return std::tuple<int32_t, Box>{v, Box(v)};
 }
 
-// def use(h: Holder) -> Int32:
+// def use(h: Holder) -> int32:
 int32_t use(Holder& h) {
     // if (t := make_pair(9))[0] > 0:   # tpyc: ok
     std::tuple<int32_t, Box*> t;

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def take_box(b: Box[Int32]) -> None:
+// def take_box(b: Box[int32]) -> None:
 void take_box(Box<int32_t>& b) {
     // print(b.get())
     std::cout << b.get() << "\n";
@@ -13,51 +13,51 @@ void take_box(Box<int32_t>& b) {
 // def main() -> None:
 void main() {
     // # Function calls: _ is equivalent to omitting (full inference)
-    // r1 = identity[_](Int32(10))  # tpyc: type(Int32)
+    // r1 = identity[_](int32(10))  # tpyc: type(int32)
     int32_t r1 = identity<int32_t>(10);
     // print(r1)
     std::cout << r1 << "\n";
     // # Function calls: partial explicit + wildcard
-    // r2 = pair_func[_, Int64](Int32(5), Int64(20))  # tpyc: type(Int32)
+    // r2 = pair_func[_, int64](int32(5), int64(20))  # tpyc: type(int32)
     int32_t r2 = pair_func<int32_t, int64_t>(5, 20);
     // print(r2)
     std::cout << r2 << "\n";
-    // r3 = pair_func[Int32, _](Int32(5), Int64(20))  # tpyc: type(Int32)
+    // r3 = pair_func[int32, _](int32(5), int64(20))  # tpyc: type(int32)
     int32_t r3 = pair_func<int32_t, int64_t>(5, 20);
     // print(r3)
     std::cout << r3 << "\n";
     // # Triple: wildcard in middle position
-    // r4 = triple[Int32, _, Int64](Int32(1), Int64(2), Int64(3))  # tpyc: type(Int64)
+    // r4 = triple[int32, _, int64](int32(1), int64(2), int64(3))  # tpyc: type(int64)
     int64_t r4 = triple<int32_t, int64_t, int64_t>(1, 2, 3);
     // print(r4)
     std::cout << r4 << "\n";
     // # Constructor: wildcard with init args
-    // b1 = Box[_](Int32(42))  # tpyc: type(/Box\[Int32\]/)
+    // b1 = Box[_](int32(42))  # tpyc: type(/Box\[int32\]/)
     Box<int32_t> b1 = Box<int32_t>(42);
     // print(b1.get())
     std::cout << b1.get() << "\n";
     // # Constructor: multi-param wildcard
-    // p1 = Pair[_, Int64](Int32(10), Int64(20))  # tpyc: type(/Pair\[Int32, Int64\]/)
+    // p1 = Pair[_, int64](int32(10), int64(20))  # tpyc: type(/Pair\[int32, int64\]/)
     Pair<int32_t, int64_t> p1 = Pair<int32_t, int64_t>(10, 20);
     // print(p1.a)
     std::cout << p1.a << "\n";
     // print(p1.b)
     std::cout << p1.b << "\n";
     // # Constructor: no-init, full explicit (baseline)
-    // c = Container[Int32]()
+    // c = Container[int32]()
     Container<int32_t> c = Container<int32_t>();
-    // c.set(Int32(99))
+    // c.set(int32(99))
     c.set(99);
     // print(c.get())
     std::cout << c.get() << "\n";
     // # Inline constructor with wildcard, resolved from param type
-    // take_box(Box[_](Int32(7)))
+    // take_box(Box[_](int32(7)))
     Box<int32_t> __tmp_1 = Box<int32_t>(7);
     take_box(__tmp_1);
     // # Method call: wildcard on method-level type params
-    // m = Mapper[Int32](Int32(5))
+    // m = Mapper[int32](int32(5))
     Mapper<int32_t> m = Mapper<int32_t>(5);
-    // r5 = m.transform[_, Int64](Int32(1), Int64(100))  # tpyc: type(Int64)
+    // r5 = m.transform[_, int64](int32(1), int64(100))  # tpyc: type(int64)
     int64_t r5 = m.transform<int32_t, int64_t>(1, 100);
     // print(r5)
     std::cout << r5 << "\n";

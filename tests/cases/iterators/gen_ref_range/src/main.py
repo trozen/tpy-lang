@@ -2,21 +2,21 @@
 # elements -- complements gen_ref (NativeIterable peephole) and
 # gen_ref_while (simple-while). The iterator slot is borrow form, so
 # `p.x = ...` on the yielded tuple flows back to the iterable.
-from tpy import Int32
+from tpy import int32
 from typing import Iterator
 
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32) -> None:
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 
 
-def my_enumerate(items: list[Point]) -> Iterator[tuple[Int32, Point]]:
+def my_enumerate(items: list[Point]) -> Iterator[tuple[int32, Point]]:
     for i in range(len(items)):
-        yield (Int32(i), items[i])
+        yield (int32(i), items[i])
 
 
 def main() -> None:

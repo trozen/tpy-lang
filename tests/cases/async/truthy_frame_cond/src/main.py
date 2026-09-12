@@ -3,24 +3,24 @@
 # awaits took the same raw frame-field render.
 import asyncio
 from typing import Optional
-from tpy import Int32
+from tpy import int32
 
 
-async def opt_branch(v: Int32 | None) -> Int32:
+async def opt_branch(v: int32 | None) -> int32:
     if v:  # tpyc: warning(/Truthiness check on optional value/)
         await asyncio.sleep(0)
         return 1
     return 2
 
 
-async def list_branch(xs: list[Int32]) -> Int32:
+async def list_branch(xs: list[int32]) -> int32:
     if xs:
         await asyncio.sleep(0)
         return 1
     return 2
 
 
-async def str_while(t: str) -> Int32:
+async def str_while(t: str) -> int32:
     n = 0
     while t:
         await asyncio.sleep(0)
@@ -29,7 +29,7 @@ async def str_while(t: str) -> Int32:
     return n
 
 
-async def and_branch(xs: list[Int32], v: Int32 | None) -> Int32:
+async def and_branch(xs: list[int32], v: int32 | None) -> int32:
     # A boolop recurses into both operands, so each side takes its own
     # render -- a container length test and an optional truthiness test.
     if xs and v:  # tpyc: warning(/Truthiness check on optional value/)

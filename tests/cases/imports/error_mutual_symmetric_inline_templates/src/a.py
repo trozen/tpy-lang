@@ -1,9 +1,9 @@
 from b import B
-from tpy import Int32, Fn
+from tpy import int32, Fn
 
 class A:
-    n: Int32
-    def __init__(self, n: Int32) -> None:
+    n: int32
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 # Inline template -- Fn-typed param forces the body into a.hpp,

@@ -4,20 +4,20 @@
 # adds `it` to `func.generator_locals` -> `generator_optional_fields`.
 # Before the fix, body-emit's `(*it)` peel mis-fired on `it.n`.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
 class Item:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
 class CM:
     item: Item
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.item = Item(n)
 
     def __enter__(self) -> Item:
@@ -27,8 +27,8 @@ class CM:
         pass
 
 
-async def total() -> Int32:
-    s: Int32 = 0
+async def total() -> int32:
+    s: int32 = 0
     await asyncio.sleep(0)
     with CM(42) as it:
         s += it.n

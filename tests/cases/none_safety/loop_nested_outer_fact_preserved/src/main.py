@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 
 
-def nested_ok(x: Int32 | None, y: Int32 | None) -> Int32:
+def nested_ok(x: int32 | None, y: int32 | None) -> int32:
     while x is not None:
         while y is not None:
             break

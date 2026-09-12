@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def negate_checked(x: Int32 | None) -> Int32:
+// def negate_checked(x: int32 | None) -> int32:
 int32_t negate_checked(std::optional<int32_t> x) {
     // assert x is not None
     if (!((x.has_value()))) ::tpy::raise_assertion_error();

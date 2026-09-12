@@ -15,10 +15,10 @@ void main();
 
 // class Item:
 struct Item {
-    // key: Int32
+    // key: int32
     int32_t key;
 
-    // def __init__(self, key: Int32) -> None:
+    // def __init__(self, key: int32) -> None:
     Item() = default;
     explicit Item(int32_t key);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Item";
@@ -30,7 +30,7 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
 }
 
 
-// def __init__(self, key: Int32) -> None:
+// def __init__(self, key: int32) -> None:
 inline Item::Item(int32_t key) : key(key) {}
 void __tpy_init();
 } // namespace tpyapp::main

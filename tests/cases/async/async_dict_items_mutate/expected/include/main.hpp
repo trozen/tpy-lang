@@ -21,10 +21,10 @@ void main();
 
 // class C:
 struct C {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32):
+    // def __init__(self, v: int32):
     C() = default;
     explicit C(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.C";
@@ -68,7 +68,7 @@ struct __coro_bump {
 };
 
 
-// def __init__(self, v: Int32):
+// def __init__(self, v: int32):
 inline C::C(int32_t v) : v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

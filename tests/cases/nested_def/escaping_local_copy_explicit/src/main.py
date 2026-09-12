@@ -2,17 +2,17 @@
 # The closure captures the copy (moved at last use), while the original
 # can be mutated independently -- same behavior in both TPy and CPython.
 from typing import Callable
-from tpy import Int32, copy
+from tpy import int32, copy
 
 class Config:
-    value: Int32
-    def __init__(self, v: Int32) -> None:
+    value: int32
+    def __init__(self, v: int32) -> None:
         self.value = v
 
-def make_getter() -> Callable[[], Int32]:
+def make_getter() -> Callable[[], int32]:
     cfg = Config(42)
     cfg_copy = copy(cfg)  # tpyc: ok
-    def get_value() -> Int32:  # tpyc: ok
+    def get_value() -> int32:  # tpyc: ok
         return cfg_copy.value
     cfg.value = 999
     print(cfg.value)

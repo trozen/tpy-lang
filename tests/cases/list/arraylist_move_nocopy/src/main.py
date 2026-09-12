@@ -6,14 +6,14 @@
 # non-elided move-ctor call (std::move of a named lvalue), so __move__ is also
 # exercised at runtime with a @nocopy element.
 from tplib import ArrayList
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 
 
 @nocopy
 class Handle:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 

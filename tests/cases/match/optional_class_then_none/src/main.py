@@ -1,16 +1,16 @@
 # Optional record subject: `case None:` stays reachable after `case Point():`
 # (value side only); mutation through the narrowed subject aliases the caller.
-from tpy import Int32
+from tpy import int32
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
-def describe(p: Point | None) -> Int32:
+def describe(p: Point | None) -> int32:
     match p:
         case Point():
             p.x = p.x + 1

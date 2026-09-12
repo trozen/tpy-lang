@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def classify(x: Int32) -> Int32:
+// def classify(x: int32) -> int32:
 int32_t classify(int32_t x) {
     // # Test elif
     // if x < 0:
@@ -22,7 +22,7 @@ int32_t classify(int32_t x) {
     }
 }
 
-// def check_range(x: Int32) -> Int32:
+// def check_range(x: int32) -> int32:
 int32_t check_range(int32_t x) {
     // # Test and/or
     // if x >= 0 and x <= 10:
@@ -34,7 +34,7 @@ int32_t check_range(int32_t x) {
     return 0;
 }
 
-// def check_bounds(x: Int32) -> Int32:
+// def check_bounds(x: int32) -> int32:
 int32_t check_bounds(int32_t x) {
     // # Test or
     // if x < 0 or x > 100:
@@ -46,7 +46,7 @@ int32_t check_bounds(int32_t x) {
     return 0;
 }
 
-// def complex_condition(a: Int32, b: Int32) -> Int32:
+// def complex_condition(a: int32, b: int32) -> int32:
 int32_t complex_condition(int32_t a, int32_t b) {
     // # Test combined and/or with elif
     // if a > 0 and b > 0:
@@ -64,7 +64,7 @@ int32_t complex_condition(int32_t a, int32_t b) {
     }
 }
 
-// def nested_else_if(x: Int32, y: Int32) -> Int32:
+// def nested_else_if(x: int32, y: int32) -> int32:
 int32_t nested_else_if(int32_t x, int32_t y) {
     // # Test that genuine else: if stays nested (not flattened like elif)
     // if x > 0:

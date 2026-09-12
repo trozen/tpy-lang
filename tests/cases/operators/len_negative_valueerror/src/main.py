@@ -1,7 +1,7 @@
 # A negative user __len__ raises ValueError from both len() and truthiness,
-# for a `-> int` (BigInt) and a `-> Int32` __len__; zero/positive keep working.
+# for a `-> int` (BigInt) and a `-> int32` __len__; zero/positive keep working.
 
-from tpy import Int32
+from tpy import int32
 
 
 class NegBig:
@@ -10,7 +10,7 @@ class NegBig:
 
 
 class NegI32:
-    def __len__(self) -> Int32:
+    def __len__(self) -> int32:
         return -1
 
 
@@ -20,7 +20,7 @@ class Empty:
 
 
 class Full:
-    def __len__(self) -> Int32:
+    def __len__(self) -> int32:
         return 3
 
 

@@ -1,9 +1,9 @@
 # continue in a while/else else-block is outside a loop
-from tpy import Int32
+from tpy import int32
 
 def bad_while_else() -> None:
-    i: Int32 = Int32(0)
-    while i < Int32(3):
-        i += Int32(1)
+    i: int32 = int32(0)
+    while i < int32(3):
+        i += int32(1)
     else:
         continue  # tpyc: error(/'continue' outside loop/)

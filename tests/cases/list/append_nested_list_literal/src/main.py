@@ -13,7 +13,7 @@ def main() -> None:
     print(rows)
     take([[1, 2], [3, 4]])  # param-passing sibling
 
-    # Both rows pending with int-LITERAL elements (not Int32): the element
+    # Both rows pending with int-LITERAL elements (not int32): the element
     # predicate must accept two distinct literals, like peer-unification does.
     lits = [[1, 2]]
     lits.append([3, 4])  # tpyc: ok

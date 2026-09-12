@@ -3,14 +3,14 @@
 # to recursive_record_list_field. Reads/mutations go through the stored map so
 # the value-into-container copy stays CPython-parity.
 from __future__ import annotations
-from tpy import Int32
+from tpy import int32
 
 
 class Node:
-    val: Int32
+    val: int32
     kids: dict[str, Node]
 
-    def __init__(self, val: Int32) -> None:
+    def __init__(self, val: int32) -> None:
         self.val = val
         self.kids = {}
 

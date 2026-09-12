@@ -1,9 +1,9 @@
 # Field with __del__ assigned inside control flow in __init__ is an error.
-from tpy import Int32
+from tpy import int32
 
 class Resource:
-    id: Int32
-    def __init__(self, id: Int32):
+    id: int32
+    def __init__(self, id: int32):
         self.id = id
     def __del__(self):
         print("close", self.id)

@@ -51,7 +51,7 @@ std::string classify__lit_neg1__neg2(int32_t x) {
 }
 
 // @overload
-// def classify(x: Int32) -> str: ...
+// def classify(x: int32) -> str: ...
 std::string classify(int32_t x) {
     // if x == 1:
     if ((x == 1)) {
@@ -90,7 +90,7 @@ std::string classify(int32_t x) {
 // # selection observable. The call whose literal matches no stub is the reject
 // # pinned by tests/cases/calls/error_overload_literal_no_match.
 // @overload
-// def only_lit(x: Literal[1]) -> Int32: ...
+// def only_lit(x: Literal[1]) -> int32: ...
 int32_t only_lit__lit_1(int32_t x) {
     // return 42
     return 42;
@@ -120,8 +120,8 @@ void main() {
     std::cout << classify__lit_neg1__neg2(-1) << "\n";
     // print(classify(-2))
     std::cout << classify__lit_neg1__neg2(-2) << "\n";
-    // # Variable falls through to Int32 fallback
-    // x: Int32 = 5
+    // # Variable falls through to int32 fallback
+    // x: int32 = 5
     int32_t x = 5;
     // print(classify(x))
     std::cout << classify(x) << "\n";

@@ -6,9 +6,9 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // xs: list[Int32] = [1, 2, 3]
+    // xs: list[int32] = [1, 2, 3]
     std::vector<int32_t> xs = {1, 2, 3};
-    // bias: Int32 = 10
+    // bias: int32 = 10
     int32_t bias = 10;
     // # Lambda captures `bias` -- both candidate trials run body analysis
     // # which registers `bias` as captured / typed. After Regime C picks

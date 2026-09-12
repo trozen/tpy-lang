@@ -4,14 +4,14 @@
 # so the earlier owning slot cannot move it -- and for a `@nocopy` receiver
 # there is no copy to fall back on.
 from typing import Self
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 
 
 @nocopy
 class Ticket:
-    id: Int32
+    id: int32
 
-    def __init__(self, id: Int32) -> None:
+    def __init__(self, id: int32) -> None:
         self.id = id
 
     def stamped(self: Own[Self]) -> Own[Self]:
@@ -20,7 +20,7 @@ class Ticket:
         return self
 
 
-def keep(t: Own[Ticket]) -> Int32:
+def keep(t: Own[Ticket]) -> int32:
     return t.id
 
 

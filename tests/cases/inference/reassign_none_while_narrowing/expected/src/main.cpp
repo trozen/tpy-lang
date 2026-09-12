@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def make(i: Int32) -> Own[Box]:
+// def make(i: int32) -> Own[Box]:
 Box make(int32_t i) {
     // return Box(i)
     return Box(i);
@@ -15,13 +15,13 @@ void test_while() {
     std::optional<Box> __slot_1;
     // result = None
     Box* result = nullptr;
-    // i = Int32(0)
+    // i = int32(0)
     int32_t i = 0;
-    // while i < Int32(3):
+    // while i < int32(3):
     while ((i < 3)) {
         // result = make(i)
         result = &*(__slot_1 = make(i));
-        // i += Int32(1)
+        // i += int32(1)
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     // if result is not None:

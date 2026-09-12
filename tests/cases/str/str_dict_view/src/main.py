@@ -1,6 +1,6 @@
 # String subscript on dict[K, str] infers string_view; falls back to std::string
 # if the dict is mutated after the access.
-from tpy import Int32
+from tpy import int32
 
 def test_dict_value_view() -> None:
     """No mutation: string_view for dict value."""
@@ -24,8 +24,8 @@ def test_dict_value_update_fallback() -> None:
 
 def test_dict_int_key_view() -> None:
     """Int key: string_view for dict value."""
-    d: dict[Int32, str] = {Int32(1): "one", Int32(2): "two"}
-    v = d[Int32(1)]  # tpyc: type(StrView)
+    d: dict[int32, str] = {int32(1): "one", int32(2): "two"}
+    v = d[int32(1)]  # tpyc: type(StrView)
     print(v)
 
 test_dict_value_view()

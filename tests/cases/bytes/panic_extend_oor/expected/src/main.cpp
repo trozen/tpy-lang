@@ -8,7 +8,7 @@ namespace tpyapp::main {
 void main() {
     // ba = bytearray()
     ::tpy::ByteArray ba = ::tpy::ByteArray();
-    // xs: list[Int32] = [100, 500]
+    // xs: list[int32] = [100, 500]
     std::vector<int32_t> xs = {100, 500};
     // ba.extend(xs)
     ::tpy::bytes_extend_int_iterable(ba, xs);

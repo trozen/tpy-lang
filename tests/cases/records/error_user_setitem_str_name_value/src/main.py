@@ -1,11 +1,11 @@
 # A user `__setitem__` whose VALUE is a str NAME (not a literal): the
 # non-literal source keeps its view-to-owned machinery, outside the
 # literal-only row, so `j["k"] = v` is rejected.
-from tpy import Int32
+from tpy import int32
 
 
 class Jar:
-    n: Int32
+    n: int32
 
     def __init__(self) -> None:
         self.n = 3

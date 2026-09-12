@@ -6,7 +6,7 @@
 # copy-in only -- there is no write-back, so a mutation through a Span[T]
 # (non-readonly) param is not visible to the caller (proven in
 # ext_checks.py); Span never crosses as a return type (use list[T]).
-from tpy import Span, readonly, Int32, Int64, UInt8, UInt32
+from tpy import Span, readonly, int32, int64, uint8, uint32
 from tpy.extern import export
 
 
@@ -19,35 +19,35 @@ def sum_floats(data: Span[readonly[float]]) -> float:
 
 
 @export
-def sum_int32(data: Span[readonly[Int32]]) -> Int64:
-    s: Int64 = 0
+def sum_int32(data: Span[readonly[int32]]) -> int64:
+    s: int64 = 0
     for x in data:
-        s += Int64(x)
+        s += int64(x)
     return s
 
 
 @export
-def sum_uint8(data: Span[readonly[UInt8]]) -> UInt32:
-    s: UInt32 = 0
+def sum_uint8(data: Span[readonly[uint8]]) -> uint32:
+    s: uint32 = 0
     for x in data:
-        s += UInt32(x)
+        s += uint32(x)
     return s
 
 
 @export
-def peek_int32(data: Span[Int32]) -> Int64:
+def peek_int32(data: Span[int32]) -> int64:
     # Same read-only body as sum_int32, but the param is the MUTABLE form
     # (no readonly) -- proves the mutable form marshals correctly across
     # source types, and that a read-only use of it doesn't warn (see
     # tests/cases/interop/warn_export_span_mutation).
-    s: Int64 = 0
+    s: int64 = 0
     for x in data:
-        s += Int64(x)
+        s += int64(x)
     return s
 
 
 @export
-def scale_in_place(data: Span[Int32], factor: Int32) -> None:
+def scale_in_place(data: Span[int32], factor: int32) -> None:
     # Mutates a copy-in param: the boundary warns (see tests/cases/interop/
     # warn_export_span_mutation), and the mutation is not visible to the
     # caller (proven in ext_checks.py). Aliases in the source.

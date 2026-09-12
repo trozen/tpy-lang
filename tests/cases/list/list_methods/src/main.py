@@ -1,31 +1,31 @@
-from tpy import Int32, Array
+from tpy import int32, Array
 
 # Test all list methods: pop(), insert(), remove(), clear(), extend()
 
-def print_list(nums: list[Int32]) -> None:
-    i: Int32 = 0
+def print_list(nums: list[int32]) -> None:
+    i: int32 = 0
     while i < len(nums):
         print(nums[i])
         i += 1
     print("---")
 
 def test_pop() -> None:
-    nums: list[Int32] = [10, 20, 30, 40]
+    nums: list[int32] = [10, 20, 30, 40]
 
     # Pop last element
-    last: Int32 = nums.pop()
+    last: int32 = nums.pop()
     print(last)
     print(len(nums))
 
     # Pop again
-    second_last: Int32 = nums.pop()
+    second_last: int32 = nums.pop()
     print(second_last)
     print(len(nums))
 
     print_list(nums)
 
 def test_insert() -> None:
-    nums: list[Int32] = [10, 30, 40]
+    nums: list[int32] = [10, 30, 40]
 
     # Insert at beginning
     nums.insert(0, 5)
@@ -40,7 +40,7 @@ def test_insert() -> None:
     print_list(nums)
 
 def test_remove() -> None:
-    nums: list[Int32] = [10, 20, 30, 20, 40]
+    nums: list[int32] = [10, 20, 30, 20, 40]
 
     # Remove first occurrence of 20
     nums.remove(20)
@@ -55,7 +55,7 @@ def test_remove() -> None:
     print_list(nums)
 
 def test_clear() -> None:
-    nums: list[Int32] = [1, 2, 3, 4, 5]
+    nums: list[int32] = [1, 2, 3, 4, 5]
     print(len(nums))
 
     nums.clear()
@@ -67,29 +67,29 @@ def test_clear() -> None:
     print(nums[0])
 
 def test_extend() -> None:
-    nums: list[Int32] = [1, 2, 3]
+    nums: list[int32] = [1, 2, 3]
 
     # Extend with array literal
     nums.extend([4, 5, 6])
     print_list(nums)
 
     # Extend with another list
-    more: list[Int32] = [7, 8]
+    more: list[int32] = [7, 8]
     nums.extend(more)
     print_list(nums)
 
     # Extend with Array variable
-    arr: Array[Int32, 2] = [9, 10]
+    arr: Array[int32, 2] = [9, 10]
     nums.extend(arr)
     print_list(nums)
 
     # Extend with another list
-    extra: list[Int32] = [11, 12]
+    extra: list[int32] = [11, 12]
     nums.extend(extra)
     print_list(nums)
 
 def test_combined_operations() -> None:
-    nums: list[Int32] = [5]
+    nums: list[int32] = [5]
 
     nums.append(10)
     nums.insert(0, 1)
@@ -99,7 +99,7 @@ def test_combined_operations() -> None:
     nums.remove(10)
     print_list(nums)
 
-    popped: Int32 = nums.pop()
+    popped: int32 = nums.pop()
     print(popped)
     print_list(nums)
 

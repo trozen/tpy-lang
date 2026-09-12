@@ -6,10 +6,10 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // # Int32 -> Int64 widening via annotation
-    // items: list[Int32] = [1, 2, 3]
+    // # int32 -> int64 widening via annotation
+    // items: list[int32] = [1, 2, 3]
     std::vector<int32_t> items = {1, 2, 3};
-    // wide: set[Int64] = {x for x in items}
+    // wide: set[int64] = {x for x in items}
     ::tpy::ordered_set<int64_t> wide = ({
         ::tpy::ordered_set<int64_t> __result;
         auto& __obj_0 = items;
@@ -30,7 +30,7 @@ void main() {
         // print(v)
         std::cout << v << "\n";
     }
-    // # Int32 -> int (BigInt) widening via annotation
+    // # int32 -> int (BigInt) widening via annotation
     // big: set[int] = {x * x for x in range(4)}
     ::tpy::ordered_set<::tpy::BigInt> big = ({
         ::tpy::ordered_set<::tpy::BigInt> __result;

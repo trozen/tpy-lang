@@ -26,7 +26,7 @@ def main() -> None:
     print("c1:", c1)
 
     # Explicit type args
-    c2 = Container[Int32].create(10)
+    c2 = Container[int32].create(10)
     print("c2:", c2)
 
     # Inference with optional param (non-None value)
@@ -34,11 +34,11 @@ def main() -> None:
     print("c3:", c3)
 
     # Explicit with None
-    c4 = Container[Int32].wrap_optional(None)
+    c4 = Container[int32].wrap_optional(None)
     print("c4:", c4)
 
     # Explicit with value
-    c5 = Container[Int32].wrap_optional(77)
+    c5 = Container[int32].wrap_optional(77)
     print("c5:", c5)
 
 main()

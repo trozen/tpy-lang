@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // items: list[tuple[Int32, str]] = [(1, "one"), (2, "two")]
+    // items: list[tuple[int32, str]] = [(1, "one"), (2, "two")]
     std::vector<std::tuple<int32_t, std::string>> items = {std::tuple<int32_t, std::string>{1, "one"}, std::tuple<int32_t, std::string>{2, "two"}};
     // for _, name in items:
     auto& __obj_0 = items;

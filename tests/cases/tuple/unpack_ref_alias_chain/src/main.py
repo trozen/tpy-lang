@@ -3,13 +3,13 @@
 # either through a plain alias chain or a tuple-literal unpack's hidden temp --
 # must keep aliasing, not move out of the C& reference (which would corrupt the
 # source). Each case mutates through the new binding and observes the original.
-from tpy import Int32
+from tpy import int32
 
 
 class Counter:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def get(self) -> "Counter":

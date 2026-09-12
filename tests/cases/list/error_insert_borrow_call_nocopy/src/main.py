@@ -1,14 +1,14 @@
 # A @nocopy payload at the same element slot is the located error, not a
 # warning: the copy the slot would make is impossible, so the diagnostic the
 # copyable payload gets as a warning is an error here.
-from tpy import Int32, nocopy
+from tpy import int32, nocopy
 
 
 @nocopy
 class Res:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 

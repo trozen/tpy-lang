@@ -9,7 +9,7 @@ namespace tpyapp::main {
     while (true) switch (__state) {
     case S_INITIAL: {
         __coro_arg_0 = "x";
-        // p = await make_pair(Int32(7), "x")  # tpyc: type(/tuple\[Int32, str\]/)
+        // p = await make_pair(int32(7), "x")  # tpyc: type(/tuple\[int32, str\]/)
         __sub_0.emplace(7, __coro_arg_0);
         __state = S_RESUME_0;
         continue;

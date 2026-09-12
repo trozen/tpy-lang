@@ -4,11 +4,11 @@
 namespace tpyapp::main {
 
 
-// def count_char(text: str, target: Char) -> Int32:
+// def count_char(text: str, target: char) -> int32:
 int32_t count_char(std::string_view text, char target) {
-    // count: Int32 = 0
+    // count: int32 = 0
     int32_t count = 0;
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < len(text):
     while ((i < ::tpy::__len__(text))) {

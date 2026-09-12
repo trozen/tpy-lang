@@ -83,7 +83,7 @@
 # tpy: cpp_namespace("tpystd::tplib::requests")
 from __future__ import annotations
 from typing import Final, Iterator
-from tpy import Int32, Own, String
+from tpy import int32, Own, String
 from tpy.version import version_info as _tpy_version_info
 from tplib import Box
 from http.client import HTTPConnection, HTTPSConnection, HTTPResponse, _Connection
@@ -95,12 +95,12 @@ import base64
 import time
 
 
-DEFAULT_HTTP_PORT: Final[Int32] = 80
-DEFAULT_HTTPS_PORT: Final[Int32] = 443
+DEFAULT_HTTP_PORT: Final[int32] = 80
+DEFAULT_HTTPS_PORT: Final[int32] = 443
 
 # Chunk size iter_lines pulls from the raw stream between newline scans. requests
 # uses 512 for iter_lines; iter_content has no default (see Response.iter_content).
-_ITER_LINES_CHUNK: Final[Int32] = 512
+_ITER_LINES_CHUNK: Final[int32] = 512
 
 # The multipart/form-data boundary. Fixed (not randomized like urllib3) so the
 # emitted wire bytes are deterministic and snapshot-testable; as with urllib3
@@ -189,7 +189,7 @@ class CaseInsensitiveDict:
     def __contains__(self, key: str) -> bool:
         return key.lower() in self._store
 
-    def __len__(self) -> Int32:
+    def __len__(self) -> int32:
         return len(self._store)
 
     def get(self, key: str, default: str | None = None) -> str | None:
@@ -410,8 +410,8 @@ class CookieJar:
     def __contains__(self, name: str) -> bool:
         return name in self._store and not self._store[name].deleted
 
-    def __len__(self) -> Int32:
-        n: Int32 = 0
+    def __len__(self) -> int32:
+        n: int32 = 0
         for name in self._store:
             if not self._store[name].deleted:
                 n += 1
@@ -584,7 +584,7 @@ class Response:
       (requests re-wraps `raw.stream()` errors; see TODO.md).
     """
 
-    status_code: Int32
+    status_code: int32
     reason: str
     url: str
     headers: CaseInsensitiveDict
@@ -603,7 +603,7 @@ class Response:
     # already respects (it only ever moves responses).
     _raw: HTTPResponse | None
 
-    def __init__(self, status_code: Int32, reason: str, url: str,
+    def __init__(self, status_code: int32, reason: str, url: str,
                  headers: Own[CaseInsensitiveDict], content: bytes,
                  cookies: Own[CookieJar],
                  raw: Own[HTTPResponse] | None = None) -> None:
@@ -641,7 +641,7 @@ class Response:
         # its `.read(amt)` is the file-like access requests exposes as `.raw`.
         return self._raw
 
-    def iter_content(self, chunk_size: Int32) -> Iterator[bytes]:
+    def iter_content(self, chunk_size: int32) -> Iterator[bytes]:
         # chunk_size is required (no default): a generator method with a default
         # parameter that narrows an Optional reference-type self field drops the
         # default in codegen (BUGS.md). requests' chunk_size=1 default is
@@ -658,7 +658,7 @@ class Response:
             # iter_content works regardless of stream= (matching requests).
             data = self.content
             n = len(data)
-            pos: Int32 = 0
+            pos: int32 = 0
             while pos < n:
                 end = pos + chunk_size
                 if end > n:
@@ -820,7 +820,7 @@ def _prepare_headers(headers: dict[str, str] | None,
     return out
 
 
-def _is_redirect(status: Int32) -> bool:
+def _is_redirect(status: int32) -> bool:
     return (status == 301 or status == 302 or status == 303
             or status == 307 or status == 308)
 
@@ -871,7 +871,7 @@ def _drop_body_headers(headers: dict[str, str]) -> None:
         del headers[k]
 
 
-def _rebuild_method(method: str, status: Int32) -> str:
+def _rebuild_method(method: str, status: int32) -> str:
     # Mirrors requests.Session.rebuild_method: 303 and 302 coerce any non-HEAD
     # method to GET; 301 coerces only POST. 307/308 preserve the method.
     if status == 303 and method != "HEAD":
@@ -1026,13 +1026,13 @@ def _connect(url: str, timeout: float | None = None,
     # Box sites are rvalues: a nominal @dynamic conformer can't be moved into
     # Box from a named local (slicing guard), so build the connection inline.
     if parts.scheme == "https":
-        hport: Int32 = DEFAULT_HTTPS_PORT
+        hport: int32 = DEFAULT_HTTPS_PORT
         if pnum is not None:
-            hport = Int32(pnum)
+            hport = int32(pnum)
         return Box(HTTPSConnection(host, hport, timeout, _ssl_context_for(verify)))
-    port: Int32 = DEFAULT_HTTP_PORT
+    port: int32 = DEFAULT_HTTP_PORT
     if pnum is not None:
-        port = Int32(pnum)
+        port = int32(pnum)
     return Box(HTTPConnection(host, port, timeout))
 
 
@@ -1045,10 +1045,10 @@ def _pool_key(url: str, verify: bool | str) -> str:
     host = parts.hostname
     if host is None:
         host = ""
-    port: Int32 = DEFAULT_HTTPS_PORT if scheme == "https" else DEFAULT_HTTP_PORT
+    port: int32 = DEFAULT_HTTPS_PORT if scheme == "https" else DEFAULT_HTTP_PORT
     pnum = parts.port
     if pnum is not None:
-        port = Int32(pnum)
+        port = int32(pnum)
     # isinstance + early return (not elif): the elif arm's `not verify` on the
     # un-narrowed bool|str union miscompiles (BUGS.md); _ssl_context_for uses
     # the same return-based shape.
@@ -1196,7 +1196,7 @@ class Session:
     # hop pops the next queued connection, bypassing the pool.
     _redirect_connections: list[Box[_Connection]]
     _pool: dict[str, Box[_Connection]]
-    max_redirects: Int32
+    max_redirects: int32
 
     def __init__(self) -> None:
         self.headers = {}
@@ -1232,7 +1232,7 @@ class Session:
                       files: dict[str, FileField] | None,
                       json: JsonValue | None, headers: dict[str, str],
                       auth: tuple[str, str] | None,
-                      timeout: float | None, hop: Int32,
+                      timeout: float | None, hop: int32,
                       send_cookies: CookieJar,
                       verify: bool | str = True,
                       stream: bool = False,
@@ -1280,7 +1280,7 @@ class Session:
              json: JsonValue | None,
              headers: dict[str, str], auth: tuple[str, str] | None,
              timeout: float | None, history: Own[list[Response]],
-             hop: Int32, follow: bool, send_cookies: CookieJar,
+             hop: int32, follow: bool, send_cookies: CookieJar,
              verify: bool | str = True,
              stream: bool = False) -> Own[Response]:
         # One request, then (when following) recurse on a 3xx Location. Recursion

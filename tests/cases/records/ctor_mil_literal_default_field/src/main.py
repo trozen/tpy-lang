@@ -2,24 +2,24 @@
 # a field that has only a class-level default demotes out of the member-init
 # list into the constructor body, where the NSDMI has already run -- so the
 # element sees the default (4) instead of an uninitialized slot.
-from tpy import Int32
+from tpy import int32
 
 
 class Cell:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 
 class Grid:
-    n: Int32 = Int32(4)
-    cells: list[Int32]
+    n: int32 = int32(4)
+    cells: list[int32]
     boxes: list[Cell]
 
     def __init__(self) -> None:
         # The subject: literal elements read a default-only field.
-        self.cells = [self.n, Int32(1)]  # tpyc: ok
+        self.cells = [self.n, int32(1)]  # tpyc: ok
         self.boxes = [Cell(self.n)]  # tpyc: ok
 
 

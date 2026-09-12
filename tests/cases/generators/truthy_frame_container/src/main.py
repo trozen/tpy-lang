@@ -5,7 +5,7 @@
 # was skipped for a frame-resident read.
 from enum import Enum, IntEnum, auto
 from typing import Any, Iterator
-from tpy import Int32
+from tpy import int32
 
 
 class Color(Enum):
@@ -20,19 +20,19 @@ class Level(IntEnum):
 
 class Plain:
     # Neither __bool__ nor __len__ -- Python's default object truthiness.
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
 class Bag:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
-    def __len__(self) -> Int32:
+    def __len__(self) -> int32:
         return self.n
 
 
@@ -46,14 +46,14 @@ class Flag:
         return self.on
 
 
-def drain_list(xs: list[Int32]) -> Iterator[Int32]:
+def drain_list(xs: list[int32]) -> Iterator[int32]:
     # The peephole shape, and the reproducer BUGS.md carried: the loop
     # mutates the frame-resident list, so an empty one must stop it.
     while xs:
         yield xs.pop()
 
 
-def drain_dict(d: dict[Int32, Int32], order: list[Int32]) -> Iterator[Int32]:
+def drain_dict(d: dict[int32, int32], order: list[int32]) -> Iterator[int32]:
     # `order` keeps the drain deterministic across dict implementations;
     # the point under test is the `while d:` head.
     i = 0
@@ -62,30 +62,30 @@ def drain_dict(d: dict[Int32, Int32], order: list[Int32]) -> Iterator[Int32]:
         i += 1
 
 
-def drain_set(s: set[Int32]) -> Iterator[Int32]:
+def drain_set(s: set[int32]) -> Iterator[int32]:
     while s:
         yield s.pop()
 
 
-def str_branch(t: str) -> Iterator[Int32]:
+def str_branch(t: str) -> Iterator[int32]:
     if t:
         yield 1
     yield 2
 
 
-def bytes_branch(b: bytes) -> Iterator[Int32]:
+def bytes_branch(b: bytes) -> Iterator[int32]:
     if b:
         yield 1
     yield 2
 
 
-def record_len_branch(g: Bag) -> Iterator[Int32]:
+def record_len_branch(g: Bag) -> Iterator[int32]:
     if g:
         yield 1
     yield 2
 
 
-def record_bool_branch(f: Flag) -> Iterator[Int32]:
+def record_bool_branch(f: Flag) -> Iterator[int32]:
     if f:
         yield 1
     yield 2
@@ -94,31 +94,31 @@ def record_bool_branch(f: Flag) -> Iterator[Int32]:
 # The remaining arms of the same truthiness dispatch. Each renders its own
 # way (enum folds to always-true, IntEnum tests the underlying value, Any
 # goes through to_bool), and each was a build error in this position before.
-def enum_branch(c: Color) -> Iterator[Int32]:
+def enum_branch(c: Color) -> Iterator[int32]:
     if c:
         yield 1
     yield 2
 
 
-def int_enum_branch(lv: Level) -> Iterator[Int32]:
+def int_enum_branch(lv: Level) -> Iterator[int32]:
     if lv:
         yield 1
     yield 2
 
 
-def plain_record_branch(p: Plain) -> Iterator[Int32]:
+def plain_record_branch(p: Plain) -> Iterator[int32]:
     if p:
         yield 1
     yield 2
 
 
-def any_branch(v: Any) -> Iterator[Int32]:
+def any_branch(v: Any) -> Iterator[int32]:
     if v:
         yield 1
     yield 2
 
 
-def and_branch(xs: list[Int32], t: str) -> Iterator[Int32]:
+def and_branch(xs: list[int32], t: str) -> Iterator[int32]:
     # A boolop recurses into both operands, so each side takes its own
     # truthiness render rather than the whole expression taking one.
     if xs and t:
@@ -126,7 +126,7 @@ def and_branch(xs: list[Int32], t: str) -> Iterator[Int32]:
     yield 2
 
 
-def peephole_or(xs: list[Int32], t: str) -> Iterator[Int32]:
+def peephole_or(xs: list[int32], t: str) -> Iterator[int32]:
     # The same recursion, in the simple-generator while peephole. `rest` is
     # a local because a str param cannot be rebound; clearing the borrowed
     # list plus emptying `rest` ends the loop after one pass.

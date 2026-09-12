@@ -2,13 +2,13 @@
 # not copy it into the frame: element mutations through the loop var persist
 # after iteration (CPython aliasing; was silently lost on a frame copy).
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
 class Node:
-    val: Int32
+    val: int32
 
-    def __init__(self, val: Int32) -> None:
+    def __init__(self, val: int32) -> None:
         self.val = val
 
 
@@ -18,7 +18,7 @@ class Holder:
     def __init__(self) -> None:
         self.nodes = [Node(1), Node(2)]
 
-    def bump(self) -> Iterator[Int32]:
+    def bump(self) -> Iterator[int32]:
         yield 0
         for n in self.nodes:  # tpyc: ok
             n.val += 10

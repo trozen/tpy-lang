@@ -1,17 +1,17 @@
 # readonly[@nocopy] passed to Own[T] param -- sema error (not movable)
-from tpy import Int32, Own, nocopy, readonly
+from tpy import int32, Own, nocopy, readonly
 
 
 @nocopy
 class Handle:
-    fd: Int32
+    fd: int32
 
 
-def close(h: Own[Handle]) -> Int32:
+def close(h: Own[Handle]) -> int32:
     return h.fd
 
 
-def inspect(h: readonly[Handle]) -> Int32:
+def inspect(h: readonly[Handle]) -> int32:
     return close(h)  # tpyc: error(/@nocopy.*cannot be copied into/)
 
 

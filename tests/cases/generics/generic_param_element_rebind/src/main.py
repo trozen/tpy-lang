@@ -5,13 +5,13 @@
 # enforce this -- regressing any one of them previously caused the param
 # to drop to `const std::vector<T>&` while the local stayed `T*`, failing
 # C++ compile with "invalid conversion from 'const T*' to 'T*'".
-from tpy import Int32
+from tpy import int32
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
@@ -23,7 +23,7 @@ def last[T](a: list[T]) -> T:
 
 
 def main() -> None:
-    nums: list[Int32] = [10, 20, 30, 40]
+    nums: list[int32] = [10, 20, 30, 40]
     print(last(nums))
 
     strs: list[str] = ["a", "b", "c"]

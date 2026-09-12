@@ -19,7 +19,7 @@
 | Borrow tracker key mismatch | `v = b.items` borrows `"b.items"` but `b._items = [...]` mutates `"b._items"` -- different keys, no warning. Fix: property-to-field alias registration |
 | No augmented assignment | `obj.prop += 1` rejected. Could desugar to `obj.prop = obj.prop + 1` (double getter evaluation) |
 | No `@x.deleter` | Rarely used |
-| No properties in protocols | Protocol fields (`class P(Protocol): x: Int32`) serve a similar purpose |
+| No properties in protocols | Protocol fields (`class P(Protocol): x: int32`) serve a similar purpose |
 | No `@override` on properties | Properties are inherited but not overridable |
 | Optional[non-value] narrowing | Pre-existing: `if obj.node is not None: obj.node.val` generates invalid C++ for non-value Optional. Affects both fields and properties |
 | `str` / `BigInt` return by value | General method return convention -- not property-specific. Use `-> StrView` for zero-copy str |
@@ -46,17 +46,17 @@ Getters and setters are compiled as normal C++ methods -- the compiler transform
 
 ```python
 class Circle:
-    _radius: Float64
+    _radius: float64
 
-    def __init__(self, radius: Float64) -> None:
+    def __init__(self, radius: float64) -> None:
         self._radius = radius
 
     @property
-    def radius(self) -> Float64:
+    def radius(self) -> float64:
         return self._radius
 
     @radius.setter
-    def radius(self, value: Float64) -> None:
+    def radius(self, value: float64) -> None:
         self._radius = value
 ```
 
@@ -103,7 +103,7 @@ and all other method infrastructure apply automatically.
 
 ## C++ Output
 
-### Value-type property (Int32, Float64, bool, Char)
+### Value-type property (int32, float64, bool, char)
 
 Single const overload, return by value:
 

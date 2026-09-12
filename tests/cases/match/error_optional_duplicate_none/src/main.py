@@ -1,8 +1,8 @@
 # error: duplicate case None in Optional match
 from typing import Optional
-from tpy import Int32
+from tpy import int32
 
-def check(v: Optional[Int32]) -> str:
+def check(v: Optional[int32]) -> str:
     match v:
         case None:
             return "none"

@@ -37,10 +37,10 @@ inline constexpr std::string_view __name__ = "__main__";
 struct Vehicle {
     // brand: str
     std::string brand;
-    // year: Int32
+    // year: int32
     int32_t year;
 
-    // def __init__(self, brand: str, year: Int32) -> None:
+    // def __init__(self, brand: str, year: int32) -> None:
     Vehicle() = default;
     explicit Vehicle(std::string_view brand, int32_t year);
 
@@ -59,17 +59,17 @@ inline std::ostream& operator<<(std::ostream& os, const Vehicle& obj) {
 struct Car : Vehicle {
     // model: str
     std::string model;
-    // car_weight: Int32
+    // car_weight: int32
     int32_t car_weight;
 
-    // def __init__(self, brand: str, year: Int32, model: str, car_weight: Int32) -> None:
+    // def __init__(self, brand: str, year: int32, model: str, car_weight: int32) -> None:
     Car() = default;
     explicit Car(std::string_view brand, int32_t year, std::string_view model, int32_t car_weight);
 
     // def __str__(self) -> str:
     std::string __str__() const;
 
-    // def weight(self) -> Int32:
+    // def weight(self) -> int32:
     int32_t weight() const;
 
     // def describe(self) -> str:
@@ -83,7 +83,7 @@ inline std::ostream& operator<<(std::ostream& os, const Car& obj) {
 }
 
 
-// def __init__(self, brand: str, year: Int32) -> None:
+// def __init__(self, brand: str, year: int32) -> None:
 inline Vehicle::Vehicle(std::string_view brand, int32_t year) : brand(brand), year(year) {}
 
 // def get_brand(self) -> str:
@@ -92,7 +92,7 @@ inline std::string Vehicle::get_brand() const {
     return this->brand;
 }
 
-// def __init__(self, brand: str, year: Int32, model: str, car_weight: Int32) -> None:
+// def __init__(self, brand: str, year: int32, model: str, car_weight: int32) -> None:
 inline Car::Car(std::string_view brand, int32_t year, std::string_view model, int32_t car_weight) : model(model), car_weight(car_weight) {
     // self.brand = brand
     this->brand = brand;
@@ -106,7 +106,7 @@ inline std::string Car::__str__() const {
     return this->model;
 }
 
-// def weight(self) -> Int32:
+// def weight(self) -> int32:
 inline int32_t Car::weight() const {
     // return self.car_weight
     return this->car_weight;

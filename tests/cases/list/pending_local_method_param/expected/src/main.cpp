@@ -20,7 +20,7 @@ void main() {
     sink.take(e);
     // print(e)
     std::cout << ::tpy::ListPrinter(e) << "\n";
-    // span_src = [1, 2, 3]  # tpyc: type(/Array\[Int32, 3\]/)
+    // span_src = [1, 2, 3]  # tpyc: type(/Array\[int32, 3\]/)
     std::array<int32_t, 3> span_src = {1, 2, 3};
     // print(sink.first(span_src))
     std::cout << sink.first(::tpy::as_mut_span(span_src)) << "\n";

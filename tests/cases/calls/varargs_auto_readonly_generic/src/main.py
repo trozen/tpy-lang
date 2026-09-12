@@ -2,21 +2,21 @@
 # `varargs<const T>` at the template, and per-instantiation T comes from the
 # call site (no T-side const propagation needed -- the template-level slot
 # const is enough).
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    val: Int32
+    val: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 
-def count_them[T](*items: T) -> Int32:  # tpyc: ok
+def count_them[T](*items: T) -> int32:  # tpyc: ok
     return len(items)
 
 
-def via_param(b: Box, c: Box) -> Int32:
+def via_param(b: Box, c: Box) -> int32:
     return count_them(b, c)
 
 

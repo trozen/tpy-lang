@@ -5,21 +5,21 @@ Per-overload runtime entries (writeln_int, writeln_float, readln_int,
 import-name level (matches the design table's "one runtime entry per
 overload" guidance).
 
-M1: `writeln(StrView)`. M2: `writeln_int(Int32)`. M8: `readln_int` /
+M1: `writeln(StrView)`. M2: `writeln_int(int32)`. M8: `readln_int` /
 `readln_line` for stdin -- both route through TPy's `input()` builtin
 (added with M8) so the Pascal runtime stays in pure TPy with no
 vendored C/C++ source. Float / boolean / char overloads and `write`
 (no-newline) variants land in later milestones as needed.
 """
 
-from tpy import Int32
+from tpy import int32
 
 
 def writeln(s: str) -> None:
     print(s)
 
 
-def writeln_int(n: Int32) -> None:
+def writeln_int(n: int32) -> None:
     print(n)
 
 
@@ -35,7 +35,7 @@ def write(s: str) -> None:
     print(s, end="")
 
 
-def write_int(n: Int32) -> None:
+def write_int(n: int32) -> None:
     print(n, end="")
 
 
@@ -55,10 +55,10 @@ def format_bool(b: bool) -> str:
     return "FALSE"
 
 
-def readln_int() -> Int32:
-    """Read a line of stdin and parse it as an Int32. Pascal's
+def readln_int() -> int32:
+    """Read a line of stdin and parse it as an int32. Pascal's
     `readln(int_var)` lowers to `int_var := readln_int();`."""
-    return Int32(input())
+    return int32(input())
 
 
 def readln_line() -> str:
@@ -87,14 +87,14 @@ class TextFile:
 
     path: str
     _lines: list[str]
-    _index: Int32
+    _index: int32
     _write_buf: list[str]
     _append_mode: bool
 
     def __init__(self) -> None:
         self.path = ""
         self._lines = []
-        self._index = Int32(0)
+        self._index = int32(0)
         self._write_buf = []
         self._append_mode = False
 
@@ -108,7 +108,7 @@ class TextFile:
         with open(self.path, "r") as f:
             data = f.read()
         self._lines = data.splitlines()
-        self._index = Int32(0)
+        self._index = int32(0)
         self._write_buf = []
         self._append_mode = False
 
@@ -117,7 +117,7 @@ class TextFile:
         truncates an existing file; we accumulate writes into a
         per-line buffer and flush at `close()`."""
         self._lines = []
-        self._index = Int32(0)
+        self._index = int32(0)
         self._write_buf = []
         self._append_mode = False
 
@@ -126,7 +126,7 @@ class TextFile:
         end of the existing file; `close` flushes them with "a" mode
         so the on-disk file keeps its prior content."""
         self._lines = []
-        self._index = Int32(0)
+        self._index = int32(0)
         self._write_buf = []
         self._append_mode = True
 
@@ -139,7 +139,7 @@ class TextFile:
                 for chunk in self._write_buf:
                     f.write(chunk)
         self._lines = []
-        self._index = Int32(0)
+        self._index = int32(0)
         self._write_buf = []
         self._append_mode = False
 
@@ -151,13 +151,13 @@ class TextFile:
         self._index += 1
         return line
 
-    def readln_int(self) -> Int32:
-        return Int32(self.readln_line())
+    def readln_int(self) -> int32:
+        return int32(self.readln_line())
 
     def writeln_str(self, s: str) -> None:
         self._write_buf.append(s + "\n")
 
-    def writeln_int(self, n: Int32) -> None:
+    def writeln_int(self, n: int32) -> None:
         self._write_buf.append(str(n) + "\n")
 
     def writeln_float(self, x: float) -> None:
@@ -166,7 +166,7 @@ class TextFile:
     def write_str(self, s: str) -> None:
         self._write_buf.append(s)
 
-    def write_int(self, n: Int32) -> None:
+    def write_int(self, n: int32) -> None:
         self._write_buf.append(str(n))
 
     def write_float(self, x: float) -> None:

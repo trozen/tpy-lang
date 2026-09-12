@@ -115,7 +115,7 @@ void main() {
     }
 }
 
-// def gen_field(self) -> Iterator[Int32]:
+// def gen_field(self) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_field::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -147,7 +147,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_field::__next__() {
 }
 
 
-// def gen_reassign(self) -> Iterator[Int32]:
+// def gen_reassign(self) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_reassign::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -177,7 +177,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_reassign::__next__() 
 }
 
 
-// def gen_reguard(self) -> Iterator[Int32]:
+// def gen_reguard(self) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_reguard::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -223,7 +223,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_reguard::__next__() {
 }
 
 
-// def gen_local_bind(self) -> Iterator[Int32]:
+// def gen_local_bind(self) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_local_bind::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -262,7 +262,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_local_bind::__next__(
 }
 
 
-// def gen_try_body(self) -> Iterator[Int32]:
+// def gen_try_body(self) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_try_body::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -322,7 +322,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_try_body::__next__() 
 }
 
 
-// def gen_local_bind_loop(self) -> Iterator[Int32]:
+// def gen_local_bind_loop(self) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_local_bind_loop::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {

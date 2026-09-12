@@ -1,7 +1,7 @@
 # Mutation through a by-reference dict parameter
-from tpy import Int32
+from tpy import int32
 
-def insert(d: dict[str, Int32], key: str, val: Int32) -> None:
+def insert(d: dict[str, int32], key: str, val: int32) -> None:
     d[key] = val
 
 def main() -> None:

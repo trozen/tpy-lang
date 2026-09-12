@@ -1,12 +1,12 @@
 # min() and max() with key= parameter
-from tpy import Int32
+from tpy import int32
 
-def negate(x: Int32) -> Int32:
+def negate(x: int32) -> int32:
     return -x
 
 def main() -> None:
-    a: Int32 = 3
-    b: Int32 = -5
+    a: int32 = 3
+    b: int32 = -5
 
     # min/max by absolute value
     print(min(a, b, key=lambda x: x if x >= 0 else -x))
@@ -17,7 +17,7 @@ def main() -> None:
     print(max(a, b, key=negate))
 
     # 3-arg min/max with key
-    c: Int32 = -1
+    c: int32 = -1
     print(min(a, b, c, key=lambda x: x if x >= 0 else -x))
     print(max(a, b, c, key=lambda x: x if x >= 0 else -x))
 

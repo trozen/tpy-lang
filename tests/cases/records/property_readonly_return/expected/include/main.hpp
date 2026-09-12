@@ -16,18 +16,18 @@ void main();
 
 // class Foo:
 struct Foo {
-    // _items: list[Int32]
+    // _items: list[int32]
     std::vector<int32_t> _items;
 
     // def __init__(self) -> None:
     Foo();
 
     // @property
-    // def items(self) -> list[Int32]:
+    // def items(self) -> list[int32]:
     std::vector<int32_t>& items();
 
     // @property
-    // def items(self) -> list[Int32]:
+    // def items(self) -> list[int32]:
     const std::vector<int32_t>& items() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Foo";
 };
@@ -42,14 +42,14 @@ inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {
 inline Foo::Foo() : _items(std::vector<int32_t>{1, 2, 3}) {}
 
 // @property
-// def items(self) -> list[Int32]:
+// def items(self) -> list[int32]:
 inline std::vector<int32_t>& Foo::items() {
     // return self._items
     return this->_items;
 }
 
 // @property
-// def items(self) -> list[Int32]:
+// def items(self) -> list[int32]:
 inline const std::vector<int32_t>& Foo::items() const {
     // return self._items
     return this->_items;

@@ -6,15 +6,15 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // # Int32
+    // # int32
     // vals = [1, 2, 3, 4, 5]
     std::array<int32_t, 5> vals = {1, 2, 3, 4, 5};
     // print(sum(vals))
     std::cout << ::tpy::builtin_sum<int32_t>(vals) << "\n";
     // print(sum(vals, 100))
     std::cout << ::tpy::builtin_sum_start<int32_t>(vals, 100) << "\n";
-    // # Int64
-    // big: list[Int64] = [1000000000, 2000000000, 3000000000]
+    // # int64
+    // big: list[int64] = [1000000000, 2000000000, 3000000000]
     std::vector<int64_t> big = {1000000000, 2000000000, static_cast<int64_t>(3000000000)};
     // print(sum(big))
     std::cout << ::tpy::builtin_sum<int64_t>(big) << "\n";
@@ -26,7 +26,7 @@ void main() {
     // print(sum(floats, 10.0))
     std::cout << ::tpy::print_float(::tpy::builtin_sum_start_float(floats, 10.0)) << "\n";
     // # empty
-    // empty: list[Int32] = []
+    // empty: list[int32] = []
     std::vector<int32_t> empty = std::vector<int32_t>{};
     // print(sum(empty))
     std::cout << ::tpy::builtin_sum<int32_t>(empty) << "\n";

@@ -1,17 +1,17 @@
 # A live generator METHOD object stores its params by reference; the
 # method's frame-borrow facts must gate a later consume of the argument.
 from typing import Iterator
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Walker:
-    def walk(self, xs: list[Int32]) -> Iterator[Int32]:
+    def walk(self, xs: list[int32]) -> Iterator[int32]:
         for x in xs:
             yield x
 
 
-def drop(xs: Own[list[Int32]]) -> Int32:
-    store: list[list[Int32]] = []
+def drop(xs: Own[list[int32]]) -> int32:
+    store: list[list[int32]] = []
     store.append(xs)
     return len(store)
 

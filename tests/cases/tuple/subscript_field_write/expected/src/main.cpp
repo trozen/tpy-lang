@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def bump(t: tuple[Int32, Leaf]) -> None:
+// def bump(t: tuple[int32, Leaf]) -> None:
 void bump(const std::tuple<int32_t, Leaf*>& t) {
     // t[1].n = 5
     std::get<1>(t)->n = 5;

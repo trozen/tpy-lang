@@ -1,6 +1,6 @@
-from tpy import Int32
+from tpy import int32
 
-def classify(x: Int32) -> Int32:
+def classify(x: int32) -> int32:
     # Test elif
     if x < 0:
         return -1
@@ -9,19 +9,19 @@ def classify(x: Int32) -> Int32:
     else:
         return 1
 
-def check_range(x: Int32) -> Int32:
+def check_range(x: int32) -> int32:
     # Test and/or
     if x >= 0 and x <= 10:
         return 1
     return 0
 
-def check_bounds(x: Int32) -> Int32:
+def check_bounds(x: int32) -> int32:
     # Test or
     if x < 0 or x > 100:
         return 1
     return 0
 
-def complex_condition(a: Int32, b: Int32) -> Int32:
+def complex_condition(a: int32, b: int32) -> int32:
     # Test combined and/or with elif
     if a > 0 and b > 0:
         return 1
@@ -30,7 +30,7 @@ def complex_condition(a: Int32, b: Int32) -> Int32:
     else:
         return 0
 
-def nested_else_if(x: Int32, y: Int32) -> Int32:
+def nested_else_if(x: int32, y: int32) -> int32:
     # Test that genuine else: if stays nested (not flattened like elif)
     if x > 0:
         return 1

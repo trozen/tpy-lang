@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 
 class Box[T]:
     value: T
@@ -8,7 +8,7 @@ class Box[T]:
 
 
 def main() -> None:
-    box: Box[Int32, str] = Box[Int32, str](42)  # tpyc: error(/expects 1 type arguments/)
+    box: Box[int32, str] = Box[int32, str](42)  # tpyc: error(/expects 1 type arguments/)
 
 
 main()

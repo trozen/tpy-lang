@@ -12,7 +12,7 @@ std::tuple<Point*, bool> find(Point& p) {
 
 // def main() -> None:
 void main() {
-    // p = Point(Int32(10), Int32(20))
+    // p = Point(int32(10), int32(20))
     Point p = Point(10, 20);
     // pt, found = find(p)
     auto __tup_1 = find(p);
@@ -23,7 +23,7 @@ void main() {
     // print(found)
     std::cout << ::tpy::print_bool(found) << "\n";
     // # Mutation through reference
-    // p.x = Int32(99)
+    // p.x = int32(99)
     p.x = 99;
     // print(pt)
     std::cout << pt << "\n";

@@ -1,3 +1,3 @@
-main.py:16: warning: method macro on Counter.bump: field n is Int32
+main.py:16: warning: method macro on Counter.bump: field n is int32
 main.py:23: warning: macro on seed: no self (is_method=True)
 main.py:28: warning: macro on free: no self (is_method=False)

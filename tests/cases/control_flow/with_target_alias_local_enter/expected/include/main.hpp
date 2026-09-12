@@ -19,10 +19,10 @@ void main();
 
 // class Item:
 struct Item {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32):
+    // def __init__(self, n: int32):
     Item() = default;
     explicit Item(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Item";
@@ -38,7 +38,7 @@ struct Holder {
     // item: Item
     Item item;
 
-    // def __init__(self, n: Int32):
+    // def __init__(self, n: int32):
     Holder() = default;
     explicit Holder(int32_t n);
 
@@ -48,7 +48,7 @@ struct Holder {
     // def __exit__(self, et, ev, tb) -> None:
     void __exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const;
 
-    // def total(self) -> Int32:
+    // def total(self) -> int32:
     int32_t total() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
@@ -85,10 +85,10 @@ struct __gen_steps : public ::tpy::next_iter_mixin<__gen_steps, int32_t> {
 };
 
 
-// def __init__(self, n: Int32):
+// def __init__(self, n: int32):
 inline Item::Item(int32_t n) : n(n) {}
 
-// def __init__(self, n: Int32):
+// def __init__(self, n: int32):
 inline Holder::Holder(int32_t n) : item(Item(n)) {}
 
 // def __enter__(self) -> Item:
@@ -104,7 +104,7 @@ inline void Holder::__exit__(std::monostate et, const ::tpy::BaseException* ev, 
     // pass
 }
 
-// def total(self) -> Int32:
+// def total(self) -> int32:
 inline int32_t Holder::total() const {
     // return self.item.n
     return this->item.n;

@@ -1,15 +1,15 @@
 # @dataclass(frozen=True) inheritance: both parent and child frozen
 from dataclasses import dataclass
-from tpy import Int32
+from tpy import int32
 
 @dataclass(frozen=True)
 class Vec2:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 @dataclass(frozen=True)
 class Vec3(Vec2):
-    z: Int32
+    z: int32
 
 def main() -> None:
     v = Vec3(1, 2, 3)

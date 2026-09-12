@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // o = Owner(Int32(1), Int32(42))
+    // o = Owner(int32(1), int32(42))
     Owner o = Owner(1, 42);
     // print(o.h.id)
     std::cout << o.h.id << "\n";

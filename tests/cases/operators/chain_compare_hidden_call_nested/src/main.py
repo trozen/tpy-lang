@@ -2,7 +2,7 @@
 # through coercions, so a hidden call anywhere along the chain still binds a
 # temp: a width-coerced property, a getter reached through an outer field
 # read, and two getters in one chain each binding their own.
-from tpy import Int8, Own
+from tpy import int8, Own
 
 calls = 0
 
@@ -15,13 +15,13 @@ class Inner:
 
 
 class P:
-    small: Int8
+    small: int8
 
     def __init__(self) -> None:
-        self.small = Int8(5)
+        self.small = int8(5)
 
     @property
-    def narrow(self) -> Int8:
+    def narrow(self) -> int8:
         global calls
         calls += 1
         return self.small
@@ -37,7 +37,7 @@ def main() -> None:
     global calls
     p = P()
 
-    # The Int8 result widens for the comparison, wrapping the property access
+    # The int8 result widens for the comparison, wrapping the property access
     # in a coercion the check has to see through.
     calls = 0
     coerced = 1 < p.narrow < 10

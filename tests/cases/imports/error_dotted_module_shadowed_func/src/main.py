@@ -1,8 +1,8 @@
 import tpy.unsafe
-from tpy import Int32, Ptr, Array
+from tpy import int32, Ptr, Array
 
-def tpy() -> Int32:
-    return Int32(1)
+def tpy() -> int32:
+    return int32(1)
 
-arr: Array[Int32, 2] = [Int32(1), Int32(2)]
-p: Ptr[Int32] = tpy.unsafe.unsafe_ptr(arr)  # tpyc: error(/is not a variable/)
+arr: Array[int32, 2] = [int32(1), int32(2)]
+p: Ptr[int32] = tpy.unsafe.unsafe_ptr(arr)  # tpyc: error(/is not a variable/)

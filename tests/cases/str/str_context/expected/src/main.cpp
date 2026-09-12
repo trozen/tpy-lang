@@ -12,7 +12,7 @@ std::string greet(std::string_view name) {
 
 // def get_name() -> str:
 std::string get_name() {
-    // return str(Int32(42))
+    // return str(int32(42))
     return ::tpy::fixed_to_str<int32_t>(42);
 }
 

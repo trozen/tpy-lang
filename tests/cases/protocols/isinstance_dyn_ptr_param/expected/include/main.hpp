@@ -37,10 +37,10 @@ void main();
 // @nocopy
 // class Loud(Awaker):
 struct Loud : Awaker {
-    // base: Int32
+    // base: int32
     int32_t base;
 
-    // def __init__(self, base: Int32) -> None:
+    // def __init__(self, base: int32) -> None:
     Loud() = default;
     explicit Loud(int32_t base);
     // non-copyable (@nocopy)
@@ -49,10 +49,10 @@ struct Loud : Awaker {
     Loud(Loud&&) = default;
     Loud& operator=(Loud&&) = default;
 
-    // def mark(self) -> Int32:
+    // def mark(self) -> int32:
     int32_t mark() override;
 
-    // def shout(self) -> Int32:
+    // def shout(self) -> int32:
     int32_t shout() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Loud";
 };
@@ -65,10 +65,10 @@ inline std::ostream& operator<<(std::ostream& os, const Loud& obj) {
 // @nocopy
 // class Quiet(Awaker):
 struct Quiet : Awaker {
-    // base: Int32
+    // base: int32
     int32_t base;
 
-    // def __init__(self, base: Int32) -> None:
+    // def __init__(self, base: int32) -> None:
     Quiet() = default;
     explicit Quiet(int32_t base);
     // non-copyable (@nocopy)
@@ -77,7 +77,7 @@ struct Quiet : Awaker {
     Quiet(Quiet&&) = default;
     Quiet& operator=(Quiet&&) = default;
 
-    // def mark(self) -> Int32:
+    // def mark(self) -> int32:
     int32_t mark() override;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Quiet";
 };
@@ -107,25 +107,25 @@ struct tpy::RefAdapter<tpyapp::main::Awaker, T> : tpyapp::main::Awaker {
 namespace tpyapp::main {
 
 
-// def __init__(self, base: Int32) -> None:
+// def __init__(self, base: int32) -> None:
 inline Loud::Loud(int32_t base) : base(base) {}
 
-// def mark(self) -> Int32:
+// def mark(self) -> int32:
 inline int32_t Loud::mark() {
     // return self.base
     return this->base;
 }
 
-// def shout(self) -> Int32:
+// def shout(self) -> int32:
 inline int32_t Loud::shout() const {
     // return self.base * 100
     return (::tpy::mul_check<int32_t>(this->base, 100));
 }
 
-// def __init__(self, base: Int32) -> None:
+// def __init__(self, base: int32) -> None:
 inline Quiet::Quiet(int32_t base) : base(base) {}
 
-// def mark(self) -> Int32:
+// def mark(self) -> int32:
 inline int32_t Quiet::mark() {
     // return self.base
     return this->base;

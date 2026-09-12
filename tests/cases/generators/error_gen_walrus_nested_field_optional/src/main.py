@@ -1,13 +1,13 @@
 # A walrus over a NESTED field's Optional inside a generator frame: the
 # Optional-ptr walrus source admits a direct field read only.
 from typing import Iterator
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Node:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 
@@ -24,7 +24,7 @@ class Holder:
     def __init__(self, n: Own[Node]) -> None:
         self.inner = Inner(n)
 
-    def g(self) -> Iterator[Int32]:  # tpyc: error(/res\.cond:expr\.walrus/)
+    def g(self) -> Iterator[int32]:  # tpyc: error(/res\.cond:expr\.walrus/)
         yield -1
         i = 0
         while i < 2:

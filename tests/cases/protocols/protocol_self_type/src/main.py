@@ -1,5 +1,5 @@
 from typing import Protocol, Self
-from tpy import Int32
+from tpy import int32
 
 class Addable(Protocol):
     def __add__(self, other: Self) -> Self: ...
@@ -10,8 +10,8 @@ def add_values(x: Addable, y: Addable) -> None:
     print(result)
 
 def main() -> None:
-    a: Int32 = 21
-    b: Int32 = 21
+    a: int32 = 21
+    b: int32 = 21
     add_values(a, b)
 
 main()

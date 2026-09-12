@@ -2,17 +2,17 @@
 # borrow-form pointer machinery (a reference can't rebind): each binding
 # aliases its element, so mutation through the local reaches the stored
 # element bound at that point.
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    val: Int32
-    def __init__(self, v: Int32) -> None:
+    val: int32
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 
 def main() -> None:
-    items: list[tuple[Int32, Box]] = [(1, Box(10)), (2, Box(20))]
+    items: list[tuple[int32, Box]] = [(1, Box(10)), (2, Box(20))]
     t = items[0]
     t[1].val = 99
     t = items[1]

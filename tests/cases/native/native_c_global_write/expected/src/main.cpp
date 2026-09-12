@@ -4,14 +4,14 @@
 namespace tpyapp::main {
 
 
-// def set_same_name(val: Int32) -> None:
+// def set_same_name(val: int32) -> None:
 void set_same_name(int32_t val) {
     // global opentop
     // opentop = val
     opentop = val;
 }
 
-// def set_renamed(val: Int32) -> None:
+// def set_renamed(val: int32) -> None:
 void set_renamed(int32_t val) {
     // global counter
     // counter = val
@@ -20,11 +20,11 @@ void set_renamed(int32_t val) {
 
 // def main() -> None:
 void main() {
-    // set_same_name(Int32(10))
+    // set_same_name(int32(10))
     set_same_name(10);
     // print(opentop)
     std::cout << ::opentop << "\n";
-    // set_renamed(Int32(20))
+    // set_renamed(int32(20))
     set_renamed(20);
     // print(counter)
     std::cout << ::g_counter << "\n";

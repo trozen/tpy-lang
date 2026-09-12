@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def fill(xs: list[Int32], v: Int32) -> None:
+// def fill(xs: list[int32], v: int32) -> None:
 void fill(std::vector<int32_t>& xs, int32_t v) {
     // def add() -> None:
     auto add = [&v, &xs]() {
@@ -19,7 +19,7 @@ void fill(std::vector<int32_t>& xs, int32_t v) {
 
 // def main() -> None:
 void main() {
-    // xs: list[Int32] = []
+    // xs: list[int32] = []
     std::vector<int32_t> xs = std::vector<int32_t>{};
     // fill(xs, 7)
     fill(xs, 7);

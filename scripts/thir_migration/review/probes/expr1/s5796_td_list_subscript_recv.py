@@ -1,8 +1,8 @@
 from typing import TypedDict
-from tpy import Int32
+from tpy import int32
 class TD(TypedDict):
-    k: Int32
-def f(xs: list[TD]) -> Int32:
+    k: int32
+def f(xs: list[TD]) -> int32:
     return xs[0]['k']
 def main() -> None:
     print(f([TD(k=1)]))

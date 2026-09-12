@@ -1,11 +1,11 @@
 # Augmented assignment through BaseN.field in a @readonly method is
 # rejected on the same grounds as direct assignment: implicit receiver
 # is a const `this`.
-from tpy import Int32, readonly
+from tpy import int32, readonly
 
 
 class Parent:
-    counter: Int32
+    counter: int32
 
 
 class Child(Parent):

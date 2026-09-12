@@ -1,21 +1,21 @@
-from tpy import Int32
+from tpy import int32
 from typing import Protocol
 
 
 # Protocol with a single field
 class HasValue(Protocol):
-    value: Int32
+    value: int32
 
 
 # Protocol with multiple fields
 class HasXY(Protocol):
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 
 # Protocol with fields and methods combined
 class Container(Protocol):
-    count: Int32
+    count: int32
 
     def is_empty(self) -> bool:
         ...
@@ -28,38 +28,38 @@ class Holder[T](Protocol):
 
 # Record conforming to HasValue
 class Point:
-    value: Int32
+    value: int32
 
-    def __init__(self, v: Int32):
+    def __init__(self, v: int32):
         self.value = v
 
 
 # Record conforming to HasXY
 class Vec2:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32):
+    def __init__(self, x: int32, y: int32):
         self.x = x
         self.y = y
 
 
 # Record conforming to Container
 class Box:
-    count: Int32
+    count: int32
 
-    def __init__(self, c: Int32):
+    def __init__(self, c: int32):
         self.count = c
 
     def is_empty(self) -> bool:
         return self.count == 0
 
 
-# Record conforming to Holder[Int32]
+# Record conforming to Holder[int32]
 class IntHolder:
-    item: Int32
+    item: int32
 
-    def __init__(self, v: Int32):
+    def __init__(self, v: int32):
         self.item = v
 
 
@@ -70,29 +70,29 @@ class Wrapper[T: HasValue]:
     def __init__(self, val: T):
         self.inner = val
 
-    def get_inner_value(self) -> Int32:
+    def get_inner_value(self) -> int32:
         return self.inner.value
 
 
 # Function using protocol field
-def get_value[T: HasValue](item: T) -> Int32:
+def get_value[T: HasValue](item: T) -> int32:
     return item.value
 
 
 # Function using protocol with multiple fields
-def sum_xy[T: HasXY](item: T) -> Int32:
+def sum_xy[T: HasXY](item: T) -> int32:
     return item.x + item.y
 
 
 # Function using protocol with field and method
-def describe[T: Container](item: T) -> Int32:
+def describe[T: Container](item: T) -> int32:
     if item.is_empty():
         return 0
     return item.count
 
 
 # Function using generic protocol with field
-def get_item[T: Holder[Int32]](holder: T) -> Int32:
+def get_item[T: Holder[int32]](holder: T) -> int32:
     return holder.item
 
 

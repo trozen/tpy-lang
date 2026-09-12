@@ -2,13 +2,13 @@
 # constructor is a fourth lowering entry point, so it needs the same lambda-hoist
 # rejection the plain-function one has (THIR emitted the slot at the ctor's
 # prologue, outside the lambda's capture list).
-from tpy import Int32
+from tpy import int32
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
     def bump(self) -> None:
@@ -16,10 +16,10 @@ class Point:
 
 
 class Holder:
-    v: Int32
+    v: int32
 
-    def __init__(self, k: Int32) -> None:
-        def inner(n: Int32) -> Int32:
+    def __init__(self, k: int32) -> None:
+        def inner(n: int32) -> int32:
             p = Point(n)
             alias = p
             p = Point(n * 100)

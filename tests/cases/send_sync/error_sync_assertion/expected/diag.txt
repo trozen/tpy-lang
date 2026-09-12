@@ -1,1 +1,1 @@
-main.py:5: error: `Sync[list[Int32]]`: 'list[Int32]' is not Sync
+main.py:5: error: `Sync[list[int32]]`: 'list[int32]' is not Sync

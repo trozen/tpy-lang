@@ -1,16 +1,16 @@
 # Regression: user record with `__hash__` but no `__eq__` is rejected --
 # the gate requires both Hashable and Equatable conformance.
-from tpy import Int32, UInt64
+from tpy import int32, uint64
 
 
 class HashOnly:
-    val: Int32
+    val: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.val = v
 
-    def __hash__(self) -> UInt64:
-        return UInt64(self.val)
+    def __hash__(self) -> uint64:
+        return uint64(self.val)
 
 
 def main() -> None:

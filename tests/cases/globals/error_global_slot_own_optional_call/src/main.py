@@ -1,16 +1,16 @@
 # An `Own[T] | None` callee returns STORAGE form, which the global slot write
 # would have to lift to a pointer -- a different render.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Point:
-    a: Int32
+    a: int32
 
-    def __init__(self, a: Int32) -> None:
+    def __init__(self, a: int32) -> None:
         self.a = a
 
 
-def make(a: Int32) -> Own[Point] | None:
+def make(a: int32) -> Own[Point] | None:
     if a < 0:
         return None
     return Point(a)

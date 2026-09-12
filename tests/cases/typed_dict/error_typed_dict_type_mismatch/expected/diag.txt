@@ -1,1 +1,1 @@
-main.py:10: error: Type mismatch in argument 'age': expected Int32, got str
+main.py:10: error: Type mismatch in argument 'age': expected int32, got str

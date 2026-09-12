@@ -1,10 +1,10 @@
 # Test calling protocol methods on bounded type parameters
 from __future__ import annotations
 from typing import Protocol, Self, Sized
-from tpy import Int32, Own, Comparable
+from tpy import int32, Own, Comparable
 
 # Test 1: Builtin protocol (Sized) method call inside generic function
-def get_length[T: Sized](item: T) -> Int32:
+def get_length[T: Sized](item: T) -> int32:
     return len(item)
 
 # Test 2: User-defined protocol
@@ -23,36 +23,36 @@ class Printer[T: Stringable]:
 
 # Test 5: Type satisfying multiple protocols (Stringable and Sized)
 class MyValue:
-    val: Int32
+    val: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.val = v
 
     def to_str(self) -> str:
         return "value"
 
-    def __len__(self) -> Int32:
+    def __len__(self) -> int32:
         return self.val
 
 # Test 6: Multiple type params with different bounds
-def process_both[T: Sized, U: Stringable](a: T, b: U) -> Int32:
+def process_both[T: Sized, U: Stringable](a: T, b: U) -> int32:
     print(b.to_str())
     return len(a)
 
 # Test 7: Protocol with multiple methods
 class MultiMethod(Protocol):
     def get_name(self) -> str: ...
-    def get_value(self) -> Int32: ...
+    def get_value(self) -> int32: ...
 
 def use_multi[T: MultiMethod](item: T) -> None:
     print(item.get_name())
     print(item.get_value())
 
 # Test 8: Nested bounded calls (passing bounded param to another bounded function)
-def inner_len[T: Sized](x: T) -> Int32:
+def inner_len[T: Sized](x: T) -> int32:
     return len(x)
 
-def outer_len[T: Sized](x: T) -> Int32:
+def outer_len[T: Sized](x: T) -> int32:
     return inner_len(x)
 
 # Test 9: User protocol with Self in signature - Self should resolve to T, not the protocol
@@ -68,10 +68,10 @@ def is_less[T: Comparable](a: T, b: T) -> bool:
 
 # Another type satisfying Stringable
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32) -> None:
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 
@@ -81,23 +81,23 @@ class Point:
 # Type satisfying MultiMethod protocol
 class Widget:
     name: str
-    val: Int32
+    val: int32
 
-    def __init__(self, name: str, val: Int32) -> None:
+    def __init__(self, name: str, val: int32) -> None:
         self.name = name
         self.val = val
 
     def get_name(self) -> str:
         return self.name
 
-    def get_value(self) -> Int32:
+    def get_value(self) -> int32:
         return self.val
 
 # Type satisfying Clonable protocol
 class Box:
-    value: Int32
+    value: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.value = v
 
     def clone(self) -> Own[Box]:

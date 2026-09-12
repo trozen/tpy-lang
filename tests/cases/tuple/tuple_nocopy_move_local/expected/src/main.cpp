@@ -6,9 +6,9 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // a = Handle(Int32(1))
+    // a = Handle(int32(1))
     Handle a = Handle(1);
-    // b = Handle(Int32(2))
+    // b = Handle(int32(2))
     Handle b = Handle(2);
     // p = (a, b)  # tpyc: ok
     auto p = std::tuple<Handle, Handle>{std::move(a), std::move(b)};

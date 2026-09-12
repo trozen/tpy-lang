@@ -5,21 +5,21 @@
 # value.
 from typing import Iterator
 
-from tpy import Int32
+from tpy import int32
 
 
 class Source:
-    def __init__(self, start: Int32):
+    def __init__(self, start: int32):
         self.n = start
 
-    def __enter__(self) -> Int32:
+    def __enter__(self) -> int32:
         return self.n
 
     def __exit__(self, et, ev, tb) -> None:
         pass
 
 
-def steps() -> Iterator[Int32]:
+def steps() -> Iterator[int32]:
     c = Source(5)
     with c as g:
         pass

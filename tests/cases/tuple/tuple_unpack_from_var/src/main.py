@@ -1,8 +1,8 @@
 # Tuple unpacking from a named variable (not a function call)
-from tpy import Int32
+from tpy import int32
 
 def main() -> None:
-    t = (Int32(42), "hello")
+    t = (int32(42), "hello")
     a, b = t
     print(a)
     print(b)

@@ -5,45 +5,45 @@
 # CPython (where the annotation is unbounded and unchecked); out-of-range or
 # negative-into-unsigned values raise OverflowError only against the compiled
 # .so, so those live in ext_checks.py.
-from tpy import Int8, UInt8, Int16, UInt16, Int32, UInt32, Int64, UInt64
+from tpy import int8, uint8, int16, uint16, int32, uint32, int64, uint64
 from tpy.extern import export
 
 
 @export
-def i8(x: Int8) -> Int8:
+def i8(x: int8) -> int8:
     return x
 
 
 @export
-def u8(x: UInt8) -> UInt8:
+def u8(x: uint8) -> uint8:
     return x
 
 
 @export
-def i16(x: Int16) -> Int16:
+def i16(x: int16) -> int16:
     return x
 
 
 @export
-def u16(x: UInt16) -> UInt16:
+def u16(x: uint16) -> uint16:
     return x
 
 
 @export
-def i32(x: Int32) -> Int32:
+def i32(x: int32) -> int32:
     return x
 
 
 @export
-def u32(x: UInt32) -> UInt32:
+def u32(x: uint32) -> uint32:
     return x
 
 
 @export
-def i64(x: Int64) -> Int64:
+def i64(x: int64) -> int64:
     return x
 
 
 @export
-def u64(x: UInt64) -> UInt64:
+def u64(x: uint64) -> uint64:
     return x

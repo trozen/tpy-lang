@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def take(p: Probe | None) -> Int32:
+// def take(p: Probe | None) -> int32:
 int32_t take(const Probe* p) {
     // return 1 if p is not None else 0
     return (((p != nullptr)) ? (1) : (0));
 }
 
-// def inline_chain(c: Counter, a: Int32, b: Int32) -> bool:
+// def inline_chain(c: Counter, a: int32, b: int32) -> bool:
 bool inline_chain(Counter& c, int32_t a, int32_t b) {
     // # `b` is duplicable, so this renders as an inline && chain. When a < b is
     // # false the third comparator must not be built.
@@ -19,7 +19,7 @@ bool inline_chain(Counter& c, int32_t a, int32_t b) {
     return ((a < b) && (__tmp_1.emplace(Probe(c, 1)), (b < take(&((*__tmp_1))))));
 }
 
-// def stmtexpr_chain(c: Counter, a: Int32, xs: list[Int32]) -> bool:
+// def stmtexpr_chain(c: Counter, a: int32, xs: list[int32]) -> bool:
 bool stmtexpr_chain(Counter& c, int32_t a, const std::vector<int32_t>& xs) {
     // # xs[0] is a non-duplicable intermediate, forcing the statement-expression
     // # render. The last comparator is still skipped when the first pair fails.
@@ -28,7 +28,7 @@ bool stmtexpr_chain(Counter& c, int32_t a, const std::vector<int32_t>& xs) {
     return ({ auto&& _cmp1 = ::tpy::__getitem__(xs, 0); (a < _cmp1) && (_cmp1 < (__tmp_2.emplace(Probe(c, 2)), take(&((*__tmp_2))))); });
 }
 
-// def stmtexpr_chain_long(c: Counter, a: Int32, xs: list[Int32]) -> bool:
+// def stmtexpr_chain_long(c: Counter, a: int32, xs: list[int32]) -> bool:
 bool stmtexpr_chain_long(Counter& c, int32_t a, const std::vector<int32_t>& xs) {
     // # Two bound intermediates: the middle comparator is itself conditional.
     // return a < xs[0] < xs[1] < take(Probe(c, 3))
@@ -36,7 +36,7 @@ bool stmtexpr_chain_long(Counter& c, int32_t a, const std::vector<int32_t>& xs) 
     return ({ auto&& _cmp1 = ::tpy::__getitem__(xs, 0); (a < _cmp1) && ({ auto&& _cmp2 = ::tpy::__getitem__(xs, 1); (_cmp1 < _cmp2) && (_cmp2 < (__tmp_3.emplace(Probe(c, 3)), take(&((*__tmp_3))))); }); });
 }
 
-// def first_pair_only(c: Counter, a: Int32, b: Int32) -> bool:
+// def first_pair_only(c: Counter, a: int32, b: int32) -> bool:
 bool first_pair_only(Counter& c, int32_t a, int32_t b) {
     // return a < b < take(Probe(c, 4))
     std::optional<Probe> __tmp_4;

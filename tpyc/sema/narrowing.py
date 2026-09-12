@@ -778,7 +778,7 @@ class NarrowingTracker:
         self.ctx.func.value_ranges.pop(name, None)
         # Invalidate symbolic bounds referencing this variable's length
         self._invalidate_len_ranges(name)
-        # Set range fact for integer literal assignments (e.g. i = 0, i: Int32 = 0).
+        # Set range fact for integer literal assignments (e.g. i = 0, i: int32 = 0).
         # Unwrap one level of TpyCoerce (typed annotations wrap the literal in a coerce node).
         rhs_inner = rhs_expr.expr if isinstance(rhs_expr, TpyCoerce) else rhs_expr
         if isinstance(rhs_inner, TpyIntLiteral):

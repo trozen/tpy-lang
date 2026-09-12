@@ -4,31 +4,31 @@
 namespace tpyapp::main {
 
 
-// def first(items: list[Int32]) -> Int32:
+// def first(items: list[int32]) -> int32:
 int32_t first(const std::vector<int32_t>& items) {
     // return items[0]
     return ::tpy::__getitem__(items, 0);
 }
 
-// def at(items: list[Int32], i: Int32) -> Int32:
+// def at(items: list[int32], i: int32) -> int32:
 int32_t at(const std::vector<int32_t>& items, int32_t i) {
     // return items[i]
     return ::tpy::__getitem__(items, i);
 }
 
-// def sum_two(items: list[Int32], i: Int32, j: Int32) -> Int32:
+// def sum_two(items: list[int32], i: int32, j: int32) -> int32:
 int32_t sum_two(const std::vector<int32_t>& items, int32_t i, int32_t j) {
     // return items[i] + items[j]
     return (::tpy::add_check<int32_t>(::tpy::__getitem__(items, i), ::tpy::__getitem__(items, j)));
 }
 
-// def dget(d: dict[Int32, Int32], k: Int32) -> Int32:
+// def dget(d: dict[int32, int32], k: int32) -> int32:
 int32_t dget(const ::tpy::ordered_map<int32_t, int32_t>& d, int32_t k) {
     // return d[k]
     return ::tpy::__getitem__(d, k);
 }
 
-// def read_through_call(b: Box) -> Int32:
+// def read_through_call(b: Box) -> int32:
 int32_t read_through_call(Box& b) {
     // return b.get()[0]  # tpyc: ok -- the receiver is a CALL, not a name
     return ::tpy::__getitem__(b.get(), 0);

@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // @error_return(StopIteration)
-// def parse_positive(s: str) -> Int32:
+// def parse_positive(s: str) -> int32:
 std::expected<int32_t, ::tpy::StopIteration> parse_positive(std::string_view s) {
     // if s == "two":
     if ((s == "two")) {

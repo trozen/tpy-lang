@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def gen(n: Int32) -> Own[list[Int32]]:
+// def gen(n: int32) -> Own[list[int32]]:
 std::vector<int32_t> gen(int32_t n) {
-    // out: list[Int32] = []
+    // out: list[int32] = []
     std::vector<int32_t> out = std::vector<int32_t>{};
     // for i in range(n):
     int32_t __stop_0 = n;
@@ -18,10 +18,10 @@ std::vector<int32_t> gen(int32_t n) {
     return out;
 }
 
-// def longest(n: Int32) -> Own[list[Int32]]:
+// def longest(n: int32) -> Own[list[int32]]:
 std::vector<int32_t> longest(int32_t n) {
     std::optional<std::vector<int32_t>> __slot_2;
-    // best: list[Int32] = []
+    // best: list[int32] = []
     std::vector<int32_t> __slot_1 = std::vector<int32_t>{};
     std::vector<int32_t>* best = &__slot_1;
     // for i in range(n):
@@ -40,16 +40,16 @@ std::vector<int32_t> longest(int32_t n) {
     return std::move((*best));
 }
 
-// def tally(n: Int32) -> Own[dict[str, Int32]]:
+// def tally(n: int32) -> Own[dict[str, int32]]:
 ::tpy::ordered_map<std::string, int32_t> tally(int32_t n) {
     std::optional<::tpy::ordered_map<std::string, int32_t>> __slot_2;
-    // acc: dict[str, Int32] = {}
+    // acc: dict[str, int32] = {}
     ::tpy::ordered_map<std::string, int32_t> __slot_1 = ::tpy::ordered_map<std::string, int32_t>();
     ::tpy::ordered_map<std::string, int32_t>* acc = &__slot_1;
     // for i in range(n):
     int32_t __stop_0 = n;
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // fresh: dict[str, Int32] = {}
+        // fresh: dict[str, int32] = {}
         ::tpy::ordered_map<std::string, int32_t> fresh = ::tpy::ordered_map<std::string, int32_t>();
         // fresh["n"] = i
         ::tpy::__setitem__(fresh, "n", i);
@@ -60,7 +60,7 @@ std::vector<int32_t> longest(int32_t n) {
     return std::move((*acc));
 }
 
-// def uniq(n: Int32) -> Own[set[Int32]]:
+// def uniq(n: int32) -> Own[set[int32]]:
 ::tpy::ordered_set<int32_t> uniq(int32_t n) {
     std::optional<::tpy::ordered_set<int32_t>> __slot_2;
     // s = {0}

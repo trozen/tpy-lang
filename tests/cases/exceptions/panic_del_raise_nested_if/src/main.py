@@ -1,13 +1,13 @@
 # Recursion witness (if bodies) + fail-fast: a raise nested in an `if` still
 # triggers the whole-body wrap (else -Werror=terminate) and aborts at runtime.
 # Warns at compile. CPython continues, so no_cpython.
-from tpy import Int32
+from tpy import int32
 
 
 class Maybe:
-    _n: Int32
+    _n: int32
 
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self._n = n
 
     def __del__(self):

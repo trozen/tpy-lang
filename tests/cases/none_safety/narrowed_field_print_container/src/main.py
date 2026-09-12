@@ -3,21 +3,21 @@
 # is_narrowed_optional_field branch so print sees the bare container and
 # routes through ListPrinter/DictPrinter/SetPrinter -- NOT the Optional
 # wrapper (which would also work, but is the wrong codegen shape).
-from tpy import Int32
+from tpy import int32
 
 
 class Bag:
     items: list[int] | None
-    by_key: dict[str, Int32] | None
-    elems: set[Int32] | None
-    tup: tuple[int, Int32] | None
+    by_key: dict[str, int32] | None
+    elems: set[int32] | None
+    tup: tuple[int, int32] | None
 
     def __init__(
         self,
         items: list[int] | None,
-        by_key: dict[str, Int32] | None,
-        elems: set[Int32] | None,
-        tup: tuple[int, Int32] | None,
+        by_key: dict[str, int32] | None,
+        elems: set[int32] | None,
+        tup: tuple[int, int32] | None,
     ) -> None:
         self.items = items
         self.by_key = by_key
@@ -37,9 +37,9 @@ class Bag:
 
 def main() -> None:
     items: list[int] = [1, 2, 3]
-    by_key: dict[str, Int32] = {"a": 1}
+    by_key: dict[str, int32] = {"a": 1}
     # Single-element set to avoid TPy vs CPython set-ordering differences.
-    elems: set[Int32] = {7}
+    elems: set[int32] = {7}
     Bag(items, by_key, elems, (10, 20)).show()
     Bag(None, None, None, None).show()
 

@@ -52,9 +52,9 @@ inline constexpr std::string_view __name__ = "tplib.arc";
 // class _ArcCell[U](_ArcCellBase):
 template<typename U>
 struct _ArcCell : _ArcCellBase {
-    // strong: Atomic[UInt32]
+    // strong: Atomic[uint32]
     ::tpystd::tpy::atomic::Atomic<uint32_t> strong;
-    // weak: Atomic[UInt32]
+    // weak: Atomic[uint32]
     ::tpystd::tpy::atomic::Atomic<uint32_t> weak;
     // # A single owning slot: tracks its own liveness and moves correctly, so a
     // # cell over a payload with SSO-`str`/non-relocatable fields survives the
@@ -342,7 +342,7 @@ struct Arc {
         return (!((this->get() < other.get())));
     }
 
-    // def __hash__[T: Hashable](self) -> UInt64:
+    // def __hash__[T: Hashable](self) -> uint64:
     uint64_t __hash__() const
       requires ::tpystd::tpy::Hashable<T> {
         // return hash(self.get())

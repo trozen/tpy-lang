@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def total(n: Int32) -> Int32:
+// def total(n: int32) -> int32:
 int32_t total(int32_t n) {
     // t = 0
     int32_t t = 0;

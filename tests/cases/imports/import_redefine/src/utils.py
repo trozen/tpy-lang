@@ -1,6 +1,6 @@
-from tpy import Int32
+from tpy import int32
 
-MAX: Int32 = Int32(100)
+MAX: int32 = int32(100)
 
-def get_max() -> Int32:
+def get_max() -> int32:
     return MAX

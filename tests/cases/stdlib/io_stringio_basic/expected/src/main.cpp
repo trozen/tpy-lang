@@ -44,11 +44,11 @@ void initial_value_and_overwrite() {
 void seek_then_read() {
     // s = io.StringIO("abcdefgh")
     ::tpystd::io::StringIO s = ::tpystd::io::StringIO("abcdefgh");
-    // s.seek(Int32(3))
+    // s.seek(int32(3))
     s.seek(3);
     // print("read-from-3:", s.read())
     std::cout << "read-from-3:" << " " << s.read() << "\n";
-    // s.seek(Int32(0))
+    // s.seek(int32(0))
     s.seek(0);
     // print("read-all:", s.read())
     std::cout << "read-all:" << " " << s.read() << "\n";
@@ -130,15 +130,15 @@ void closed_raises() {
 void truncate_basic() {
     // s = io.StringIO("abcdefgh")
     ::tpystd::io::StringIO s = ::tpystd::io::StringIO("abcdefgh");
-    // s.seek(Int32(3))
+    // s.seek(int32(3))
     s.seek(3);
     // s.truncate()  # truncate to current position (3)
     s.truncate();
     // print("truncate-default:", s.getvalue())
     std::cout << "truncate-default:" << " " << s.getvalue() << "\n";
-    // s.seek(Int32(0))
+    // s.seek(int32(0))
     s.seek(0);
-    // s.truncate(Int32(2))
+    // s.truncate(int32(2))
     s.truncate(2);
     // print("truncate-explicit:", s.getvalue())
     std::cout << "truncate-explicit:" << " " << s.getvalue() << "\n";

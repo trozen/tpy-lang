@@ -1,14 +1,14 @@
 # Test sort for list[T], ArrayList[T, N], Span[T], user-defined types, and
 # stability; plus that a side-effecting sort receiver evaluates exactly once.
 from __future__ import annotations
-from tpy import Int32, Span
+from tpy import int32, Span
 from tplib import ArrayList
 
 class Pair:
-    key: Int32
-    tag: Int32
+    key: int32
+    tag: int32
 
-    def __init__(self, key: Int32, tag: Int32) -> None:
+    def __init__(self, key: int32, tag: int32) -> None:
         self.key = key
         self.tag = tag
 
@@ -19,12 +19,12 @@ class Pair:
         return str(self.key) + ":" + str(self.tag)
 
 def test_list_sort() -> None:
-    a: list[Int32] = [5, 3, 1, 4, 2]
+    a: list[int32] = [5, 3, 1, 4, 2]
     a.sort()
     print(a)
 
 def test_arraylist_sort() -> None:
-    a = ArrayList[Int32, 8]()
+    a = ArrayList[int32, 8]()
     a.append(5)
     a.append(3)
     a.append(1)
@@ -53,18 +53,18 @@ def test_stable_sort() -> None:
 
 def test_span_sort() -> None:
     # Sorting a Span mutates the aliased backing list (view, not a copy).
-    lst: list[Int32] = [5, 3, 1, 4, 2]
-    s: Span[Int32] = Span[Int32](lst)
+    lst: list[int32] = [5, 3, 1, 4, 2]
+    s: Span[int32] = Span[int32](lst)
     s.sort()
     print(lst)
 
-def key() -> Int32:
+def key() -> int32:
     # A side-effecting subscript index: must run once per sort receiver.
     print("k")
     return 0
 
 def test_sort_receiver_evaluated_once() -> None:
-    rows: list[list[Int32]] = [[3, 1, 2]]
+    rows: list[list[int32]] = [[3, 1, 2]]
     rows[key()].sort()
     print(rows)
 

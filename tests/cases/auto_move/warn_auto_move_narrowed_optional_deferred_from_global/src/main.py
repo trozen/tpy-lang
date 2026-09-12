@@ -1,20 +1,20 @@
 # Deferred Optional local assigned from global alias must reject auto-move.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Point:
-    x: Int32
+    x: int32
 
 
 g: Point | None = Point()
-g.x = Int32(99)
+g.x = int32(99)
 
 
-def consume(p: Own[Point]) -> Int32:
+def consume(p: Own[Point]) -> int32:
     return p.x
 
 
-def test() -> Int32:
+def test() -> int32:
     q: Point | None
     q = g
     assert q is not None

@@ -11,23 +11,23 @@ Point* get_ptr(Point* p) {
 }
 
 // # if p is not None: p non-null in then-branch (field + method)
-// def test_if_not_none(p: Ptr[Point]) -> Int32:
+// def test_if_not_none(p: Ptr[Point]) -> int32:
 int32_t test_if_not_none(Point* p) {
     // if p is not None:
     if ((p != nullptr)) {
         // return p.sum()  # tpyc: non_null(p)
         return p->sum();
     }
-    // return Int32(0)
+    // return int32(0)
     return 0;
 }
 
 // # if p is None: return -- p non-null after early return
-// def test_is_none_early_return(p: Ptr[Point]) -> Int32:
+// def test_is_none_early_return(p: Ptr[Point]) -> int32:
 int32_t test_is_none_early_return(Point* p) {
     // if p is None:
     if ((p == nullptr)) {
-        // return Int32(-1)
+        // return int32(-1)
         return -1;
     }
     // return p.x  # tpyc: non_null(p)
@@ -35,7 +35,7 @@ int32_t test_is_none_early_return(Point* p) {
 }
 
 // # assert p is not None -- p non-null after assert
-// def test_assert(p: Ptr[Point]) -> Int32:
+// def test_assert(p: Ptr[Point]) -> int32:
 int32_t test_assert(Point* p) {
     // assert p is not None
     if (!((p != nullptr))) ::tpy::raise_assertion_error();
@@ -70,19 +70,19 @@ void test_while_reassign(Point* p) {
 }
 
 // # Ptr[readonly[...]]: same narrowing applies
-// def test_readonly_ptr(p: Ptr[readonly[Point]]) -> Int32:
+// def test_readonly_ptr(p: Ptr[readonly[Point]]) -> int32:
 int32_t test_readonly_ptr(const Point* p) {
     // if p is not None:
     if ((p != nullptr)) {
         // return p.x  # tpyc: non_null(p)
         return p->x;
     }
-    // return Int32(0)
+    // return int32(0)
     return 0;
 }
 
 // # After branch merge without early return: non-null not guaranteed
-// def test_merge_no_guarantee(p: Ptr[Point]) -> Int32:
+// def test_merge_no_guarantee(p: Ptr[Point]) -> int32:
 int32_t test_merge_no_guarantee(Point* p) {
     // if p is not None:
     if ((p != nullptr)) {
@@ -94,7 +94,7 @@ int32_t test_merge_no_guarantee(Point* p) {
 
 // def main() -> None:
 void main() {
-    // pt = Point(Int32(10), Int32(20))
+    // pt = Point(int32(10), int32(20))
     Point pt = Point(10, 20);
     // p: Ptr[Point] = pt
     Point* p = &pt;

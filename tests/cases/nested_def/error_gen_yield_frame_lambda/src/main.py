@@ -3,11 +3,11 @@
 # the frame just fine. The pin is that the reject stays put once the capture
 # stopped being the reason for it.
 from typing import Callable, Iterator
-from tpy import Int32
+from tpy import int32
 
 
 # Two yields, so the body renders as a frame and `n` is a frame member.
-def emit(n: Int32) -> Iterator[Callable[[Int32], Int32]]:  # tpyc: error(/res\.yield_type/)
+def emit(n: int32) -> Iterator[Callable[[int32], int32]]:  # tpyc: error(/res\.yield_type/)
     yield lambda x: x + n
     yield lambda x: x + n
 

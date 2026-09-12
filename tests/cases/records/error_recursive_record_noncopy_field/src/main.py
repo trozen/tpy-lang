@@ -3,15 +3,15 @@
 # cycle guard returns the real answer for the non-cyclic field, not a blanket
 # "copyable" at the recursion point.
 from __future__ import annotations
-from tpy import Int32, Own
+from tpy import int32, Own
 from tplib import Box
 
 
 class Node:
     children: list[Node]
-    tag: Box[Int32]
+    tag: Box[int32]
 
-    def __init__(self, tag: Own[Box[Int32]]) -> None:
+    def __init__(self, tag: Own[Box[int32]]) -> None:
         self.children = []
         self.tag = tag
 

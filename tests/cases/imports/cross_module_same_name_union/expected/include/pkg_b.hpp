@@ -16,10 +16,10 @@ std::string name_of_b();
 
 // class Foo:
 struct Foo {
-    // count: Int32
+    // count: int32
     int32_t count;
 
-    // def __init__(self, c: Int32) -> None:
+    // def __init__(self, c: int32) -> None:
     Foo() = default;
     explicit Foo(int32_t c);
     static constexpr std::string_view __tpy_class_name__ = "pkg_b.Foo";
@@ -32,10 +32,10 @@ inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {
 
 // class Bar:
 struct Bar {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Bar() = default;
     explicit Bar(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "pkg_b.Bar";
@@ -47,10 +47,10 @@ inline std::ostream& operator<<(std::ostream& os, const Bar& obj) {
 }
 
 
-// def __init__(self, c: Int32) -> None:
+// def __init__(self, c: int32) -> None:
 inline Foo::Foo(int32_t c) : count(c) {}
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Bar::Bar(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::pkg_b

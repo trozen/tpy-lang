@@ -1,12 +1,12 @@
-from tpy import Char, Own, Int32
+from tpy import char, Own, int32
 class Sink:
-    n: Int32
+    n: int32
     def __init__(self) -> None:
         self.n = 0
-    def put(self, c: Own[Char]) -> None:
+    def put(self, c: Own[char]) -> None:
         self.n += 1
-def pick(s: Sink, flag: bool, a: Char, b: Char) -> None:
+def pick(s: Sink, flag: bool, a: char, b: char) -> None:
     s.put(a if flag else b)
 def main() -> None:
-    pick(Sink(), True, Char('a'), Char('b'))
+    pick(Sink(), True, char('a'), char('b'))
 main()

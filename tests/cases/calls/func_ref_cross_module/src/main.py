@@ -1,9 +1,9 @@
 # Test cross-module function references (qualified C++ name generation)
 from typing import Callable
-from tpy import Fn, Int32
+from tpy import Fn, int32
 from helper import triple, shout
 
-def apply(f: Fn[[Int32], Int32], x: Int32) -> Int32:
+def apply(f: Fn[[int32], int32], x: int32) -> int32:
     return f(x)
 
 def apply_str(f: Callable[[str], str], s: str) -> str:

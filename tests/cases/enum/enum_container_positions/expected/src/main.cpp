@@ -46,13 +46,13 @@ std::optional<::tpyapp::main::Color> EnumUtil<::tpyapp::main::Color>::try_parse(
 namespace tpyapp::main {
 
 
-// def weight(m: dict[Color, Int64], c: Color) -> Int64:
+// def weight(m: dict[Color, int64], c: Color) -> int64:
 int64_t weight(const ::tpy::ordered_map<Color, int64_t>& m, Color c) {
     // return m[c]                      # enum as a dict key at a subscript read
     return ::tpy::__getitem__(m, c);
 }
 
-// def dedup(cs: list[Color]) -> Int64:
+// def dedup(cs: list[Color]) -> int64:
 int64_t dedup(const std::vector<Color>& cs) {
     // out: set[Color] = set()
     ::tpy::ordered_set<Color> out = ::tpy::ordered_set<Color>();
@@ -65,11 +65,11 @@ int64_t dedup(const std::vector<Color>& cs) {
         // out.add(c)                   # enum as a set element
         out.insert(c);
     }
-    // return Int64(len(out))
+    // return int64(len(out))
     return ::tpy::int_cast_check<int64_t>(::tpy::__len__(out));
 }
 
-// def tag_value(t: tuple[Color, Int64]) -> Int64:
+// def tag_value(t: tuple[Color, int64]) -> int64:
 int64_t tag_value(const std::tuple<Color, int64_t>& t) {
     // return t[1] if t[0] == Color.Green else 0  # enum as a tuple element
     return (((std::get<0>(t) == Color::Green)) ? (std::get<1>(t)) : (0));
@@ -77,7 +77,7 @@ int64_t tag_value(const std::tuple<Color, int64_t>& t) {
 
 // def main() -> None:
 void main() {
-    // m = {Color.Red: Int64(10), Color.Blue: Int64(30)}  # enum keys in a literal
+    // m = {Color.Red: int64(10), Color.Blue: int64(30)}  # enum keys in a literal
     ::tpy::ordered_map<Color, int64_t> m = ::tpy::ordered_map<Color, int64_t>({{Color::Red, 10}, {Color::Blue, 30}});
     // print(weight(m, Color.Blue))
     std::cout << weight(m, Color::Blue) << "\n";

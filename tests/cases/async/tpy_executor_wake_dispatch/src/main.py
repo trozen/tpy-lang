@@ -8,7 +8,7 @@ from asyncio._executor import (
     _make_waker,
 )
 from time import monotonic
-from tpy import UInt32, Own
+from tpy import uint32, Own
 from tpy.coro import Poll, Waker, poll_pending, poll_ready_none
 
 
@@ -31,17 +31,17 @@ class CountdownThenReady:
     """Returns Pending for the first N polls, then Ready. Used to
     confirm that the wake -> poll -> wake -> poll cycle drives a task
     to completion when wake() goes through the ops table."""
-    remaining: UInt32
+    remaining: uint32
     __cancel_pending: bool
 
-    def __init__(self, n: UInt32) -> None:
+    def __init__(self, n: uint32) -> None:
         self.remaining = n
         self.__cancel_pending = False
 
     def __poll__(self, waker: Waker) -> Own[Poll[None]]:
-        if self.remaining == UInt32(0):
+        if self.remaining == uint32(0):
             return poll_ready_none()
-        self.remaining -= UInt32(1)
+        self.remaining -= uint32(1)
         return poll_pending[None]()
 
     def cancel(self) -> None:
@@ -81,7 +81,7 @@ def test_timer_drives_to_completion() -> None:
     # run loop should pop the timer, route .wake() through the ops
     # table, re-poll the slot, and the slot completes after N polls.
     e = Executor()
-    sid = e.spawn(_make_any_task_for_test(CountdownThenReady(UInt32(3))))
+    sid = e.spawn(_make_any_task_for_test(CountdownThenReady(uint32(3))))
     # First drain handles the initial poll (decrements to 2).
     e.drain_runnable()
     print("after first poll, slot done:", e.slot_done(sid))

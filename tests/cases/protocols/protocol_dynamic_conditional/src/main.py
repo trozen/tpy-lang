@@ -1,5 +1,5 @@
 # @dynamic protocol variable declared or reassigned inside branches and loops
-from tpy import dynamic, Int32
+from tpy import dynamic, int32
 from typing import Protocol
 
 @dynamic
@@ -41,17 +41,17 @@ def nested_branches(a: bool, b: bool) -> None:
             pet = Parrot()
     print(pet.name())
 
-def loop_reassign(n: Int32) -> None:
+def loop_reassign(n: int32) -> None:
     pet: Pet = Dog()
-    i: Int32 = 0
+    i: int32 = 0
     while i < n:
         pet = Cat()
         i = i + 1
     print(pet.name())
 
-def branch_in_loop(n: Int32) -> None:
+def branch_in_loop(n: int32) -> None:
     pet: Pet = Dog()
-    i: Int32 = 0
+    i: int32 = 0
     while i < n:
         if i == 1:
             pet = Cat()

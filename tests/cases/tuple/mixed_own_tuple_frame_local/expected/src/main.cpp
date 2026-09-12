@@ -10,7 +10,7 @@ std::tuple<Box, Box*> make_mixed(Box& b) {
     return std::tuple<Box, Box*>{Box(1), &(b)};
 }
 
-// def gen(b: Box) -> Iterator[Int32]:
+// def gen(b: Box) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -37,12 +37,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
 }
 
 
-// def gen(b: Box) -> Iterator[Int32]:
+// def gen(b: Box) -> Iterator[int32]:
 __gen_gen gen(Box& b) {
     return __gen_gen(b);
 }
 
-// async def coro(b: Box) -> Int32:
+// async def coro(b: Box) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -71,7 +71,7 @@ __gen_gen gen(Box& b) {
 }
 
 
-// async def coro(b: Box) -> Int32:
+// async def coro(b: Box) -> int32:
 __coro_coro coro(Box& b) {
     return __coro_coro(b);
 }

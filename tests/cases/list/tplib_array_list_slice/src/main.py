@@ -1,9 +1,9 @@
 # ArrayList slicing via @overload __getitem__(slice).
-from tpy import Int32
+from tpy import int32
 from tplib import ArrayList
 
 def main() -> None:
-    a = ArrayList[Int32, 8]()
+    a = ArrayList[int32, 8]()
     for v in [10, 20, 30, 40, 50]:
         a.append(v)
 

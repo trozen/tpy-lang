@@ -25,12 +25,12 @@ void main();
 
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
-    // y: Int32
+    // y: int32
     int32_t y;
 
-    // def __init__(self, x: Int32, y: Int32) -> None:
+    // def __init__(self, x: int32, y: int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
@@ -45,7 +45,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 struct DefaultFactory {
 
 
-    // def create_point(self, x: Int32, y: Int32) -> Own[Point]:
+    // def create_point(self, x: int32, y: int32) -> Own[Point]:
     Point create_point(int32_t x, int32_t y) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.DefaultFactory";
 };
@@ -56,15 +56,15 @@ inline std::ostream& operator<<(std::ostream& os, const DefaultFactory& obj) {
 }
 
 
-// def __init__(self, x: Int32, y: Int32) -> None:
+// def __init__(self, x: int32, y: int32) -> None:
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
-// def create_point(self, x: Int32, y: Int32) -> Own[Point]:
+// def create_point(self, x: int32, y: int32) -> Own[Point]:
 inline Point DefaultFactory::create_point(int32_t x, int32_t y) const {
     // return Point(x, y)
     return Point(x, y);
 }
-// def make_point[T: PointFactory](factory: T, x: Int32, y: Int32) -> Own[Point]:
+// def make_point[T: PointFactory](factory: T, x: int32, y: int32) -> Own[Point]:
 template<PointFactory T>
 Point make_point(::tpy::param_val_or_ref_t<T> factory, int32_t x, int32_t y) {
     // return factory.create_point(x, y)

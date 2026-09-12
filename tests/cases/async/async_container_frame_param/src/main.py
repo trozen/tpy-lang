@@ -2,22 +2,22 @@
 # Poll state machine rather than a generator lambda, but its param families
 # read the same reference axis, so bytearray and Array capture like list does.
 import asyncio
-from tpy import Int32, Array
+from tpy import int32, Array
 
 
-async def fill_buf(b: bytearray) -> Int32:  # tpyc: ok
+async def fill_buf(b: bytearray) -> int32:  # tpyc: ok
     await asyncio.sleep(0)
     b.append(66)
     return len(b)
 
 
-async def bump_arr(a: Array[Int32, 2]) -> Int32:  # tpyc: ok
+async def bump_arr(a: Array[int32, 2]) -> int32:  # tpyc: ok
     await asyncio.sleep(0)
     a[0] = a[0] + 5
     return a[0]
 
 
-async def push_list(xs: list[Int32]) -> Int32:
+async def push_list(xs: list[int32]) -> int32:
     await asyncio.sleep(0)
     xs.append(9)
     return len(xs)
@@ -29,7 +29,7 @@ async def drive() -> None:
     b = bytearray(b"a")
     print(await fill_buf(b), len(b))
 
-    a = Array[Int32, 2]()
+    a = Array[int32, 2]()
     print(await bump_arr(a), a[0])
 
     xs = [1]

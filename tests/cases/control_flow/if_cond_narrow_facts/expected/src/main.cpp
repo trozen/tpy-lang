@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def then_side(u: A | B, flag: bool) -> Int32:
+// def then_side(u: A | B, flag: bool) -> int32:
 int32_t then_side(const ::tpy::Union<A, B>& u, bool flag) {
     // # A negated OR chain: the THEN branch knows u is B.
     // if not (isinstance(u, A) or flag):
@@ -17,7 +17,7 @@ int32_t then_side(const ::tpy::Union<A, B>& u, bool flag) {
     return 0;
 }
 
-// def else_side(u: A | B, flag: bool) -> Int32:
+// def else_side(u: A | B, flag: bool) -> int32:
 int32_t else_side(const ::tpy::Union<A, B>& u, bool flag) {
     // # The complement lands on the ELSE branch, which knows u is A.
     // if not isinstance(u, A) or flag:
@@ -32,7 +32,7 @@ int32_t else_side(const ::tpy::Union<A, B>& u, bool flag) {
     }
 }
 
-// def unread_subject(u: A | B, flag: bool) -> Int32:
+// def unread_subject(u: A | B, flag: bool) -> int32:
 int32_t unread_subject(const ::tpy::Union<A, B>& u, bool flag) {
     // # The narrowed branch never reads the subject, so its alias goes unused --
     // # the build must stay warning-clean.
@@ -48,7 +48,7 @@ int32_t unread_subject(const ::tpy::Union<A, B>& u, bool flag) {
     }
 }
 
-// def ref_union(u: Node | Leaf, flag: bool) -> Int32:
+// def ref_union(u: Node | Leaf, flag: bool) -> int32:
 int32_t ref_union(::tpy::Union<Leaf*, Node*> u, bool flag) {
     // # The reference-union twin: the alias borrows the pointer variant, so the
     // # mutation is visible on the caller`s object afterwards.

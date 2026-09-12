@@ -4,15 +4,15 @@
 namespace tpyapp::main {
 
 
-// def keep_param(t: Tree[Int32]) -> tuple[Tree[Int32], Int32]:
+// def keep_param(t: Tree[int32]) -> tuple[Tree[int32], int32]:
 std::tuple<Tree<int32_t>&, int32_t> keep_param(Tree<int32_t>& t) {
     // return (t, 0)
     return std::tuple<Tree<int32_t>&, int32_t>{t, 0};
 }
 
-// def own_escape() -> tuple[Own[Tree[Int32]], Int32]:
+// def own_escape() -> tuple[Own[Tree[int32]], int32]:
 std::tuple<Tree<int32_t>, int32_t> own_escape() {
-    // leaf: Tree[Int32] = 5
+    // leaf: Tree[int32] = 5
     Tree<int32_t> leaf = 5;
     // pair = (leaf, 0)
     auto pair = std::tuple<Tree<int32_t>, int32_t>{std::move(leaf), 0};
@@ -20,7 +20,7 @@ std::tuple<Tree<int32_t>, int32_t> own_escape() {
     return pair;
 }
 
-// def count(t: Tree[Int32]) -> Int32:
+// def count(t: Tree[int32]) -> int32:
 int32_t count(const Tree<int32_t>& t) {
     // match t:
     auto& __match_subject_1 = t;
@@ -44,7 +44,7 @@ int32_t count(const Tree<int32_t>& t) {
 
 // def main() -> None:
 void main() {
-    // tree: Tree[Int32] = [1, 2]
+    // tree: Tree[int32] = [1, 2]
     Tree<int32_t> tree = std::vector<Tree<int32_t>>{1, 2};
     // p = keep_param(tree)
     auto p = keep_param(tree);

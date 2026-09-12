@@ -1,11 +1,11 @@
-"""Test Int32 arithmetic operations with overflow checks."""
-from tpy import Int32
+"""Test int32 arithmetic operations with overflow checks."""
+from tpy import int32
 
 
 def test_binary_ops():
     """Test binary arithmetic operations."""
-    a: Int32 = 20
-    b: Int32 = 7
+    a: int32 = 20
+    b: int32 = 7
 
     # Addition
     print(a + b)  # 27
@@ -25,21 +25,21 @@ def test_binary_ops():
 
 def test_unary_neg():
     """Test unary negation."""
-    x: Int32 = 42
+    x: int32 = 42
     print(-x)  # -42
 
-    y: Int32 = -100
+    y: int32 = -100
     print(-y)  # 100
 
 
 def test_mixed_literals():
-    """Test Int32 with literal operands."""
-    x: Int32 = 10
+    """Test int32 with literal operands."""
+    x: int32 = 10
 
-    # Int32 + literal
+    # int32 + literal
     print(x + 5)  # 15
 
-    # literal + Int32 (less common but should work)
+    # literal + int32 (less common but should work)
     print(5 + x)  # 15
 
     # Chained operations
@@ -48,8 +48,8 @@ def test_mixed_literals():
 
 def test_negative_division():
     """Test division with negative numbers (Python floor semantics)."""
-    a: Int32 = -17
-    b: Int32 = 5
+    a: int32 = -17
+    b: int32 = 5
 
     # Python floor division: -17 // 5 = -4 (not -3)
     print(a // b)  # -4

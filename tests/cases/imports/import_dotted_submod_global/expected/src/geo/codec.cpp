@@ -6,9 +6,9 @@ namespace tpyapp::geo::codec {
 // _HEX: bytes = b"0123456789ABCDEF"
 ::tpy::Bytes _HEX;
 
-// def hi_nibble(c: Int32) -> Int32:
+// def hi_nibble(c: int32) -> int32:
 int32_t hi_nibble(int32_t c) {
-    // return Int32(_HEX[c >> 4])
+    // return int32(_HEX[c >> 4])
     return ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(_HEX, (::tpy::rshift_check<int32_t>(c, 4))));
 }
 

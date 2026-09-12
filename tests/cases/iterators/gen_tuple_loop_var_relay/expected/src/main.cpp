@@ -4,11 +4,11 @@
 namespace tpyapp::main {
 
 
-// def gen() -> Iterator[tuple[Int32, Box]]:
+// def gen() -> Iterator[tuple[int32, Box]]:
 std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // items: list[tuple[Int32, Box]] = [(1, Box(5))]
+        // items: list[tuple[int32, Box]] = [(1, Box(5))]
         items.emplace(std::vector<std::tuple<int32_t, Box>>{std::tuple<int32_t, Box>{1, Box(5)}});
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(2));
@@ -35,12 +35,12 @@ std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_gen::__next
 }
 
 
-// def gen() -> Iterator[tuple[Int32, Box]]:
+// def gen() -> Iterator[tuple[int32, Box]]:
 __gen_gen gen() {
     return __gen_gen();
 }
 
-// def relay_twice() -> Iterator[tuple[Int32, Box]]:
+// def relay_twice() -> Iterator[tuple[int32, Box]]:
 std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_relay_twice::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -74,7 +74,7 @@ std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_relay_twice
 }
 
 
-// def relay_twice() -> Iterator[tuple[Int32, Box]]:
+// def relay_twice() -> Iterator[tuple[int32, Box]]:
 __gen_relay_twice relay_twice() {
     return __gen_relay_twice();
 }
@@ -106,7 +106,7 @@ void main() {
     }
     // # Mutate through the first relayed tuple; the next yield of the same
     // # element sees it, so the relay aliases rather than copying.
-    // seen: list[Int32] = []
+    // seen: list[int32] = []
     std::vector<int32_t> seen = std::vector<int32_t>{};
     // n = 0
     int32_t n = 0;
@@ -131,7 +131,7 @@ void main() {
     }
     // print("free", seen)
     std::cout << "free" << " " << ::tpy::ListPrinter(seen) << "\n";
-    // seen_m: list[Int32] = []
+    // seen_m: list[int32] = []
     std::vector<int32_t> seen_m = std::vector<int32_t>{};
     // m = 0
     int32_t m = 0;
@@ -159,7 +159,7 @@ void main() {
     std::cout << "method" << " " << ::tpy::ListPrinter(seen_m) << "\n";
 }
 
-// def relay(self) -> Iterator[tuple[Int32, Box]]:
+// def relay(self) -> Iterator[tuple[int32, Box]]:
 std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_Hub_relay::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {

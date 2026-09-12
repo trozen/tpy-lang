@@ -1,7 +1,7 @@
 #pragma once
 // Timezone-name intern table for the `datetime` stdlib module.
 //
-// datetime/timezone store names as Int32 ids so both stay small,
+// datetime/timezone store names as int32 ids so both stay small,
 // trivially-copyable value types; the strings live here, process-global
 // and append-only (entries are never freed -- ids stay valid for process
 // life). Id 0 is reserved for "no name" (an unnamed fixed-offset

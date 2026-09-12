@@ -1,1 +1,1 @@
-main.py:49: error: Type Counter does not conform to protocol NativeIterable[Int32] in argument 'items'
+main.py:49: error: Type Counter does not conform to protocol NativeIterable[int32] in argument 'items'

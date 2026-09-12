@@ -1,9 +1,9 @@
-from tpy import Int32, Own, readonly
+from tpy import int32, Own, readonly
 class Point:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
-def go(u: list[Point | None] | Int32) -> Int32:
+def go(u: list[Point | None] | int32) -> int32:
     t = 0
     if isinstance(u, list):
         for p in u:

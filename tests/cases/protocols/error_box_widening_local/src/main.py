@@ -3,25 +3,25 @@
 # provably its static type and boxing it is still rejected (locks var_type ==
 # init_type; boxing would slice the Sub into a Base).
 from typing import Protocol
-from tpy import dynamic, Int32
+from tpy import dynamic, int32
 from tplib import Box
 
 
 @dynamic
 class Conn(Protocol):
-    def port(self) -> Int32: ...
+    def port(self) -> int32: ...
 
 
 class Base(Conn):
-    _port: Int32
-    def __init__(self, p: Int32) -> None:
+    _port: int32
+    def __init__(self, p: int32) -> None:
         self._port = p
-    def port(self) -> Int32:
+    def port(self) -> int32:
         return self._port
 
 
 class Sub(Base):
-    def port(self) -> Int32:
+    def port(self) -> int32:
         return self._port + 1
 
 

@@ -1,19 +1,19 @@
 # map() preserves reference semantics for non-value return types.
 # When the mapped function returns by reference (not Own), map yields
 # val_or_ref<T> so mutations propagate to the original container elements.
-from tpy import Int32
+from tpy import int32
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32) -> None:
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 
 def identity(p: Point) -> Point:
     return p
 
-def scale(p: Point, factor: Int32) -> Point:
+def scale(p: Point, factor: int32) -> Point:
     p.x = p.x * factor
     p.y = p.y * factor
     return p

@@ -1,1 +1,1 @@
-main.py:9: error: Generic union return type 'T | U' produces duplicate members with these type arguments (resolves to 'Int32')
+main.py:9: error: Generic union return type 'T | U' produces duplicate members with these type arguments (resolves to 'int32')

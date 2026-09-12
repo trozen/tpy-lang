@@ -2,15 +2,15 @@
 # at unpack, not copied -- mutate-after-boundary proves the move (a copy of a
 # @nocopy element would be a compile error).
 import asyncio
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 from tpy.coro import Poll, Waker, poll_ready
 
 
 @nocopy
 class Counter:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def bump(self) -> None:
@@ -19,7 +19,7 @@ class Counter:
 
 @nocopy
 class _OwnPair:
-    _polls: Int32
+    _polls: int32
 
     def __init__(self) -> None:
         self._polls = 0
@@ -27,7 +27,7 @@ class _OwnPair:
     def cancel(self) -> None:
         pass
 
-    def __poll__(self, w: Waker) -> Own[Poll[tuple[Own[Counter], Int32]]]:
+    def __poll__(self, w: Waker) -> Own[Poll[tuple[Own[Counter], int32]]]:
         self._polls += 1
         return poll_ready((Counter(10), self._polls))
 
@@ -39,10 +39,10 @@ class _ValPair:
     def cancel(self) -> None:
         pass
 
-    def __poll__(self, w: Waker) -> Own[Poll[tuple[Int32, Int32]]]:
-        # Explicit Int32: poll_ready[T]'s arg isn't target-typed by the return,
-        # so bare literals stay IntLiteral and mismatch tuple[Int32, Int32].
-        return poll_ready((Int32(1), Int32(2)))
+    def __poll__(self, w: Waker) -> Own[Poll[tuple[int32, int32]]]:
+        # Explicit int32: poll_ready[T]'s arg isn't target-typed by the return,
+        # so bare literals stay IntLiteral and mismatch tuple[int32, int32].
+        return poll_ready((int32(1), int32(2)))
 
 
 @nocopy
@@ -55,9 +55,9 @@ class _RefPair:
     def cancel(self) -> None:
         pass
 
-    def __poll__(self, w: Waker) -> Own[Poll[tuple[list[Int32], Int32]]]:
-        xs: list[Int32] = [10, 20]
-        return poll_ready((xs, Int32(2)))
+    def __poll__(self, w: Waker) -> Own[Poll[tuple[list[int32], int32]]]:
+        xs: list[int32] = [10, 20]
+        return poll_ready((xs, int32(2)))
 
 
 async def main_coro() -> None:
@@ -68,7 +68,7 @@ async def main_coro() -> None:
     print(c.n, tag)
 
     # Re-await in a loop: the frame_slot must re-emplace each iteration.
-    i: Int32 = 0
+    i: int32 = 0
     while i < 3:
         d, k = await _OwnPair()
         d.bump()

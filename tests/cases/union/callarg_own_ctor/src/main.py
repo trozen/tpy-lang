@@ -1,19 +1,19 @@
 # Ctor rvalues into Own[union] arg slots pass inline; a value-union int
 # literal renders bare. Fresh value per call -- read-only output is intended.
-from tpy import Int32, Float64, Own
+from tpy import int32, float64, Own
 
 
 class A:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
 class B:
-    y: Int32
+    y: int32
 
-    def __init__(self, y: Int32) -> None:
+    def __init__(self, y: int32) -> None:
         self.y = y
 
 
@@ -24,7 +24,7 @@ class Sink:
         self.u = v
 
 
-def consume(v: Own[A | B]) -> Int32:
+def consume(v: Own[A | B]) -> int32:
     sink = Sink(v)
     w = sink.u
     if isinstance(w, A):
@@ -32,11 +32,11 @@ def consume(v: Own[A | B]) -> Int32:
     return w.y
 
 
-# Discriminates on Float64 (== float under CPython) so the plain-int literal
-# arg narrows identically on both runtimes (isinstance(3, Int32) would be
+# Discriminates on float64 (== float under CPython) so the plain-int literal
+# arg narrows identically on both runtimes (isinstance(3, int32) would be
 # False under CPython, where the literal is a plain int).
-def pick(v: Int32 | Float64) -> Int32:
-    if isinstance(v, Float64):
+def pick(v: int32 | float64) -> int32:
+    if isinstance(v, float64):
         return -1
     return v
 

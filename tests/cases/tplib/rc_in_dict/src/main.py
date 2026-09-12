@@ -1,14 +1,14 @@
 # dict[str, Rc[T]] literal -- builds via make_ordered_map so move-only
 # values (@nocopy Rc) survive construction. Mutation through one alias
 # is visible through other clones of the same allocation.
-from tpy import Int32
+from tpy import int32
 from tplib import Rc
 
 
 class Node:
-    value: Int32
+    value: int32
 
-    def __init__(self, value: Int32) -> None:
+    def __init__(self, value: int32) -> None:
         self.value = value
 
 

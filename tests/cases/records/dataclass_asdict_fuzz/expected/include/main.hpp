@@ -29,9 +29,9 @@ void main();
 // @dataclass
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
-    // y: Int32
+    // y: int32
     int32_t y;
 
     Point() = default;
@@ -58,7 +58,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 struct Person {
     // name: str
     std::string name;
-    // age: Int32
+    // age: int32
     int32_t age;
 
     Person() = default;
@@ -216,7 +216,7 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
 struct MaybeNamed {
     // name: str
     std::string name;
-    // value: Int32 = Int32(0)
+    // value: int32 = int32(0)
     int32_t value = 0;
 
     MaybeNamed() = default;
@@ -318,7 +318,7 @@ inline std::ostream& operator<<(std::ostream& os, const DictOfDC& obj) {
 // @dataclass
 // class TupleMixed:
 struct TupleMixed {
-    // pair: tuple[Point, Int32]
+    // pair: tuple[Point, int32]
     std::tuple<Point, int32_t> pair;
 
     TupleMixed() = default;

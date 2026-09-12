@@ -8,7 +8,7 @@ std::vector<::tpy::BigInt>* result{};
 
 // def test_append() -> None:
 void test_append() {
-    // xs = []  # tpyc: type(list[Int32])
+    // xs = []  # tpyc: type(list[int32])
     std::vector<int32_t> xs = std::vector<int32_t>{};
     // xs.append(42)
     xs.push_back(42);
@@ -18,7 +18,7 @@ void test_append() {
 
 // def test_list_ctor() -> None:
 void test_list_ctor() {
-    // xs = list()  # tpyc: type(list[Int32])
+    // xs = list()  # tpyc: type(list[int32])
     std::vector<int32_t> xs = std::vector<int32_t>();
     // xs.append(42)
     xs.push_back(42);
@@ -28,7 +28,7 @@ void test_list_ctor() {
 
 // def test_insert() -> None:
 void test_insert() {
-    // xs = []  # tpyc: type(list[Int32])
+    // xs = []  # tpyc: type(list[int32])
     std::vector<int32_t> xs = std::vector<int32_t>{};
     // xs.insert(0, 99)
     ::tpy::list_insert(xs, 0, 99);
@@ -38,7 +38,7 @@ void test_insert() {
 
 // def test_multiple_append() -> None:
 void test_multiple_append() {
-    // xs = []  # tpyc: type(list[Int32])
+    // xs = []  # tpyc: type(list[int32])
     std::vector<int32_t> xs = std::vector<int32_t>{};
     // xs.append(1)
     xs.push_back(1);
@@ -52,11 +52,11 @@ void test_multiple_append() {
 
 // def test_numeric_widen() -> None:
 void test_numeric_widen() {
-    // xs = []  # tpyc: type(list[Int64])
+    // xs = []  # tpyc: type(list[int64])
     std::vector<int64_t> xs = std::vector<int64_t>{};
-    // xs.append(Int32(1))
+    // xs.append(int32(1))
     xs.push_back(1);
-    // xs.append(Int64(2))
+    // xs.append(int64(2))
     xs.push_back(2);
     // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
@@ -99,7 +99,7 @@ void test_param_context() {
 void test_param_overrides_inferred() {
     // xs = []  # tpyc: type(list[int])
     std::vector<::tpy::BigInt> xs = std::vector<::tpy::BigInt>{};
-    // xs.append(Int32(1))
+    // xs.append(int32(1))
     xs.push_back(1);
     // takes_list(xs)
     takes_list(xs);
@@ -107,7 +107,7 @@ void test_param_overrides_inferred() {
 
 // def test_alias_inference() -> None:
 void test_alias_inference() {
-    // xs = []  # tpyc: type(list[Int32])
+    // xs = []  # tpyc: type(list[int32])
     std::vector<int32_t> xs = std::vector<int32_t>{};
     // ys = xs
     std::vector<int32_t>& ys = xs;

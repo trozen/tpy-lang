@@ -16,15 +16,15 @@ void observe_method(bool flag, const Box& p);
 
 // class Box:
 struct Box {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Box() = default;
     explicit Box(int32_t v);
 
     // @readonly
-    // def get_v(self) -> Int32:
+    // def get_v(self) -> int32:
     int32_t get_v() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
@@ -35,11 +35,11 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Box::Box(int32_t v) : v(v) {}
 
 // @readonly
-// def get_v(self) -> Int32:
+// def get_v(self) -> int32:
 inline int32_t Box::get_v() const {
     // return self.v
     return this->v;

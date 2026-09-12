@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 
 class Inner:
-    value: Int32
+    value: int32
 
 class Outer:
     inner: Inner

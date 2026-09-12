@@ -1,8 +1,8 @@
 # Set membership: in and not in operators
-from tpy import Int32
+from tpy import int32
 
 def main() -> None:
-    s: set[Int32] = {1, 2, 3}
+    s: set[int32] = {1, 2, 3}
     print(1 in s)
     print(4 in s)
     print(1 not in s)

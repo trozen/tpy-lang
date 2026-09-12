@@ -5,13 +5,13 @@
 # call, owning method call on a named param. The `@nocopy` leg is the proof
 # that the move is real -- a copy there would be a compile error.
 from typing import Self
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
     # The subject: a consuming builder step handing the receiver back.
@@ -20,18 +20,18 @@ class Point:
         return self  # tpyc: ok
 
 
-def make(n: Int32) -> Own[Point]:
+def make(n: int32) -> Own[Point]:
     return Point(n).updated()  # tpyc: ok
 
 
-def owned(n: Int32) -> Own[Point]:
+def owned(n: int32) -> Own[Point]:
     return make(n).updated()  # tpyc: ok
 
 
 class Factory:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def make(self) -> Own[Point]:
@@ -44,9 +44,9 @@ def owned_method(f: Factory) -> Own[Point]:
 
 @nocopy
 class Ticket:
-    id: Int32
+    id: int32
 
-    def __init__(self, id: Int32) -> None:
+    def __init__(self, id: int32) -> None:
         self.id = id
 
     # A copy here cannot compile, so this leg pins that the return MOVES.
@@ -55,7 +55,7 @@ class Ticket:
         return self  # tpyc: ok
 
 
-def issue(n: Int32) -> Own[Ticket]:
+def issue(n: int32) -> Own[Ticket]:
     return Ticket(n).stamped()  # tpyc: ok
 
 

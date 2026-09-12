@@ -1,15 +1,15 @@
 # Branch-merge (UNION): the `if` arm binds the element from a borrow, so the
 # post-branch name return into an Own[T] slot is rejected even if `else` copies.
-from tpy import Int32, Own, copy
+from tpy import int32, Own, copy
 
 
 class Box:
-    val: Int32
-    def __init__(self, v: Int32) -> None:
+    val: int32
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 
-def f(b: Box, c: bool) -> tuple[Own[Box], Int32]:
+def f(b: Box, c: bool) -> tuple[Own[Box], int32]:
     if c:
         pair = (b, 0)
     else:

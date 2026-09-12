@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // @error_return(E)
-// def make(n: Int32) -> Own[Payload]:
+// def make(n: int32) -> Own[Payload]:
 std::expected<Payload, E> make(int32_t n) {
     // if n < 0:
     if ((n < 0)) {
@@ -17,7 +17,7 @@ std::expected<Payload, E> make(int32_t n) {
 }
 
 // @error_return(E)
-// def chain(n: Int32) -> Own[Payload]:
+// def chain(n: int32) -> Own[Payload]:
 std::expected<Payload, E> chain(int32_t n) {
     // p = make(n)
     Payload p;

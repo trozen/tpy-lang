@@ -33,7 +33,7 @@ inline std::ostream& operator<<(std::ostream& os, const Channel<T>& obj) {
     return os;
 }
 
-// def use[T: Send](x: T) -> Int32:
+// def use[T: Send](x: T) -> int32:
 template<typename T>
 int32_t use(::tpy::param_val_or_ref_t<T> x) {
     // return 1

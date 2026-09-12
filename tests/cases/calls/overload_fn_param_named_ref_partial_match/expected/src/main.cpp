@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def square(x: Int32) -> Int32:
+// def square(x: int32) -> int32:
 int32_t square(int32_t x) {
     // return x * x
     return (::tpy::mul_check<int32_t>(x, x));
 }
 
-// def add(a: Int32, b: Int32) -> Int32:
+// def add(a: int32, b: int32) -> int32:
 int32_t add(int32_t a, int32_t b) {
     // return a + b
     return (::tpy::add_check<int32_t>(a, b));
@@ -18,7 +18,7 @@ int32_t add(int32_t a, int32_t b) {
 
 // def main() -> None:
 void main() {
-    // xs: list[Int32] = [3, 4, 5]
+    // xs: list[int32] = [3, 4, 5]
     std::vector<int32_t> xs = {3, 4, 5};
     // print(g(square, xs))   # picks the 1-param overload -> 9
     std::cout << g<int32_t>(square, xs) << "\n";

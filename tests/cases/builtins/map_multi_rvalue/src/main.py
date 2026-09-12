@@ -1,13 +1,13 @@
 # Multi-iterable map over rvalue iterables (owning iterator prevents dangling)
-from tpy import Int32, Own
+from tpy import int32, Own
 
-def make_xs() -> Own[list[Int32]]:
+def make_xs() -> Own[list[int32]]:
     return [1, 2, 3]
 
-def make_ys() -> Own[list[Int32]]:
+def make_ys() -> Own[list[int32]]:
     return [10, 20, 30]
 
-def add(a: Int32, b: Int32) -> Int32:
+def add(a: int32, b: int32) -> int32:
     return a + b
 
 def main() -> None:

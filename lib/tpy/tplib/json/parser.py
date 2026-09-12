@@ -5,13 +5,13 @@
 # TODO(perf): redundant _skip_ws() calls -- every read_* method calls it, even
 #   when whitespace was already consumed by the previous call
 from enum import Enum
-from tpy import Int32, Int64, Float64, Char, StrView, readonly, error_return, ReturnException
+from tpy import int32, int64, float64, char, StrView, readonly, error_return, ReturnException
 
 
 class JsonError(Exception, ReturnException):
-    pos: Int32
+    pos: int32
 
-    def __init__(self, message: str = "", pos: Int32 = -1) -> None:
+    def __init__(self, message: str = "", pos: int32 = -1) -> None:
         self.message = message
         self.pos = pos
 
@@ -25,7 +25,7 @@ class JsonError(Exception, ReturnException):
             if len(msg) > 0:
                 return msg
             return "json error"
-        ctx: Int32 = 20
+        ctx: int32 = 20
         dlen = len(data)
         # before
         bstart = self.pos - ctx
@@ -62,15 +62,15 @@ class JsonToken(Enum):
 
 class JsonReader:
     _data: StrView
-    _pos: Int32
-    _len: Int32
+    _pos: int32
+    _len: int32
 
     def __init__(self, data: str) -> None:
         self._data = data
         self._pos = 0
         self._len = len(data)
 
-    def position(self) -> Int32:
+    def position(self) -> int32:
         """Current byte offset into the input. Used for error reporting."""
         return self._pos
 
@@ -202,19 +202,19 @@ class JsonReader:
         return self._data[start:end]
 
     @error_return(JsonError)
-    def read_int(self) -> Int64:
+    def read_int(self) -> int64:
         self._skip_ws()
         neg = False
         if self._pos < self._len and self._data[self._pos] == "-":
             neg = True
             self._pos += 1
-        result: Int64 = 0
+        result: int64 = 0
         start = self._pos
         while self._pos < self._len:
             c = self._data[self._pos]
             if c < "0" or c > "9":
                 break
-            result = result * 10 + Int64(ord(c) - ord("0"))
+            result = result * 10 + int64(ord(c) - ord("0"))
             self._pos += 1
         if not (self._pos > start):
             raise JsonError("expected digit", self._pos)
@@ -223,7 +223,7 @@ class JsonReader:
         return result
 
     @error_return(JsonError)
-    def read_float(self) -> Float64:
+    def read_float(self) -> float64:
         raw: StrView = self._read_number_raw()
         return float(raw)
 
@@ -356,7 +356,7 @@ class JsonReader:
             return self._data[start:end]
         return self._unescape(start, end)
 
-    def _unescape(self, start: Int32, end: Int32) -> str:
+    def _unescape(self, start: int32, end: int32) -> str:
         result = ""
         i = start
         chunk_start = start
@@ -407,11 +407,11 @@ class JsonReader:
             result = result + self._data[chunk_start:end]
         return result
 
-    def _parse_hex4(self, pos: Int32) -> Int32:
+    def _parse_hex4(self, pos: int32) -> int32:
         # TODO: invalid hex digits silently contribute 0 instead of raising
         # JsonError. CPython rejects with `Invalid \uXXXX escape`.
-        result: Int32 = 0
-        i: Int32 = 0
+        result: int32 = 0
+        i: int32 = 0
         while i < 4:
             c = self._data[pos + i]
             if c >= "0" and c <= "9":

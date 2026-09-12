@@ -17,10 +17,10 @@ inline constexpr std::string_view __name__ = "__main__";
 // @total_ordering
 // class Weight:
 struct Weight {
-    // grams: Int32
+    // grams: int32
     int32_t grams;
 
-    // def __init__(self, g: Int32) -> None:
+    // def __init__(self, g: int32) -> None:
     Weight() = default;
     explicit Weight(int32_t g);
 
@@ -64,7 +64,7 @@ inline std::ostream& operator<<(std::ostream& os, const Weight& obj) {
 }
 
 
-// def __init__(self, g: Int32) -> None:
+// def __init__(self, g: int32) -> None:
 inline Weight::Weight(int32_t g) : grams(g) {}
 
 // def __eq__(self, other: "Weight") -> bool:

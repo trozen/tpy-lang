@@ -17,10 +17,10 @@ void main();
 
 // class Left:
 struct Left {
-    // a: Int32
+    // a: int32
     int32_t a;
 
-    // def __init__(self, a: Int32) -> None:
+    // def __init__(self, a: int32) -> None:
     Left() = default;
     explicit Left(int32_t a);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Left";
@@ -33,10 +33,10 @@ inline std::ostream& operator<<(std::ostream& os, const Left& obj) {
 
 // class Right:
 struct Right {
-    // b: Int32
+    // b: int32
     int32_t b;
 
-    // def __init__(self, b: Int32) -> None:
+    // def __init__(self, b: int32) -> None:
     Right() = default;
     explicit Right(int32_t b);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Right";
@@ -50,7 +50,7 @@ inline std::ostream& operator<<(std::ostream& os, const Right& obj) {
 // class Child(Left, Right):
 struct Child : Left, Right {
 
-    // def __init__(self, a: Int32, b: Int32) -> None:
+    // def __init__(self, a: int32, b: int32) -> None:
     Child() = default;
     explicit Child(int32_t a, int32_t b);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
@@ -62,13 +62,13 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 }
 
 
-// def __init__(self, a: Int32) -> None:
+// def __init__(self, a: int32) -> None:
 inline Left::Left(int32_t a) : a(a) {}
 
-// def __init__(self, b: Int32) -> None:
+// def __init__(self, b: int32) -> None:
 inline Right::Right(int32_t b) : b(b) {}
 
-// def __init__(self, a: Int32, b: Int32) -> None:
+// def __init__(self, a: int32, b: int32) -> None:
 inline Child::Child(int32_t a, int32_t b) : Left(a), Right(b) {}
 void __tpy_init();
 } // namespace tpyapp::main

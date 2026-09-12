@@ -19,7 +19,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Works on Int64 too
+    // # Works on int64 too
     // main()
     main();
 }

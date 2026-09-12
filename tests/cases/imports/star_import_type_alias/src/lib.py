@@ -1,3 +1,3 @@
-from tpy import Int32
+from tpy import int32
 
-type MyInt = Int32
+type MyInt = int32

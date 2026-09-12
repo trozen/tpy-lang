@@ -2,36 +2,36 @@
 # reference -> Ref[list[T]]) into *args. Auto-readonly inference collapses
 # both `take_mut` and `take_ro` to `varargs<const Box>`, so the source
 # borrows const in both cases (the explicit readonly slot was already const).
-from tpy import Int32, readonly, nocopy
+from tpy import int32, readonly, nocopy
 
 
 @nocopy
 class Box:
-    val: Int32
+    val: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 
-def take_mut(*items: Box) -> Int32:
-    n: Int32 = 0
+def take_mut(*items: Box) -> int32:
+    n: int32 = 0
     for b in items:
         n += b.val
     return n
 
 
-def take_ro(*items: readonly[Box]) -> Int32:
-    n: Int32 = 0
+def take_ro(*items: readonly[Box]) -> int32:
+    n: int32 = 0
     for b in items:
         n += b.val
     return n
 
 
-def via_mut(xs: list[Box]) -> Int32:
+def via_mut(xs: list[Box]) -> int32:
     return take_mut(*xs)
 
 
-def via_ro(xs: list[Box]) -> Int32:
+def via_ro(xs: list[Box]) -> int32:
     return take_ro(*xs)
 
 

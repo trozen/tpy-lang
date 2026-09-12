@@ -48,7 +48,7 @@ inline std::ostream& operator<<(std::ostream& os, const Pair<T>& obj) {
 struct Wrapper {
     // name: str
     std::string name;
-    // pair: Pair[Int32] = field(default_factory=Pair)
+    // pair: Pair[int32] = field(default_factory=Pair)
     Pair<int32_t> pair = Pair<int32_t>();
 
     Wrapper() = default;

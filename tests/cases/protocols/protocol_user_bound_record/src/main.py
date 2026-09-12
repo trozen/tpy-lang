@@ -1,5 +1,5 @@
 from typing import Protocol
-from tpy import Int32, Own
+from tpy import int32, Own
 
 # User-defined protocol
 class Printable(Protocol):

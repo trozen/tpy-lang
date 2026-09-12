@@ -1,5 +1,5 @@
 from typing import Sized
-from tpy import Int32
+from tpy import int32
 
 # Error: Protocol type 'Sized' cannot be used as a field type
 class BadRecord:

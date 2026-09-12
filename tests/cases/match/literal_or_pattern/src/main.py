@@ -1,7 +1,7 @@
 # match/case or-patterns on literal subjects (int, str)
-from tpy import Int32
+from tpy import int32
 
-def classify_num(x: Int32) -> str:
+def classify_num(x: int32) -> str:
     match x:
         case 1 | 2 | 3:
             return "small"
@@ -21,7 +21,7 @@ def classify_str(s: str) -> str:
             return "unknown"
     return ""
 
-def classify_as(x: Int32) -> str:
+def classify_as(x: int32) -> str:
     match x:
         case 1 | 2 as n:
             return "small: " + str(n)
@@ -30,16 +30,16 @@ def classify_as(x: Int32) -> str:
     return ""
 
 def main() -> None:
-    print(classify_num(Int32(1)))
-    print(classify_num(Int32(3)))
-    print(classify_num(Int32(5)))
-    print(classify_num(Int32(9)))
+    print(classify_num(int32(1)))
+    print(classify_num(int32(3)))
+    print(classify_num(int32(5)))
+    print(classify_num(int32(9)))
     print(classify_str("hello"))
     print(classify_str("hi"))
     print(classify_str("goodbye"))
     print(classify_str("wow"))
-    print(classify_as(Int32(1)))
-    print(classify_as(Int32(2)))
-    print(classify_as(Int32(9)))
+    print(classify_as(int32(1)))
+    print(classify_as(int32(2)))
+    print(classify_as(int32(9)))
 
 main()

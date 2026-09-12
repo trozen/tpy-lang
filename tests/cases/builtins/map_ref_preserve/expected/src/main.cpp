@@ -10,7 +10,7 @@ Point& identity(Point& p) {
     return p;
 }
 
-// def scale(p: Point, factor: Int32) -> Point:
+// def scale(p: Point, factor: int32) -> Point:
 Point& scale(Point& p, int32_t factor) {
     // p.x = p.x * factor
     p.x = (::tpy::mul_check<int32_t>(p.x, factor));

@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 
 class Pair[A, B]:
     first: A
@@ -16,13 +16,13 @@ class Pair[A, B]:
 
 
 def main() -> None:
-    # Test with Int32 and str
-    p1: Pair[Int32, str] = Pair[Int32, str](42, "hello")
+    # Test with int32 and str
+    p1: Pair[int32, str] = Pair[int32, str](42, "hello")
     print(p1.get_first())
     print(p1.get_second())
 
-    # Test with str and Int32 (reversed)
-    p2: Pair[str, Int32] = Pair[str, Int32]("world", 100)
+    # Test with str and int32 (reversed)
+    p2: Pair[str, int32] = Pair[str, int32]("world", 100)
     print(p2.get_first())
     print(p2.get_second())
 

@@ -12,15 +12,15 @@ void takes_list(std::vector<::tpy::BigInt>& x) {
     std::cout << ::tpy::__len__(x) << "\n";
 }
 
-// def takes_list_int32(x: list[Int32]) -> None:
+// def takes_list_int32(x: list[int32]) -> None:
 void takes_list_int32(std::vector<int32_t>& x) {
-    // x.append(Int32(99))
+    // x.append(int32(99))
     x.push_back(99);
     // print(len(x))
     std::cout << ::tpy::__len__(x) << "\n";
 }
 
-// def takes_array(x: Array[Int32, 3]) -> None:
+// def takes_array(x: Array[int32, 3]) -> None:
 void takes_array(const std::array<int32_t, 3>& x) {
     // print(x[0])
     std::cout << ::tpy::__getitem__(x, 0) << "\n";
@@ -50,7 +50,7 @@ void __tpy_init() {
     std::vector<::tpy::BigInt> __tmp_5 = {1, 2, 3};
     takes_list(__tmp_5);
     // # Array literals
-    // takes_array([Int32(10), Int32(20), Int32(30)])
+    // takes_array([int32(10), int32(20), int32(30)])
     std::array<int32_t, 3> __tmp_6 = {10, 20, 30};
     takes_array(__tmp_6);
 }

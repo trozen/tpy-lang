@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // b = Box(Int32(42))
+    // b = Box(int32(42))
     Box b = Box(42);
     // print(b.measure())
     std::cout << b.measure() << "\n";

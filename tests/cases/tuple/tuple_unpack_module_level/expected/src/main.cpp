@@ -10,38 +10,38 @@ int32_t a{};
 // a, b = get_pair()
 int32_t b{};
 // # Unpack from tuple literal
-// x, y = Int32(100), Int32(200)
+// x, y = int32(100), int32(200)
 int32_t x{};
 // # Unpack from tuple literal
-// x, y = Int32(100), Int32(200)
+// x, y = int32(100), int32(200)
 int32_t y{};
 // first, _, last = get_triple()
 int32_t first{};
 // first, _, last = get_triple()
 int32_t last{};
 // # Globals referenced from a function body
-// lo, hi = Int32(0), Int32(99)
+// lo, hi = int32(0), int32(99)
 int32_t lo{};
 // # Globals referenced from a function body
-// lo, hi = Int32(0), Int32(99)
+// lo, hi = int32(0), int32(99)
 int32_t hi{};
 // # ALL_CAPS triggers Final warning
-// LO, HI = Int32(0), Int32(99)  # tpyc: warning(/ALL_CAPS/)
+// LO, HI = int32(0), int32(99)  # tpyc: warning(/ALL_CAPS/)
 int32_t LO{};
 // # ALL_CAPS triggers Final warning
-// LO, HI = Int32(0), Int32(99)  # tpyc: warning(/ALL_CAPS/)
+// LO, HI = int32(0), int32(99)  # tpyc: warning(/ALL_CAPS/)
 int32_t HI{};
 
-// def get_pair() -> tuple[Int32, Int32]:
+// def get_pair() -> tuple[int32, int32]:
 std::tuple<int32_t, int32_t> get_pair() {
-    // return (Int32(10), Int32(20))
+    // return (int32(10), int32(20))
     return std::tuple<int32_t, int32_t>{10, 20};
 }
 
 // # Unpack with discard
-// def get_triple() -> tuple[Int32, Int32, Int32]:
+// def get_triple() -> tuple[int32, int32, int32]:
 std::tuple<int32_t, int32_t, int32_t> get_triple() {
-    // return (Int32(1), Int32(2), Int32(3))
+    // return (int32(1), int32(2), int32(3))
     return std::tuple<int32_t, int32_t, int32_t>{1, 2, 3};
 }
 
@@ -68,7 +68,7 @@ void __tpy_init() {
     // print(b)
     std::cout << b << "\n";
     // # Unpack from tuple literal
-    // x, y = Int32(100), Int32(200)
+    // x, y = int32(100), int32(200)
     int32_t __unpack_0_0 = 100;
     int32_t __unpack_0_1 = 200;
     x = __unpack_0_0;
@@ -86,7 +86,7 @@ void __tpy_init() {
     // print(last)
     std::cout << last << "\n";
     // # Globals referenced from a function body
-    // lo, hi = Int32(0), Int32(99)
+    // lo, hi = int32(0), int32(99)
     int32_t __unpack_1_0 = 0;
     int32_t __unpack_1_1 = 99;
     lo = __unpack_1_0;
@@ -94,7 +94,7 @@ void __tpy_init() {
     // use_globals()
     use_globals();
     // # ALL_CAPS triggers Final warning
-    // LO, HI = Int32(0), Int32(99)  # tpyc: warning(/ALL_CAPS/)
+    // LO, HI = int32(0), int32(99)  # tpyc: warning(/ALL_CAPS/)
     int32_t __unpack_2_0 = 0;
     int32_t __unpack_2_1 = 99;
     LO = __unpack_2_0;

@@ -4,16 +4,16 @@
 namespace tpyapp::main {
 
 // # Basic power
-// x: Int32 = 2
+// x: int32 = 2
 int32_t x{};
 // # Power with literal exponent
-// y: Int32 = 3
+// y: int32 = 3
 int32_t y{};
 // # Power of 0
-// z: Int32 = 5
+// z: int32 = 5
 int32_t z{};
 // # Negative base
-// n: Int32 = -2
+// n: int32 = -2
 int32_t n{};
 
 void __tpy_init() {
@@ -22,17 +22,17 @@ void __tpy_init() {
     initialized = true;
 
     // # Basic power
-    // x: Int32 = 2
+    // x: int32 = 2
     x = 2;
     // print(x ** 10)  # 1024
     std::cout << (::tpy::pow_check<int32_t>(x, 10)) << "\n";
     // # Power with literal exponent
-    // y: Int32 = 3
+    // y: int32 = 3
     y = 3;
     // print(y ** 4)   # 81
     std::cout << (::tpy::pow_check<int32_t>(y, 4)) << "\n";
     // # Power of 0
-    // z: Int32 = 5
+    // z: int32 = 5
     z = 5;
     // print(z ** 0)   # 1
     std::cout << (::tpy::pow_check<int32_t>(z, 0)) << "\n";
@@ -40,7 +40,7 @@ void __tpy_init() {
     // print(x ** 1)   # 2
     std::cout << (::tpy::pow_check<int32_t>(x, 1)) << "\n";
     // # Negative base
-    // n: Int32 = -2
+    // n: int32 = -2
     n = -2;
     // print(n ** 3)   # -8
     std::cout << (::tpy::pow_check<int32_t>(n, 3)) << "\n";

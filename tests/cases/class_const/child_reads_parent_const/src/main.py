@@ -2,11 +2,11 @@
 # ancestor; codegen emits `<Parent>::<X>` regardless of which class the user
 # names. Combined with Phase 5, instance-side reads through a child also work.
 from typing import Final
-from tpy import Int32
+from tpy import int32
 
 
 class Parent:
-    LIMIT: Final[Int32] = 10
+    LIMIT: Final[int32] = 10
 
 
 class Child(Parent):

@@ -16,7 +16,7 @@ std::tuple<Box, Box*> make_none() {
     return std::tuple<Box, Box*>{Box(2), nullptr};
 }
 
-// def write_through(b: Box) -> Int32:
+// def write_through(b: Box) -> int32:
 int32_t write_through(Box& b) {
     // p = make_mixed(b)
     auto p = make_mixed(b);
@@ -31,7 +31,7 @@ int32_t write_through(Box& b) {
     return std::get<0>(p).val;
 }
 
-// def read_direct(b: Box) -> Int32:
+// def read_direct(b: Box) -> int32:
 int32_t read_direct(Box& b) {
     // # No intermediate local. Narrowing does not track a subscript path, so the
     // # read keeps its runtime null check -- unrelated to the element's form.
@@ -46,7 +46,7 @@ int32_t read_direct(Box& b) {
     return -1;
 }
 
-// def none_element() -> Int32:
+// def none_element() -> int32:
 int32_t none_element() {
     // p = make_none()
     auto p = make_none();

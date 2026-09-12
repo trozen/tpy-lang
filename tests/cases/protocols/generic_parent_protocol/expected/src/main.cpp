@@ -19,7 +19,7 @@ void main() {
     // print(total(xs))       # 60
     std::cout << total(xs) << "\n";
     // # Iteration over the concrete type still works the usual way.
-    // s: Int32 = 0
+    // s: int32 = 0
     int32_t s = 0;
     // for x in xs:
     auto& __src_0 = xs;

@@ -17,7 +17,7 @@ void main();
 struct Outer {
     // class Inner:
     struct Inner {
-        // LIMIT: Final[Int32] = 42
+        // LIMIT: Final[int32] = 42
         static constexpr int32_t LIMIT = 42;
         // TAG: Final[str] = "inner"
         static constexpr std::string_view TAG = "inner";

@@ -5,11 +5,11 @@
 # would copy, which is a language question about what `Any` holds. Until the
 # move flavor has a row, both stay a located error.
 from typing import Any
-from tpy import Int32
+from tpy import int32
 
 
 def f() -> bool:
-    xs: list[Int32] = [1, 2]
+    xs: list[int32] = [1, 2]
     a: Any = xs  # tpyc: error(/expr\.coerce/)
     return a is None
 

@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def test_in_total_true() -> None:
 void test_in_total_true() {
-    // r = Required(name="Alice", age=Int32(30))
+    // r = Required(name="Alice", age=int32(30))
     Required r = Required("Alice", 30);
     // print("name" in r)   # always True for total=True
     std::cout << ::tpy::print_bool((static_cast<void>(r), true)) << "\n";
@@ -19,7 +19,7 @@ void test_in_total_true() {
 // def test_in_nullable_field() -> None:
 void test_in_nullable_field() {
     // # total=True with Optional[T] field -- key is always present
-    // n = NullableField(name=None, count=Int32(1))
+    // n = NullableField(name=None, count=int32(1))
     NullableField n = NullableField(std::nullopt, 1);
     // print("name" in n)   # True (field present, even though value is None)
     std::cout << ::tpy::print_bool((static_cast<void>(n), true)) << "\n";
@@ -29,7 +29,7 @@ void test_in_nullable_field() {
 
 // def test_in_total_false() -> None:
 void test_in_total_false() {
-    // full = Partial(name="Bob", age=Int32(25))
+    // full = Partial(name="Bob", age=int32(25))
     Partial full = Partial("Bob", 25);
     // empty = Partial()
     Partial empty = Partial();
@@ -53,7 +53,7 @@ void test_in_total_false() {
 
 // def test_get_total_true() -> None:
 void test_get_total_true() {
-    // r = Required(name="Alice", age=Int32(30))
+    // r = Required(name="Alice", age=int32(30))
     Required r = Required("Alice", 30);
     // # get without default -> Optional[T]
     // v = r.get("name")
@@ -66,14 +66,14 @@ void test_get_total_true() {
     // # get with default -> T
     // print(r.get("name", "default"))
     std::cout << ((void)"default", r.name) << "\n";
-    // print(r.get("age", Int32(0)))
+    // print(r.get("age", int32(0)))
     std::cout << ((void)0, r.age) << "\n";
 }
 
 // def test_get_nullable_field() -> None:
 void test_get_nullable_field() {
     // # total=True with Optional[T] field -- get returns Optional[T]
-    // n = NullableField(name=None, count=Int32(1))
+    // n = NullableField(name=None, count=int32(1))
     NullableField n = NullableField(std::nullopt, 1);
     // v = n.get("name")
     std::optional<std::string> v = n.name;
@@ -89,13 +89,13 @@ void test_get_nullable_field() {
     // # get with default -- field is present with None value, returns None (not default)
     // print(n.get("name", "fallback"))
     std::cout << ::tpy::print_optional_val(((void)"fallback", n.name)) << "\n";
-    // print(n.get("count", Int32(0)))
+    // print(n.get("count", int32(0)))
     std::cout << ((void)0, n.count) << "\n";
 }
 
 // def test_get_total_false() -> None:
 void test_get_total_false() {
-    // full = Partial(name="Bob", age=Int32(25))
+    // full = Partial(name="Bob", age=int32(25))
     Partial full = Partial("Bob", 25);
     // empty = Partial()
     Partial empty = Partial();
@@ -123,9 +123,9 @@ void test_get_total_false() {
     std::cout << full.name.value_or(std::string("fallback")) << "\n";
     // print(empty.get("name", "fallback"))
     std::cout << empty.name.value_or(std::string("fallback")) << "\n";
-    // print(full.get("age", Int32(99)))
+    // print(full.get("age", int32(99)))
     std::cout << full.age.value_or(99) << "\n";
-    // print(empty.get("age", Int32(99)))
+    // print(empty.get("age", int32(99)))
     std::cout << empty.age.value_or(99) << "\n";
 }
 

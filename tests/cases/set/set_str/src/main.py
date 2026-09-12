@@ -1,13 +1,13 @@
 # Set str() conversion and f-string interpolation
-from tpy import Int32
+from tpy import int32
 
 def main() -> None:
-    s: set[Int32] = {1, 2, 3}
+    s: set[int32] = {1, 2, 3}
     x: str = str(s)
     print(x)
     print(f"set: {s}")
 
-    empty: set[Int32] = set()
+    empty: set[int32] = set()
     print(str(empty))
     print(f"empty: {empty}")
 

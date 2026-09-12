@@ -2,16 +2,16 @@
 # resumable frame is rejected cleanly: the callee struct carries deduced
 # T_<pname> template args the __for_src field type cannot spell yet.
 from typing import Iterable, Iterator
-from tpy import Int32
+from tpy import int32
 
 
-def doubled(items: Iterable[Int32]) -> Iterator[Int32]:
+def doubled(items: Iterable[int32]) -> Iterator[int32]:
     yield 0
     for x in items:
         yield x * 2
 
 
-def gen(xs: list[Int32]) -> Iterator[Int32]:
+def gen(xs: list[int32]) -> Iterator[int32]:
     yield -1
     for v in doubled(xs):  # tpyc: error(/protocol-typed parameters/)
         yield v

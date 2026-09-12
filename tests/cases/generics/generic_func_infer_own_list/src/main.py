@@ -1,10 +1,10 @@
 # Type inference through Own[T] with non-value-type containers (list).
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 
 def first_val[T](items: Own[list[T]]) -> T:
@@ -20,8 +20,8 @@ def consume_both[T](a: Own[T], b: Own[T]) -> None:
 
 
 def main():
-    # Infer T=Int32 through Own[list[T]] -- value element type
-    nums: list[Int32] = [10, 20, 30]
+    # Infer T=int32 through Own[list[T]] -- value element type
+    nums: list[int32] = [10, 20, 30]
     print(first_val(nums))
 
     # Infer T=Point through Own[list[T]] -- non-value element type

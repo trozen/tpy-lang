@@ -8,7 +8,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // tasks: list[asyncio.Task[Int32]] = []
+        // tasks: list[asyncio.Task[int32]] = []
         tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<int32_t>>{});
         // results = await asyncio.gather_list_settled(tasks)
         __sub_0.emplace((*tasks));

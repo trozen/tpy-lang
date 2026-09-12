@@ -8,7 +8,7 @@ namespace tpyapp::main {
 void test_list_view() {
     // names: list[str] = ["alice", "bob"]
     std::vector<std::string> names = {"alice", "bob"};
-    // x = names[Int32(0)]  # tpyc: type(StrView)
+    // x = names[int32(0)]  # tpyc: type(StrView)
     std::string_view x = ::tpy::__getitem__(names, 0);
     // print(x)
     std::cout << x << "\n";
@@ -18,7 +18,7 @@ void test_list_view() {
 void test_list_mutation_fallback() {
     // names: list[str] = ["alice", "bob"]
     std::vector<std::string> names = {"alice", "bob"};
-    // x = names[Int32(0)]  # tpyc: type(str)
+    // x = names[int32(0)]  # tpyc: type(str)
     std::string x = ::tpy::__getitem__(names, 0);
     // names.append("carol")
     names.push_back("carol");
@@ -32,7 +32,7 @@ void test_list_reassign_fallback() {
     // names: list[str] = ["alice", "bob"]
     std::vector<std::string> __slot_1 = {"alice", "bob"};
     std::vector<std::string>* names = &__slot_1;
-    // x = names[Int32(0)]  # tpyc: type(str)
+    // x = names[int32(0)]  # tpyc: type(str)
     std::string x = ::tpy::__getitem__((*names), 0);
     // names = ["dave"]
     names = &*(__slot_2 = {"dave"});
@@ -44,9 +44,9 @@ void test_list_reassign_fallback() {
 void test_list_subscript_write_fallback() {
     // names: list[str] = ["alice", "bob"]
     std::vector<std::string> names = {"alice", "bob"};
-    // x = names[Int32(0)]  # tpyc: type(str)
+    // x = names[int32(0)]  # tpyc: type(str)
     std::string x = ::tpy::__getitem__(names, 0);
-    // names[Int32(0)] = "eve"
+    // names[int32(0)] = "eve"
     ::tpy::__setitem__(names, 0, "eve");
     // print(x)
     std::cout << x << "\n";
@@ -56,9 +56,9 @@ void test_list_subscript_write_fallback() {
 void test_list_pop_fallback() {
     // names: list[str] = ["alice", "bob"]
     std::vector<std::string> names = {"alice", "bob"};
-    // x = names[Int32(0)]  # tpyc: type(str)
+    // x = names[int32(0)]  # tpyc: type(str)
     std::string x = ::tpy::__getitem__(names, 0);
-    // names.pop(Int32(1))
+    // names.pop(int32(1))
     ::tpy::list_pop_at(names, 1);
     // print(x)
     std::cout << x << "\n";

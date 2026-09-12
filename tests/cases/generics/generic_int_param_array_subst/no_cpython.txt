@@ -1,2 +1,2 @@
 Tests Array[T, N] type substitution with forwarded integer type parameter.
-Verifies that Array[T, N] correctly substitutes to Array[Int32, 3] for concrete instantiation.
+Verifies that Array[T, N] correctly substitutes to Array[int32, 3] for concrete instantiation.

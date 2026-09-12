@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def f(x: Int32 | None) -> Int32:
+// def f(x: int32 | None) -> int32:
 int32_t f(std::optional<int32_t> x) {
     // if not (x is None):
     if ((!((!x.has_value())))) {

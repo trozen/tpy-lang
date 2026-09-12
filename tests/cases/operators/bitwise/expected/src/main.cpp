@@ -3,12 +3,12 @@
 
 namespace tpyapp::main {
 
-// a: Int32 = 12      # 0b1100
+// a: int32 = 12      # 0b1100
 int32_t a{};
-// b: Int32 = 10      # 0b1010
+// b: int32 = 10      # 0b1010
 int32_t b{};
 // # Bitwise NOT
-// c: Int32 = 0
+// c: int32 = 0
 int32_t c{};
 // # BigInt bitwise operators
 // x = 12  # BigInt
@@ -19,9 +19,9 @@ int32_t y{};
 // z = 0
 int32_t z{};
 // # Large BigInt bitwise
-// big1 = (1 << 100) | (1 << 50)  # tpyc: warning(/outside default Int32 range/)
+// big1 = (1 << 100) | (1 << 50)  # tpyc: warning(/outside default int32 range/)
 ::tpy::BigInt big1;
-// big2 = (1 << 100) | (1 << 25)  # tpyc: warning(/outside default Int32 range/)
+// big2 = (1 << 100) | (1 << 25)  # tpyc: warning(/outside default int32 range/)
 ::tpy::BigInt big2;
 
 void __tpy_init() {
@@ -29,9 +29,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // a: Int32 = 12      # 0b1100
+    // a: int32 = 12      # 0b1100
     a = 12;
-    // b: Int32 = 10      # 0b1010
+    // b: int32 = 10      # 0b1010
     b = 10;
     // # Bitwise AND
     // print(a & b)       # 8 (0b1000)
@@ -43,7 +43,7 @@ void __tpy_init() {
     // print(a ^ b)       # 6 (0b0110)
     std::cout << (static_cast<int32_t>(a ^ b)) << "\n";
     // # Bitwise NOT
-    // c: Int32 = 0
+    // c: int32 = 0
     c = 0;
     // print(~c)          # -1
     std::cout << static_cast<int32_t>(~(c)) << "\n";
@@ -79,9 +79,9 @@ void __tpy_init() {
     // print(~z)          # -6
     std::cout << static_cast<int32_t>(~(z)) << "\n";
     // # Large BigInt bitwise
-    // big1 = (1 << 100) | (1 << 50)  # tpyc: warning(/outside default Int32 range/)
+    // big1 = (1 << 100) | (1 << 50)  # tpyc: warning(/outside default int32 range/)
     big1 = ((((::tpy::BigInt(1)) << (::tpy::BigInt(100)))) | (((::tpy::BigInt(1)) << (::tpy::BigInt(50)))));
-    // big2 = (1 << 100) | (1 << 25)  # tpyc: warning(/outside default Int32 range/)
+    // big2 = (1 << 100) | (1 << 25)  # tpyc: warning(/outside default int32 range/)
     big2 = ((((::tpy::BigInt(1)) << (::tpy::BigInt(100)))) | ((::tpy::lshift_check<int32_t>(1, 25))));
     // print((big1 & big2) >> 100)         # 1 - only bit 100 in common
     std::cout << ((((big1) & (big2))) >> (::tpy::BigInt(100))) << "\n";

@@ -1,12 +1,12 @@
 # Writing `None` through a field chain rooted at a list subscript
 # (`self.slots[i].mid.opt = None`): not lowered yet, so this pins the reject.
-from tpy import Int32
+from tpy import int32
 
 
 class Inner:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 
@@ -31,7 +31,7 @@ class Holder:
         self.slots = [Slot()]
 
 
-    def clear(self, i: Int32) -> bool:
+    def clear(self, i: int32) -> bool:
         # A field receiver whose own receiver is the element -- a CHAIN, not
         # the plain subscript receiver the None-write row names.
         self.slots[i].mid.opt = None  # tpyc: error(/assign.field_write_shape/)

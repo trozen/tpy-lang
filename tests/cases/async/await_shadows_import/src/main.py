@@ -3,9 +3,9 @@
 # -- a naive imported_names lookup would mis-qualify to othermod and print 99).
 import asyncio
 from othermod import work
-from tpy import Int32
+from tpy import int32
 
-async def work() -> Int32:
+async def work() -> int32:
     await asyncio.sleep(0)
     return 7
 

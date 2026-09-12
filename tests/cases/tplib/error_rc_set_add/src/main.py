@@ -5,13 +5,13 @@
 # limitation -- ordered_set's std::unordered_map-based index forces
 # copy-constructible keys, not a language-level design choice. The
 # dict[Rc[T], V] form is exercised by error_rc_dict_key.
-from tpy import Int32
+from tpy import int32
 from tplib import Rc
 
 
 def main() -> None:
-    s: set[Rc[Int32]] = set()  # tpyc: error(/Rc\[Int32\].*non-copyable.*set element/)
-    a = Rc.new(Int32(1))
+    s: set[Rc[int32]] = set()  # tpyc: error(/Rc\[int32\].*non-copyable.*set element/)
+    a = Rc.new(int32(1))
     s.add(a.clone())
     print(len(s))
 

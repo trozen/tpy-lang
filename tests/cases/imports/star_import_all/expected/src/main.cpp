@@ -4,15 +4,15 @@
 namespace tpyapp::main {
 
 
-// def main() -> Int32:
+// def main() -> int32:
 int32_t main() {
-    // p = Pair(Int32(10), Int32(20))
+    // p = Pair(int32(10), int32(20))
     ::tpyapp::helpers::Pair p = ::tpyapp::helpers::Pair(10, 20);
     // result = public_add(p.a, p.b)
     int32_t result = ::tpyapp::helpers::public_add(p.a, p.b);
     // print(result)
     std::cout << result << "\n";
-    // return Int32(0)
+    // return int32(0)
     return 0;
 }
 

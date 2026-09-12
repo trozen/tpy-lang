@@ -16,11 +16,11 @@ template<typename T, std::size_t N>
 struct ArrayList {
     // _storage: UninitArrayStorage[T, N]
     ::tpy::UninitArrayStorage<T, N> _storage;
-    // # _size carries an "always non-negative" invariant -- declared as UInt32
-    // # so that internal comparisons against UInt32 storage offsets and counters
+    // # _size carries an "always non-negative" invariant -- declared as uint32
+    // # so that internal comparisons against uint32 storage offsets and counters
     // # don't require sign-mixed compares. The `__len__` boundary casts back to
-    // # Int32 to match Python convention.
-    // _size: UInt32
+    // # int32 to match Python convention.
+    // _size: uint32
     uint32_t _size;
     bool __tpy_owned_ = true;
 
@@ -60,7 +60,7 @@ struct ArrayList {
     // def __del__(self) -> None:
     ~ArrayList() {
         if (!this->__tpy_owned_) return;
-        // self._storage.drop_n(UInt32(0), self._size)
+        // self._storage.drop_n(uint32(0), self._size)
         this->_storage.drop_n(0, this->_size);
     }
 
@@ -100,7 +100,7 @@ struct ArrayList {
         this->append(T{});
     }
 
-    // def pop(self, index: Int32 | None = None) -> Own[T]:
+    // def pop(self, index: int32 | None = None) -> Own[T]:
     ::tpy::own_return_t<T> pop(std::optional<int32_t> index = std::nullopt) {
         // assert self._size > 0
         if (!((this->_size > 0))) ::tpy::raise_assertion_error();
@@ -111,7 +111,7 @@ struct ArrayList {
             // return self._storage.take(self._size)
             return this->_storage.take(this->_size);
         }
-        // ui = UInt32.trunc(index)
+        // ui = uint32.trunc(index)
         uint32_t ui = static_cast<uint32_t>((*index));
         // assert ui < self._size
         if (!((ui < this->_size))) ::tpy::raise_assertion_error();
@@ -125,11 +125,11 @@ struct ArrayList {
         return result;
     }
 
-    // def insert(self, index: Int32, value: Own[T]) -> None:
+    // def insert(self, index: int32, value: Own[T]) -> None:
     void insert(int32_t index, ::tpy::own_param_t<T> value) {
         // assert self._size < self._storage.capacity()
         if (!((this->_size < this->_storage.capacity()))) ::tpy::raise_assertion_error();
-        // ui = UInt32.trunc(index)
+        // ui = uint32.trunc(index)
         uint32_t ui = static_cast<uint32_t>(index);
         // assert ui <= self._size
         if (!((ui <= this->_size))) ::tpy::raise_assertion_error();
@@ -141,7 +141,7 @@ struct ArrayList {
         this->_size = ::tpy::add_check<uint32_t>(this->_size, 1);
     }
 
-    // def index[T: Equatable](self, value: T) -> Int32:
+    // def index[T: Equatable](self, value: T) -> int32:
     int32_t index(::tpy::readonly_form_t<T> value) const
       requires ::tpystd::tpy::Equatable<T> {
         // for ui in range(self._size):
@@ -149,7 +149,7 @@ struct ArrayList {
         for (uint32_t ui = 0; ui < __stop_0; ++ui) {
             // if self._storage.load(ui) == value:
             if (::tpy::eq(this->_storage.load(ui), value)) {
-                // return Int32.trunc(ui)
+                // return int32.trunc(ui)
                 return static_cast<int32_t>(ui);
             }
         }
@@ -157,10 +157,10 @@ struct ArrayList {
         ::tpy::raise_assertion_error("list.index(x): x not in list");
     }
 
-    // def count[T: Equatable](self, value: T) -> Int32:
+    // def count[T: Equatable](self, value: T) -> int32:
     int32_t count(::tpy::readonly_form_t<T> value) const
       requires ::tpystd::tpy::Equatable<T> {
-        // n: Int32 = 0
+        // n: int32 = 0
         int32_t n = 0;
         // for ui in range(self._size):
         uint32_t __stop_0 = this->_size;
@@ -189,7 +189,7 @@ struct ArrayList {
             // return
             return;
         }
-        // lo = UInt32(0)
+        // lo = uint32(0)
         uint32_t lo = 0;
         // hi = self._size - 1
         uint32_t hi = (::tpy::sub_check<uint32_t>(this->_size, 1));
@@ -210,11 +210,11 @@ struct ArrayList {
         }
     }
 
-    // def swap(self, i: Int32, j: Int32) -> None:
+    // def swap(self, i: int32, j: int32) -> None:
     void swap(int32_t i, int32_t j) {
-        // ui = UInt32.trunc(i)
+        // ui = uint32.trunc(i)
         uint32_t ui = static_cast<uint32_t>(i);
-        // uj = UInt32.trunc(j)
+        // uj = uint32.trunc(j)
         uint32_t uj = static_cast<uint32_t>(j);
         // assert ui < self._size
         if (!((ui < this->_size))) ::tpy::raise_assertion_error();
@@ -242,11 +242,11 @@ struct ArrayList {
         ::tpy::sort_in_place(this->__span__());
     }
 
-    // def truncate(self, new_len: Int32) -> None:
+    // def truncate(self, new_len: int32) -> None:
     void truncate(int32_t new_len) {
         // assert new_len >= 0
         if (!((new_len >= 0))) ::tpy::raise_assertion_error();
-        // u_new_len = UInt32.trunc(new_len)
+        // u_new_len = uint32.trunc(new_len)
         uint32_t u_new_len = static_cast<uint32_t>(new_len);
         // if u_new_len < self._size:
         if ((u_new_len < this->_size)) {
@@ -257,17 +257,17 @@ struct ArrayList {
         }
     }
 
-    // def __len__(self) -> Int32:
+    // def __len__(self) -> int32:
     int32_t __len__() const {
-        // return Int32.trunc(self._size)
+        // return int32.trunc(self._size)
         return static_cast<int32_t>(this->_size);
     }
 
     // @dispatch
     // @auto_readonly
-    // def __getitem__(self, index: Int32) -> auto_readonly[T]:
+    // def __getitem__(self, index: int32) -> auto_readonly[T]:
     ::tpy::val_or_ref_t<T> __getitem__(int32_t index) {
-        // ui = UInt32.trunc(index)
+        // ui = uint32.trunc(index)
         uint32_t ui = static_cast<uint32_t>(index);
         // assert ui < self._size
         if (!((ui < this->_size))) ::tpy::raise_assertion_error();
@@ -277,9 +277,9 @@ struct ArrayList {
 
     // @dispatch
     // @auto_readonly
-    // def __getitem__(self, index: Int32) -> auto_readonly[T]:
+    // def __getitem__(self, index: int32) -> auto_readonly[T]:
     ::tpy::val_or_cref_t<T> __getitem__(int32_t index) const {
-        // ui = UInt32.trunc(index)
+        // ui = uint32.trunc(index)
         uint32_t ui = static_cast<uint32_t>(index);
         // assert ui < self._size
         if (!((ui < this->_size))) ::tpy::raise_assertion_error();
@@ -303,9 +303,9 @@ struct ArrayList {
         return ::tpy::list_slice(this->__span__(), index);
     }
 
-    // def __setitem__(self, index: Int32, value: Own[T]) -> None:
+    // def __setitem__(self, index: int32, value: Own[T]) -> None:
     void __setitem__(int32_t index, ::tpy::own_param_t<T> value) {
-        // ui = UInt32.trunc(index)
+        // ui = uint32.trunc(index)
         uint32_t ui = static_cast<uint32_t>(index);
         // assert ui < self._size
         if (!((ui < this->_size))) ::tpy::raise_assertion_error();
@@ -315,9 +315,9 @@ struct ArrayList {
         this->_storage.init(ui, std::move(value));
     }
 
-    // def __delitem__(self, index: Int32) -> None:
+    // def __delitem__(self, index: int32) -> None:
     void __delitem__(int32_t index) {
-        // ui = UInt32.trunc(index)
+        // ui = uint32.trunc(index)
         uint32_t ui = static_cast<uint32_t>(index);
         // assert ui < self._size
         if (!((ui < this->_size))) ::tpy::raise_assertion_error();
@@ -369,14 +369,14 @@ struct ArrayList {
     // @auto_readonly
     // def __span__(self) -> Span[auto_readonly[T]]:
     std::span<T> __span__() {
-        // return self._storage.ptr().span(Int32.trunc(self._size))
+        // return self._storage.ptr().span(int32.trunc(self._size))
         return std::span(this->_storage.ptr(), static_cast<size_t>(static_cast<int32_t>(this->_size)));
     }
 
     // @auto_readonly
     // def __span__(self) -> Span[auto_readonly[T]]:
     std::span<const T> __span__() const {
-        // return self._storage.ptr().span(Int32.trunc(self._size))
+        // return self._storage.ptr().span(int32.trunc(self._size))
         return std::span(this->_storage.ptr(), static_cast<size_t>(static_cast<int32_t>(this->_size)));
     }
 
@@ -403,7 +403,7 @@ struct ArrayList {
         if constexpr (::tpystd::tpy::Spannable<T_items, T>) {
             // items_span = span(items)
             std::span<const T> items_span = ::tpy::as_span(items);
-            // u_size = UInt32.trunc(len(items_span))
+            // u_size = uint32.trunc(len(items_span))
             uint32_t u_size = static_cast<uint32_t>(::tpy::__len__(items_span));
             // assert self._size + u_size <= self._storage.capacity()
             if (!(((::tpy::add_check<uint32_t>(this->_size, u_size)) <= this->_storage.capacity()))) ::tpy::raise_assertion_error();
@@ -428,9 +428,9 @@ struct ArrayList {
 
     // def clear(self) -> None:
     void clear() {
-        // self._storage.drop_n(UInt32(0), self._size)
+        // self._storage.drop_n(uint32(0), self._size)
         this->_storage.drop_n(0, this->_size);
-        // self._size = UInt32(0)
+        // self._size = uint32(0)
         this->_size = 0;
     }
 

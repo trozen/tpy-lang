@@ -3,10 +3,10 @@
 
 namespace tpyapp::main {
 
-// # Type inferred from list[Int32]
-// nums32: list[Int32] = [Int32(1), Int32(2), Int32(3)]
+// # Type inferred from list[int32]
+// nums32: list[int32] = [int32(1), int32(2), int32(3)]
 std::vector<int32_t>* nums32{};
-// result: Int32 = first(nums32)
+// result: int32 = first(nums32)
 int32_t result{};
 // # Type inferred from list[int]
 // nums: list[int] = [10, 20, 30]
@@ -19,11 +19,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Type inferred from list[Int32]
-    // nums32: list[Int32] = [Int32(1), Int32(2), Int32(3)]
+    // # Type inferred from list[int32]
+    // nums32: list[int32] = [int32(1), int32(2), int32(3)]
     static std::vector<int32_t> __global_slot_1 = {1, 2, 3};
     nums32 = &__global_slot_1;
-    // result: Int32 = first(nums32)
+    // result: int32 = first(nums32)
     result = first<int32_t>((*nums32));
     // print(result)
     std::cout << result << "\n";

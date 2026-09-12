@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // items: list[Int32] = [1, 2, 3, 4, 5]
+    // items: list[int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> items = {1, 2, 3, 4, 5};
     // for x in reversed(items):
     {
@@ -36,7 +36,7 @@ void main() {
         }
     }
     // # single element
-    // one: list[Int32] = [42]
+    // one: list[int32] = [42]
     std::vector<int32_t> one = {42};
     // for x in reversed(one):
     {
@@ -51,7 +51,7 @@ void main() {
         }
     }
     // # empty
-    // empty: list[Int32] = []
+    // empty: list[int32] = []
     std::vector<int32_t> empty = std::vector<int32_t>{};
     // for x in reversed(empty):
     {

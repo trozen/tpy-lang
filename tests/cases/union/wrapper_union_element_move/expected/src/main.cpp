@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def push(a: list[JV], src: list[JV]) -> Int32:
+// def push(a: list[JV], src: list[JV]) -> int32:
 int32_t push(std::vector<JV>& a, std::vector<JV>& src) {
     // item = src.pop()
     JV item = ::tpy::pop_back(src);
@@ -14,7 +14,7 @@ int32_t push(std::vector<JV>& a, std::vector<JV>& src) {
     return ::tpy::__len__(a);
 }
 
-// def store(d: dict[str, JV], src: list[JV]) -> Int32:
+// def store(d: dict[str, JV], src: list[JV]) -> int32:
 int32_t store(::tpy::ordered_map<std::string, JV>& d, std::vector<JV>& src) {
     // item = src.pop()
     JV item = ::tpy::pop_back(src);

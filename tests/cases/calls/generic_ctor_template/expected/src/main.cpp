@@ -7,19 +7,19 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // # list[T] constructor -- {T} resolved to int32_t
-    // items = list[Int32](range(5))
+    // items = list[int32](range(5))
     std::vector<int32_t> items = ::tpy::construct<std::vector<int32_t>>(::tpy::Range<int32_t>(5));
     // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
     // # set[T] constructor -- {T} resolved to int32_t
-    // s = set[Int32](items)
+    // s = set[int32](items)
     ::tpy::ordered_set<int32_t> s = ::tpy::set_construct<int32_t>(::tpy::own_iter(std::move(items)));
     // print(len(s))
     std::cout << ::tpy::__len__(s) << "\n";
     // # dict[K,V] constructor -- {K}/{V} resolved
-    // pairs: list[tuple[str, Int32]] = [("a", Int32(1)), ("b", Int32(2))]
+    // pairs: list[tuple[str, int32]] = [("a", int32(1)), ("b", int32(2))]
     std::vector<std::tuple<std::string, int32_t>> pairs = {std::tuple<std::string, int32_t>{"a", 1}, std::tuple<std::string, int32_t>{"b", 2}};
-    // d = dict[str, Int32](pairs)
+    // d = dict[str, int32](pairs)
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_construct<std::string, int32_t>(::tpy::own_iter(std::move(pairs)));
     // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";

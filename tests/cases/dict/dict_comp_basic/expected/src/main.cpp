@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // # Range to dict
-    // squares: dict[Int32, Int32] = {x: x * x for x in range(5)}
+    // squares: dict[int32, int32] = {x: x * x for x in range(5)}
     ::tpy::ordered_map<int32_t, int32_t> squares = ({
         ::tpy::ordered_map<int32_t, int32_t> __result;
         const int32_t __stop_0 = 5;
@@ -28,7 +28,7 @@ void main() {
     // # List to dict
     // names: list[str] = ["alice", "bob", "charlie"]
     std::vector<std::string> names = {"alice", "bob", "charlie"};
-    // name_lens: dict[str, Int32] = {n: len(n) for n in names}
+    // name_lens: dict[str, int32] = {n: len(n) for n in names}
     ::tpy::ordered_map<std::string, int32_t> name_lens = ({
         ::tpy::ordered_map<std::string, int32_t> __result;
         auto& __obj_2 = names;
@@ -47,9 +47,9 @@ void main() {
     // print(name_lens["charlie"])
     std::cout << ::tpy::__getitem__(name_lens, "charlie") << "\n";
     // # Rebuild dict (identity)
-    // src: dict[str, Int32] = {"a": 1, "b": 2}
+    // src: dict[str, int32] = {"a": 1, "b": 2}
     ::tpy::ordered_map<std::string, int32_t> src = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
-    // copy: dict[str, Int32] = {k: v for k, v in src.items()}
+    // copy: dict[str, int32] = {k: v for k, v in src.items()}
     ::tpy::ordered_map<std::string, int32_t> copy = ({
         ::tpy::ordered_map<std::string, int32_t> __result;
         auto __obj_3 = ::tpy::dict_items(src);
@@ -68,7 +68,7 @@ void main() {
     // print(copy["b"])
     std::cout << ::tpy::__getitem__(copy, "b") << "\n";
     // # 2-arg range
-    // r2: dict[Int32, Int32] = {x: x + 10 for x in range(2, 5)}
+    // r2: dict[int32, int32] = {x: x + 10 for x in range(2, 5)}
     ::tpy::ordered_map<int32_t, int32_t> r2 = ({
         ::tpy::ordered_map<int32_t, int32_t> __result;
         const int32_t __start_4 = 2;

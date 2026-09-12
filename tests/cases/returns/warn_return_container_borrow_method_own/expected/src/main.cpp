@@ -4,15 +4,15 @@
 namespace tpyapp::main {
 
 
-// def take(h: Holder) -> Own[list[Int32]]:
+// def take(h: Holder) -> Own[list[int32]]:
 std::vector<int32_t> take(Holder& h) {
     // # `h.borrow()` hands back `std::vector<int32_t>&`; filling the owning slot
     // # from it is the copy the warning declares.
-    // return h.borrow()  # tpyc: warning(/copies list\[Int32\] into owned storage/)
+    // return h.borrow()  # tpyc: warning(/copies list\[int32\] into owned storage/)
     return h.borrow();
 }
 
-// def take_copy(h: Holder) -> Own[list[Int32]]:
+// def take_copy(h: Holder) -> Own[list[int32]]:
 std::vector<int32_t> take_copy(Holder& h) {
     // return copy(h.borrow())  # tpyc: ok
     return std::vector<int32_t>(h.borrow());

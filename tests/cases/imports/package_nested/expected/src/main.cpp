@@ -4,11 +4,11 @@
 namespace tpyapp::main {
 
 
-// def main() -> Int32:
+// def main() -> int32:
 int32_t main() {
     // func()
     ::tpyapp::outer::inner::mod::func();
-    // return Int32(0)
+    // return int32(0)
     return 0;
 }
 

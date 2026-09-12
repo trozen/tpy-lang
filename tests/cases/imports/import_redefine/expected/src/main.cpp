@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 // # Redefine the imported MAX - this should work and be used
-// MAX: Int32 = Int32(42)
+// MAX: int32 = int32(42)
 int32_t MAX{};
 
 void __tpy_init() {
@@ -15,7 +15,7 @@ void __tpy_init() {
     // from utils import MAX
     ::tpyapp::utils::__tpy_init();
     // # Redefine the imported MAX - this should work and be used
-    // MAX: Int32 = Int32(42)
+    // MAX: int32 = int32(42)
     MAX = 42;
     // # Top-level print uses the redefined MAX
     // print(MAX)  # Should print 42

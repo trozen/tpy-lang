@@ -1,7 +1,7 @@
 # A plain @native member called on a POINTER-returning call receiver: the
 # member reaches through the pointer and needs a deref check, which no
 # call-receiver render spells.
-from tpy import Int32, Ptr, nocopy, take_ptr
+from tpy import int32, Ptr, nocopy, take_ptr
 from tpy.extern import native
 
 

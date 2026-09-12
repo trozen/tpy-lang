@@ -1,16 +1,16 @@
 # Same durable member at a return boundary: binding a tuple with a durable
 # reference member to a local then returning it now ALIASES the member (pointer
 # borrow form). Mutating the returned element is visible in the caller's object.
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    val: Int32
-    def __init__(self, v: Int32) -> None:
+    val: int32
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 
-def make(b: Box) -> tuple[Int32, Box]:
+def make(b: Box) -> tuple[int32, Box]:
     t = (1, b)
     return t
 

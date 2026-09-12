@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // @error_return(NotFound)
-// def lookup(key: str) -> Int32:
+// def lookup(key: str) -> int32:
 std::expected<int32_t, NotFound> lookup(std::string_view key) {
     // if key == "x":
     if ((key == "x")) {

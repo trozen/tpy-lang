@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 class Container[T]:
     _val: T | None
     def __init__(self, val: T | None):
@@ -8,7 +8,7 @@ class Container[T]:
 def main() -> None:
     k = 1
     match k:
-        case 1 if Container[Int32](Int32(42)).probe(None):
+        case 1 if Container[int32](int32(42)).probe(None):
             print("a")
         case _:
             print("b")

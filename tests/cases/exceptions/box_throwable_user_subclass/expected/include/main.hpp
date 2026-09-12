@@ -19,10 +19,10 @@ void main();
 
 // class ParseError(Exception):
 struct ParseError : ::tpy::Exception {
-    // line: Int32
+    // line: int32
     int32_t line;
 
-    // def __init__(self, message: str, line: Int32) -> None:
+    // def __init__(self, message: str, line: int32) -> None:
     ParseError() = default;
     explicit ParseError(std::string_view message, int32_t line);
 
@@ -38,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const ParseError& obj) {
 }
 
 
-// def __init__(self, message: str, line: Int32) -> None:
+// def __init__(self, message: str, line: int32) -> None:
 inline ParseError::ParseError(std::string_view message, int32_t line) : line(line) {
     // self.message = message
     this->message = message;

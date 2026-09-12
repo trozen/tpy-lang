@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // a = ArrayList[Int32, 8]()
+    // a = ArrayList[int32, 8]()
     ::tpystd::tplib::array_list::ArrayList<int32_t, 8> a = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
     // a.append(10)
     a.append(10);
@@ -57,7 +57,7 @@ void main() {
     // print(len(unique))
     std::cout << ::tpy::__len__(unique) << "\n";
     // # for-loop (universal default path)
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for x in a:
     auto& __src_2 = a;

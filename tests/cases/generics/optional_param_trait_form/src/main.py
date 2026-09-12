@@ -7,7 +7,7 @@
 import asyncio
 from typing import Iterator
 
-from tpy import Int32, ReturnException, error_return, nocopy
+from tpy import int32, ReturnException, error_return, nocopy
 
 
 class Stop(Exception, ReturnException):
@@ -15,9 +15,9 @@ class Stop(Exception, ReturnException):
 
 
 class Cell:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
@@ -28,9 +28,9 @@ class Pinned:
     # holding a borrow is a build-time fact, not an inference from output --
     # which matters because a generic body cannot read an open `T` back out
     # (every spelling of that rejects today, so `is None` is all it can print).
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
@@ -47,7 +47,7 @@ def probe_gen[T](val: T | None) -> bool:
     return val is not None  # tpyc: ok
 
 
-def probe_twin(val: Int32 | None) -> bool:
+def probe_twin(val: int32 | None) -> bool:
     return val is not None
 
 
@@ -65,7 +65,7 @@ def first_or_twin(val: Cell | None, fallback: Cell) -> Cell:
     return val
 
 
-def mk() -> Int32:
+def mk() -> int32:
     return 5
 
 
@@ -86,12 +86,12 @@ class Container[T]:
 
 
 class ContainerTwin:
-    _val: Int32 | None
+    _val: int32 | None
 
-    def __init__(self, val: Int32 | None) -> None:
+    def __init__(self, val: int32 | None) -> None:
         self._val = val
 
-    def probe(self, val: Int32 | None) -> bool:
+    def probe(self, val: int32 | None) -> bool:
         return val is not None
 
     def held(self) -> bool:
@@ -108,18 +108,18 @@ class CellBox:
         return self._val is not None
 
 
-def gen_body(n: Int32) -> Iterator[bool]:
+def gen_body(n: int32) -> Iterator[bool]:
     yield probe_gen(n + 1)  # tpyc: ok
     yield probe_twin(n + 1)
 
 
 @error_return(Stop)
-def er_gen(n: Int32) -> bool:
+def er_gen(n: int32) -> bool:
     return probe_gen(n + 1)  # tpyc: ok
 
 
 @error_return(Stop)
-def er_twin(n: Int32) -> bool:
+def er_twin(n: int32) -> bool:
     return probe_twin(n + 1)
 
 
@@ -128,7 +128,7 @@ async def probe_async[T](val: T | None) -> bool:
     return val is not None  # tpyc: ok
 
 
-async def probe_async_twin(val: Int32 | None) -> bool:
+async def probe_async_twin(val: int32 | None) -> bool:
     return val is not None
 
 
@@ -136,9 +136,9 @@ async def probe_pinned_twin(val: Pinned | None) -> bool:
     return val is not None
 
 
-async def amain(n: Int32) -> None:
-    v: Int32 | None = n + 1
-    v_none: Int32 | None = None
+async def amain(n: int32) -> None:
+    v: int32 | None = n + 1
+    v_none: int32 | None = None
     c = Cell(5)
     none_cell: Cell | None = None
     print("async_value", await probe_async(v), await probe_async(v_none),
@@ -175,8 +175,8 @@ def main() -> None:
     print("free_ref", c.n, d.n, first_or(none_cell, d).n, probe_gen(none_cell))
     print("free_ref_twin", first_or_twin(none_cell, d).n)
 
-    box = Container[Int32](None)
-    held = Container[Int32](n + 1)
+    box = Container[int32](None)
+    held = Container[int32](n + 1)
     twin = ContainerTwin(n + 1)
     print("method", box.probe(n + 1), twin.probe(n + 1))
     print("method_none", box.probe(None), twin.probe(None))
@@ -229,6 +229,6 @@ def main() -> None:
 
 main()
 
-# module-level statement position. The Int32() spelling is load-bearing: a bare
+# module-level statement position. The int32() spelling is load-bearing: a bare
 # int literal at a generic `T | None` slot is not admitted (see BUGS.md).
-print("module", probe_gen(Int32(2)), probe_twin(Int32(2)))
+print("module", probe_gen(int32(2)), probe_twin(int32(2)))

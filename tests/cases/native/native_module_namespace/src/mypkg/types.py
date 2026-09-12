@@ -2,14 +2,14 @@
 # tpy: native_module
 # tpy: cpp_namespace("mypkg")
 # tpy: include("native_types.hpp")
-from tpy import Int32, Ptr, Own
+from tpy import int32, Ptr, Own
 from tpy.extern import native
 
 # Bare @native -- auto-prefixed to mypkg::Vec2
 @native
 class Vec2:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 # Bare @native function -- auto-prefixed to mypkg::add_vecs
 @native

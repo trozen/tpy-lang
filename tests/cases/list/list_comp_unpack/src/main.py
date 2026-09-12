@@ -1,16 +1,16 @@
 # List comprehension: tuple unpacking in generator
-from tpy import Int32
+from tpy import int32
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32) -> None:
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 
 def main() -> None:
     # Unpack from list of tuples
-    pairs: list[tuple[str, Int32]] = [("a", 1), ("b", 2), ("c", 3)]
+    pairs: list[tuple[str, int32]] = [("a", 1), ("b", 2), ("c", 3)]
     values = [v for k, v in pairs]
     print(values)
 
@@ -18,7 +18,7 @@ def main() -> None:
     print(keys)
 
     # Unpack from dict.items()
-    d: dict[str, Int32] = {"x": 10, "y": 20, "z": 30}
+    d: dict[str, int32] = {"x": 10, "y": 20, "z": 30}
     doubled = [v * 2 for k, v in d.items()]
     print(doubled)
 
@@ -39,7 +39,7 @@ def main() -> None:
     print(filtered)
 
     # 3-element tuple unpack
-    triples: list[tuple[str, Int32, bool]] = [("a", 1, True), ("b", 2, False), ("c", 3, True)]
+    triples: list[tuple[str, int32, bool]] = [("a", 1, True), ("b", 2, False), ("c", 3, True)]
     middle = [n for _, n, _ in triples]
     print(middle)
 

@@ -1,9 +1,9 @@
 from a import AType
-from tpy import Int32
+from tpy import int32
 
 class BType:
-    tag: Int32
+    tag: int32
     def __init__(self) -> None:
-        self.tag = Int32(7)
-    def use_a(self, a: AType) -> Int32:
+        self.tag = int32(7)
+    def use_a(self, a: AType) -> int32:
         return self.tag

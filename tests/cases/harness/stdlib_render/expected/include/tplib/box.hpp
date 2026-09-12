@@ -160,7 +160,7 @@ struct Box {
         return (!((this->get() < other.get())));
     }
 
-    // def __hash__[T: Hashable](self) -> UInt64:
+    // def __hash__[T: Hashable](self) -> uint64:
     uint64_t __hash__() const
       requires ::tpystd::tpy::Hashable<T> {
         // return hash(self.get())

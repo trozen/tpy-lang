@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def make_list() -> Own[list[Int32]]:
+// def make_list() -> Own[list[int32]]:
 std::vector<int32_t> make_list() {
     // return [1, 2, 3]
     return {1, 2, 3};
@@ -15,7 +15,7 @@ void test_list_one_branch(bool flag) {
     // if flag:
     std::optional<std::vector<int32_t>> items;
     if (flag) {
-        // items: list[Int32] = [10, 20, 30]
+        // items: list[int32] = [10, 20, 30]
         items = {10, 20, 30};
     // else:
     } else {
@@ -46,12 +46,12 @@ void test_own_list_both_branches(bool flag) {
 // def test_list_reassigned_mixed(flag: bool) -> None:
 void test_list_reassigned_mixed(bool flag) {
     std::optional<std::vector<int32_t>> __slot_1;
-    // base: list[Int32] = [10, 20]
+    // base: list[int32] = [10, 20]
     std::vector<int32_t> base = {10, 20};
     // if flag:
     std::vector<int32_t>* items;
     if (flag) {
-        // items: list[Int32] = [1, 2, 3]
+        // items: list[int32] = [1, 2, 3]
         items = &*(__slot_1 = {1, 2, 3});
     // else:
     } else {

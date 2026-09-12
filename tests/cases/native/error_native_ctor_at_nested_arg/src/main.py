@@ -3,20 +3,20 @@
 # Concretely, `use_nr(NR(x))` constructs the native record inline as the
 # call argument, and TPy rejects that shape today.
 from tpy.extern import native
-from tpy import Int32
+from tpy import int32
 
 
 @native('mylog::NR')
 class NR:
     @native('mylog::NR')
-    def __init__(self, x: Int32) -> None: ...
+    def __init__(self, x: int32) -> None: ...
 
 
 @native('mylog::use_nr')
-def use_nr(r: NR) -> Int32: ...
+def use_nr(r: NR) -> int32: ...
 
 
-def go(x: Int32) -> Int32:
+def go(x: int32) -> int32:
     return use_nr(NR(x))  # tpyc: error(/call.native_arg.call_rvalue/)
 
 

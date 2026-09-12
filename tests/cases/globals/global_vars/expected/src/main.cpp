@@ -9,20 +9,20 @@ int32_t start{};
 // end = 3
 int32_t end{};
 // # Test 2: Global int used as list index
-// items: list[Int32] = [10, 20, 30]
+// items: list[int32] = [10, 20, 30]
 std::vector<int32_t>* items{};
 // idx = 1
 int32_t idx{};
 // # Test 3: Global int used in list repeat count
 // count = 3
 int32_t count{};
-// repeated: list[Int32] = [0] * count
+// repeated: list[int32] = [0] * count
 std::vector<int32_t>* repeated{};
 // # Test 4: Global int reassignment (z = 0; z = 5 pattern)
 // z = 0
 int32_t z{};
 // # Test 5: Membership operator on global list
-// global_list: list[Int32] = [1, 2, 3]
+// global_list: list[int32] = [1, 2, 3]
 std::vector<int32_t>* global_list{};
 // # Test 6: Loop variable shadows global
 // i = 100
@@ -30,14 +30,14 @@ int32_t i{};
 // # Test 7: For-each loop variable shadows global
 // x = 999
 int32_t x{};
-// nums: list[Int32] = [7, 8]
+// nums: list[int32] = [7, 8]
 std::vector<int32_t>* nums{};
 // local_pt: Point = Point(42, 99)
 Point* local_pt{};
 // global_ptr: Ptr[Point] = local_pt
 Point* global_ptr{};
-// # Test 9: Int32 += with global default-int value
-// counter: Int32 = 10
+// # Test 9: int32 += with global default-int value
+// counter: int32 = 10
 int32_t counter{};
 // increment = 5
 int32_t increment{};
@@ -51,7 +51,7 @@ int32_t val{};
 // c: Counter = Counter(50)
 Counter* c{};
 // # Test 12: Augmented subscript assignment with global default-int RHS
-// arr: list[Int32] = [100, 200, 300]
+// arr: list[int32] = [100, 200, 300]
 std::vector<int32_t>* arr{};
 // delta = 5
 int32_t delta{};
@@ -74,7 +74,7 @@ void __tpy_init() {
         std::cout << i << "\n";
     }
     // # Test 2: Global int used as list index
-    // items: list[Int32] = [10, 20, 30]
+    // items: list[int32] = [10, 20, 30]
     static std::vector<int32_t> __global_slot_1 = {10, 20, 30};
     items = &__global_slot_1;
     // idx = 1
@@ -84,7 +84,7 @@ void __tpy_init() {
     // # Test 3: Global int used in list repeat count
     // count = 3
     count = 3;
-    // repeated: list[Int32] = [0] * count
+    // repeated: list[int32] = [0] * count
     static std::vector<int32_t> __global_slot_2 = ::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(count, {0}));
     repeated = &__global_slot_2;
     // print(len(repeated))
@@ -99,7 +99,7 @@ void __tpy_init() {
     // print(z)
     std::cout << z << "\n";
     // # Test 5: Membership operator on global list
-    // global_list: list[Int32] = [1, 2, 3]
+    // global_list: list[int32] = [1, 2, 3]
     static std::vector<int32_t> __global_slot_3 = {1, 2, 3};
     global_list = &__global_slot_3;
     // if 2 in global_list:
@@ -136,7 +136,7 @@ void __tpy_init() {
     x = 999;
     // print(x)
     std::cout << x << "\n";
-    // nums: list[Int32] = [7, 8]
+    // nums: list[int32] = [7, 8]
     static std::vector<int32_t> __global_slot_4 = {7, 8};
     nums = &__global_slot_4;
     // for x in nums:
@@ -157,8 +157,8 @@ void __tpy_init() {
     std::cout << global_ptr->a << "\n";
     // print(global_ptr.b)
     std::cout << global_ptr->b << "\n";
-    // # Test 9: Int32 += with global default-int value
-    // counter: Int32 = 10
+    // # Test 9: int32 += with global default-int value
+    // counter: int32 = 10
     counter = 10;
     // increment = 5
     increment = 5;
@@ -189,7 +189,7 @@ void __tpy_init() {
     // print(c.add(7))
     std::cout << c->add(7) << "\n";
     // # Test 12: Augmented subscript assignment with global default-int RHS
-    // arr: list[Int32] = [100, 200, 300]
+    // arr: list[int32] = [100, 200, 300]
     static std::vector<int32_t> __global_slot_7 = {100, 200, 300};
     arr = &__global_slot_7;
     // delta = 5

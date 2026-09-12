@@ -1,1 +1,1 @@
-main.py:6: error: Invalid operand type for unary '-': UInt8
+main.py:6: error: Invalid operand type for unary '-': uint8

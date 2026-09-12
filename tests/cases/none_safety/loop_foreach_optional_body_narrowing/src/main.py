@@ -1,8 +1,8 @@
-from tpy import Int32
+from tpy import int32
 
 
-def sum_non_none(items: list[Int32 | None]) -> Int32:
-    total: Int32 = 0
+def sum_non_none(items: list[int32 | None]) -> int32:
+    total: int32 = 0
     for item in items:
         if item is None:
             continue
@@ -10,7 +10,7 @@ def sum_non_none(items: list[Int32 | None]) -> Int32:
     return total
 
 
-vals: list[Int32 | None] = list()
+vals: list[int32 | None] = list()
 vals.append(3)
 vals.append(4)
 print(sum_non_none(vals))

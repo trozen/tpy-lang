@@ -37,7 +37,7 @@ __version__ = "0.6.0.dev0"
 
 # Lives here (not compiler.py) so the CLI's argument parser can offer the
 # choices without importing the compiler machinery.
-DEFAULT_INT_CHOICES = ("Int32", "Int64", "BigInt")
+DEFAULT_INT_CHOICES = ("int32", "int64", "BigInt")
 
 
 def _parse_version_info(v: str) -> tuple[int, int, int, str, int]:

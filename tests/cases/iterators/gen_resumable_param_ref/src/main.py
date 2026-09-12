@@ -3,10 +3,10 @@
 # as the legacy generator path. Flat body (no loop) so it routes through
 # the resumable emitter. (Phase D: params widening.)
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
-def first_two(xs: list[Int32]) -> Iterator[Int32]:
+def first_two(xs: list[int32]) -> Iterator[int32]:
     yield xs[0]
     yield xs[1]
 

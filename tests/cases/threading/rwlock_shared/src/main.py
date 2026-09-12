@@ -8,7 +8,7 @@
 # CPython Arc stub (the deref form is exercised separately in mutex_arc_autoderef,
 # which is no_cpython). `r.get()` is likewise required -- a guard is not directly
 # iterable (`for v in r:` is rejected in TPy too), so read the payload first.
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 from tplib.arc import Arc
 from tpy.thread import spawn
 from tpy.sync import RwLock
@@ -16,11 +16,11 @@ from tpy.sync import RwLock
 
 @nocopy
 class Writer:
-    shared: Arc[RwLock[list[Int32]]]
-    id: Int32
-    iters: Int32
+    shared: Arc[RwLock[list[int32]]]
+    id: int32
+    iters: int32
 
-    def __init__(self, shared: Own[Arc[RwLock[list[Int32]]]], id: Int32, iters: Int32) -> None:
+    def __init__(self, shared: Own[Arc[RwLock[list[int32]]]], id: int32, iters: int32) -> None:
         self.shared = shared
         self.id = id
         self.iters = iters

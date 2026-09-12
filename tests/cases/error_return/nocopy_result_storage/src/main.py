@@ -1,7 +1,7 @@
 # An @error_return success value MOVES (not copies) out of the dying expected
 # into storage targets: a storage local, a field, and the auto-propagate local.
 # @nocopy makes a reintroduced copy a hard build error.
-from tpy import Int32, error_return, ReturnException, Own, nocopy
+from tpy import int32, error_return, ReturnException, Own, nocopy
 
 
 class E(Exception, ReturnException):
@@ -10,21 +10,21 @@ class E(Exception, ReturnException):
 
 @nocopy
 class Payload:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 
 @error_return(E)
-def make(n: Int32) -> Own[Payload]:
+def make(n: int32) -> Own[Payload]:
     if n < 0:
         raise E
     return Payload(n)
 
 
 @error_return(E)
-def chain(n: Int32) -> Own[Payload]:
+def chain(n: int32) -> Own[Payload]:
     p = make(n)
     return p
 
@@ -35,7 +35,7 @@ class Sink:
     def __init__(self) -> None:
         self.p = Payload(0)
 
-    def fill(self, n: Int32) -> None:
+    def fill(self, n: int32) -> None:
         try:
             self.p = make(n)
         except E:

@@ -100,7 +100,7 @@ std::expected<JsonValue, ::tpystd::tplib::json::parser::JsonError> _read_value(:
         // # float syntax. CPython treats `1` and `1.0` as int and float.
         // is_float = False
         bool is_float = false;
-        // i: Int32 = 0
+        // i: int32 = 0
         int32_t i = 0;
         // n = len(raw)
         int32_t n = ::tpy::__len__(raw);
@@ -286,7 +286,7 @@ void _write_value(const JsonValue& v, ::tpystd::tplib::json::writer::JsonWriter&
     }
 }
 
-// def dumps(obj: JsonValue, *, indent: Int32 = 0, sort_keys: bool = False) -> str:
+// def dumps(obj: JsonValue, *, indent: int32 = 0, sort_keys: bool = False) -> str:
 std::string dumps(const JsonValue& obj, int32_t indent, bool sort_keys) {
     // w = JsonWriter(indent)
     ::tpystd::tplib::json::writer::JsonWriter w = ::tpystd::tplib::json::writer::JsonWriter(indent);
@@ -297,7 +297,7 @@ std::string dumps(const JsonValue& obj, int32_t indent, bool sort_keys) {
 }
 
 
-// def __init__(self, msg: str, doc: str, pos: Int32) -> None:
+// def __init__(self, msg: str, doc: str, pos: int32) -> None:
 JSONDecodeError::JSONDecodeError(std::string_view msg, std::string_view doc, int32_t pos) : msg(msg), doc(doc), pos(pos) {
     // # `message` is BaseException's runtime field (used by __str__);
     // # `msg` is CPython's documented attribute on JSONDecodeError.
@@ -305,11 +305,11 @@ JSONDecodeError::JSONDecodeError(std::string_view msg, std::string_view doc, int
     // self.message = msg
     this->message = msg;
     // # 1-based to match CPython's JSONDecodeError.lineno/colno contract.
-    // line: Int32 = 1
+    // line: int32 = 1
     int32_t line = 1;
-    // col: Int32 = 1
+    // col: int32 = 1
     int32_t col = 1;
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // end = pos
     int32_t end = pos;

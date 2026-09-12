@@ -1,1 +1,1 @@
-main.py:6: error: Type mismatch in variable 'x': expected Int32, got str
+main.py:6: error: Type mismatch in variable 'x': expected int32, got str

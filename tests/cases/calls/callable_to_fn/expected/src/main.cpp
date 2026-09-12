@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def double(x: Int32) -> Int32:
+// def double(x: int32) -> int32:
 int32_t double_(int32_t x) {
     // return x * 2
     return (::tpy::mul_check<int32_t>(x, 2));
@@ -13,24 +13,24 @@ int32_t double_(int32_t x) {
 // def main() -> None:
 void main() {
     // # Callable variable passed to Fn param
-    // f: Callable[[Int32], Int32] = double
+    // f: Callable[[int32], int32] = double
     std::function<int32_t(int32_t)> f = double_;
     // print(apply(f, 21))
     std::cout << apply(f, 21) << "\n";
     // # Callable variable with lambda
-    // g: Callable[[Int32], Int32] = lambda x: x + 100
+    // g: Callable[[int32], int32] = lambda x: x + 100
     std::function<int32_t(int32_t)> g = [](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 100)); };
     // print(apply(g, 5))
     std::cout << apply(g, 5) << "\n";
     // # Callable passed to builtin map (Fn param)
-    // h: Callable[[Int32], Int32] = double
+    // h: Callable[[int32], int32] = double
     std::function<int32_t(int32_t)> h = double_;
     // result = list(map(h, [1, 2, 3]))
     std::vector<int32_t> result = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map<int32_t, int32_t>(h, std::array<int32_t, 3>{1, 2, 3}));
     // print(result)
     std::cout << ::tpy::ListPrinter(result) << "\n";
     // # Callable passed to builtin filter (Fn param)
-    // is_pos: Callable[[Int32], bool] = lambda x: x > 0
+    // is_pos: Callable[[int32], bool] = lambda x: x > 0
     std::function<bool(int32_t)> is_pos = [](int32_t x) -> bool { return (x > 0); };
     // result2 = list(filter(is_pos, [-1, 2, -3, 4]))
     std::vector<int32_t> result2 = ::tpy::construct<std::vector<int32_t>>(::tpy::builtin_filter<int32_t>(is_pos, std::array<int32_t, 4>{-1, 2, -3, 4}));

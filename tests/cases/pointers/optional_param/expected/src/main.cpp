@@ -8,7 +8,7 @@ std::vector<Point>* points{};
 // result = find(points, 3)
 Point* result{};
 
-// def describe(p: Point | None) -> Int32:
+// def describe(p: Point | None) -> int32:
 int32_t describe(Point* p) {
     // if p is not None:
     if ((p != nullptr)) {
@@ -19,7 +19,7 @@ int32_t describe(Point* p) {
     return -1;
 }
 
-// def find(points: list[Point], target: Int32) -> Point | None:
+// def find(points: list[Point], target: int32) -> Point | None:
 Point* find(std::vector<Point>& points, int32_t target) {
     // for p in points:
     auto& __obj_0 = points;

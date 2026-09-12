@@ -36,10 +36,10 @@ inline std::ostream& operator<<(std::ostream& os, const E& obj) {
 // @nocopy
 // class Payload:
 struct Payload {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Payload() = default;
     explicit Payload(int32_t v);
     // non-copyable (@nocopy)
@@ -68,7 +68,7 @@ struct Sink {
     Sink(Sink&&) = default;
     Sink& operator=(Sink&&) = default;
 
-    // def fill(self, n: Int32) -> None:
+    // def fill(self, n: int32) -> None:
     void fill(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Sink";
 };
@@ -79,13 +79,13 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Payload::Payload(int32_t v) : v(v) {}
 
 // def __init__(self) -> None:
 inline Sink::Sink() : p(Payload(0)) {}
 
-// def fill(self, n: Int32) -> None:
+// def fill(self, n: int32) -> None:
 inline void Sink::fill(int32_t n) {
     // try:
     {

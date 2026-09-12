@@ -1,10 +1,10 @@
 # A finally mutating the returned local INDIRECTLY (alias or closure) must
 # be visible in the returned object; deferral is structural, not read-based.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Box:
-    n: Int32
+    n: int32
 
     def __init__(self) -> None:
         self.n = 10

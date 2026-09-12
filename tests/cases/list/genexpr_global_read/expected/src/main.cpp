@@ -3,15 +3,15 @@
 
 namespace tpyapp::main {
 
-// limit: Int32 = Int32(3)
+// limit: int32 = int32(3)
 int32_t limit{};
-// scale: Int32 = Int32(2)
+// scale: int32 = int32(2)
 int32_t scale{};
 
-// def bump() -> Int32:
+// def bump() -> int32:
 int32_t bump() {
     // global limit
-    // limit = Int32(4)
+    // limit = int32(4)
     limit = 4;
     // # The subject: the filter reads the `global`-declared name, and the
     // # element expression reads a module global the function only reads.
@@ -40,9 +40,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // limit: Int32 = Int32(3)
+    // limit: int32 = int32(3)
     limit = 3;
-    // scale: Int32 = Int32(2)
+    // scale: int32 = int32(2)
     scale = 2;
     // main()
     main();

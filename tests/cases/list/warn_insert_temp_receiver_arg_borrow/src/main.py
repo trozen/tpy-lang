@@ -5,13 +5,13 @@
 # the warning is the subject. Only the record payload is reachable here: the
 # container twin (`ys.append(Picker().pick_items(h))`) rejects one layer down
 # at `method.arg_shape`, so its witness is the return case.
-from tpy import Int32
+from tpy import int32
 
 
 class Row:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 

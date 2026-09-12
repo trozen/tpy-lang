@@ -35,11 +35,11 @@ inline constexpr std::string_view __name__ = "__main__";
 void show(Container<int32_t>& c);
 void main();
 
-// class IntBox(Container[Int32]):
+// class IntBox(Container[int32]):
 struct IntBox : Container<int32_t> {
 
 
-    // def get(self) -> Int32:
+    // def get(self) -> int32:
     int32_t get() override;
     static constexpr std::string_view __tpy_class_name__ = "__main__.IntBox";
 };
@@ -69,7 +69,7 @@ struct tpy::RefAdapter<tpyapp::main::Container<T>, __tpy_Impl> : tpyapp::main::C
 namespace tpyapp::main {
 
 
-// def get(self) -> Int32:
+// def get(self) -> int32:
 inline int32_t IntBox::get() {
     // return 42
     return 42;

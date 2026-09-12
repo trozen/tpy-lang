@@ -1,9 +1,9 @@
-from tpy import Int32
+from tpy import int32
 
 
-def _seed() -> Int32:
+def _seed() -> int32:
     # Non-trivial init: forces __tpy_init() rather than constexpr fold.
-    return Int32(20) + Int32(22)
+    return int32(20) + int32(22)
 
 
-COUNTER: Int32 = _seed()  # tpyc: warning(/ALL_CAPS variable .* without Final/)
+COUNTER: int32 = _seed()  # tpyc: warning(/ALL_CAPS variable .* without Final/)

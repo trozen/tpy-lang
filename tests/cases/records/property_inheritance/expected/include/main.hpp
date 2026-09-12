@@ -16,15 +16,15 @@ void main();
 
 // class Base:
 struct Base {
-    // _x: Int32
+    // _x: int32
     int32_t _x;
 
-    // def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: int32) -> None:
     Base() = default;
     explicit Base(int32_t x);
 
     // @property
-    // def x(self) -> Int32:
+    // def x(self) -> int32:
     int32_t x() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
@@ -36,18 +36,18 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
 
 // class Child(Base):
 struct Child : Base {
-    // _y: Int32
+    // _y: int32
     int32_t _y;
 
-    // def __init__(self, x: Int32, y: Int32) -> None:
+    // def __init__(self, x: int32, y: int32) -> None:
     Child() = default;
     explicit Child(int32_t x, int32_t y);
 
     // @property
-    // def y(self) -> Int32:
+    // def y(self) -> int32:
     int32_t y() const;
 
-    // def sum(self) -> Int32:
+    // def sum(self) -> int32:
     int32_t sum() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
@@ -58,27 +58,27 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 }
 
 
-// def __init__(self, x: Int32) -> None:
+// def __init__(self, x: int32) -> None:
 inline Base::Base(int32_t x) : _x(x) {}
 
 // @property
-// def x(self) -> Int32:
+// def x(self) -> int32:
 inline int32_t Base::x() const {
     // return self._x
     return this->_x;
 }
 
-// def __init__(self, x: Int32, y: Int32) -> None:
+// def __init__(self, x: int32, y: int32) -> None:
 inline Child::Child(int32_t x, int32_t y) : Base(x), _y(y) {}
 
 // @property
-// def y(self) -> Int32:
+// def y(self) -> int32:
 inline int32_t Child::y() const {
     // return self._y
     return this->_y;
 }
 
-// def sum(self) -> Int32:
+// def sum(self) -> int32:
 inline int32_t Child::sum() const {
     // return self.x + self.y
     return (::tpy::add_check<int32_t>(this->x(), this->y()));

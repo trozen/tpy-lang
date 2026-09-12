@@ -1,14 +1,14 @@
 # An @overload-ed generator: the impl carries the `yield`, the stubs declare
 # the two callable arms. Both arms are exercised.
 from typing import overload, Iterator
-from tpy import Int32
+from tpy import int32
 
 
 @overload
 def rep[T](obj: T) -> Iterator[T]: ...
 @overload
-def rep[T](obj: T, n: Int32) -> Iterator[T]: ...
-def rep[T](obj: T, n: Int32 = -1) -> Iterator[T]:
+def rep[T](obj: T, n: int32) -> Iterator[T]: ...
+def rep[T](obj: T, n: int32 = -1) -> Iterator[T]:
     i = 0
     while n < 0 or i < n:
         yield obj  # tpyc: ok

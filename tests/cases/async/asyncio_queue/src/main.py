@@ -3,17 +3,17 @@
 # task_done() over-call guard.
 import asyncio
 from asyncio import Queue, QueueEmpty, QueueFull
-from tpy import Int32
+from tpy import int32
 
 
-async def producer(q: Queue[Int32]) -> None:
+async def producer(q: Queue[int32]) -> None:
     i = 0
     while i < 5:
         await q.put(i)
         i += 1
 
 
-async def consumer(q: Queue[Int32], out: list[Int32]) -> None:
+async def consumer(q: Queue[int32], out: list[int32]) -> None:
     n = 0
     while n < 5:
         x = await q.get()
@@ -23,10 +23,10 @@ async def consumer(q: Queue[Int32], out: list[Int32]) -> None:
 
 
 async def main_coro() -> None:
-    q: Queue[Int32] = Queue(2)
+    q: Queue[int32] = Queue(2)
     print("empty:", q.empty(), "full:", q.full(), "qsize:", q.qsize(),
           "maxsize:", q.maxsize)
-    out: list[Int32] = []
+    out: list[int32] = []
     pt = asyncio.create_task(producer(q))
     ct = asyncio.create_task(consumer(q, out))
     await q.join()
@@ -49,7 +49,7 @@ async def main_coro() -> None:
     except QueueEmpty:
         print("caught empty")
 
-    qb: Queue[Int32] = Queue(1)
+    qb: Queue[int32] = Queue(1)
     qb.put_nowait(1)
     try:
         qb.put_nowait(2)
@@ -58,7 +58,7 @@ async def main_coro() -> None:
         print("caught full")
 
     # Unbounded queue: never full, put_nowait never raises.
-    qu: Queue[Int32] = Queue(0)
+    qu: Queue[int32] = Queue(0)
     qu.put_nowait(1)
     qu.put_nowait(2)
     print("unbounded full:", qu.full(), "qsize:", qu.qsize())

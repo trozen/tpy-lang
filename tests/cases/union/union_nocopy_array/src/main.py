@@ -2,18 +2,18 @@
 # std::array uses aggregate init (no initializer_list), so move-only
 # types should work with plain brace-init -- no make_vector needed.
 from dataclasses import dataclass
-from tpy import Int32, nocopy, Array
+from tpy import int32, nocopy, Array
 
 
 @nocopy
 @dataclass
 class Heavy:
-    value: Int32
+    value: int32
 
 
 @dataclass
 class Light:
-    value: Int32
+    value: int32
 
 
 type Item = Heavy | Light

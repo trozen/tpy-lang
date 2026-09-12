@@ -10,7 +10,7 @@ std::tuple<A, A> make_pair() {
     return std::tuple<A, A>{A(1), A(2)};
 }
 
-// def consume(p: tuple[Own[A], Own[A]]) -> Int32:
+// def consume(p: tuple[Own[A], Own[A]]) -> int32:
 int32_t consume(std::tuple<A, A>&& p) {
     // return p[0].n + p[1].n
     return (::tpy::add_check<int32_t>(std::get<0>(p).n, std::get<1>(p).n));

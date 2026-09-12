@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def slow() -> Int32:
+// async def slow() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_slow::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -19,7 +19,7 @@ namespace tpyapp::main {
             __sub_0.reset();
             // print("slow finished")
             std::cout << "slow finished" << "\n";
-            // return Int32(0)
+            // return int32(0)
             __state = S_DONE;
             int32_t __tpy_async_ret = 0;
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -55,16 +55,16 @@ namespace tpyapp::main {
 }
 
 
-// async def slow() -> Int32:
+// async def slow() -> int32:
 __coro_slow slow() {
     return __coro_slow();
 }
 
-// async def gather_helper() -> Own[list[Int32]]:
+// async def gather_helper() -> Own[list[int32]]:
 ::tpystd::tpy::Poll<std::vector<int32_t>> __coro_gather_helper::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // tasks: list[asyncio.Task[Int32]] = []
+        // tasks: list[asyncio.Task[int32]] = []
         tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<int32_t>>{});
         // tasks.append(asyncio.create_task(slow()))
         (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(slow())));
@@ -89,7 +89,7 @@ __coro_slow slow() {
 }
 
 
-// async def gather_helper() -> Own[list[Int32]]:
+// async def gather_helper() -> Own[list[int32]]:
 __coro_gather_helper gather_helper() {
     return __coro_gather_helper();
 }

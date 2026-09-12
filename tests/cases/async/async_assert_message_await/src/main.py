@@ -1,7 +1,7 @@
 # An awaiting assert message is evaluated only on failure (CPython);
 # the passing path must not run its side effects.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
 async def msg(tag: str) -> str:
@@ -9,7 +9,7 @@ async def msg(tag: str) -> str:
     return tag + "!"
 
 
-async def go(x: Int32) -> None:
+async def go(x: int32) -> None:
     assert x > 0, await msg("positive")
     print("passed", x)
 

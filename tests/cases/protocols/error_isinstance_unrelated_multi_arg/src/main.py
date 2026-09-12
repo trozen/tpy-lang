@@ -4,19 +4,19 @@
 # `template<typename T, typename ElemT>`, causing a cryptic C++ error.
 #
 # Sequence is not a parent of Iterable, so its element type can't be
-# derived from `Iterable[Int32]`. Use `it: Sequence[Int32]` directly if
+# derived from `Iterable[int32]`. Use `it: Sequence[int32]` directly if
 # indexed access is needed.
 from typing import Iterable, Sequence
-from tpy import Int32
+from tpy import int32
 
 
-def test(it: Iterable[Int32]) -> None:
+def test(it: Iterable[int32]) -> None:
     if isinstance(it, Sequence):  # tpyc: error(/requires 'Sequence' to inherit from 'Iterable'/)
         pass
 
 
 def main() -> None:
-    nums: list[Int32] = [1, 2, 3]
+    nums: list[int32] = [1, 2, 3]
     test(nums)
 
 

@@ -8,7 +8,7 @@
 # always-evaluated part, so what the callee reports names the moment the
 # temp was taken.
 from typing import Iterator, Protocol
-from tpy import Deref, Int32, Own, auto_readonly, dynamic
+from tpy import Deref, int32, Own, auto_readonly, dynamic
 from tplib import Box
 
 
@@ -28,9 +28,9 @@ class Circle(Shape):
 
 
 class Neg:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 
@@ -40,12 +40,12 @@ type Tree[T] = T | list[Tree[T]]
 
 
 class Sink:
-    seen: Int32
+    seen: int32
 
     def __init__(self) -> None:
         self.seen = 0
 
-    def take(self, tag: str, xs: list[Int32] | None) -> bool:
+    def take(self, tag: str, xs: list[int32] | None) -> bool:
         if xs is not None:
             self.seen = len(xs)
         print(tag, self.seen)
@@ -53,9 +53,9 @@ class Sink:
 
 
 class Inner:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def bump(self) -> None:
@@ -63,7 +63,7 @@ class Inner:
 
 
 class Outer:
-    m: Int32
+    m: int32
 
     def __init__(self, i: Inner) -> None:
         # A MUTATED constructor parameter, so an `Inner(..)` rvalue argument
@@ -73,20 +73,20 @@ class Outer:
 
 
 class Counter:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         print("genrecv build", n)
         self.n = n
 
-    def items(self) -> Iterator[Int32]:
+    def items(self) -> Iterator[int32]:
         i = 0
         while i < self.n:
             yield i
             i += 1
 
 
-def sized(tag: str, xs: list[Int32]) -> bool:
+def sized(tag: str, xs: list[int32]) -> bool:
     print(tag, len(xs))
     return True
 
@@ -106,7 +106,7 @@ def listslot[T](tag: str, v: list[T]) -> bool:
     return True
 
 
-def show(tag: str, t: Value) -> Int32:
+def show(tag: str, t: Value) -> int32:
     match t:
         case list() as xs:
             n = 0
@@ -121,7 +121,7 @@ def show(tag: str, t: Value) -> Int32:
             return 1
 
 
-def leaf_count(tag: str, t: Tree[Int32]) -> Int32:
+def leaf_count(tag: str, t: Tree[int32]) -> int32:
     match t:
         case list() as branches:
             total = 0
@@ -133,9 +133,9 @@ def leaf_count(tag: str, t: Tree[Int32]) -> Int32:
             return 1
 
 
-def make_leaf() -> Own[Tree[Int32]]:
+def make_leaf() -> Own[Tree[int32]]:
     print("rucall build")
-    return Int32(7)
+    return int32(7)
 
 
 def held(tag: str, o: Outer) -> bool:
@@ -143,7 +143,7 @@ def held(tag: str, o: Outer) -> bool:
     return True
 
 
-def comprehension(src: list[Int32], flag: bool) -> bool:
+def comprehension(src: list[int32], flag: bool) -> bool:
     # `or` RHS, comprehension into a container slot: the pop runs first, so
     # the comprehension must see the SHORTENED list.
     return flag or (src.pop() >= 0 and sized("comp", [v * 2 for v in src]))
@@ -172,25 +172,25 @@ def optptr_container_literal(s: Sink, flag: bool) -> bool:
     return flag or s.take("optptr", [1, 2, 3])
 
 
-def recursive_union_literal(flag: bool) -> Int32:
+def recursive_union_literal(flag: bool) -> int32:
     # `or` RHS, a list literal at a recursive-union wrapper slot.
-    return Int32(0) if flag else show("rulit", [1, 2, 3])
+    return int32(0) if flag else show("rulit", [1, 2, 3])
 
 
-def ru_wrapper_literal(flag: bool) -> Int32:
+def ru_wrapper_literal(flag: bool) -> int32:
     # Ternary arm, a scalar literal at the same wrapper slot.
-    return Int32(0) if flag else show("ruscalar", 9)
+    return int32(0) if flag else show("ruscalar", 9)
 
 
-def ru_wrapper_ctor(flag: bool) -> Int32:
+def ru_wrapper_ctor(flag: bool) -> int32:
     # Ternary arm, a member-record ctor rvalue at the wrapper slot.
-    return Int32(0) if flag else show("ructor", Neg(3))
+    return int32(0) if flag else show("ructor", Neg(3))
 
 
-def ru_wrapper_call(flag: bool) -> Int32:
-    # Ternary arm, an `Own[Tree[Int32]]`-returning call at the wrapper slot;
+def ru_wrapper_call(flag: bool) -> int32:
+    # Ternary arm, an `Own[Tree[int32]]`-returning call at the wrapper slot;
     # the build print says whether the skipped arm ran it.
-    return Int32(0) if flag else leaf_count("rucall", make_leaf())
+    return int32(0) if flag else leaf_count("rucall", make_leaf())
 
 
 def ctor_mut_rvalue(flag: bool) -> bool:
@@ -205,9 +205,9 @@ def gen_recv_temp(flag: bool) -> bool:
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 

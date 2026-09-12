@@ -4,29 +4,29 @@
 namespace tpyapp::main {
 
 
-// def same(a: Int32 | Float64, b: Int32 | Float64) -> bool:
-bool same(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t, double>& b) {
+// def same(a: int32 | float64, b: int32 | float64) -> bool:
+bool same(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b) {
     // return a == b  # a variant-vs-variant compare
     return (a == b);
 }
 
 // def widened() -> bool:
 bool widened() {
-    // x: Int32 | Float64 = 1  # std::variant<int32_t, double>
-    ::tpy::Union<int32_t, double> x = 1;
+    // x: int32 | float64 = 1  # std::variant<double, int32_t>
+    ::tpy::Union<double, int32_t> x = 1;
     // x = 2.5
     x = 2.5;
     // y = x
-    ::tpy::Union<int32_t, double> y = x;
+    ::tpy::Union<double, int32_t> y = x;
     // return same(y, 2.5)
-    ::tpy::Union<int32_t, double> __tmp_1 = 2.5;
+    ::tpy::Union<double, int32_t> __tmp_1 = 2.5;
     return same(y, __tmp_1);
 }
 
 // def started_none() -> bool:
 bool started_none() {
-    // x: Int32 | Float64 | None = None  # the monostate member
-    ::tpy::Union<std::monostate, int32_t, double> x = std::monostate{};
+    // x: int32 | float64 | None = None  # the monostate member
+    ::tpy::Union<std::monostate, double, int32_t> x = std::monostate{};
     // was_none = x is None
     bool was_none = (std::holds_alternative<std::monostate>(x));
     // x = 3

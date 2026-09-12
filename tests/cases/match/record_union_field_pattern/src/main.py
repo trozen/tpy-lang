@@ -1,5 +1,5 @@
 # Nested type patterns on union-typed record fields (runtime holds_alternative checks)
-from tpy import Int32
+from tpy import int32
 
 
 class Cat:
@@ -54,8 +54,8 @@ def is_cat(w: Wrapper) -> str:
 # Mixed: union field type pattern + regular literal on same record
 class Tagged:
     tag: str
-    value: str | Int32
-    def __init__(self, tag: str, value: str | Int32) -> None:
+    value: str | int32
+    def __init__(self, tag: str, value: str | int32) -> None:
         self.tag = tag
         self.value = value
 
@@ -64,7 +64,7 @@ def show_tagged(t: Tagged) -> str:
     match t:
         case Tagged(tag="s", value=str() as v):
             return "string: " + v
-        case Tagged(tag="n", value=Int32() as n):
+        case Tagged(tag="n", value=int32() as n):
             return "number: " + str(n)
         case _:
             return "other"
@@ -81,7 +81,7 @@ def main() -> None:
     print(is_cat(w2))
 
     t1 = Tagged("s", "hello")
-    t2 = Tagged("n", Int32(42))
+    t2 = Tagged("n", int32(42))
     t3 = Tagged("x", "other")
     print(show_tagged(t1))
     print(show_tagged(t2))

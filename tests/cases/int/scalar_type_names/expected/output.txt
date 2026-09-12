@@ -1,0 +1,19 @@
+widths 10
+ctor 7 255 1.5
+enum Level.HIGH 1
+bound 21 3
+gen [0, 1, 2]
+float64 2.5
+char x
+shadow-param 9
+shadow-local a
+shadow-unpack 3
+shadow-walrus 2
+shadow-for 6
+shadow-with 3
+shadow-nested 8
+shadow-comp 9
+shadow-except 6 -1
+alias-free 3
+alias-shadow 4
+module 7 1.5

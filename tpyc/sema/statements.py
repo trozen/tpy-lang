@@ -54,7 +54,7 @@ from ..prescan import (
 )
 from ..liveness import (analyze_last_uses, collect_finally_return_candidates,
                         stmts_terminate)
-from ..parse.nodes import VarLinkage
+from ..parse.nodes import SourceLocation, VarLinkage
 from .context import (addr_taken_roots, expr_yields_non_null_ptr,
                       record_borrow_binding, record_stmt_borrow_binding,
                       tuple_borrow_escape_roots)
@@ -1023,7 +1023,7 @@ class StatementAnalyzer:
 
         After restoring scope/namespace to a pre-block state (if-branch,
         while, for-each), variables whose canonical declaration type was
-        widened inside the block (e.g., Int32 promoted to BigInt, or None
+        widened inside the block (e.g., int32 promoted to BigInt, or None
         promoted to Optional[T]) need to be re-synced so that subsequent
         analysis sees the correct type.
 
@@ -3114,6 +3114,7 @@ class StatementAnalyzer:
 
         # Prescan for reassigned variables + last-use liveness
         scan = scan_reassigned_vars(func.body, pre_declared=param_names)
+        self._warn_scalar_type_shadows(func, param_names, scan)
         self.ctx.all_last_uses |= analyze_last_uses(
             func.body, liveness_alias_sources(scan))
         self.ctx.finally_return_candidates |= collect_finally_return_candidates(func.body)
@@ -3147,6 +3148,37 @@ class StatementAnalyzer:
         self._check_closure_del_of_deferred_returns(func)
 
         return scan
+
+    def _warn_scalar_type_shadows(
+        self, func: TpyFunction | None, param_names: set[str], scan: ScanResult,
+    ) -> None:
+        """A binding named after a tpy scalar type (`def f(int32: int32)`)
+        hides the type for the rest of the body, so a later `int32(x)` calls
+        the variable. Valid Python, hence a warning. `func` is None for the
+        module body."""
+        scope = "function" if func is not None else "module"
+        body_names = param_names | set(scan.first_bind_loc)
+        found: list[tuple[int, str, str, str, SourceLocation | None]] = []
+        for name in body_names | set(scan.scoped_bind_loc):
+            # The import table rather than the namespace: an annotated
+            # module-level global has already rebound the name by now.
+            source = self.ctx.imported_names.get(name)
+            if (source is None or source[0] != "tpy"
+                    or source[1] not in qnames.SCALAR_TYPE_NAMES):
+                continue
+            if name in body_names:
+                extent = f"for the rest of this {scope}"
+                loc = scan.first_bind_loc.get(name)
+                if loc is None and func is not None:
+                    loc = func.loc
+            else:
+                extent = "within its scope"
+                loc = scan.scoped_bind_loc[name]
+            found.append((loc.line if loc is not None else 0, name, source[1], extent, loc))
+        for _, name, type_name, extent, loc in sorted(found, key=lambda f: (f[0], f[1])):
+            self.ctx.warning_from_loc(
+                f"'{name}' shadows the tpy type '{type_name}' {extent}; "
+                f"consider renaming", loc)
 
     def _check_closure_del_of_deferred_returns(self, func: TpyFunction) -> None:
         """Reject `nonlocal x; del x` in a nested def when the enclosing
@@ -3404,7 +3436,7 @@ class StatementAnalyzer:
         pattern), this recording isn't updated -- local_deduction's retro-widen
         path keys on var_decl_by_name, which only contains TpyVarDecl-backed
         names. `# tpyc: type()` on such a loop var would show the literal-
-        defaulted Int32, not the widened BigInt.
+        defaulted int32, not the widened BigInt.
         """
         if not stmt.loc or stmt.is_tuple_unpack:
             return
@@ -3569,7 +3601,7 @@ class StatementAnalyzer:
         if isinstance(expr, TpyBinOp) and is_numeric_type(target_type):
             return (self._find_nonconstant_leaf(expr.left, target_type)
                     or self._find_nonconstant_leaf(expr.right, target_type))
-        # Primitive type constructor: Float32(0.5), Int64(SOME_FINAL), etc.
+        # Primitive type constructor: float32(0.5), int64(SOME_FINAL), etc.
         # Identified by: resolved to an __init__ method, result is a primitive.
         if isinstance(expr, TpyCall) and len(expr.args) == 1:
             fi = expr.resolved_function_info
@@ -4451,7 +4483,7 @@ class StatementAnalyzer:
                 else:
                     var_type = init_type
                 # Resolve IntLiteralType nested inside TupleType / Array / list
-                # so `t = (1, 2)` records `tuple[Int32, Int32]` rather than
+                # so `t = (1, 2)` records `tuple[int32, int32]` rather than
                 # `tuple[IntLiteral(1), IntLiteral(2)]`. Codegen already lowers
                 # the storage to concrete types via downstream passes; this
                 # aligns sema's view so type queries return the same answer.

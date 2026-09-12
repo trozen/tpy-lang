@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // @export
-// def scale(xs: Span[Int32], factor: Int32) -> None:  # tpyc: warning(/Span parameter 'xs' is copied in.*not visible to the caller/)
+// def scale(xs: Span[int32], factor: int32) -> None:  # tpyc: warning(/Span parameter 'xs' is copied in.*not visible to the caller/)
 void scale(std::span<int32_t> xs, int32_t factor) {
     // for i in range(len(xs)):
     int32_t __stop_0 = ::tpy::__len__(xs);
@@ -16,9 +16,9 @@ void scale(std::span<int32_t> xs, int32_t factor) {
 }
 
 // @export
-// def total(xs: Span[readonly[Int32]]) -> Int32:  # tpyc: ok
+// def total(xs: Span[readonly[int32]]) -> int32:  # tpyc: ok
 int32_t total(std::span<const int32_t> xs) {
-    // s: Int32 = 0
+    // s: int32 = 0
     int32_t s = 0;
     // for x in xs:
     auto& __obj_0 = xs;
@@ -34,11 +34,11 @@ int32_t total(std::span<const int32_t> xs) {
 }
 
 // @export
-// def peek(xs: Span[Int32]) -> Int32:  # tpyc: ok
+// def peek(xs: Span[int32]) -> int32:  # tpyc: ok
 int32_t peek(std::span<int32_t> xs) {
     // # Mutable-typed but never mutated: no observable divergence, stays quiet
     // # (unlike `scale` above, which writes through xs and warns).
-    // s: Int32 = 0
+    // s: int32 = 0
     int32_t s = 0;
     // for x in xs:
     auto& __obj_0 = xs;

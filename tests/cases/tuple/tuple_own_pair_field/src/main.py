@@ -2,14 +2,14 @@
 # Last-use owned locals auto-move into the field tuple, matching scalar
 # `self.f = local` semantics. Exercises the assignment-path call to
 # `own_tuple_target()` (third call site in sema/statements.py).
-from tpy import Int32
+from tpy import int32
 
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32) -> None:
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 
@@ -21,8 +21,8 @@ class Pair:
     points: tuple[Point, Point]
 
     def __init__(self) -> None:
-        a = Point(Int32(1), Int32(2))
-        b = Point(Int32(3), Int32(4))
+        a = Point(int32(1), int32(2))
+        b = Point(int32(3), int32(4))
         self.points = (a, b)
 
 

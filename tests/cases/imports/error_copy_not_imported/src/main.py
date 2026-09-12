@@ -1,10 +1,10 @@
-from tpy import Int32, Own
+from tpy import int32, Own
 
 # Test: copy() requires explicit import from tpy
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 def make_point() -> Own[Point]:
     p: Point = Point()

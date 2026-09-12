@@ -33,10 +33,10 @@ void main();
 
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
 
-    // def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: int32) -> None:
     Point() = default;
     explicit Point(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
@@ -71,13 +71,13 @@ struct __coro_count_mono {
         return os << "<coroutine count_mono>";
     }
 };
-// async def count_mono(items: Own[Iterable[Int32]]) -> Int32:  # tpyc: warning(/never consumed/)
+// async def count_mono(items: Own[Iterable[int32]]) -> int32:  # tpyc: warning(/never consumed/)
 template <::tpystd::typing::Iterable<int32_t> T_items>
 ::tpystd::tpy::Poll<int32_t> __coro_count_mono<T_items>::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // s: Int32 = 0
+        // s: int32 = 0
         s = 0;
         // for _item in items:
         auto& __src_0 = items;
@@ -100,7 +100,7 @@ template <::tpystd::typing::Iterable<int32_t> T_items>
 }
 
 
-// async def count_mono(items: Own[Iterable[Int32]]) -> Int32:  # tpyc: warning(/never consumed/)
+// async def count_mono(items: Own[Iterable[int32]]) -> int32:  # tpyc: warning(/never consumed/)
 template <::tpystd::typing::Iterable<int32_t> T_items>
 __coro_count_mono<T_items> count_mono(T_items&& items) {
     return __coro_count_mono<T_items>(std::forward<T_items>(items));
@@ -134,12 +134,12 @@ struct __gen_each : public ::tpy::next_iter_mixin<__gen_each<T, T_items>, std::t
         return os << "<generator each>";
     }
 };
-// def each[T](items: Own[Iterable[T]]) -> Iterator[tuple[Int32, T]]:  # tpyc: warning(/never consumed/)
+// def each[T](items: Own[Iterable[T]]) -> Iterator[tuple[int32, T]]:  # tpyc: warning(/never consumed/)
 template <typename T, ::tpystd::typing::Iterable<T> T_items>
 std::expected<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>, ::tpy::StopIteration> __gen_each<T, T_items>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i: Int32 = 0
+        // i: int32 = 0
         i = 0;
         ::tpy::resumable_iter_init(__for_itr_0, items);
         __state = S_JOIN_0;
@@ -173,7 +173,7 @@ std::expected<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>, ::tpy::StopIteration>
 }
 
 
-// def each[T](items: Own[Iterable[T]]) -> Iterator[tuple[Int32, T]]:  # tpyc: warning(/never consumed/)
+// def each[T](items: Own[Iterable[T]]) -> Iterator[tuple[int32, T]]:  # tpyc: warning(/never consumed/)
 template <typename T, ::tpystd::typing::Iterable<T> T_items>
 __gen_each<T, T_items> each(T_items&& items) {
     return __gen_each<T, T_items>(std::forward<T_items>(items));
@@ -207,12 +207,12 @@ struct __gen_each_mono : public ::tpy::next_iter_mixin<__gen_each_mono<T_items>,
         return os << "<generator each_mono>";
     }
 };
-// def each_mono(items: Own[Iterable[Int32]]) -> Iterator[tuple[Int32, Int32]]:  # tpyc: warning(/never consumed/)
+// def each_mono(items: Own[Iterable[int32]]) -> Iterator[tuple[int32, int32]]:  # tpyc: warning(/never consumed/)
 template <::tpystd::typing::Iterable<int32_t> T_items>
 std::expected<std::tuple<int32_t, int32_t>, ::tpy::StopIteration> __gen_each_mono<T_items>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i: Int32 = 0
+        // i: int32 = 0
         i = 0;
         ::tpy::resumable_iter_init(__for_itr_0, items);
         __state = S_JOIN_0;
@@ -246,14 +246,14 @@ std::expected<std::tuple<int32_t, int32_t>, ::tpy::StopIteration> __gen_each_mon
 }
 
 
-// def each_mono(items: Own[Iterable[Int32]]) -> Iterator[tuple[Int32, Int32]]:  # tpyc: warning(/never consumed/)
+// def each_mono(items: Own[Iterable[int32]]) -> Iterator[tuple[int32, int32]]:  # tpyc: warning(/never consumed/)
 template <::tpystd::typing::Iterable<int32_t> T_items>
 __gen_each_mono<T_items> each_mono(T_items&& items) {
     return __gen_each_mono<T_items>(std::forward<T_items>(items));
 }
 
 
-// def __init__(self, x: Int32) -> None:
+// def __init__(self, x: int32) -> None:
 inline Point::Point(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

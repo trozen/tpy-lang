@@ -1,11 +1,11 @@
 # match/case on concrete record subjects with field-value matching
 from dataclasses import dataclass
-from tpy import Int32
+from tpy import int32
 
 @dataclass
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 def describe(p: Point) -> str:
     match p:
@@ -44,15 +44,15 @@ def with_capture(p: Point) -> str:
     return ""
 
 def main() -> None:
-    print(describe(Point(Int32(0), Int32(0))))
-    print(describe(Point(Int32(3), Int32(0))))
-    print(describe(Point(Int32(0), Int32(5))))
-    print(describe(Point(Int32(3), Int32(4))))
-    print(check_quadrant(Point(Int32(0), Int32(0))))
-    print(check_quadrant(Point(Int32(1), Int32(2))))
-    print(positional(Point(Int32(0), Int32(0))))
-    print(positional(Point(Int32(5), Int32(0))))
-    print(positional(Point(Int32(1), Int32(2))))
-    print(with_capture(Point(Int32(7), Int32(8))))
+    print(describe(Point(int32(0), int32(0))))
+    print(describe(Point(int32(3), int32(0))))
+    print(describe(Point(int32(0), int32(5))))
+    print(describe(Point(int32(3), int32(4))))
+    print(check_quadrant(Point(int32(0), int32(0))))
+    print(check_quadrant(Point(int32(1), int32(2))))
+    print(positional(Point(int32(0), int32(0))))
+    print(positional(Point(int32(5), int32(0))))
+    print(positional(Point(int32(1), int32(2))))
+    print(with_capture(Point(int32(7), int32(8))))
 
 main()

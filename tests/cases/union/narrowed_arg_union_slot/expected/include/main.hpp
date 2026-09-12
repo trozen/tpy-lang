@@ -68,14 +68,14 @@ int32_t wrap_then_mutate(::tpy::Union<A*, B*> u);
 int32_t forward_union(::tpy::Union<const A*, const B*> u);
 ::tpy::Union<A*, B*> pick_isinstance(::tpy::Union<A*, B*> v);
 ::tpy::Union<A*, B*> pick_match(::tpy::Union<A*, B*> v);
-int32_t value_union(const ::tpy::Union<int32_t, double>& v);
-int32_t value_union_match(const ::tpy::Union<int32_t, double>& v);
-int32_t vu_total(const ::tpy::Union<int32_t, double>& u);
-int32_t vu_peek(const ::tpy::Union<int32_t, double>& u);
-int32_t value_union_method(const ::tpy::Union<int32_t, double>& v, VuBox& box);
-int32_t value_union_ctor(const ::tpy::Union<int32_t, double>& v);
-int32_t value_union_comp(const ::tpy::Union<int32_t, double>& v);
-int32_t value_union_readonly(const ::tpy::Union<int32_t, double>& v);
+int32_t value_union(const ::tpy::Union<double, int32_t>& v);
+int32_t value_union_match(const ::tpy::Union<double, int32_t>& v);
+int32_t vu_total(const ::tpy::Union<double, int32_t>& u);
+int32_t vu_peek(const ::tpy::Union<double, int32_t>& u);
+int32_t value_union_method(const ::tpy::Union<double, int32_t>& v, VuBox& box);
+int32_t value_union_ctor(const ::tpy::Union<double, int32_t>& v);
+int32_t value_union_comp(const ::tpy::Union<double, int32_t>& v);
+int32_t value_union_readonly(const ::tpy::Union<double, int32_t>& v);
 ::tpy::BigInt big_total(const ::tpy::Union<double, ::tpy::BigInt>& u);
 ::tpy::BigInt value_union_big(const ::tpy::Union<double, ::tpy::BigInt>& v);
 int32_t pt_total(const ::tpy::Union<Pt, double>& u);
@@ -86,10 +86,10 @@ void main();
 
 // class A:
 struct A {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     A() = default;
     explicit A(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.A";
@@ -102,10 +102,10 @@ inline std::ostream& operator<<(std::ostream& os, const A& obj) {
 
 // class B:
 struct B {
-    // m: Int32
+    // m: int32
     int32_t m;
 
-    // def __init__(self, m: Int32) -> None:
+    // def __init__(self, m: int32) -> None:
     B() = default;
     explicit B(int32_t m);
     static constexpr std::string_view __tpy_class_name__ = "__main__.B";
@@ -134,7 +134,7 @@ inline std::ostream& operator<<(std::ostream& os, const Err& obj) {
 
 // class Sink:
 struct Sink {
-    // k: Int32
+    // k: int32
     int32_t k;
 
     // def __init__(self, u: A | B) -> None:
@@ -167,7 +167,7 @@ inline std::ostream& operator<<(std::ostream& os, const Guard& obj) {
 
 // class Relay:
 struct Relay {
-    // hits: Int32
+    // hits: int32
     int32_t hits;
 
     // def __init__(self, v: A | B) -> None:
@@ -176,7 +176,7 @@ struct Relay {
 
     // # method body (the method mutates self, so its union param is not
     // # inferred deep-const)
-    // def go(self, v: A | B) -> Int32:
+    // def go(self, v: A | B) -> int32:
     int32_t go(::tpy::Union<A*, B*> v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Relay";
 };
@@ -188,16 +188,16 @@ inline std::ostream& operator<<(std::ostream& os, const Relay& obj) {
 
 // class Reader:
 struct Reader {
-    // base: Int32
+    // base: int32
     int32_t base;
 
-    // def __init__(self, base: Int32) -> None:
+    // def __init__(self, base: int32) -> None:
     Reader() = default;
     explicit Reader(int32_t base);
 
     // # method body: the method mutates nothing, so its narrowed subject binds
     // # `const A&` and its own union param is deep-const too
-    // def read(self, v: A | B) -> Int32:
+    // def read(self, v: A | B) -> int32:
     int32_t read(::tpy::Union<const A*, const B*> v) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Reader";
 };
@@ -209,7 +209,7 @@ inline std::ostream& operator<<(std::ostream& os, const Reader& obj) {
 
 // class Tally:
 struct Tally {
-    // k: Int32
+    // k: int32
     int32_t k;
 
     // # constructor parameter, forwarded to a second deep-const slot
@@ -226,15 +226,15 @@ inline std::ostream& operator<<(std::ostream& os, const Tally& obj) {
 
 // class VuBox:
 struct VuBox {
-    // base: Int32
+    // base: int32
     int32_t base;
 
-    // def __init__(self, base: Int32) -> None:
+    // def __init__(self, base: int32) -> None:
     VuBox() = default;
     explicit VuBox(int32_t base);
 
-    // def go(self, u: Int32 | Float64) -> Int32:
-    int32_t go(const ::tpy::Union<int32_t, double>& u) const;
+    // def go(self, u: int32 | float64) -> int32:
+    int32_t go(const ::tpy::Union<double, int32_t>& u) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.VuBox";
 };
 
@@ -245,12 +245,12 @@ inline std::ostream& operator<<(std::ostream& os, const VuBox& obj) {
 
 // class VuSink:
 struct VuSink {
-    // k: Int32
+    // k: int32
     int32_t k;
 
-    // def __init__(self, u: Int32 | Float64) -> None:
+    // def __init__(self, u: int32 | float64) -> None:
     VuSink() = default;
-    explicit VuSink(const ::tpy::Union<int32_t, double>& u);
+    explicit VuSink(const ::tpy::Union<double, int32_t>& u);
     static constexpr std::string_view __tpy_class_name__ = "__main__.VuSink";
 };
 
@@ -261,10 +261,10 @@ inline std::ostream& operator<<(std::ostream& os, const VuSink& obj) {
 
 // class Pt(ValueType):
 struct Pt {
-    // x: Int32
+    // x: int32
     int32_t x;
 
-    // def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: int32) -> None:
     Pt() = default;
     explicit Pt(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pt";
@@ -459,10 +459,10 @@ struct __gen_gen_total : public ::tpy::next_iter_mixin<__gen_gen_total, int32_t>
 };
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline A::A(int32_t n) : n(n) {}
 
-// def __init__(self, m: Int32) -> None:
+// def __init__(self, m: int32) -> None:
 inline B::B(int32_t m) : m(m) {}
 
 // def __init__(self, u: A | B) -> None:
@@ -501,7 +501,7 @@ inline Relay::Relay(::tpy::Union<A*, B*> v) : hits(0) {
 
 // # method body (the method mutates self, so its union param is not
 // # inferred deep-const)
-// def go(self, v: A | B) -> Int32:
+// def go(self, v: A | B) -> int32:
 inline int32_t Relay::go(::tpy::Union<A*, B*> v) {
     // self.hits = self.hits + 1
     this->hits = (::tpy::add_check<int32_t>(this->hits, 1));
@@ -518,12 +518,12 @@ inline int32_t Relay::go(::tpy::Union<A*, B*> v) {
     return -1;
 }
 
-// def __init__(self, base: Int32) -> None:
+// def __init__(self, base: int32) -> None:
 inline Reader::Reader(int32_t base) : base(base) {}
 
 // # method body: the method mutates nothing, so its narrowed subject binds
 // # `const A&` and its own union param is deep-const too
-// def read(self, v: A | B) -> Int32:
+// def read(self, v: A | B) -> int32:
 inline int32_t Reader::read(::tpy::Union<const A*, const B*> v) const {
     // if isinstance(v, A):
     if (std::holds_alternative<const A*>(v)) {
@@ -540,12 +540,12 @@ inline int32_t Reader::read(::tpy::Union<const A*, const B*> v) const {
 // def __init__(self, u: A | B) -> None:
 inline Tally::Tally(::tpy::Union<const A*, const B*> u) : k(total(u)) {}
 
-// def __init__(self, base: Int32) -> None:
+// def __init__(self, base: int32) -> None:
 inline VuBox::VuBox(int32_t base) : base(base) {}
 
-// def go(self, u: Int32 | Float64) -> Int32:
-inline int32_t VuBox::go(const ::tpy::Union<int32_t, double>& u) const {
-    // if isinstance(u, Int32):
+// def go(self, u: int32 | float64) -> int32:
+inline int32_t VuBox::go(const ::tpy::Union<double, int32_t>& u) const {
+    // if isinstance(u, int32):
     if (std::holds_alternative<int32_t>(u)) {
         const auto& __u = std::get<int32_t>(u);
         // return self.base + u
@@ -556,10 +556,10 @@ inline int32_t VuBox::go(const ::tpy::Union<int32_t, double>& u) const {
     return -2;
 }
 
-// def __init__(self, u: Int32 | Float64) -> None:
-inline VuSink::VuSink(const ::tpy::Union<int32_t, double>& u) : k(vu_total(u)) {}
+// def __init__(self, u: int32 | float64) -> None:
+inline VuSink::VuSink(const ::tpy::Union<double, int32_t>& u) : k(vu_total(u)) {}
 
-// def __init__(self, x: Int32) -> None:
+// def __init__(self, x: int32) -> None:
 inline Pt::Pt(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

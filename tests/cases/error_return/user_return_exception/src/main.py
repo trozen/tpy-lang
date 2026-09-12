@@ -1,11 +1,11 @@
 # User-defined ReturnException exception type with @error_return
-from tpy import Int32, error_return, ReturnException
+from tpy import int32, error_return, ReturnException
 
 class ParseError(Exception, ReturnException):
     pass
 
 @error_return(ParseError)
-def parse_digit(s: str) -> Int32:
+def parse_digit(s: str) -> int32:
     if s == "0":
         return 0
     if s == "1":

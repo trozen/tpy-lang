@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def push_to(ys: list[Int32], v: Int32) -> Int32:
+// def push_to(ys: list[int32], v: int32) -> int32:
 int32_t push_to(std::vector<int32_t>& ys, int32_t v) {
     // ys.append(v)
     ys.push_back(v);
@@ -16,7 +16,7 @@ int32_t push_to(std::vector<int32_t>& ys, int32_t v) {
 // # by reference, so the pass-through lambda mutates the CALLER's list. This is
 // # the sync twin of the frame position in nested_def/lambda_in_gen_method --
 // # both must print the same list.
-// def sync_ref_capture(xs: list[Int32]) -> Int32:
+// def sync_ref_capture(xs: list[int32]) -> int32:
 int32_t sync_ref_capture(std::vector<int32_t>& xs) {
     // a = apply_fn(lambda v: push_to(xs, v), 9)  # tpyc: ok
     int32_t a = apply_fn([&xs](int32_t v) -> int32_t { return push_to(xs, v); }, 9);
@@ -26,17 +26,17 @@ int32_t sync_ref_capture(std::vector<int32_t>& xs) {
 
 // def main() -> None:
 void main() {
-    // def push(xs: list[Int32]) -> None:
+    // def push(xs: list[int32]) -> None:
     auto push = [](std::vector<int32_t>& xs) {
         // xs.append(9)  # mutates the CALLER's list
         xs.push_back(9);
     };
-    // def bump(d: dict[str, Int32]) -> None:
+    // def bump(d: dict[str, int32]) -> None:
     auto bump = [](::tpy::ordered_map<std::string, int32_t>& d) {
         // d["n"] = d["n"] + 1
         ::tpy::__setitem__(d, "n", (::tpy::add_check<int32_t>(::tpy::__getitem__(d, "n"), 1)));
     };
-    // def mark(s: set[Int32]) -> None:
+    // def mark(s: set[int32]) -> None:
     auto mark = [](::tpy::ordered_set<int32_t>& s) {
         // s.add(7)
         s.insert(7);
@@ -46,7 +46,7 @@ void main() {
         // b.append(65)
         b.push_back(65);
     };
-    // def total(xs: list[Int32]) -> Int32:
+    // def total(xs: list[int32]) -> int32:
     auto total = [](std::vector<int32_t>& xs) -> int32_t {
         // s = 0
         int32_t s = 0;

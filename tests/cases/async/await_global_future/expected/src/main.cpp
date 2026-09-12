@@ -3,7 +3,7 @@
 
 namespace tpyapp::main {
 
-// done: Future[Int32] = Future[Int32]()
+// done: Future[int32] = Future[int32]()
 ::tpystd::asyncio::Future<int32_t>* done{};
 
 // async def producer() -> None:
@@ -75,7 +75,7 @@ void __tpy_init() {
     // # Future is completed by a spawned task so the await resolves.
     // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // done: Future[Int32] = Future[Int32]()
+    // done: Future[int32] = Future[int32]()
     static ::tpystd::asyncio::Future<int32_t> __global_slot_1 = ::tpystd::asyncio::Future<int32_t>();
     done = &__global_slot_1;
     // main()

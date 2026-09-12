@@ -2,19 +2,19 @@
 # the slot flips to `varargs<const Box>` and the method picks up the implicit
 # `const` overload via the auto-readonly self-mutation inference (independent
 # but composes naturally).
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    val: Int32
+    val: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 
 class Pile:
-    def total(self, *boxes: Box) -> Int32:  # tpyc: ok
-        s: Int32 = 0
+    def total(self, *boxes: Box) -> int32:  # tpyc: ok
+        s: int32 = 0
         for b in boxes:
             s += b.val
         return s

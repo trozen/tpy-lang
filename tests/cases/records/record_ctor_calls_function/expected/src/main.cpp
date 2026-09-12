@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def twice(x: Int32) -> Int32:
+// def twice(x: int32) -> int32:
 int32_t twice(int32_t x) {
     // return x * 2
     return (::tpy::mul_check<int32_t>(x, 2));

@@ -10,7 +10,7 @@ from .compiler import Compiler
 from .diagnostics import SemanticError
 
 _STDLIB_DIRS = [get_lib_dir() / "tpy"]
-_PRELUDE = "from tpy import Int32, Ptr, assert_send, assert_sync, nosend\n"
+_PRELUDE = "from tpy import int32, Ptr, assert_send, assert_sync, nosend\n"
 
 
 def _compile(body):
@@ -24,16 +24,16 @@ def test_zero_type_args_rejected():
 
 def test_value_argument_rejected():
     with pytest.raises(SemanticError, match="takes no value arguments"):
-        _compile("def main() -> None:\n    assert_send[Int32](5)\nmain()\n")
+        _compile("def main() -> None:\n    assert_send[int32](5)\nmain()\n")
 
 
 def test_failing_assert_reports_chain():
     with pytest.raises(SemanticError, match=r"assert_send assertion failed.*raw pointer"):
-        _compile("def main() -> None:\n    assert_send[Ptr[Int32]]()\nmain()\n")
+        _compile("def main() -> None:\n    assert_send[Ptr[int32]]()\nmain()\n")
 
 
 def test_passing_assert_is_accepted():
-    _compile("def main() -> None:\n    assert_send[Int32]()\n    assert_sync[Int32]()\nmain()\n")
+    _compile("def main() -> None:\n    assert_send[int32]()\n    assert_sync[int32]()\nmain()\n")
 
 
 def test_nosend_record_reports_marked_reason():
@@ -42,7 +42,7 @@ def test_nosend_record_reports_marked_reason():
     src = (
         "@nosend\n"
         "class Arena:\n"
-        "    cap: Int32\n"
+        "    cap: int32\n"
         "    def __init__(self) -> None:\n"
         "        self.cap = 0\n"
         "def main() -> None:\n"
@@ -60,8 +60,8 @@ def test_self_referential_record_terminates():
     src = (
         "class Node:\n"
         "    nxt: list[Node]\n"
-        "    raw: Ptr[Int32]\n"
-        "    def __init__(self, raw: Ptr[Int32]) -> None:\n"
+        "    raw: Ptr[int32]\n"
+        "    def __init__(self, raw: Ptr[int32]) -> None:\n"
         "        self.raw = raw\n"
         "        self.nxt = []\n"
         "def main() -> None:\n"

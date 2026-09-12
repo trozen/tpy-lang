@@ -1,16 +1,16 @@
 # An @inline method expands at the call site and emits no C++ definition of its
 # own, so the expansion renders in place.
-from tpy import Int32, inline
+from tpy import int32, inline
 
 
-def sink(n: Int32) -> None:
+def sink(n: int32) -> None:
     print(n)
 
 
 class Box:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
     @inline

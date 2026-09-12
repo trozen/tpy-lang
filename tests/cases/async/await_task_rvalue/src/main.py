@@ -4,11 +4,11 @@
 # std::optional<Task<T>> sub-future slot; the lvalue-borrow path (which
 # would try to take the address of a temporary) is correctly avoided.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
-async def sub() -> Int32:
-    return Int32(42)
+async def sub() -> int32:
+    return int32(42)
 
 
 async def main_coro() -> None:

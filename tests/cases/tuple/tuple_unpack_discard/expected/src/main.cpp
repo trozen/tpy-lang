@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def get_triple() -> tuple[Int32, str, bool]:
+// def get_triple() -> tuple[int32, str, bool]:
 std::tuple<int32_t, std::string, bool> get_triple() {
-    // return (Int32(42), "hello", True)
+    // return (int32(42), "hello", True)
     return std::tuple<int32_t, std::string, bool>{42, "hello", true};
 }
 

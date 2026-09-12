@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def has(s: readonly[set[Int32]], x: Int32) -> bool:
+// def has(s: readonly[set[int32]], x: int32) -> bool:
 bool has(const ::tpy::ordered_set<int32_t>& s, int32_t x) {
     // return x in s
     return std::ranges::contains(s, x);
 }
 
-// def count(s: readonly[set[Int32]]) -> Int32:
+// def count(s: readonly[set[int32]]) -> int32:
 int32_t count(const ::tpy::ordered_set<int32_t>& s) {
     // n = 0
     int32_t n = 0;
@@ -29,7 +29,7 @@ int32_t count(const ::tpy::ordered_set<int32_t>& s) {
 
 // def main() -> None:
 void main() {
-    // s: set[Int32] = {1, 2, 3}
+    // s: set[int32] = {1, 2, 3}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2, 3});
     // print(has(s, 2), has(s, 9))
     std::cout << ::tpy::print_bool(has(s, 2)) << " " << ::tpy::print_bool(has(s, 9)) << "\n";

@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def narrowing_cleared_on_reassign(x: Int32 | None, other: Int32 | None, n: Int32) -> Int32:
+// def narrowing_cleared_on_reassign(x: int32 | None, other: int32 | None, n: int32) -> int32:
 int32_t narrowing_cleared_on_reassign(std::optional<int32_t> x, std::optional<int32_t> other, int32_t n) {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // if x is not None:
     if ((x.has_value())) {
-        // i: Int32 = 0
+        // i: int32 = 0
         int32_t i = 0;
         // while i < n:
         while ((i < n)) {

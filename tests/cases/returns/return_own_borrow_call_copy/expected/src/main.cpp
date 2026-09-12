@@ -4,14 +4,14 @@
 namespace tpyapp::main {
 
 
-// def take_container(h: Holder) -> Own[list[Int32]]:
+// def take_container(h: Holder) -> Own[list[int32]]:
 std::vector<int32_t> take_container(Holder& h) {
     // # A borrow-returning METHOD call, copied in one step.
     // return copy(h.bctr())  # tpyc: ok
     return std::vector<int32_t>(h.bctr());
 }
 
-// def first(rows: list[list[Int32]]) -> list[Int32]:
+// def first(rows: list[list[int32]]) -> list[int32]:
 std::vector<int32_t>& first(std::vector<std::vector<int32_t>>& rows) {
     // return rows[0]
     return ::tpy::__getitem__(rows, 0);
@@ -23,7 +23,7 @@ Payload& frec(Holder& h) {
     return h.p;
 }
 
-// def take_free(rows: list[list[Int32]]) -> Own[list[Int32]]:
+// def take_free(rows: list[list[int32]]) -> Own[list[int32]]:
 std::vector<int32_t> take_free(std::vector<std::vector<int32_t>>& rows) {
     // # A FREE borrow-returning call is the same borrowed source a method call
     // # is, for either family.

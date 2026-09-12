@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // a = make_default[Int32]()
+    // a = make_default[int32]()
     int32_t a = int32_t{};
     // print(a)
     std::cout << a << "\n";

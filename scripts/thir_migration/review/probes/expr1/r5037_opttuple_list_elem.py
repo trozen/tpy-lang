@@ -1,5 +1,5 @@
-from tpy import Int32
-def f(tp: tuple[Int32, Int32] | None) -> Int32:
+from tpy import int32
+def f(tp: tuple[int32, int32] | None) -> int32:
     xs = [tp]
     return len(xs)
 def main() -> None:

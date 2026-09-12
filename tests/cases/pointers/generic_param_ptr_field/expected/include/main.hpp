@@ -24,13 +24,13 @@ void main();
 
 // class Sink(Adds):
 struct Sink {
-    // total: Int32
+    // total: int32
     int32_t total;
 
     // def __init__(self) -> None:
     Sink();
 
-    // def add(self, n: Int32) -> None:
+    // def add(self, n: int32) -> None:
     void add(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Sink";
 };
@@ -50,7 +50,7 @@ struct Adder {
     Adder() = default;
     explicit Adder(::tpy::param_val_or_ref_t<W> sink) : _sink(&sink) {}
 
-    // def push(self, n: Int32) -> None:
+    // def push(self, n: int32) -> None:
     void push(int32_t n) {
         // self._sink.add(n)
         ::tpy::deref_check(this->_sink).add(n);
@@ -68,7 +68,7 @@ inline std::ostream& operator<<(std::ostream& os, const Adder<W>& obj) {
 // def __init__(self) -> None:
 inline Sink::Sink() : total(0) {}
 
-// def add(self, n: Int32) -> None:
+// def add(self, n: int32) -> None:
 inline void Sink::add(int32_t n) {
     // self.total += n
     this->total = ::tpy::add_check<int32_t>(this->total, n);

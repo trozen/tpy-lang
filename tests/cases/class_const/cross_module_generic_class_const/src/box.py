@@ -1,9 +1,9 @@
 from typing import Final
-from tpy import Int32
+from tpy import int32
 
 
 class Box[T]:
-    CAPACITY: Final[Int32] = 16
+    CAPACITY: Final[int32] = 16
 
     def __init__(self) -> None:
         pass

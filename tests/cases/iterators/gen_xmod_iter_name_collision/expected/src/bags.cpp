@@ -4,7 +4,7 @@
 namespace tpyapp::bags {
 
 
-// def __iter__(self) -> Iterator[Int32]:
+// def __iter__(self) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_Bag___iter__::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {

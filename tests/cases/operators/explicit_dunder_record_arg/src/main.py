@@ -7,24 +7,24 @@
 # name is only the right render if the slot BORROWS. Were it to copy, this
 # would stop compiling rather than pass while quietly diverging from
 # CPython, which always aliases here.
-from tpy import Int32, nocopy
+from tpy import int32, nocopy
 
 
 @nocopy
 class Acc:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
-    def __add__(self, other: 'Acc') -> Int32:
+    def __add__(self, other: 'Acc') -> int32:
         return self.v + other.v
 
     def __eq__(self, other: 'Acc') -> bool:
         return self.v == other.v
 
 
-def total(a: Acc, b: Acc) -> Int32:
+def total(a: Acc, b: Acc) -> int32:
     return a.__add__(b)  # the record arg interpolates into the + template
 
 

@@ -1,15 +1,15 @@
-from tpy import Int32, Own, readonly
+from tpy import int32, Own, readonly
 class Point:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
-def mk() -> tuple[Int32, Point] | None:
+def mk() -> tuple[int32, Point] | None:
     return None
 class H:
-    pair: tuple[Int32, Point] | None
+    pair: tuple[int32, Point] | None
     def __init__(self) -> None:
         self.pair = None
-def go(c: bool, h: H) -> Int32:
+def go(c: bool, h: H) -> int32:
     if c:
         t = h.pair
     else:

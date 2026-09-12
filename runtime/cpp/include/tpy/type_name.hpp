@@ -2,7 +2,7 @@
  * TurboPython Runtime - User-facing type names
  *
  * tpy::type_name<T>() returns the TPy-level name of a C++ type
- * ("int" for tpy::BigInt, "str" for std::string, "Int32" for int32_t,
+ * ("int" for tpy::BigInt, "str" for std::string, "int32" for int32_t,
  * "module.Cls" for user records via their `__tpy_class_name__` member,
  * etc.). Used for diagnostics that surface to TPy users (Any cast errors,
  * etc.) so messages don't leak C++ implementation details.
@@ -59,17 +59,17 @@ inline std::string type_name() {
 
 TPY_TYPE_NAME_(BigInt,          "int");
 TPY_TYPE_NAME_(bool,            "bool");
-TPY_TYPE_NAME_(char,            "Char");
-TPY_TYPE_NAME_(int8_t,          "Int8");
-TPY_TYPE_NAME_(int16_t,         "Int16");
-TPY_TYPE_NAME_(int32_t,         "Int32");
-TPY_TYPE_NAME_(int64_t,         "Int64");
-TPY_TYPE_NAME_(uint8_t,         "UInt8");
-TPY_TYPE_NAME_(uint16_t,        "UInt16");
-TPY_TYPE_NAME_(uint32_t,        "UInt32");
-TPY_TYPE_NAME_(uint64_t,        "UInt64");
-TPY_TYPE_NAME_(float,           "Float32");
-TPY_TYPE_NAME_(double,          "Float64");
+TPY_TYPE_NAME_(char,            "char");
+TPY_TYPE_NAME_(int8_t,          "int8");
+TPY_TYPE_NAME_(int16_t,         "int16");
+TPY_TYPE_NAME_(int32_t,         "int32");
+TPY_TYPE_NAME_(int64_t,         "int64");
+TPY_TYPE_NAME_(uint8_t,         "uint8");
+TPY_TYPE_NAME_(uint16_t,        "uint16");
+TPY_TYPE_NAME_(uint32_t,        "uint32");
+TPY_TYPE_NAME_(uint64_t,        "uint64");
+TPY_TYPE_NAME_(float,           "float32");
+TPY_TYPE_NAME_(double,          "float64");
 TPY_TYPE_NAME_(std::string,     "str");
 TPY_TYPE_NAME_(std::string_view, "StrView");
 TPY_TYPE_NAME_(String,          "String");

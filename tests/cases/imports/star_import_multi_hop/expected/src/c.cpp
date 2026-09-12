@@ -3,7 +3,7 @@
 
 namespace tpyapp::c {
 
-// LIMIT: Int32 = 99
+// LIMIT: int32 = 99
 int32_t LIMIT{};
 
 void __tpy_init() {
@@ -11,7 +11,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // LIMIT: Int32 = 99
+    // LIMIT: int32 = 99
     LIMIT = 99;
 }
 

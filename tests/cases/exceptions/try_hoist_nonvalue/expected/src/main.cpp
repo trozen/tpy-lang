@@ -10,7 +10,7 @@ void test_list_try_hoist() {
     std::optional<std::vector<int32_t>> items;
     {
         try {
-            // items: list[Int32] = [1, 2, 3]
+            // items: list[int32] = [1, 2, 3]
             items = {1, 2, 3};
         } catch (const ::tpy::Exception&) {
             // return
@@ -44,7 +44,7 @@ void test_value_type_try_hoist() {
     int32_t x;
     {
         try {
-            // x: Int32 = 42
+            // x: int32 = 42
             x = 42;
         } catch (const ::tpy::Exception&) {
             // return

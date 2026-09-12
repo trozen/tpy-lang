@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def make_getter() -> Callable[[], Int32]:
+// def make_getter() -> Callable[[], int32]:
 std::function<int32_t()> make_getter() {
     // cfg = Config(42)
     Config cfg = Config(42);
     // cfg_copy = copy(cfg)  # tpyc: ok
     Config cfg_copy = Config(cfg);
-    // def get_value() -> Int32:  # tpyc: ok
+    // def get_value() -> int32:  # tpyc: ok
     auto get_value = [cfg_copy = std::move(cfg_copy)]() -> int32_t {
         // return cfg_copy.value
         return cfg_copy.value;

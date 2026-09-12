@@ -20,11 +20,11 @@ struct Config {
     bool flag;
     // ratio: float
     double ratio;
-    // items: list[Int32]
+    // items: list[int32]
     std::vector<int32_t> items;
-    // tags: dict[str, Int32]
+    // tags: dict[str, int32]
     ::tpy::ordered_map<std::string, int32_t> tags;
-    // pair: tuple[Int32, str]
+    // pair: tuple[int32, str]
     std::tuple<int32_t, std::string> pair;
 
     Config() = default;

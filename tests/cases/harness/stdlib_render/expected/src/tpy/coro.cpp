@@ -23,7 +23,7 @@ void __tpy_init() {
     // from .._bootstrap._decorators import Own, dynamic
     // from .._bootstrap._extern import builtin_type
     // from .._builtins._exceptions import CancelledError
-    // from .._core import Poll, Ptr, ValueType, Int32
+    // from .._core import Poll, Ptr, ValueType, int32
 }
 
 } // namespace tpystd::coro

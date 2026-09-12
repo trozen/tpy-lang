@@ -17,10 +17,10 @@ void main();
 
 // class Item:
 struct Item {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32):
+    // def __init__(self, n: int32):
     Item() = default;
     explicit Item(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Item";
@@ -37,7 +37,7 @@ struct Owner {
     Item item;
     bool __tpy_owned_ = true;
 
-    // def __init__(self, n: Int32):
+    // def __init__(self, n: int32):
     explicit Owner(int32_t n);
     Owner(const Owner&) = delete;
     Owner& operator=(const Owner&) = delete;
@@ -61,10 +61,10 @@ inline std::ostream& operator<<(std::ostream& os, const Owner& obj) {
 }
 
 
-// def __init__(self, n: Int32):
+// def __init__(self, n: int32):
 inline Item::Item(int32_t n) : n(n) {}
 
-// def __init__(self, n: Int32):
+// def __init__(self, n: int32):
 inline Owner::Owner(int32_t n) : item(Item(n)) {}
 
 inline Owner::Owner(Owner&& other) noexcept : item(std::move(other.item)) {

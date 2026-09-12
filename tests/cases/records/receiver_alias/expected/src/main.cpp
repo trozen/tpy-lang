@@ -108,7 +108,7 @@ void main() {
     std::cout << "narrowed_caller" << " " << derived.n << "\n";
 }
 
-// def steps(self) -> Iterator[Int32]:
+// def steps(self) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_Cell_steps::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -138,7 +138,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Cell_steps::__next__() {
 }
 
 
-// def rebound_steps(self) -> Iterator[Int32]:
+// def rebound_steps(self) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_Cell_rebound_steps::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -170,7 +170,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Cell_rebound_steps::__next__(
 }
 
 
-// def readonly_steps(self) -> Iterator[Int32]:
+// def readonly_steps(self) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_Cell_readonly_steps::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -196,7 +196,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Cell_readonly_steps::__next__
 }
 
 
-// async def update(self) -> Int32:
+// async def update(self) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_Cell_update::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {

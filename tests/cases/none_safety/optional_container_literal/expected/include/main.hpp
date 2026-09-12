@@ -21,7 +21,7 @@ void main();
 struct Bag {
     // items: list[int] | None
     std::optional<std::vector<::tpy::BigInt>> items;
-    // by_key: dict[str, Int32] | None
+    // by_key: dict[str, int32] | None
     std::optional<::tpy::ordered_map<std::string, int32_t>> by_key;
 
     // def __init__(self) -> None:

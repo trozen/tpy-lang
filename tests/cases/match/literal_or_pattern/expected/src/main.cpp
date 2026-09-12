@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def classify_num(x: Int32) -> str:
+// def classify_num(x: int32) -> str:
 std::string classify_num(int32_t x) {
     // match x:
     auto& __match_subject_1 = x;
@@ -60,7 +60,7 @@ std::string classify_str(std::string_view s) {
     return "";
 }
 
-// def classify_as(x: Int32) -> str:
+// def classify_as(x: int32) -> str:
 std::string classify_as(int32_t x) {
     // match x:
     auto& __match_subject_1 = x;
@@ -88,13 +88,13 @@ std::string classify_as(int32_t x) {
 
 // def main() -> None:
 void main() {
-    // print(classify_num(Int32(1)))
+    // print(classify_num(int32(1)))
     std::cout << classify_num(1) << "\n";
-    // print(classify_num(Int32(3)))
+    // print(classify_num(int32(3)))
     std::cout << classify_num(3) << "\n";
-    // print(classify_num(Int32(5)))
+    // print(classify_num(int32(5)))
     std::cout << classify_num(5) << "\n";
-    // print(classify_num(Int32(9)))
+    // print(classify_num(int32(9)))
     std::cout << classify_num(9) << "\n";
     // print(classify_str("hello"))
     std::cout << classify_str("hello") << "\n";
@@ -104,11 +104,11 @@ void main() {
     std::cout << classify_str("goodbye") << "\n";
     // print(classify_str("wow"))
     std::cout << classify_str("wow") << "\n";
-    // print(classify_as(Int32(1)))
+    // print(classify_as(int32(1)))
     std::cout << classify_as(1) << "\n";
-    // print(classify_as(Int32(2)))
+    // print(classify_as(int32(2)))
     std::cout << classify_as(2) << "\n";
-    // print(classify_as(Int32(9)))
+    // print(classify_as(int32(9)))
     std::cout << classify_as(9) << "\n";
 }
 

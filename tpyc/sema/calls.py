@@ -858,7 +858,7 @@ class CallAnalyzer:
         """Attach resolved constructor metadata for readonly/effect checks."""
         # The one funnel every constructor resolution reaches, and the only
         # place that sees a generic record's INFERRED args: `Box(1)` binds
-        # `Box[Int32]` here and nowhere else, so a program that only ever
+        # `Box[int32]` here and nowhere else, so a program that only ever
         # constructs the record would otherwise leave its bodies' owning-slot
         # copy obligations unanswered (sema/own_copy.py).
         if type_subst:
@@ -934,7 +934,7 @@ class CallAnalyzer:
         if not isinstance(expr.func, TpyName):
             return self._analyze_expr_callee(expr)
 
-        # Type aliases: builtin type aliases (e.g. Float64 = float) resolve
+        # Type aliases: builtin type aliases (e.g. float64 = float) resolve
         # to the underlying type's constructor. Other aliases are not callable.
         # Exception: recursive union aliases are callable as wrapper constructors.
         if expr.call_type is None:
@@ -957,7 +957,7 @@ class CallAnalyzer:
                     expr
                 )
 
-        # Generic type instantiation (e.g., Container[T, N](), Array[Int32, 8]())
+        # Generic type instantiation (e.g., Container[T, N](), Array[int32, 8]())
         # The parser speculatively sets call_type for any imported name, so
         # verify it's actually a type before using it
         if expr.call_type is not None:
@@ -992,7 +992,7 @@ class CallAnalyzer:
                 # It's a builtin type instantiation -- validate constructor args
                 self._reject_kwargs_for_builtin(expr, expr.func_name)
                 # Derive per-arg hints from __init__ param types when possible.
-                # e.g. dict[str, str|Int32]([("a","b"), ("c",1)]) -> hint list[tuple[str, str|Int32]]
+                # e.g. dict[str, str|int32]([("a","b"), ("c",1)]) -> hint list[tuple[str, str|int32]]
                 arg_hints = self._derive_ctor_arg_hints(expr)
                 arg_types = [self.expr.analyze_expr_with_hint(arg, hint)
                              for arg, hint in zip(expr.args, arg_hints)]
@@ -1127,7 +1127,7 @@ class CallAnalyzer:
                         if overloads[0].value_ptr_coercion:
                             return self._analyze_user_function_call(expr, overloads)
                         return self._analyze_builtin_function_overloads(expr, overloads)
-                    # Check for type constructor (e.g., Int32 from tpy, int from builtins)
+                    # Check for type constructor (e.g., int32 from tpy, int from builtins)
                     qname = f"{module_name}.{func_name}"
                     if record_info := self.ctx.registry.get_builtin_record(qname):
                         if record_info.get_method_overloads("__init__") and not record_info.type_params:
@@ -1600,7 +1600,7 @@ class CallAnalyzer:
             if not self.protocols.type_conforms_to_protocol(actual, writable_proto):
                 raise self.ctx.error(
                     f"print() 'file' argument must satisfy the Writable protocol "
-                    f"(write(str) -> Int32, flush() -> None); got '{actual}'",
+                    f"(write(str) -> int32, flush() -> None); got '{actual}'",
                     expr)
         for arg in expr.args:
             self.expr.analyze_expr(arg)
@@ -1929,7 +1929,7 @@ class CallAnalyzer:
         (or as the first arg to typing.cast).
 
         Handles user-defined records and builtin type names (int, str, bool, float,
-        fixed-int types like Int32, etc.). Resolves `Any` (bare or aliased
+        fixed-int types like int32, etc.). Resolves `Any` (bare or aliased
         via `from typing import Any as A`) to AnyType when `allow_any=True`;
         otherwise rejects with the isinstance-flavoured "Any is not a
         runtime class" error. typing.cast wants the resolved AnyType so it
@@ -2634,7 +2634,7 @@ class CallAnalyzer:
     ) -> tuple[TpyType, ...] | None:
         """Map a source parent protocol's type_args onto the target's type_params.
 
-        For `class NativeIterable[T](Iterable[T])` and source `Iterable[Int32]`,
+        For `class NativeIterable[T](Iterable[T])` and source `Iterable[int32]`,
         finds the matching parent ref in target_info.parent_protocols, builds a
         target-param -> source-arg substitution from the parent ref's TypeParamRef
         positions, then returns the substituted target type_params.
@@ -3002,9 +3002,9 @@ class CallAnalyzer:
     def _derive_ctor_arg_hints(self, expr: TpyCall) -> list[TpyType | None]:
         """Derive per-argument type hints from __init__ param types.
 
-        For generic constructors like dict[str, str|Int32]([("a","b"), ("c",1)]),
+        For generic constructors like dict[str, str|int32]([("a","b"), ("c",1)]),
         resolves __init__ param types with the known type params to produce
-        concrete hints (e.g. list[tuple[str, str|Int32]]).  Falls back to
+        concrete hints (e.g. list[tuple[str, str|int32]]).  Falls back to
         call_type when no __init__ overloads are found.
         """
         fallback = [expr.call_type] * len(expr.args)
@@ -3479,7 +3479,7 @@ class CallAnalyzer:
         # IntLiteralType arg -- there, prefer the default_int_type one over the
         # smallest-fitting one (str(IntLiteralType) -> fixed_to_str<int32_t>
         # rather than <int8_t>). Other-shape ctors (BigInt, float, etc.) and
-        # single-fixed-int ctors (Int64(20)) keep declaration-order behavior.
+        # single-fixed-int ctors (int64(20)) keep declaration-order behavior.
         default_int_type = self.ctx.default_int_type
         best_ctor: FunctionInfo | None = None
         best_cost = 0
@@ -3751,7 +3751,7 @@ class CallAnalyzer:
                 if is_callable_type(concrete_hint):
                     # Only the callee's OWN un-inferred type params block using
                     # this hint to type the lambda; an enclosing-scope type
-                    # param (the caller's `T`, e.g. in `list[tuple[T, Int32]]`)
+                    # param (the caller's `T`, e.g. in `list[tuple[T, int32]]`)
                     # is a real in-scope type the lambda params can bind to.
                     callee_unresolved = set(func.type_params) - set(partial_inferred.keys())
                     has_unresolved = any(
@@ -4281,7 +4281,7 @@ class CallAnalyzer:
             matched, winner_arg_types, winner_kwarg_types, matched_origin = unique_tied[0]
         else:
             # Coercion-pass fallback: mirror resolve_overload's pass 2 so
-            # `Ptr[T] -> T`, `BigInt -> Int32`, and other registered
+            # `Ptr[T] -> T`, `BigInt -> int32`, and other registered
             # coercions still apply at non-Fn slots when no candidate
             # passed strict scoring.
             subclass_checker = self.ctx.registry.is_subclass_of
@@ -4894,7 +4894,7 @@ class CallAnalyzer:
                     "unsafe_cast() cannot cast read-only pointer to mutable pointer (use unsafe_const_cast first)", expr)
         raise self.ctx.error(
             "unsafe_cast() requires a type argument or target type annotation "
-            "(e.g., unsafe_cast[UInt32](p) or q: Ptr[UInt32] = unsafe_cast(p))", expr)
+            "(e.g., unsafe_cast[uint32](p) or q: Ptr[uint32] = unsafe_cast(p))", expr)
 
     def _inline_function_call(self, expr: TpyCall, func: FunctionInfo) -> TpyType:
         """Inline an @inline function call: clone body, substitute params, analyze."""
@@ -5373,7 +5373,7 @@ class CallAnalyzer:
             resolved_return = strip_template_repr(resolved_return)
 
         # Detect duplicate union members after generic substitution:
-        # e.g. T | U | str with T=U=Int32 would emit std::variant<int, int, str> (ill-formed)
+        # e.g. T | U | str with T=U=int32 would emit std::variant<int, int, str> (ill-formed)
         if isinstance(func.return_type, UnionType):
             orig_count = len(func.return_type.members)
             resolved_count = len(resolved_return.members) if isinstance(resolved_return, UnionType) else 1
@@ -5565,7 +5565,7 @@ class CallAnalyzer:
                 raise self.ctx.error(
                     f"'{record.name}()' got unexpected keyword argument '{first_kwarg}'", expr)
 
-        # Check if this is a generic record instantiation (e.g., Stack[Int32]())
+        # Check if this is a generic record instantiation (e.g., Stack[int32]())
         if expr.call_type is not None and isinstance(expr.call_type, NominalType) and expr.call_type.is_record:
             # Validate type arguments
             if record.is_generic():

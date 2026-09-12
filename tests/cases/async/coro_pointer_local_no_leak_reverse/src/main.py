@@ -5,30 +5,30 @@
 # inheriting stale entries from a previous body) but still needs the
 # setup helper to register the pointer-form name.
 import asyncio
-from tpy import nocopy, Int32
+from tpy import nocopy, int32
 
 
 @nocopy
 class P:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 
-def maybe_p(items: list[P], i: Int32) -> P | None:
+def maybe_p(items: list[P], i: int32) -> P | None:
     if i < len(items):
         return items[i]
     return None
 
 
-async def first(n: Int32) -> Int32:
-    x = n + 1  # tpyc: type(Int32)
+async def first(n: int32) -> int32:
+    x = n + 1  # tpyc: type(int32)
     await asyncio.sleep(0)
     return x
 
 
-async def second(items: list[P], i: Int32) -> Int32:
+async def second(items: list[P], i: int32) -> int32:
     x = maybe_p(items, i)  # tpyc: type(P | None)
     await asyncio.sleep(0)
     if x is not None:

@@ -1,6 +1,6 @@
-from tpy import Int32
+from tpy import int32
 class H:
-    xs: list[Int32]
+    xs: list[int32]
     def __init__(self) -> None:
         self.xs = [1]
     def take(self, o: H) -> None:

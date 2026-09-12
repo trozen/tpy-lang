@@ -1,6 +1,6 @@
 import math
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 class Nums:
     xs: list[float]
     def __init__(self) -> None:
@@ -8,7 +8,7 @@ class Nums:
     def __iter__(self) -> Iterator[float]:
         for x in self.xs:
             yield x
-def f(n: Int32) -> float:
+def f(n: int32) -> float:
     match n:
         case 1 if math.fsum(Nums()) > 0.0:
             return 1.0

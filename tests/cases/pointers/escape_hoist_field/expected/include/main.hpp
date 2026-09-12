@@ -16,10 +16,10 @@ void field_access_escape();
 
 // class Inner:
 struct Inner {
-    // value: Int32
+    // value: int32
     int32_t value;
 
-    // def __init__(self, value: Int32):
+    // def __init__(self, value: int32):
     Inner() = default;
     explicit Inner(int32_t value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Inner";
@@ -47,7 +47,7 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
 }
 
 
-// def __init__(self, value: Int32):
+// def __init__(self, value: int32):
 inline Inner::Inner(int32_t value) : value(value) {}
 
 // def __init__(self, inner: Inner):

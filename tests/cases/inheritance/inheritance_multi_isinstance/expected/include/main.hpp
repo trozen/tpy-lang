@@ -30,7 +30,7 @@ inline std::ostream& operator<<(std::ostream& os, const Named& obj) {
 
 // class Counted:
 struct Counted {
-    // count: Int32
+    // count: int32
     int32_t count;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counted";
@@ -44,7 +44,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counted& obj) {
 // class Widget(Named, Counted):
 struct Widget : Named, Counted {
 
-    // def __init__(self, name: str, count: Int32) -> None:
+    // def __init__(self, name: str, count: int32) -> None:
     Widget() = default;
     explicit Widget(std::string_view name, int32_t count);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Widget";
@@ -56,7 +56,7 @@ inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
 }
 
 
-// def __init__(self, name: str, count: Int32) -> None:
+// def __init__(self, name: str, count: int32) -> None:
 inline Widget::Widget(std::string_view name, int32_t count) {
     // self.name = name
     this->name = name;

@@ -3,34 +3,34 @@
 # a sibling @staticmethod, and another @classmethod.
 from typing import ClassVar, Final
 
-from tpy import Int32
+from tpy import int32
 
 
 class Base:
-    SCALE: Final[Int32] = 10
+    SCALE: Final[int32] = 10
 
 
 class Counter(Base):
-    START: Final[Int32] = 3
-    calls: ClassVar[Int32] = 0
+    START: Final[int32] = 3
+    calls: ClassVar[int32] = 0
 
     @classmethod
-    def bump(cls) -> Int32:
+    def bump(cls) -> int32:
         cls.calls += 1
         return cls.calls
 
     @classmethod
-    def scaled_start(cls) -> Int32:
+    def scaled_start(cls) -> int32:
         # Inherited class constant, plus a sibling staticmethod through cls.
         return cls.double(cls.START * cls.SCALE)
 
     @classmethod
-    def twice(cls) -> Int32:
+    def twice(cls) -> int32:
         # A classmethod calling another classmethod through cls.
         return cls.bump() + cls.bump()
 
     @staticmethod
-    def double(n: Int32) -> Int32:
+    def double(n: int32) -> int32:
         return n * 2
 
 

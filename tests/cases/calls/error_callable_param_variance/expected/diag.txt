@@ -1,1 +1,1 @@
-main.py:18: error: Type mismatch in argument 'f': expected Fn[[Int32 | None], None], got Callable[[Int32], None]
+main.py:18: error: Type mismatch in argument 'f': expected Fn[[int32 | None], None], got Callable[[int32], None]

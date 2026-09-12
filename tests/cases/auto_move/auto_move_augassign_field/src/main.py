@@ -1,11 +1,11 @@
 # Verify that obj.field += val keeps obj alive in liveness analysis,
 # preventing premature auto-move of obj.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 class Counter:
-    value: Int32
+    value: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.value = v
 
 def take(c: Own[Counter]) -> None:

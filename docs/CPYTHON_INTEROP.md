@@ -1,8 +1,8 @@
 # CPython Interop -- Design
 
 **Status: v1.0 in progress.** Free functions marshalling every scalar
-(`int`/BigInt, `float`, `bool`, all fixed-width int types `Int8`..`Int64` /
-`UInt8`..`UInt64`) plus void return (`-> None`) and `str`/`bytes` (copy-in;
+(`int`/BigInt, `float`, `bool`, all fixed-width int types `int8`..`int64` /
+`uint8`..`uint64`) plus void return (`-> None`) and `str`/`bytes` (copy-in;
 owned-form marshalling, the borrow-form param converted at the call) are
 implemented -- see "v1.0 resolved design" below and `tests/interop/`; the rest
 of this doc is the agreed design ahead of implementation. Companion to `PROJECT_TOOLING_DESIGN.md`, which reserves the
@@ -85,11 +85,11 @@ design -- the same long pole.)
 
 ### The slice-1 ladder (build in this order)
 
-- **Rung 0 -- `def answer() -> Int64: return 42`** (`METH_NOARGS`). The
+- **Rung 0 -- `def answer() -> int64: return 42`** (`METH_NOARGS`). The
   thinnest import: exercises `ext_module`, `@export`, the glue TU,
   `PyMethodDef` / `PyModuleDef` / `PyInit_`, the `.so` build, import, and
   `to_py(int64) -> PyLong`, with **zero argument marshalling**.
-- **Rung 1 -- `def add(a: Int64, b: Int64) -> Int64`** (`METH_VARARGS`).
+- **Rung 1 -- `def add(a: int64, b: int64) -> int64`** (`METH_VARARGS`).
   Adds `from_py<int64>` (`PyLong_AsLongLong` + overflow -> `OverflowError`).
 - **Rung 2 -- `int` / BigInt marshalling**, on its own (see below). TPy
   `int` is BigInt, whose `PyLong <-> BigInt` path is the *hardest*, not the
@@ -296,7 +296,7 @@ performance-critical audience.
 **Perf note (performance angle).** The speed win is the buffer/numeric path, not
 arbitrary `int` kernels: TPy `int` is `BigInt` (arbitrary precision), so
 `PyLong <-> BigInt` marshalling and BigInt math are *not* the fast path --
-steer hot kernels to `Int32`/`Int64`/`float`. And v1 kernels run with the GIL
+steer hot kernels to `int32`/`int64`/`float`. And v1 kernels run with the GIL
 *held* for the whole call (no parallelism until `nogil`, phase 7) -- still a
 native-loop speedup, but single-threaded.
 
@@ -472,7 +472,7 @@ Three acknowledged, documented divergences from the aliasing CPython source:
 
 Exposed enums and classes **are** admitted as TOP-LEVEL container elements
 (`list[Color]`, `list[Counter]`, `dict[str, Counter]`, `set[Color]`,
-`dict[Color, V]`, `tuple[Color, Int64]`): each element marshals through its
+`dict[Color, V]`, `tuple[Color, int64]`): each element marshals through its
 module type handle threaded into the per-element converter, copy-in/out like
 every other element. An enum element preserves the member singleton; a class
 element copies (so a mutated class-element param is the same copy cliff -- the
@@ -615,7 +615,7 @@ IntEnum-vs-Enum `== int` distinction all match). Module-level `Final` constants 
 a boundary scalar (`int`/`IntN`/`bool`/`float`/`str`) become module attributes --
 a one-time snapshot read after `__tpy_init` (Final => immutable, so the snapshot
 can't go stale). `@native` enums (values come from C++) and nested enums are
-rejected with a located error; non-boundary `Final` types (`Char`, `tuple`) are
+rejected with a located error; non-boundary `Final` types (`char`, `tuple`) are
 simply not exposed (like a non-`@export` function). An exposed enum is also a
 valid `@export` **function param/return type** -- the value crosses as its
 CPython member (`runtime/cpp/include/tpy/interop/enum_bridge.hpp`

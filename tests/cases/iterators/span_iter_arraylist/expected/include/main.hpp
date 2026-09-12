@@ -17,7 +17,7 @@ template<::tpystd::typing::Iterable<int32_t> T_it>
 void consume(T_it& it);
 void main();
 
-// def consume(it: Iterable[Int32]) -> None:
+// def consume(it: Iterable[int32]) -> None:
 template<::tpystd::typing::Iterable<int32_t> T_it>
 void consume(T_it& it) {
     // for x in it:

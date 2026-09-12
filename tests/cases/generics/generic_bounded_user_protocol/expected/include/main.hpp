@@ -22,14 +22,14 @@ void main();
 
 // class MyNumber:
 struct MyNumber {
-    // value: Int32
+    // value: int32
     int32_t value;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     MyNumber() = default;
     explicit MyNumber(int32_t v);
 
-    // def add(self, x: Int32) -> Int32:
+    // def add(self, x: int32) -> int32:
     int32_t add(int32_t x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.MyNumber";
 };
@@ -64,10 +64,10 @@ inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline MyNumber::MyNumber(int32_t v) : value(v) {}
 
-// def add(self, x: Int32) -> Int32:
+// def add(self, x: int32) -> int32:
 inline int32_t MyNumber::add(int32_t x) const {
     // return self.value + x
     return (::tpy::add_check<int32_t>(this->value, x));

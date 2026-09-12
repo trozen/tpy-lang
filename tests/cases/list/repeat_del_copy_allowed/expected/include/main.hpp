@@ -15,11 +15,11 @@ void main();
 
 // class Res:
 struct Res {
-    // v: Int32
+    // v: int32
     int32_t v;
     bool __tpy_owned_ = true;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     explicit Res(int32_t v);
     // copyable via __copy__
     Res(const Res& other);
@@ -41,7 +41,7 @@ inline std::ostream& operator<<(std::ostream& os, const Res& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Res::Res(int32_t v) : v(v) {}
 
 inline Res::Res(const Res& other) : Res(other.__copy__()) {}

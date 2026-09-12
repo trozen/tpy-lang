@@ -4,10 +4,10 @@
 # FileIO(...) -> BufferedReader / local-binding boundary is a compile error.
 import os
 from io import FileIO
-from tpy import Int64
+from tpy import int64
 
 
-def feed(data: bytes) -> Int64:
+def feed(data: bytes) -> int64:
     r, w = os.pipe()
     os.write(w, data)
     os.close(w)   # signal EOF on the read end
@@ -33,7 +33,7 @@ def main() -> None:
 
     # A negative fd is rejected at construction (CPython parity).
     try:
-        FileIO(Int64(-1))
+        FileIO(int64(-1))
         print("no-raise")
     except ValueError:
         print("negfd-ValueError")

@@ -18,18 +18,18 @@ void main();
 
 // class RangeIter:
 struct RangeIter {
-    // current: Int32
+    // current: int32
     int32_t current;
-    // limit: Int32
+    // limit: int32
     int32_t limit;
 
-    // def __init__(self, start: Int32, limit: Int32) -> None:
+    // def __init__(self, start: int32, limit: int32) -> None:
     RangeIter() = default;
     explicit RangeIter(int32_t start, int32_t limit);
 
     auto& __iter__() { return *this; }
 
-    // def __next__(self) -> Int32:
+    // def __next__(self) -> int32:
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     static constexpr std::string_view __tpy_class_name__ = "__main__.RangeIter";
 };
@@ -41,12 +41,12 @@ inline std::ostream& operator<<(std::ostream& os, const RangeIter& obj) {
 
 // class MyRange:
 struct MyRange {
-    // start: Int32
+    // start: int32
     int32_t start;
-    // limit: Int32
+    // limit: int32
     int32_t limit;
 
-    // def __init__(self, start: Int32, limit: Int32) -> None:
+    // def __init__(self, start: int32, limit: int32) -> None:
     MyRange() = default;
     explicit MyRange(int32_t start, int32_t limit);
 
@@ -61,10 +61,10 @@ inline std::ostream& operator<<(std::ostream& os, const MyRange& obj) {
 }
 
 
-// def __init__(self, start: Int32, limit: Int32) -> None:
+// def __init__(self, start: int32, limit: int32) -> None:
 inline RangeIter::RangeIter(int32_t start, int32_t limit) : current(start), limit(limit) {}
 
-// def __next__(self) -> Int32:
+// def __next__(self) -> int32:
 inline std::expected<int32_t, ::tpy::StopIteration> RangeIter::__next__() {
     // if self.current < self.limit:
     if ((this->current < this->limit)) {
@@ -79,7 +79,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> RangeIter::__next__() {
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }
 
-// def __init__(self, start: Int32, limit: Int32) -> None:
+// def __init__(self, start: int32, limit: int32) -> None:
 inline MyRange::MyRange(int32_t start, int32_t limit) : start(start), limit(limit) {}
 
 // def __iter__(self) -> Own[RangeIter]:
@@ -87,10 +87,10 @@ inline RangeIter MyRange::__iter__() const {
     // return RangeIter(self.start, self.limit)
     return RangeIter(this->start, this->limit);
 }
-// def sum_all[T: Iterable[Int32]](items: T) -> Int32:
+// def sum_all[T: Iterable[int32]](items: T) -> int32:
 template<::tpystd::typing::Iterable<int32_t> T>
 int32_t sum_all(::tpy::param_val_or_ref_t<T> items) {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for x in items:
     auto& __src_0 = items;

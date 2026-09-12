@@ -3,13 +3,13 @@
 # the first arg lands in the main param_map entry, the rest spawn standalone
 # MutationCallEdges. Phase 2 propagation must mark all three caller params
 # (a, b, c) non-const so the address-take into the indirect mutable pack works.
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    val: Int32
+    val: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 

@@ -1,7 +1,7 @@
 from typing import Protocol
-from tpy import Int32
+from tpy import int32
 class Shape(Protocol):
-    def area(self) -> Int32: ...
+    def area(self) -> int32: ...
 class Named(Protocol):
     def name(self) -> str: ...
 def f(v: Shape | Named | None) -> bool:

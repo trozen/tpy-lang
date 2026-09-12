@@ -1,1 +1,1 @@
-main.py:6: error: Enum member 'Big' value 200 is out of range for Int8 (-128..127)
+main.py:6: error: Enum member 'Big' value 200 is out of range for int8 (-128..127)

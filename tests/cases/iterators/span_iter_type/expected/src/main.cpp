@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def sum_readonly(rs: Span[readonly[Int32]]) -> Int32:
+// def sum_readonly(rs: Span[readonly[int32]]) -> int32:
 int32_t sum_readonly(std::span<const int32_t> rs) {
     // it = SpanIter(rs)
     ::tpy::SpanIter<const int32_t> it = ::tpy::SpanIter<const int32_t>(rs);
@@ -14,9 +14,9 @@ int32_t sum_readonly(std::span<const int32_t> rs) {
 
 // def main() -> None:
 void main() {
-    // arr: Array[Int32, 5] = [10, 20, 30, 40, 50]
+    // arr: Array[int32, 5] = [10, 20, 30, 40, 50]
     std::array<int32_t, 5> arr = {10, 20, 30, 40, 50};
-    // s: Span[Int32] = arr
+    // s: Span[int32] = arr
     std::span<int32_t> s = ::tpy::as_mut_span(arr);
     // # Iterate SpanIter from mutable Span
     // it = SpanIter(s)

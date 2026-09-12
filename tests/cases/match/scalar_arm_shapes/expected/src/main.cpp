@@ -56,7 +56,7 @@ std::string guarded_call_subject(bool flag) {
     ::std::unreachable();
 }
 
-// def switch_call_subject(c: Counter) -> Int32:
+// def switch_call_subject(c: Counter) -> int32:
 int32_t switch_call_subject(Counter& c) {
     // # A method-call subject on the primitive switch; the receiver mutates, so
     // # a stale copy of the subject would show up in the caller's next read.
@@ -79,7 +79,7 @@ int32_t switch_call_subject(Counter& c) {
     ::std::unreachable();
 }
 
-// def str_switch_call_subject() -> Int32:
+// def str_switch_call_subject() -> int32:
 int32_t str_switch_call_subject() {
     // # Five unguarded literals route to the discriminator switch, and the
     // # trailing or-group is its catch-all rather than an "f" bucket. The
@@ -148,11 +148,11 @@ int32_t str_switch_call_subject() {
     return -1;
 }
 
-// def or_wildcard_switch(n: Int32) -> str:
+// def or_wildcard_switch(n: int32) -> str:
 std::string or_wildcard_switch(int32_t n) {
     // # The wildcard alternative subsumes the literal beside it, so the group
     // # dispatches as the switch default.
-    // match n:  # tpyc: warning(/non-exhaustive match on 'Int32'/)
+    // match n:  # tpyc: warning(/non-exhaustive match on 'int32'/)
     auto& __match_subject_1 = n;
     switch (__match_subject_1) {
     // case 1 | _:
@@ -183,7 +183,7 @@ std::string or_wildcard_chain(std::string_view s) {
     return "unreached";
 }
 
-// def as_capture(n: Int32) -> Int32:
+// def as_capture(n: int32) -> int32:
 int32_t as_capture(int32_t n) {
     // # Both names bind the whole subject.
     // match n:
@@ -203,7 +203,7 @@ int32_t as_capture(int32_t n) {
     return -1;
 }
 
-// def optional_inner_as_capture(n: Optional[Int32]) -> Int32:
+// def optional_inner_as_capture(n: Optional[int32]) -> int32:
 int32_t optional_inner_as_capture(std::optional<int32_t> n) {
     // # The Optional tier partitions None off and hands the SCALAR payload to
     // # the inner switch, so the double bind renders there rather than on the
@@ -231,7 +231,7 @@ int32_t optional_inner_as_capture(std::optional<int32_t> n) {
     ::std::unreachable();
 }
 
-// def str_switch_as_capture(s: str) -> Int32:
+// def str_switch_as_capture(s: str) -> int32:
 int32_t str_switch_as_capture(std::string_view s) {
     // # `case x as y` on the discriminator switch's TRAILING arm: five
     // # unguarded literals take the switch tier, and both names of the arm
@@ -305,7 +305,7 @@ int32_t str_switch_as_capture(std::string_view s) {
     ::std::unreachable();
 }
 
-// def poly_as_capture(p: Pet) -> Int32:
+// def poly_as_capture(p: Pet) -> int32:
 int32_t poly_as_capture(Pet& p) {
     // # `case x as y` on the polymorphic chain: both names alias the SAME
     // # object, so every mutation through either is visible to the caller --

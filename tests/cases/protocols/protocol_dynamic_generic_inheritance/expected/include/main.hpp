@@ -55,13 +55,13 @@ void main();
 
 // class IntCounter:
 struct IntCounter {
-    // n: Int32
+    // n: int32
     int32_t n;
 
     // def __init__(self):
     IntCounter();
 
-    // def get(self) -> Int32:
+    // def get(self) -> int32:
     int32_t get() const;
 
     // def bump(self) -> None:
@@ -114,7 +114,7 @@ namespace tpyapp::main {
 // def __init__(self):
 inline IntCounter::IntCounter() : n(0) {}
 
-// def get(self) -> Int32:
+// def get(self) -> int32:
 inline int32_t IntCounter::get() const {
     // return self.n
     return this->n;

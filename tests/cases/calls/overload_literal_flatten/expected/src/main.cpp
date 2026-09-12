@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 // # --- Free function flattening ---
 // @overload
-// def get_field(name: Literal["age"]) -> Int32: ...
+// def get_field(name: Literal["age"]) -> int32: ...
 int32_t get_field__lit_age(std::string_view name) {
     // return 42
     return 42;
@@ -23,7 +23,7 @@ std::string get_field__lit_name(std::string_view name) {
 }
 
 // @overload
-// def get_field(name: str) -> Int32 | str: ...
+// def get_field(name: str) -> int32 | str: ...
 ::tpy::Union<int32_t, std::string> get_field(std::string_view name) {
     // if name == "age":
     if ((name == "age")) {

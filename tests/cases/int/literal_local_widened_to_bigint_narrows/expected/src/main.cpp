@@ -48,8 +48,8 @@ namespace tpyapp::main {
     return ::tpy::BigInt(1);
 }
 
-// def subscript_positions(data: str, xs: list[Int32],
-// d: dict[Int32, Int32]) -> None:
+// def subscript_positions(data: str, xs: list[int32],
+// d: dict[int32, int32]) -> None:
 void subscript_positions(std::string_view data, std::vector<int32_t>& xs, ::tpy::ordered_map<int32_t, int32_t>& d) {
     // p = 0
     ::tpy::BigInt p = ::tpy::BigInt(0);
@@ -79,7 +79,7 @@ void value_positions(std::string_view data) {
     std::cout << ::tpy::str_slice(data, ::tpy::BasicSlice{p.to_fixed_check<int32_t>(), std::nullopt}) << "\n";
     // print(data[:p])      # slice upper bound
     std::cout << ::tpy::str_slice(data, ::tpy::BasicSlice{std::nullopt, p.to_fixed_check<int32_t>()}) << "\n";
-    // q: Int32 = 7
+    // q: int32 = 7
     int32_t q = 7;
     // q += p               # FixedInt += (declared) BigInt
     q = ::tpy::add_check<int32_t>(q, (p).to_fixed_check<int32_t>());
@@ -111,7 +111,7 @@ void __tpy_init() {
     initialized = true;
 
     // # A literal-seeded local that a later `int`-returning assignment retro-widens to
-    // # BigInt still types Int32 at every EARLIER use. Codegen must key the checked
+    // # BigInt still types int32 at every EARLIER use. Codegen must key the checked
     // # `.to_fixed_check<T>()` narrows on the local's DECLARED type -- keying on
     // # sema's per-occurrence type emits a bare BigInt into an int32 slot (no viable
     // # overload). One case per narrow position.

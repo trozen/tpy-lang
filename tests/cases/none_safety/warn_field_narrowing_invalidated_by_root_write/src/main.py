@@ -1,14 +1,14 @@
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    value: Int32 | None
+    value: int32 | None
 
-    def __init__(self, value: Int32 | None):
+    def __init__(self, value: int32 | None):
         self.value = value
 
 
-def use_after_rebind(a: Box, b: Box) -> Int32:
+def use_after_rebind(a: Box, b: Box) -> int32:
     local = a
     if local.value is not None:
         local = b

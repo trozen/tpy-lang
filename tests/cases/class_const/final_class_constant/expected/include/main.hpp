@@ -15,9 +15,9 @@ void main();
 
 // class HttpClient:
 struct HttpClient {
-    // TIMEOUT: Final[Int32] = 30
+    // TIMEOUT: Final[int32] = 30
     static constexpr int32_t TIMEOUT = 30;
-    // MAX_RETRIES: Final[Int32] = 5
+    // MAX_RETRIES: Final[int32] = 5
     static constexpr int32_t MAX_RETRIES = 5;
     // DEFAULT_RATIO: Final[float] = 1.5
     static constexpr double DEFAULT_RATIO = 1.5;

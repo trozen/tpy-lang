@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def label(v: Int32 | None) -> None:
+// def label(v: int32 | None) -> None:
 void label(std::optional<int32_t> v) {
     // match v:
     auto& __match_subject_1 = v;
@@ -19,7 +19,7 @@ void label(std::optional<int32_t> v) {
     }
 }
 
-// def pick(v: Int32 | None) -> Int32:
+// def pick(v: int32 | None) -> int32:
 int32_t pick(std::optional<int32_t> v) {
     // match v:
     auto& __match_subject_1 = v;

@@ -1,1 +1,1 @@
-main.py:13: error: Type mismatch in argument 'xs': cannot convert list[Int32] element-wise into the expected recursive-union type. Annotate the value with the alias type (e.g. `x: JsonValue = ...`) or pass a literal.
+main.py:13: error: Type mismatch in argument 'xs': cannot convert list[int32] element-wise into the expected recursive-union type. Annotate the value with the alias type (e.g. `x: JsonValue = ...`) or pass a literal.

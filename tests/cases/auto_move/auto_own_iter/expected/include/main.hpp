@@ -15,16 +15,16 @@ void main();
 
 // class Stack:
 struct Stack {
-    // items: list[Int32]
+    // items: list[int32]
     std::vector<int32_t> items;
 
     // def __init__(self) -> None:
     Stack();
 
-    // def consume(self: auto_own[Self]) -> auto_own[Int32]:
+    // def consume(self: auto_own[Self]) -> auto_own[int32]:
     int32_t consume() const &;
 
-    // def consume(self: auto_own[Self]) -> auto_own[Int32]:
+    // def consume(self: auto_own[Self]) -> auto_own[int32]:
     int32_t consume() const &&;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Stack";
 };
@@ -38,11 +38,11 @@ inline std::ostream& operator<<(std::ostream& os, const Stack& obj) {
 // def __init__(self) -> None:
 inline Stack::Stack() : items(std::vector<int32_t>{1, 2, 3}) {}
 
-// def consume(self: auto_own[Self]) -> auto_own[Int32]:
+// def consume(self: auto_own[Self]) -> auto_own[int32]:
 inline int32_t Stack::consume() const & {
     // it = iter(self.items)
     auto it = ::tpy::__iter__(this->items);
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for x in it:
     auto& __src_0 = it;
@@ -58,11 +58,11 @@ inline int32_t Stack::consume() const & {
     return total;
 }
 
-// def consume(self: auto_own[Self]) -> auto_own[Int32]:
+// def consume(self: auto_own[Self]) -> auto_own[int32]:
 inline int32_t Stack::consume() const && {
     // it = iter(self.items)
     auto it = ::tpy::__iter__(this->items);
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for x in it:
     auto& __src_0 = it;

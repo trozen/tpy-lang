@@ -103,10 +103,10 @@ std::string check_color(std::optional<Color> c) {
 void main() {
     // print(check_point(None))
     std::cout << check_point(nullptr) << "\n";
-    // print(check_point(Point(Int32(0), Int32(0))))
+    // print(check_point(Point(int32(0), int32(0))))
     Point __tmp_1 = Point(0, 0);
     std::cout << check_point(&(__tmp_1)) << "\n";
-    // print(check_point(Point(Int32(3), Int32(4))))
+    // print(check_point(Point(int32(3), int32(4))))
     Point __tmp_2 = Point(3, 4);
     std::cout << check_point(&(__tmp_2)) << "\n";
     // print(check_color(None))

@@ -6,12 +6,12 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // arr: Array[Int32, 3] = [10, 20, 30]
+    // arr: Array[int32, 3] = [10, 20, 30]
     std::array<int32_t, 3> arr = {10, 20, 30};
-    // s: Span[Int32] = arr
+    // s: Span[int32] = arr
     std::span<int32_t> s = ::tpy::as_mut_span(arr);
     // # Sized | None
-    // nums: list[Int32] = [1, 2, 3, 4, 5]
+    // nums: list[int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> nums = {1, 2, 3, 4, 5};
     // print(count_if_sized(nums))
     std::cout << count_if_sized(&(nums)) << "\n";

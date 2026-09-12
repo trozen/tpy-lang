@@ -23,7 +23,7 @@ void main() {
     // print(len(rows), len(rows[0]), rows[0][0], rows[1][0])
     std::cout << ::tpy::__len__(rows) << " " << ::tpy::__len__(::tpy::__getitem__(rows, 0)) << " " << ::tpy::print_float(::tpy::__getitem__(::tpy::__getitem__(rows, 0), 0)) << " " << ::tpy::print_float(::tpy::__getitem__(::tpy::__getitem__(rows, 1), 0)) << "\n";
     // # The dict-VALUE twin of the same element slot.
-    // table: dict[Int32, list[Int32]] = {i: ([0] * 2) for i in range(2)}  # tpyc: ok
+    // table: dict[int32, list[int32]] = {i: ([0] * 2) for i in range(2)}  # tpyc: ok
     ::tpy::ordered_map<int32_t, std::vector<int32_t>> table = ({
         ::tpy::ordered_map<int32_t, std::vector<int32_t>> __result;
         const int32_t __stop_1 = 2;

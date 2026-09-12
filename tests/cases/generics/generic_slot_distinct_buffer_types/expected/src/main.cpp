@@ -58,7 +58,7 @@ bool has_item_bytes(const std::vector<::tpy::Bytes>& xs, ::tpy::BytesView v) {
     return false;
 }
 
-// def size_of(p: bytes) -> Int32:
+// def size_of(p: bytes) -> int32:
 int32_t size_of(::tpy::BytesView p) {
     // # a BORROWING `bytes` slot: the parameter form is the span, so a bytearray
     // # argument is viewed, never copied -- the render carries no copy helper
@@ -105,7 +105,7 @@ void bytes_family(::tpy::BytesView p) {
     // # references -- mutating through the returned alias and observing it on the
     // # original is what proves the generic did not copy. (`list[bytearray]` is a
     // # separate pre-existing gap, so the container form of this leg is the
-    // # `list[UInt8]` section below.)
+    // # `list[uint8]` section below.)
     // ba = bytearray(b"a")
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("a", 1));
     // r = echo_ref(ba)  # tpyc: ok
@@ -132,18 +132,18 @@ void bytes_family(::tpy::BytesView p) {
 
 // def u8_list() -> None:
 void u8_list() {
-    // # list[UInt8] keeps the plain buffer spelling and its reference forms
-    // v: list[UInt8] = [UInt8(1)]
+    // # list[uint8] keeps the plain buffer spelling and its reference forms
+    // v: list[uint8] = [uint8(1)]
     std::vector<uint8_t> v = {1};
     // # the container literal COPIES its element into the owned slot; the boundary
     // # under test is the generic SLOT, whose reference form the alias below proves
-    // xs: list[list[UInt8]] = [v]
+    // xs: list[list[uint8]] = [v]
     std::vector<std::vector<uint8_t>> xs = {v};
     // print("list", has_item(xs, v))  # tpyc: ok
     std::cout << "list" << " " << ::tpy::print_bool(has_item<std::vector<uint8_t>>(xs, v)) << "\n";
     // r = echo_ref(v)
     std::vector<uint8_t>& r = echo_ref<std::vector<uint8_t>>(v);
-    // r.append(UInt8(2))
+    // r.append(uint8(2))
     r.push_back(2);
     // print("list", len(v), len(r))
     std::cout << "list" << " " << ::tpy::__len__(v) << " " << ::tpy::__len__(r) << "\n";

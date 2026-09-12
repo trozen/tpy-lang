@@ -10,7 +10,7 @@ std::string banner(std::string_view prefix) {
     return std::string(prefix);
 }
 
-// def cap(n: Int32 = LIMIT) -> Int32:
+// def cap(n: int32 = LIMIT) -> int32:
 int32_t cap(int32_t n) {
     // return n
     return n;
@@ -24,7 +24,7 @@ void main() {
     std::cout << banner("custom") << "\n";
     // print(cap())
     std::cout << cap() << "\n";
-    // print(cap(Int32(3)))
+    // print(cap(int32(3)))
     std::cout << cap(3) << "\n";
 }
 

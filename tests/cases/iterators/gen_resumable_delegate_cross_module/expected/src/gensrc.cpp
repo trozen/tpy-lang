@@ -4,7 +4,7 @@
 namespace tpyapp::gensrc {
 
 
-// def walk() -> Iterator[Int32]:
+// def walk() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_walk::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -27,12 +27,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_walk::__next__() {
 }
 
 
-// def walk() -> Iterator[Int32]:
+// def walk() -> Iterator[int32]:
 __gen_walk walk() {
     return __gen_walk();
 }
 
-// def chatty() -> Iterator[Int32]:
+// def chatty() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_chatty::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -61,12 +61,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_chatty::__next__() {
 }
 
 
-// def chatty() -> Iterator[Int32]:
+// def chatty() -> Iterator[int32]:
 __gen_chatty chatty() {
     return __gen_chatty();
 }
 
-// def guarded() -> Iterator[Int32]:
+// def guarded() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_guarded::__next__() {
     try {
     while (true) switch (__state) {
@@ -121,12 +121,12 @@ void __gen_guarded::__finally_0() {
     std::cout << "  callee: cleanup" << "\n";
 }
 
-// def guarded() -> Iterator[Int32]:
+// def guarded() -> Iterator[int32]:
 __gen_guarded guarded() {
     return __gen_guarded();
 }
 
-// def steps(self) -> Iterator[Int32]:
+// def steps(self) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_Src_steps::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -149,7 +149,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Src_steps::__next__() {
 }
 
 
-// def readings(self) -> Iterator[Int32]:
+// def readings(self) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_Bag_readings::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {

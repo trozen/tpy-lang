@@ -53,7 +53,7 @@ struct __gen_repeat_n : public ::tpy::next_iter_mixin<__gen_repeat_n<T>, T> {
         return os << "<generator repeat_n>";
     }
 };
-// def repeat_n[T](obj: T, times: Int32) -> Iterator[T]:
+// def repeat_n[T](obj: T, times: int32) -> Iterator[T]:
 template <typename T>
 std::expected<T, ::tpy::StopIteration> __gen_repeat_n<T>::__next__() {
     while (true) switch (__state) {
@@ -83,7 +83,7 @@ std::expected<T, ::tpy::StopIteration> __gen_repeat_n<T>::__next__() {
 }
 
 
-// def repeat_n[T](obj: T, times: Int32) -> Iterator[T]:
+// def repeat_n[T](obj: T, times: int32) -> Iterator[T]:
 template <typename T>
 __gen_repeat_n<T> repeat_n(::tpy::param_val_or_ref_t<T> obj, int32_t times) {
     return __gen_repeat_n<T>(obj, times);
@@ -118,12 +118,12 @@ struct __gen_take : public ::tpy::next_iter_mixin<__gen_take<T, T_it>, T> {
         return os << "<generator take>";
     }
 };
-// def take[T](it: Iterable[T], n: Int32) -> Iterator[T]:
+// def take[T](it: Iterable[T], n: int32) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 std::expected<T, ::tpy::StopIteration> __gen_take<T, T_it>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // c: Int32 = 0
+        // c: int32 = 0
         c = 0;
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
@@ -161,7 +161,7 @@ std::expected<T, ::tpy::StopIteration> __gen_take<T, T_it>::__next__() {
 }
 
 
-// def take[T](it: Iterable[T], n: Int32) -> Iterator[T]:
+// def take[T](it: Iterable[T], n: int32) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 __gen_take<T, T_it> take(T_it&& it, int32_t n) {
     return __gen_take<T, T_it>(std::forward<T_it>(it), n);
@@ -222,12 +222,12 @@ struct __gen_take_iter : public ::tpy::next_iter_mixin<__gen_take_iter<T, T_it>,
         return os << "<generator take_iter>";
     }
 };
-// def take_iter[T](it: Iterator[T], n: Int32) -> Iterator[T]:
+// def take_iter[T](it: Iterator[T], n: int32) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterator<T> T_it>
 std::expected<T, ::tpy::StopIteration> __gen_take_iter<T, T_it>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // c: Int32 = 0
+        // c: int32 = 0
         c = 0;
         __state = S_JOIN_0;
         continue;
@@ -264,7 +264,7 @@ std::expected<T, ::tpy::StopIteration> __gen_take_iter<T, T_it>::__next__() {
 }
 
 
-// def take_iter[T](it: Iterator[T], n: Int32) -> Iterator[T]:
+// def take_iter[T](it: Iterator[T], n: int32) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterator<T> T_it>
 __gen_take_iter<T, T_it> take_iter(T_it&& it, int32_t n) {
     return __gen_take_iter<T, T_it>(std::forward<T_it>(it), n);

@@ -1,16 +1,16 @@
 # @dataclass(frozen=True): immutable instances with auto __init__ and __eq__
 from dataclasses import dataclass
-from tpy import Int32
+from tpy import int32
 
 @dataclass(frozen=True)
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 @dataclass(frozen=True)
 class Config:
     name: str
-    value: Int32
+    value: int32
 
 def main() -> None:
     p = Point(1, 2)

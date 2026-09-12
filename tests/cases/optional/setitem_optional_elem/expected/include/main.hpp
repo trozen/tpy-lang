@@ -15,10 +15,10 @@ void main();
 
 // class Node:
 struct Node {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Node() = default;
     explicit Node(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Node";
@@ -30,7 +30,7 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 }
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Node::Node(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

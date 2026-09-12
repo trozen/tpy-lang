@@ -1,9 +1,9 @@
-"""Tests that str does NOT conform to Iterable[Int32] (it is Iterable[Char])."""
+"""Tests that str does NOT conform to Iterable[int32] (it is Iterable[char])."""
 from typing import Iterable
-from tpy import Int32
+from tpy import int32
 
-def sum_ints(items: Iterable[Int32]) -> Int32:
-    total: Int32 = 0
+def sum_ints(items: Iterable[int32]) -> int32:
+    total: int32 = 0
     for x in items:
         total += x
     return total

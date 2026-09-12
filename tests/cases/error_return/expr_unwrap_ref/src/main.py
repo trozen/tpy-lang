@@ -1,17 +1,17 @@
 # Expression-level error_return unwrap with reference semantics.
 # Tests that @error_return calls returning non-value types preserve
 # references: positive(p).updated() modifies the original p.
-from tpy import Int32, error_return, ReturnException
+from tpy import int32, error_return, ReturnException
 from typing import Self
 
 class E(Exception, ReturnException):
     pass
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32):
+    def __init__(self, x: int32, y: int32):
         self.x = x
         self.y = y
 

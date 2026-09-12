@@ -157,9 +157,9 @@ def _lower_constant_expr(expr, target_type: 'TpyType | None',
     """Lower the initializer against its DECLARED slot.
 
     The slot is what makes `A: Final[int] = 100` spell `::tpy::BigInt(100)`
-    and `MAX: Final[Int32] = 100` spell `100`; a tuple constant needs it for
+    and `MAX: Final[int32] = 100` spell `100`; a tuple constant needs it for
     the element forms (`std::string_view` vs the owned `std::string` the
-    literal's own resolved type would give), and a `Final[Char]` needs it for
+    literal's own resolved type would give), and a `Final[char]` needs it for
     the `'A'` character literal a bare str literal would otherwise spell."""
     slot = (unwrap_readonly(target_type)
             if isinstance(target_type, TpyType) else None)

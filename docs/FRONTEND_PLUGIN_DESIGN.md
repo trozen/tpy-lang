@@ -40,7 +40,7 @@ breadth, not enumeration.
 Protobuf-style schemas define messages, enums, and (optionally) service
 stubs. The plugin parses `.proto`, emits a `FrontendModule` with one
 `Record` per message and one `Enum` per proto enum. Type references map
-directly: `int32` -> `NamedType("Int32")`, `repeated T` ->
+directly: `int32` -> `NamedType("int32")`, `repeated T` ->
 `NamedType("list", [TypeTypeArg(...)])`, `map<K,V>` ->
 `NamedType("dict", ...)`, `optional T` -> `OptionalType(...)`. Imports
 (`import "other.proto"`) become `FromImport`. Encode/decode methods
@@ -330,7 +330,7 @@ converts symbolic types to parser `TypeRefNode`s; sema resolves those to
 ```python
 @dataclass
 class NamedType:                    # kind = "NamedType"
-    name: str                       # "Int32", "Foo", "list", "BoundedList"
+    name: str                       # "int32", "Foo", "list", "BoundedList"
     args: tuple[TypeArg, ...] = ()  # generic args
 
 @dataclass
@@ -683,7 +683,7 @@ class Constant:
 
 v1 supported constant value types match TPy's `FinalType` set
 (`tpyc/typesys.py:1686`): numeric (`Int*`, `UInt*`, `int`, `float`,
-`Float32`), `Char`, `StrView`, and `tuple` of these. Top-level
+`float32`), `char`, `StrView`, and `tuple` of these. Top-level
 constants must have a value (no forward declarations). Class
 constants on generic classes are not supported. Plugins that need
 record-, container-, or map-typed compile-time constants must emit
@@ -1257,7 +1257,7 @@ not foreclose them.
     resolver work would let the IR carry string-valued and
     constant-reference type args.
 21. **Richer compile-time constants.** v1 restricts `Constant` to
-    `FinalType`-compatible values (numerics, `Char`, `StrView`,
+    `FinalType`-compatible values (numerics, `char`, `StrView`,
     tuples). Records, containers, and maps as compile-time constants
     require sema support beyond `FinalType`.
 22. **Version constraints on third-party deps.** The IR's

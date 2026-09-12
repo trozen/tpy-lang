@@ -13,7 +13,7 @@ void main() {
     // print(apply_swap(swap, 1, 2))            # (2, 1)
     std::cout << ::tpy::TuplePrinter(apply_swap(::tpyapp::helper::swap<int32_t, int32_t>, 1, 2)) << "\n";
     // # Cross-module generic ref as Callable local
-    // f: Callable[[Int32], Int32] = identity
+    // f: Callable[[int32], int32] = identity
     std::function<int32_t(int32_t)> f = ::tpyapp::helper::identity<int32_t>;
     // print(f(7))                               # 7
     std::cout << f(7) << "\n";

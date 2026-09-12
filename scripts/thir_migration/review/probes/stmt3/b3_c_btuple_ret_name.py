@@ -1,9 +1,9 @@
-from tpy import Int32, Own, Ptr, StrView, Char, Array
+from tpy import int32, Own, Ptr, StrView, char, Array
 class Box:
-    n: Int32
-    def __init__(self, n: Int32) -> None:
+    n: int32
+    def __init__(self, n: int32) -> None:
         self.n = n
-def a(d: dict[Int32, tuple[Int32, Box]]) -> tuple[Int32, Box]:
+def a(d: dict[int32, tuple[int32, Box]]) -> tuple[int32, Box]:
     return d[1]
 def main() -> None:
     print(1)

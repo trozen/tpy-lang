@@ -4,26 +4,26 @@
 # that call it changes nothing. Same warnings as warn_return_temp_receiver_borrow
 # with the declarations the other way round. The copy is the acknowledged
 # CPython divergence, so main prints only what both sides agree on.
-from tpy import Int32, Own, copy
+from tpy import int32, Own, copy
 
 
 class Wrapper:
-    def build(self, n: Int32) -> Own['Point']:
+    def build(self, n: int32) -> Own['Point']:
         # Own RETURN slot, forward-declared callee.
         return Point(n).updated()  # tpyc: warning(/copies Point into owned storage/)
 
-    def build_copy(self, n: Int32) -> Own['Point']:
+    def build_copy(self, n: int32) -> Own['Point']:
         return copy(Point(n).updated())  # tpyc: ok
 
-    def collect(self, n: Int32, xs: list['Point']) -> None:
+    def collect(self, n: int32, xs: list['Point']) -> None:
         # Element slot, same forward-declared callee.
         xs.append(Point(n).updated())  # tpyc: warning(/copies Point into owned storage/)
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
     def updated(self) -> 'Point':

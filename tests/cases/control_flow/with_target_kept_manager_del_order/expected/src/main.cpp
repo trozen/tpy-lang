@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def run(flag: bool) -> Int32:
+// def run(flag: bool) -> int32:
 int32_t run(bool flag) {
     std::optional<Owner> __slot_2;
     std::optional<Owner> __slot_3;

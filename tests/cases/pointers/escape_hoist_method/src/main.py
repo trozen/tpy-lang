@@ -1,9 +1,9 @@
-from tpy import Int32
+from tpy import int32
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32):
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32):
         self.x = x
         self.y = y
 
@@ -12,7 +12,7 @@ class Finder:
     def __init__(self) -> None:
         self.result = Point(0, 0)
 
-    def find_last(self, n: Int32) -> None:
+    def find_last(self, n: int32) -> None:
         saved: Point = Point(0, 0)
         for i in range(n):
             p: Point = Point(i, i * 2)

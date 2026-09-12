@@ -2,11 +2,11 @@
 # exceed _USAGE_TEXT_WIDTH (80), the help printer wraps the line
 # CPython-style: prog stays on row 1 (since it fits within 75% of
 # the width), and continuation lines indent to align past it.
-from tpy import Int32
+from tpy import int32
 from argparse import ArgumentParser
 
 
-def main() -> Int32:
+def main() -> int32:
     parser = ArgumentParser(
         prog="frobnicator",
         description="Many-flag CLI to exercise usage-line wrap.",

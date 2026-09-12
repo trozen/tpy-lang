@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def bump(bag: Bag) -> Iterator[Int32]:
+// def bump(bag: Bag) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_bump::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -40,7 +40,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_bump::__next__() {
 }
 
 
-// def bump(bag: Bag) -> Iterator[Int32]:
+// def bump(bag: Bag) -> Iterator[int32]:
 __gen_bump bump(Bag& bag) {
     return __gen_bump(bag);
 }

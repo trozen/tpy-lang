@@ -15,7 +15,7 @@ void main();
 
 // class Holder:
 struct Holder {
-    // pair: Pair[Int32]
+    // pair: Pair[int32]
     std::tuple<int32_t, int32_t> pair;
     // label: str
     std::string label;

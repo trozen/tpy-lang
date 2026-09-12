@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def consume(h: Own[Handle]) -> Int32:
+// def consume(h: Own[Handle]) -> int32:
 int32_t consume(Handle&& h) {
     // return h.fd
     return h.fd;

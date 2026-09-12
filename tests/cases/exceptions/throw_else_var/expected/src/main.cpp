@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def risky(x: Int32) -> Int32:
+// def risky(x: int32) -> int32:
 int32_t risky(int32_t x) {
     // if x < 0:
     if ((x < 0)) {

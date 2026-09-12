@@ -35,20 +35,20 @@ inline std::ostream& operator<<(std::ostream& os, const MyErr& obj) {
 
 // class Gauge:
 struct Gauge {
-    // raw: Int32
+    // raw: int32
     int32_t raw;
 
-    // def __init__(self, raw: Int32) -> None:
+    // def __init__(self, raw: int32) -> None:
     Gauge() = default;
     explicit Gauge(int32_t raw);
 
     // @property
     // @error_return(MyErr)
-    // def val(self) -> Int32:
+    // def val(self) -> int32:
     std::expected<int32_t, MyErr> val() const;
 
     // @error_return(MyErr)
-    // def scaled(self, k: Int32) -> Int32:
+    // def scaled(self, k: int32) -> int32:
     std::expected<int32_t, MyErr> scaled(int32_t k) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Gauge";
 };
@@ -59,12 +59,12 @@ inline std::ostream& operator<<(std::ostream& os, const Gauge& obj) {
 }
 
 
-// def __init__(self, raw: Int32) -> None:
+// def __init__(self, raw: int32) -> None:
 inline Gauge::Gauge(int32_t raw) : raw(raw) {}
 
 // @property
 // @error_return(MyErr)
-// def val(self) -> Int32:
+// def val(self) -> int32:
 inline std::expected<int32_t, MyErr> Gauge::val() const {
     // if self.raw < 0:
     if ((this->raw < 0)) {
@@ -76,7 +76,7 @@ inline std::expected<int32_t, MyErr> Gauge::val() const {
 }
 
 // @error_return(MyErr)
-// def scaled(self, k: Int32) -> Int32:
+// def scaled(self, k: int32) -> int32:
 inline std::expected<int32_t, MyErr> Gauge::scaled(int32_t k) const {
     // if self.raw < 0:
     if ((this->raw < 0)) {

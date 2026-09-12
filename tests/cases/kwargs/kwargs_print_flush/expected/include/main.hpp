@@ -17,13 +17,13 @@ void main();
 struct CountingSink {
     // parts: list[str]
     std::vector<std::string> parts;
-    // flushes: Int32
+    // flushes: int32
     int32_t flushes;
 
     // def __init__(self) -> None:
     CountingSink();
 
-    // def write(self, text: str) -> Int32:
+    // def write(self, text: str) -> int32:
     int32_t write(std::string_view text);
 
     // def flush(self) -> None:
@@ -40,17 +40,17 @@ inline std::ostream& operator<<(std::ostream& os, const CountingSink& obj) {
 // def __init__(self) -> None:
 inline CountingSink::CountingSink() : parts(std::vector<std::string>{}), flushes(0) {}
 
-// def write(self, text: str) -> Int32:
+// def write(self, text: str) -> int32:
 inline int32_t CountingSink::write(std::string_view text) {
     // self.parts.append(text)
     this->parts.push_back(std::string(text));
-    // return Int32(len(text))
+    // return int32(len(text))
     return ::tpy::__len__(text);
 }
 
 // def flush(self) -> None:
 inline void CountingSink::flush() {
-    // self.flushes += Int32(1)
+    // self.flushes += int32(1)
     this->flushes = ::tpy::add_check<int32_t>(this->flushes, 1);
 }
 void __tpy_init();

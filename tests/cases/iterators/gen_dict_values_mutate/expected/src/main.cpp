@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main():
 void main() {
-    // d: dict[str, list[Int32]] = {}
+    // d: dict[str, list[int32]] = {}
     ::tpy::ordered_map<std::string, std::vector<int32_t>> d = ::tpy::ordered_map<std::string, std::vector<int32_t>>();
     // d["a"] = [1]
     ::tpy::__setitem__(d, "a", std::vector<int32_t>{1});

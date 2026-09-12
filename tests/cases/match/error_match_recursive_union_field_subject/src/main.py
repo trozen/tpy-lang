@@ -1,7 +1,7 @@
 # A `match` whose subject is a FIELD holding a recursive-union alias: the
 # wrapper hop the dispatch needs is not spelled off a field read. Seating the
 # field also draws the ordinary copy-into-field warning.
-from tpy import Int32
+from tpy import int32
 
 type Tree[T] = T | list[Tree[T]]
 
@@ -13,7 +13,7 @@ class Holder:
         self.t = t
 
 
-def field_subject(h: Holder) -> Int32:
+def field_subject(h: Holder) -> int32:
     # The subject is a field of recursive-union type.
     match h.t:  # tpyc: error(/stmt\.match/)
         case int() as v:

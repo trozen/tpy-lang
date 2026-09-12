@@ -1,16 +1,16 @@
 # Test asdict()/astuple() with mixed types, nested dataclass, and list recursion
 from dataclasses import dataclass, asdict, astuple
-from tpy import Int32
+from tpy import int32
 
 @dataclass
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 @dataclass
 class Person:
     name: str
-    age: Int32
+    age: int32
 
 @dataclass
 class NamedPoint:
@@ -23,17 +23,17 @@ class Group:
     members: list[Point]
 
 def main() -> None:
-    # Mixed types: dict[str, str|Int32]
-    p = Person("Alice", Int32(30))
+    # Mixed types: dict[str, str|int32]
+    p = Person("Alice", int32(30))
     print(asdict(p))
     print(astuple(p))
 
     # Mixed with nested dataclass
-    np = NamedPoint("origin", Point(Int32(0), Int32(0)))
+    np = NamedPoint("origin", Point(int32(0), int32(0)))
     print(asdict(np))
 
     # List of dataclasses: recursed into list of dicts
-    g = Group("pts", [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))])
+    g = Group("pts", [Point(int32(1), int32(2)), Point(int32(3), int32(4))])
     print(asdict(g))
 
 main()

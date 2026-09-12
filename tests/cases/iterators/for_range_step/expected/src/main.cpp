@@ -7,10 +7,10 @@ namespace tpyapp::main {
 // n = 5
 int32_t n{};
 
-// # range with Int32 variables
-// def sum_range_step(start: Int32, stop: Int32, step: Int32) -> Int32:
+// # range with int32 variables
+// def sum_range_step(start: int32, stop: int32, step: int32) -> int32:
 int32_t sum_range_step(int32_t start, int32_t stop, int32_t step) {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for i in range(start, stop, step):
     int32_t __start_0 = start;

@@ -17,7 +17,7 @@ struct Ops {
 
     // @staticmethod
     // @readonly
-    // def plus_one(x: Int32) -> Int32:
+    // def plus_one(x: int32) -> int32:
     static int32_t plus_one(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Ops";
 };
@@ -30,7 +30,7 @@ inline std::ostream& operator<<(std::ostream& os, const Ops& obj) {
 
 // @staticmethod
 // @readonly
-// def plus_one(x: Int32) -> Int32:
+// def plus_one(x: int32) -> int32:
 inline int32_t Ops::plus_one(int32_t x) {
     // return x + 1
     return (::tpy::add_check<int32_t>(x, 1));

@@ -2,11 +2,11 @@
 # canonical grouping idiom d.setdefault(k, []).append(x) mutates the dict.
 # Value-type values keep copy returns (rebinding the result leaves the
 # dict untouched -- CPython-identical for immutable values).
-from tpy import Int32
+from tpy import int32
 
 
 def main():
-    groups: dict[str, list[Int32]] = {}
+    groups: dict[str, list[int32]] = {}
     groups.setdefault("a", []).append(1)
     groups.setdefault("a", []).append(2)
     groups.setdefault("b", []).append(3)
@@ -14,12 +14,12 @@ def main():
     print(groups["a"])
 
     # Binding form: the result aliases the stored value (CPython identity).
-    d: dict[str, list[Int32]] = {}
+    d: dict[str, list[int32]] = {}
     lst = d.setdefault("k", [])
     lst.append(42)
     print(d["k"])
 
-    counts: dict[str, Int32] = {}
+    counts: dict[str, int32] = {}
     n = counts.setdefault("hits", 5)
     n = n + 1
     print(n, counts["hits"])

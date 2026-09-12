@@ -1,22 +1,22 @@
 # assert isinstance with a message: narrowing persists after the guard
-from tpy import Int32
+from tpy import int32
 
 class Circle:
-    radius: Int32
-    def __init__(self, r: Int32) -> None:
+    radius: int32
+    def __init__(self, r: int32) -> None:
         self.radius = r
 
 class Rect:
-    width: Int32
-    def __init__(self, w: Int32) -> None:
+    width: int32
+    def __init__(self, w: int32) -> None:
         self.width = w
 
-def get_radius(s: Circle | Rect) -> Int32:
+def get_radius(s: Circle | Rect) -> int32:
     assert isinstance(s, Circle), "expected a Circle"
     return s.radius
 
 def main() -> None:
-    c: Circle | Rect = Circle(Int32(7))
+    c: Circle | Rect = Circle(int32(7))
     print(get_radius(c))
 
 main()

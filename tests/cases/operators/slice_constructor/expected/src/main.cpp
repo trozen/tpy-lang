@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // items: list[Int32] = [10, 20, 30, 40, 50]
+    // items: list[int32] = [10, 20, 30, 40, 50]
     std::vector<int32_t> items = {10, 20, 30, 40, 50};
     // # basic_slice constructor
     // s = basic_slice(1, 4)

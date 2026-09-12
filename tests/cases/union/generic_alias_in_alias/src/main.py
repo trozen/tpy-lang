@@ -1,13 +1,13 @@
 # Alias composition: a non-generic alias refers to a generic alias's
 # instantiation. Substitution chains through naturally.
-from tpy import Int32
+from tpy import int32
 
 type Pair[T] = tuple[T, T]
-type IntPair = Pair[Int32]
+type IntPair = Pair[int32]
 
 
 def main() -> None:
-    p: IntPair = (Int32(3), Int32(7))  # tpyc: type(/tuple\[Int32, Int32\]/)
+    p: IntPair = (int32(3), int32(7))  # tpyc: type(/tuple\[int32, int32\]/)
     print(p)
 
 

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def steps(start: Int32) -> Iterator[Int32]:
+// def steps(start: int32) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_steps::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -51,7 +51,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_steps::__next__() {
 }
 
 
-// def steps(start: Int32) -> Iterator[Int32]:
+// def steps(start: int32) -> Iterator[int32]:
 __gen_steps steps(int32_t start) {
     return __gen_steps(start);
 }

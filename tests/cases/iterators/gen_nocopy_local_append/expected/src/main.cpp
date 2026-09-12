@@ -4,11 +4,11 @@
 namespace tpyapp::main {
 
 
-// def collect() -> Iterator[Int32]:
+// def collect() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_collect::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // boxes: list[Box[Int32]] = []
+        // boxes: list[Box[int32]] = []
         boxes.emplace(std::vector<::tpystd::tplib::box::Box<int32_t>>{});
         // a = Box(7)
         a.emplace(::tpystd::tplib::box::Box<int32_t>(7));
@@ -33,7 +33,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_collect::__next__() {
 }
 
 
-// def collect() -> Iterator[Int32]:
+// def collect() -> Iterator[int32]:
 __gen_collect collect() {
     return __gen_collect();
 }

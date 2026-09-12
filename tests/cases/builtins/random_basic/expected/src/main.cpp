@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // random.seed(Int32(42))
+    // random.seed(int32(42))
     ::tpystd::random::seed(42);
     // a = random.random()
     double a = ::tpystd::random::random();
@@ -22,7 +22,7 @@ void main() {
     // print(b < 1.0)   # True
     std::cout << ::tpy::print_bool((b < 1.0)) << "\n";
     // # Same seed should give same sequence
-    // random.seed(Int32(42))
+    // random.seed(int32(42))
     ::tpystd::random::seed(42);
     // c = random.random()
     double c = ::tpystd::random::random();

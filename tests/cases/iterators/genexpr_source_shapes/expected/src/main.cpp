@@ -83,7 +83,7 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    // xs: list[Int32 | None] = [1, None, 3]
+    // xs: list[int32 | None] = [1, None, 3]
     std::vector<std::optional<int32_t>> xs = {1, std::nullopt, 3};
     // # A value-repr Optional[scalar] loop var binds the typed optional copy and
     // # the filter reads it whole.

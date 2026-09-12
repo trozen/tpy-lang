@@ -31,10 +31,10 @@ void main();
 
 // class Limiter:
 struct Limiter {
-    // limit: Int32
+    // limit: int32
     int32_t limit;
 
-    // def __init__(self, limit: Int32) -> None:
+    // def __init__(self, limit: int32) -> None:
     Limiter() = default;
     explicit Limiter(int32_t limit);
 
@@ -267,7 +267,7 @@ inline __gen_Limiter_first_positives Limiter::first_positives(std::vector<int32_
 }
 
 
-// def __init__(self, limit: Int32) -> None:
+// def __init__(self, limit: int32) -> None:
 inline Limiter::Limiter(int32_t limit) : limit(limit) {}
 void __tpy_init();
 } // namespace tpyapp::main

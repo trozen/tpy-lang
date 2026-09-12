@@ -6,17 +6,17 @@
 # here; see error_rc_set_add for the `set()` + `.add()` form). The
 # restriction is a runtime limitation, not a language design choice --
 # a future runtime redesign could lift it.
-from tpy import Int32
+from tpy import int32
 from tplib import Rc
 
 
 class Key:
-    value: Int32
+    value: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.value = v
 
-    def __hash__(self) -> Int32:
+    def __hash__(self) -> int32:
         return self.value
 
     def __eq__(self, other: Key) -> bool:

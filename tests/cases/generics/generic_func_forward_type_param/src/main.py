@@ -1,9 +1,9 @@
 # Forwarding type params as explicit type args to other generic functions.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Box:
-    value: Int32
+    value: int32
 
 
 def sink[T](x: Own[T]) -> None:
@@ -43,9 +43,9 @@ def main():
     wrapper[Box](b)
 
     nums = [1, 2, 3]
-    result = wrap_list[Int32](nums)
+    result = wrap_list[int32](nums)
     print(result)
 
-    print(multi[Int32, Int32](10, 20))
+    print(multi[int32, int32](10, 20))
 
     print("done")

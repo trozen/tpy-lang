@@ -1,7 +1,7 @@
 # Callable | None (optional callbacks): field form + param form (lambda /
 # function-by-name / None default, including inside a generator).
 from typing import Callable, Iterator
-from tpy import Int32
+from tpy import int32
 
 class Emitter:
     on_event: Callable[[str], None] | None
@@ -19,27 +19,27 @@ class Emitter:
     def __str__(self) -> str:
         return "Emitter(...)"
 
-def run(n: Int32, hook: Callable[[Int32], None] | None = None) -> None:
+def run(n: int32, hook: Callable[[int32], None] | None = None) -> None:
     if hook is not None:
         hook(n)
 
 
 # Non-void return: the narrowed optional callable's result is used.
-def apply(n: Int32, f: Callable[[Int32], Int32] | None = None) -> Int32:
+def apply(n: int32, f: Callable[[int32], int32] | None = None) -> int32:
     if f is not None:
         return f(n)
     return n
 
 
-def report(code: Int32) -> None:
+def report(code: int32) -> None:
     print("report:", code)
 
 
-def triple(x: Int32) -> Int32:
+def triple(x: int32) -> int32:
     return x * 3
 
 
-def scan(n: Int32, onerror: Callable[[Int32], None] | None = None) -> Iterator[Int32]:
+def scan(n: int32, onerror: Callable[[int32], None] | None = None) -> Iterator[int32]:
     i = 0
     while i < n:
         if i == 1 and onerror is not None:

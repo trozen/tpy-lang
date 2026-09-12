@@ -1,18 +1,18 @@
 # An empty-list local whose element evidence comes only from an in-loop
 # .append() must resolve at post-loop use sites (loop_scope reverts the in-loop
 # binding, so the pending list reaches the use site as PendingList[Unknown]).
-from tpy import Int32, Int64, Own
+from tpy import int32, int64, Own
 
 
-def collect_for(xs: list[Int32]) -> Own[list[Int32]]:
+def collect_for(xs: list[int32]) -> Own[list[int32]]:
     out = []
     for x in xs:
         out.append(x)
     return out
 
 
-def widen_collect(xs: list[Int32]) -> Own[list[Int64]]:
-    # In-loop Int32 element must still widen to the declared Int64 -- the
+def widen_collect(xs: list[int32]) -> Own[list[int64]]:
+    # In-loop int32 element must still widen to the declared int64 -- the
     # canonical-element use-site check allows coercion, not just exact match.
     out = []
     for x in xs:
@@ -20,7 +20,7 @@ def widen_collect(xs: list[Int32]) -> Own[list[Int64]]:
     return out
 
 
-def collect_while(n: Int32) -> Own[list[Int32]]:
+def collect_while(n: int32) -> Own[list[int32]]:
     out = []
     i = 0
     while i < n:
@@ -29,7 +29,7 @@ def collect_while(n: Int32) -> Own[list[Int32]]:
     return out
 
 
-def collect_cond(xs: list[Int32]) -> Own[list[Int32]]:
+def collect_cond(xs: list[int32]) -> Own[list[int32]]:
     out = []
     for x in xs:
         if x % 2 == 0:
@@ -44,14 +44,14 @@ def generic_collect[T](xs: list[T]) -> Own[list[T]]:
     return out
 
 
-def total(ys: list[Int32]) -> Int32:
+def total(ys: list[int32]) -> int32:
     return len(ys)
 
 
 class Counter:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 

@@ -1,4 +1,4 @@
-BigInt expressions -> Int32:
+BigInt expressions -> int32:
 30
 60
 35
@@ -11,7 +11,7 @@ Field access -> Ptr:
 Nested field -> Ptr:
 107
 115
-Literal expressions -> Int32:
+Literal expressions -> int32:
 60
 50
 150

@@ -1,12 +1,12 @@
 # Test tuple[T | None, ...] of a record T as a function parameter.
 # Lowers to const std::tuple<const T*, const T*>& -- pointer form, no copies.
 # Construction at call site uses & for lvalues, nullptr for None.
-from tpy import Int32
+from tpy import int32
 
 
 class T:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 

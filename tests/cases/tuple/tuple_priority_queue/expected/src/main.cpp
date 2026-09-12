@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // pq: list[tuple[Int32, str]] = []
+    // pq: list[tuple[int32, str]] = []
     std::vector<std::tuple<int32_t, std::string>> pq = std::vector<std::tuple<int32_t, std::string>>{};
     // heappush(pq, (3, "third"))
     ::tpystd::heapq::heappush<std::tuple<int32_t, std::string>>(pq, std::tuple<int32_t, std::string>{3, "third"});

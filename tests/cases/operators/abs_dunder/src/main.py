@@ -1,13 +1,13 @@
 # Regression: abs() dispatches to a user type's __abs__ (the builtin abs
 # overloads only covered numeric types; abs(user_type) errored). Mirrors
 # CPython's abs() -> x.__abs__().
-from tpy import Int32, ValueType
+from tpy import int32, ValueType
 
 
 class Temp(ValueType):
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
     def __abs__(self) -> "Temp":

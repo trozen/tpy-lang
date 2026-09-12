@@ -5,7 +5,7 @@ namespace tpyapp::c {
 
 // # Underscore-prefixed name is private by convention but explicit
 // # imports still see it.
-// _secret_value: Int32 = Int32(99)
+// _secret_value: int32 = int32(99)
 int32_t _secret_value{};
 
 void __tpy_init() {
@@ -15,7 +15,7 @@ void __tpy_init() {
 
     // # Underscore-prefixed name is private by convention but explicit
     // # imports still see it.
-    // _secret_value: Int32 = Int32(99)
+    // _secret_value: int32 = int32(99)
     _secret_value = 99;
 }
 

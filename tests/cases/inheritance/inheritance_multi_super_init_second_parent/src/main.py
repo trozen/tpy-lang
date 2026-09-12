@@ -2,7 +2,7 @@
 # to the second base (HasInit) which is the MRO-first __init__-base. The
 # coverage validator accepts this single super() call (HasInit is the only
 # base with __init__).
-from tpy import Int32
+from tpy import int32
 
 
 class NoInitMixin:
@@ -10,19 +10,19 @@ class NoInitMixin:
 
 
 class HasInit:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
 class C(NoInitMixin, HasInit):
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         super().__init__(x)
 
 
 def main() -> None:
-    c = C(Int32(7))
+    c = C(int32(7))
     print(c.x)
 
 

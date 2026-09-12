@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def double_rvalue_reseat() -> Int32:
+// def double_rvalue_reseat() -> int32:
 int32_t double_rvalue_reseat() {
     // p: Inner | None
     Inner* p = nullptr;
@@ -22,7 +22,7 @@ int32_t double_rvalue_reseat() {
     return 0;
 }
 
-// def lvalue_reseat(b: Box) -> Int32:
+// def lvalue_reseat(b: Box) -> int32:
 int32_t lvalue_reseat(Box& b) {
     // p: Inner | None = None
     Inner* p = nullptr;

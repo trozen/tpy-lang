@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 
 # Test string comparison operators
 
@@ -103,9 +103,9 @@ def test_comparison_with_literals() -> None:
     if name < "Bob":
         print("Alice < Bob: yes")
 
-def find_string(items: list[str], target: str) -> Int32:
+def find_string(items: list[str], target: str) -> int32:
     """Find index of string in list, -1 if not found."""
-    i: Int32 = 0
+    i: int32 = 0
     while i < len(items):
         if items[i] == target:
             return i
@@ -116,7 +116,7 @@ def test_comparison_in_loop() -> None:
     """Test string comparison in a loop."""
     names: list[str] = ["Alice", "Bob", "Charlie"]
 
-    idx: Int32 = find_string(names, "Bob")
+    idx: int32 = find_string(names, "Bob")
     print(idx)
 
     idx = find_string(names, "Dave")

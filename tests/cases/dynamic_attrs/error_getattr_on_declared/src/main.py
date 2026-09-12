@@ -1,5 +1,5 @@
 # D16 Phase 1: getattr(obj, "declared_field") is rejected; use direct attribute access.
-from tpy import Int32
+from tpy import int32
 from typing import Any
 
 class Bag:

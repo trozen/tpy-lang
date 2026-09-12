@@ -17,10 +17,10 @@ void main();
 
 // class Row:
 struct Row {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Row() = default;
     explicit Row(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Row";
@@ -65,7 +65,7 @@ inline std::ostream& operator<<(std::ostream& os, const Picker& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Row::Row(int32_t v) : v(v) {}
 
 // def take(self, rows: list[Row]) -> Own[Row]:

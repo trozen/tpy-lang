@@ -33,7 +33,7 @@ void test_loop() {
     std::cout << "alive:" << " " << r->name << "\n";
 }
 
-// def test_conditional(flag: Int32):
+// def test_conditional(flag: int32):
 void test_conditional(int32_t flag) {
     std::optional<Resource> __slot_2;
     // r = Resource("start")

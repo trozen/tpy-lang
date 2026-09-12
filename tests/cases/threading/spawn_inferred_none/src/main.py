@@ -3,15 +3,15 @@
 # void-like return and canonicalizes to None; the generated ThreadTask concept
 # accepts the void-returning conformer via proto_result). The task is @nocopy
 # so a silent copy at the spawn boundary would be a compile error.
-from tpy import Int32, nocopy
+from tpy import int32, nocopy
 from tpy.thread import spawn
 
 
 @nocopy
 class Beacon:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
     def run(self) -> None:

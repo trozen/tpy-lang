@@ -1,5 +1,5 @@
 # User-defined __hash__ method and Hashable protocol conformance
-from tpy import UInt64, Hashable
+from tpy import uint64, Hashable
 
 class Point:
     x: int
@@ -7,10 +7,10 @@ class Point:
     def __init__(self, x: int, y: int) -> None:
         self.x = x
         self.y = y
-    def __hash__(self) -> UInt64:
+    def __hash__(self) -> uint64:
         return hash(self.x) ^ hash(self.y)
 
-def get_hash(x: Hashable) -> UInt64:
+def get_hash(x: Hashable) -> uint64:
     return hash(x)
 
 def main() -> None:

@@ -1,9 +1,9 @@
 # Duplicate method definition in the same class should be an error.
-from tpy import Int32
+from tpy import int32
 
 class Foo:
-    def bar(self) -> Int32:
-        return Int32(1)
+    def bar(self) -> int32:
+        return int32(1)
 
-    def bar(self) -> Int32:  # tpyc: error(/defined twice/)
-        return Int32(2)
+    def bar(self) -> int32:  # tpyc: error(/defined twice/)
+        return int32(2)

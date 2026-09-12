@@ -6,16 +6,16 @@
 # and the appended element is observed (a copy would miss it); the mutation
 # also fires the `while borrowed` lint, matching the free-function form.
 from typing import Iterator, Iterable
-from tpy import Int32
+from tpy import int32
 
 
 class Repeater:
-    times: Int32
+    times: int32
 
-    def __init__(self, times: Int32) -> None:
+    def __init__(self, times: int32) -> None:
         self.times = times
 
-    def run(self, it: Iterable[Int32]) -> Iterator[Int32]:
+    def run(self, it: Iterable[int32]) -> Iterator[int32]:
         xs = it
         for x in xs:
             for _ in range(self.times):

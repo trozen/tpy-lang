@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // @error_return(E)
-// def may_fail(x: Int32) -> Int32:
+// def may_fail(x: int32) -> int32:
 std::expected<int32_t, E> may_fail(int32_t x) {
     // if x < 0:
     if ((x < 0)) {
@@ -17,7 +17,7 @@ std::expected<int32_t, E> may_fail(int32_t x) {
 }
 
 // @error_return(E)
-// def falls_through() -> Int32:
+// def falls_through() -> int32:
 std::expected<int32_t, E> falls_through() {
     // try:
     int32_t v;
@@ -53,7 +53,7 @@ std::expected<int32_t, E> falls_through() {
 }
 
 // @error_return(E)
-// def returns_from_finally() -> Int32:
+// def returns_from_finally() -> int32:
 std::expected<int32_t, E> returns_from_finally() {
     // try:
     int32_t v;

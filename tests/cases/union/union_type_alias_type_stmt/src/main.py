@@ -1,18 +1,18 @@
 # Type alias using Python 3.12 'type' statement syntax
-from tpy import Int32
+from tpy import int32
 
 
 class Dog:
-    age: Int32
+    age: int32
 
-    def __init__(self, age: Int32) -> None:
+    def __init__(self, age: int32) -> None:
         self.age = age
 
 
 class Cat:
-    age: Int32
+    age: int32
 
-    def __init__(self, age: Int32) -> None:
+    def __init__(self, age: int32) -> None:
         self.age = age
 
 
@@ -27,8 +27,8 @@ def describe(p: Pet) -> str:
 
 
 def main() -> None:
-    d: Pet = Dog(Int32(3))
-    c: Pet = Cat(Int32(5))
+    d: Pet = Dog(int32(3))
+    c: Pet = Cat(int32(5))
     print(describe(d))
     print(describe(c))
 

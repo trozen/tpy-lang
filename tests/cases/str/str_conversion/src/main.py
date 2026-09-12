@@ -1,5 +1,5 @@
 # Test str() conversion function
-from tpy import Int32, Char
+from tpy import int32, char
 
 # Empty string
 print(str())  # empty
@@ -11,14 +11,14 @@ print(str("hello"))  # hello
 print(str(True))   # True
 print(str(False))  # False
 
-# From Char (static lookup - safe)
-c: Char = "A"
+# From char (static lookup - safe)
+c: char = "A"
 print(str(c))  # A
 
-# From Int32 (inline usage - safe)
-print(str(Int32(42)))    # 42
-print(str(Int32(-123)))  # -123
-print(str(Int32(0)))     # 0
+# From int32 (inline usage - safe)
+print(str(int32(42)))    # 42
+print(str(int32(-123)))  # -123
+print(str(int32(0)))     # 0
 
 # From int/BigInt (inline usage - safe)
 print(str(12345))         # 12345

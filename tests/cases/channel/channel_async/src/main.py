@@ -3,15 +3,15 @@
 # The @nocopy payload forces move-through-channel -- a silent copy at send or
 # recv would be a compile error.
 import asyncio
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 from tpy.channel import channel, Sender, Receiver, ChannelClosed
 
 
 @nocopy
 class Counter:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 

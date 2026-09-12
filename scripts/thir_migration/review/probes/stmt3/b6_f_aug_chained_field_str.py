@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 class Inner:
     t: str
     def __init__(self) -> None:

@@ -22,14 +22,14 @@ void main();
 
 // class IntBox:
 struct IntBox {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     IntBox() = default;
     explicit IntBox(int32_t v);
 
-    // def get(self) -> Int32:
+    // def get(self) -> int32:
     int32_t get() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.IntBox";
 };
@@ -60,10 +60,10 @@ inline std::ostream& operator<<(std::ostream& os, const Runner<R>& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline IntBox::IntBox(int32_t v) : v(v) {}
 
-// def get(self) -> Int32:
+// def get(self) -> int32:
 inline int32_t IntBox::get() const {
     // return self.v
     return this->v;

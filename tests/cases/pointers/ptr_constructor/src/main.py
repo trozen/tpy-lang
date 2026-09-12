@@ -1,9 +1,9 @@
-from tpy import Ptr, Int32, readonly
+from tpy import Ptr, int32, readonly
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32) -> None:
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 
@@ -18,8 +18,8 @@ def read_via_constptr(p: Ptr[readonly[Point]]) -> None:
 def test_null_constructors() -> None:
     p1: Ptr[None] = Ptr[None]()
     p2: Ptr[readonly[None]] = Ptr[readonly[None]]()
-    p3: Ptr[Int32] = Ptr[Int32]()
-    p4: Ptr[readonly[Int32]] = Ptr[readonly[Int32]]()
+    p3: Ptr[int32] = Ptr[int32]()
+    p4: Ptr[readonly[int32]] = Ptr[readonly[int32]]()
     print("null ok")
 
 def test_ptr_explicit() -> None:
@@ -45,7 +45,7 @@ def test_constptr_inferred() -> None:
 def test_ptr_write() -> None:
     pt: Point = Point(1, 2)
     pp: Ptr[Point] = pt
-    pp.x = Int32(99)
+    pp.x = int32(99)
     print(pt.x)
 
 test_null_constructors()

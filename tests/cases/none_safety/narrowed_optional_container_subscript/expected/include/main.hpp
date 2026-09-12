@@ -22,16 +22,16 @@ void main();
 
 // class Doubler:
 struct Doubler {
-    // n: Int32
+    // n: int32
     int32_t n;
 
     // def __init__(self) -> None:
     Doubler();
 
-    // def __len__(self) -> Int32:
+    // def __len__(self) -> int32:
     int32_t __len__() const;
 
-    // def __getitem__(self, i: Int32) -> Int32:
+    // def __getitem__(self, i: int32) -> int32:
     int32_t __getitem__(int32_t i) const;
 
     int32_t operator[](int32_t i) const {
@@ -55,13 +55,13 @@ inline std::ostream& operator<<(std::ostream& os, const Doubler& obj) {
 // def __init__(self) -> None:
 inline Doubler::Doubler() : n(3) {}
 
-// def __len__(self) -> Int32:
+// def __len__(self) -> int32:
 inline int32_t Doubler::__len__() const {
     // return self.n
     return this->n;
 }
 
-// def __getitem__(self, i: Int32) -> Int32:
+// def __getitem__(self, i: int32) -> int32:
 inline int32_t Doubler::__getitem__(int32_t i) const {
     // return i * 2
     return (::tpy::mul_check<int32_t>(i, 2));

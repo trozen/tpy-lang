@@ -1,1 +1,1 @@
-main.py:8: error: Type mismatch in reassignment to 'x': expected Int32, got str
+main.py:8: error: Type mismatch in reassignment to 'x': expected int32, got str

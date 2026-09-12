@@ -1,15 +1,15 @@
 # Or-patterns with a None alternative on an Optional subject: `None | _`
 # covers both sides (exhaustive, no warning); `None | 5` covers None only.
-from tpy import Int32
+from tpy import int32
 
 
-def all_arm(v: Int32 | None) -> None:
+def all_arm(v: int32 | None) -> None:
     match v:  # tpyc: ok
         case None | _:
             print("any")
 
 
-def none_or_five(v: Int32 | None) -> None:
+def none_or_five(v: int32 | None) -> None:
     match v:
         case None | 5:
             print("none-or-five")

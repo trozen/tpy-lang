@@ -28,8 +28,8 @@ Fields are declared via class-level type annotations:
 
 ```python
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 ```
 
 These generate C++ struct members:
@@ -49,7 +49,7 @@ Simple `self.field = value` assignments at the top level of `__init__` are extra
 class Dog(Animal):
     breed: str
 
-    def __init__(self, name: str, age: Int32, breed: str):
+    def __init__(self, name: str, age: int32, breed: str):
         super().__init__(name, age)
         self.breed = breed
 ```
@@ -67,13 +67,13 @@ When `__init__` has any compound statements, field assignments inside those stat
 
 ```python
 class Wrapper:
-    tag: Int32
+    tag: int32
 
-    def __init__(self, p: Own[Point] | None, tag: Int32):
+    def __init__(self, p: Own[Point] | None, tag: int32):
         if p is not None:
             self.tag = tag
         else:
-            self.tag = Int32(-1)
+            self.tag = int32(-1)
 ```
 
 Generates:
@@ -111,22 +111,22 @@ The recommended style is to declare fields as class-level annotations (makes str
 ```python
 # Recommended: explicit annotations + __init__
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32):
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32):
         self.x = x
         self.y = y
 
 # Supported: __init__ only (CPython-compatible, no annotations)
 class Point:
-    def __init__(self, x: Int32, y: Int32):
-        self.x = x  # Auto-declares field x: Int32
-        self.y = y  # Auto-declares field y: Int32
+    def __init__(self, x: int32, y: int32):
+        self.x = x  # Auto-declares field x: int32
+        self.y = y  # Auto-declares field y: int32
 
 # Annotations only -- requires @dataclass or explicit __init__ to construct
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 ```
 
 Type inference rules for auto-declared fields:
@@ -218,26 +218,26 @@ See the split-point table in Decision 2. The key distinction is whether the fiel
 
 ```python
 class Bad:
-    x: Int32
+    x: int32
     y: Handle  # Handle has no default ctor
 
-    def __init__(self, x: Int32):
+    def __init__(self, x: int32):
         self.x = x
         # error: field 'y' has no default constructor and is not initialized
 
 class Warn:
-    x: Int32
-    y: Int32   # default-constructible (will be 0 in C++, but absent in CPython)
+    x: int32
+    y: int32   # default-constructible (will be 0 in C++, but absent in CPython)
 
-    def __init__(self, x: Int32):
+    def __init__(self, x: int32):
         self.x = x
         # warning: field 'y' not initialized; will be default-constructed in C++
 
 class OK:
-    x: Int32
-    y: Int32 = 0   # has class-level default
+    x: int32
+    y: int32 = 0   # has class-level default
 
-    def __init__(self, x: Int32):
+    def __init__(self, x: int32):
         self.x = x
         # OK: 'y' has a class-level default value
 ```
@@ -253,9 +253,9 @@ from dataclasses import dataclass
 
 @dataclass
 class Point:
-    x: Int32
-    y: Int32
-    # Auto-generated __init__(self, x: Int32, y: Int32)
+    x: int32
+    y: int32
+    # Auto-generated __init__(self, x: int32, y: int32)
 ```
 
 This is a separate feature from the core constructor design and will be implemented later. For now, classes without `__init__` require `@dataclass` for constructor synthesis.
@@ -308,6 +308,6 @@ Note: classes with only field annotations and no `__init__` cannot be constructe
 
 3. ~~**Inherited fields in `__init__`**~~: Resolved -- `self.inherited_field = value` in `__init__` is accepted as part of the init section (same as own fields), so it goes into the C++ member initializer list. Both `super().__init__(args)` and direct assignment of inherited fields are valid patterns.
 
-4. **`= default` for records with required `__init__` params**: A record like `class Handle: id: Int32; def __init__(self, id: Int32)` gets `Handle() = default;` emitted because `id: Int32` is C++-default-constructible. This is intentional: sema rejects user-level `Handle()` (the `__init__` requires `id`), but the C++ default ctor must exist so internal codegen paths (`std::array<Handle, N>` slots, parent-record `= default;`, `std::variant` default alternative) compile. For aggregate records (no `__init__`) whose fields aren't all default-constructible, sema instead rejects zero-arg `Point()` with a clean diagnostic (see `tpyc/sema/calls.py::_validate_aggregate_zero_arg`). The remaining "implicitly deleted" path -- a subclass `__init__` that omits `super().__init__(...)` over a parent whose own default ctor is implicitly deleted (because of a `@nocopy`/`__del__` field, etc.) -- is rejected by `tpyc/sema/analyzer.py::_require_super_init_for_non_default_base`, so the cascading C++ error is no longer reachable from user code.
+4. **`= default` for records with required `__init__` params**: A record like `class Handle: id: int32; def __init__(self, id: int32)` gets `Handle() = default;` emitted because `id: int32` is C++-default-constructible. This is intentional: sema rejects user-level `Handle()` (the `__init__` requires `id`), but the C++ default ctor must exist so internal codegen paths (`std::array<Handle, N>` slots, parent-record `= default;`, `std::variant` default alternative) compile. For aggregate records (no `__init__`) whose fields aren't all default-constructible, sema instead rejects zero-arg `Point()` with a clean diagnostic (see `tpyc/sema/calls.py::_validate_aggregate_zero_arg`). The remaining "implicitly deleted" path -- a subclass `__init__` that omits `super().__init__(...)` over a parent whose own default ctor is implicitly deleted (because of a `@nocopy`/`__del__` field, etc.) -- is rejected by `tpyc/sema/analyzer.py::_require_super_init_for_non_default_base`, so the cascading C++ error is no longer reachable from user code.
 
 5. ~~**Auto-declare + control flow**~~: Resolved -- auto-declare only from top-level statements. Assignments inside control flow require an explicit annotation, otherwise error.

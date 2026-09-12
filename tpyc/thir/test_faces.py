@@ -21,14 +21,14 @@ def _reject(component: str) -> None:
         reject_attempt(component)
 
 _SELF_SRC = (
-    "from tpy import Int32\n"
+    "from tpy import int32\n"
     "class A:\n"
-    "    n: Int32\n"
-    "    def __init__(self, n: Int32):\n"
+    "    n: int32\n"
+    "    def __init__(self, n: int32):\n"
     "        self.n = n\n"
-    "    def helper(self) -> Int32:\n"
+    "    def helper(self) -> int32:\n"
     "        return self.n\n"
-    "    def run(self) -> Int32:\n"
+    "    def run(self) -> int32:\n"
     "        return self.helper()\n"
 )
 

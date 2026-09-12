@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 def main() -> None:
     c = True
     if (1 if c else 2):

@@ -6,13 +6,13 @@
 # `stamped()` leg observes it after the boundary. The `@nocopy` leg proves the
 # deferral still MOVES rather than copies.
 from typing import Self
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 
 
 class Ticket:
-    id: Int32
+    id: int32
 
-    def __init__(self, id: Int32) -> None:
+    def __init__(self, id: int32) -> None:
         self.id = id
 
     # The subject: the finally mutates the receiver the return hands back.
@@ -32,9 +32,9 @@ class Ticket:
 
 @nocopy
 class Badge:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     # A copy here cannot compile, so the deferred capture must be a move.

@@ -4,17 +4,17 @@
 # source list -- matching CPython and the plain pointer-form loop var. The
 # value element (idx) copies. Both survive the yield.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
 class Item:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
-def process(rows: list[tuple[Int32, Item]]) -> Iterator[Int32]:  # tpyc: ok
+def process(rows: list[tuple[int32, Item]]) -> Iterator[int32]:  # tpyc: ok
     for idx, it in rows:
         it.n = idx * 100      # mutate the reference element
         yield idx             # suspend; idx (value) and it (ref) must survive
@@ -22,7 +22,7 @@ def process(rows: list[tuple[Int32, Item]]) -> Iterator[Int32]:  # tpyc: ok
 
 
 def main() -> None:
-    rows: list[tuple[Int32, Item]] = [(1, Item(0)), (2, Item(0))]
+    rows: list[tuple[int32, Item]] = [(1, Item(0)), (2, Item(0))]
     for v in process(rows):
         print(v)
     # Mutations through the unpacked reference propagated to the source.

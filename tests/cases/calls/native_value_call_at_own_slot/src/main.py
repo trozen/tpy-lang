@@ -1,9 +1,9 @@
 # A bytes method result (`v.strip()`) passed straight to a user function's
 # `Own[bytes]` parameter: it compiles, and `take` prints the stripped length.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
-def take(b: Own[bytes]) -> Int32:
+def take(b: Own[bytes]) -> int32:
     return len(b)
 
 

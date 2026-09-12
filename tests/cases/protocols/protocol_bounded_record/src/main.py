@@ -1,5 +1,5 @@
 from typing import Protocol
-from tpy import Int32, Own, Comparable
+from tpy import int32, Own, Comparable
 
 # A generic record with a bounded type parameter
 class SortedPair[T: Comparable]:
@@ -16,13 +16,13 @@ class SortedPair[T: Comparable]:
 
 # Protocol that references the bounded generic record
 class PairFactory(Protocol):
-    def make_pair(self, a: Int32, b: Int32) -> Own[SortedPair[Int32]]: ...
+    def make_pair(self, a: int32, b: int32) -> Own[SortedPair[int32]]: ...
 
 class DefaultPairFactory:
-    def make_pair(self, a: Int32, b: Int32) -> Own[SortedPair[Int32]]:
-        return SortedPair[Int32](a, b)
+    def make_pair(self, a: int32, b: int32) -> Own[SortedPair[int32]]:
+        return SortedPair[int32](a, b)
 
-def create_pair[T: PairFactory](factory: T, a: Int32, b: Int32) -> Own[SortedPair[Int32]]:
+def create_pair[T: PairFactory](factory: T, a: int32, b: int32) -> Own[SortedPair[int32]]:
     return factory.make_pair(a, b)
 
 def main() -> None:

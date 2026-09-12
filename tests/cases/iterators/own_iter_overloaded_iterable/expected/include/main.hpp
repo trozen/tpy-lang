@@ -26,10 +26,10 @@ void main();
 
 // class Item:
 struct Item {
-    // key: Int32
+    // key: int32
     int32_t key;
 
-    // def __init__(self, key: Int32) -> None:
+    // def __init__(self, key: int32) -> None:
     Item() = default;
     explicit Item(int32_t key);
 
@@ -116,7 +116,7 @@ __gen_each_twice<T> each_twice(std::vector<T>& xs) {
 }
 
 
-// def __init__(self, key: Int32) -> None:
+// def __init__(self, key: int32) -> None:
 inline Item::Item(int32_t key) : key(key) {}
 
 // def __lt__(self, other: 'Item') -> bool:
@@ -140,7 +140,7 @@ inline auto each(std::vector<T>& xs) {
 }
 
 // @overload
-// def total(xs: Iterable[Own[Int32]]) -> Int32: ...
+// def total(xs: Iterable[Own[int32]]) -> int32: ...
 template<::tpystd::typing::Iterable<int32_t> T_xs>
 int32_t total(T_xs&& xs) {
     // s = 0
@@ -160,14 +160,14 @@ int32_t total(T_xs&& xs) {
 }
 
 // @overload
-// def total(xs: Int32) -> Int32: ...
+// def total(xs: int32) -> int32: ...
 inline int32_t total(int32_t xs) {
     // return xs
     return xs;
 }
 
 // @overload
-// def keysum(xs: Iterable[Own[Item]]) -> Int32: ...
+// def keysum(xs: Iterable[Own[Item]]) -> int32: ...
 template<::tpystd::typing::Iterable<Item> T_xs>
 int32_t keysum(T_xs&& xs) {
     // s = 0
@@ -187,7 +187,7 @@ int32_t keysum(T_xs&& xs) {
 }
 
 // @overload
-// def keysum(xs: Int32) -> Int32: ...
+// def keysum(xs: int32) -> int32: ...
 inline int32_t keysum(int32_t xs) {
     // return xs
     return xs;

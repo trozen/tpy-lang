@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def print_range(start: Int32, end: Int32) -> None:
+// def print_range(start: int32, end: int32) -> None:
 void print_range(int32_t start, int32_t end) {
     // for i in range(start, end):
     int32_t __start_0 = start;
@@ -15,9 +15,9 @@ void print_range(int32_t start, int32_t end) {
     }
 }
 
-// def sum_range(n: Int32) -> Int32:
+// def sum_range(n: int32) -> int32:
 int32_t sum_range(int32_t n) {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for i in range(n):
     int32_t __stop_0 = n;

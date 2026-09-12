@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def gen(n: Int32) -> Iterator[Int32]:
+// def gen(n: int32) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     try {
     while (true) switch (__state) {
@@ -70,7 +70,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     }
     case S_JOIN_2: {
         try {
-            // i: Int32 = 0
+            // i: int32 = 0
             i = 0;
             __state = S_JOIN_0;
             continue;
@@ -92,7 +92,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
 }
 
 
-// def gen(n: Int32) -> Iterator[Int32]:
+// def gen(n: int32) -> Iterator[int32]:
 __gen_gen gen(int32_t n) {
     return __gen_gen(n);
 }

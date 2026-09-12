@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def get_span(data: list[Int32]) -> Span[Int32]:
+// def get_span(data: list[int32]) -> Span[int32]:
 std::span<int32_t> get_span(std::vector<int32_t>& data) {
     // return data
     return ::tpy::as_mut_span(data);
@@ -12,12 +12,12 @@ std::span<int32_t> get_span(std::vector<int32_t>& data) {
 
 // def main() -> None:
 void main() {
-    // nums: list[Int32] = [Int32(1), Int32(2), Int32(3)]
+    // nums: list[int32] = [int32(1), int32(2), int32(3)]
     std::vector<int32_t> nums = {1, 2, 3};
-    // span: Span[Int32] = get_span(nums)
+    // span: Span[int32] = get_span(nums)
     std::span<int32_t> span = get_span(nums);
     // # copy() on a Span should work (creates a view)
-    // span_copy: Span[Int32] = copy(span)
+    // span_copy: Span[int32] = copy(span)
     std::span<int32_t> span_copy = std::span<int32_t>(span);
     // # Both spans can access the same data
     // print(span[0])

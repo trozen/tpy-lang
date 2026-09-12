@@ -9,16 +9,16 @@
 # `__for_src` delegation shape and reads slightly off for an `__iter__`
 # embedding; pinned as-is rather than reworded here.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
 class Bag:
-    items: list[Int32]
+    items: list[int32]
 
     def __init__(self) -> None:
         self.items = [1]
 
-    def __iter__(self) -> Iterator[Int32]:  # tpyc: error(/recursive generator delegation/)
+    def __iter__(self) -> Iterator[int32]:  # tpyc: error(/recursive generator delegation/)
         for x in self:
             yield x
             yield x

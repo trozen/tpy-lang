@@ -1,9 +1,9 @@
 # Auto-move for record constructor with Own[T] parameter.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Inner:
-    value: Int32
+    value: int32
 
 
 class Outer:
@@ -12,7 +12,7 @@ class Outer:
     def __init__(self, inner: Own[Inner]):
         self.inner = inner  # tpyc: ok
 
-    def get_value(self) -> Int32:
+    def get_value(self) -> int32:
         return self.inner.value
 
 

@@ -3,7 +3,7 @@
 # adapter would be destroyed). Verifies the rejection diagnostic
 # renders the parameterized protocol name correctly.
 from typing import Protocol
-from tpy import Int32, dynamic
+from tpy import int32, dynamic
 
 
 @dynamic
@@ -13,9 +13,9 @@ class Container[T](Protocol):
 
 
 class Box:
-    def get(self) -> Int32:
+    def get(self) -> int32:
         return 7
 
 
-def make_container() -> Container[Int32]:
-    return Box()  # tpyc: error(/Cannot return local or temporary as 'Container\[Int32\]'/)
+def make_container() -> Container[int32]:
+    return Box()  # tpyc: error(/Cannot return local or temporary as 'Container\[int32\]'/)

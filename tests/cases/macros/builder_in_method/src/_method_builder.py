@@ -4,7 +4,7 @@
 Used by tests/cases/macros/builder_method_body/ to verify that pass 5.5
 expansion lets synthesized record methods participate in pass-6 body
 analysis. The synthesized record carries a `total()` method whose body
-sums all `Int32` fields -- something codegen cannot emit without
+sums all `int32` fields -- something codegen cannot emit without
 sema-resolved expression types.
 """
 from tpyc.macro_api import (

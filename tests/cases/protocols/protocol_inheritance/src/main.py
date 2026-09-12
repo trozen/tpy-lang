@@ -1,5 +1,5 @@
 from typing import Protocol, Sized
-from tpy import Int32
+from tpy import int32
 
 
 class Printable(Protocol):
@@ -19,8 +19,8 @@ class Message:
     def to_str(self) -> str:
         return self.text
 
-    def __len__(self) -> Int32:
-        return Int32(5)
+    def __len__(self) -> int32:
+        return int32(5)
 
 
 class Container[T: PrintableAndSized]:

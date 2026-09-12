@@ -21,7 +21,7 @@ inline constexpr std::string_view __name__ = "__main__";
 // @dataclass
 // class Outer:
 struct Outer {
-    // rank: Int32
+    // rank: int32
     int32_t rank;
 
     Outer() = default;
@@ -71,7 +71,7 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
 // @total_ordering
 // class Inner:
 struct Inner {
-    // rank: Int32
+    // rank: int32
     int32_t rank;
 
     Inner() = default;

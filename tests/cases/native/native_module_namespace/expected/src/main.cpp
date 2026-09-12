@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def use_vec(v: Ptr[Vec2]) -> Int32:
+// def use_vec(v: Ptr[Vec2]) -> int32:
 int32_t use_vec(::mypkg::Vec2* v) {
     // return v.x
     return ::tpy::deref_check(v).x;

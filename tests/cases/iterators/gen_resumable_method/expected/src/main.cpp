@@ -8,7 +8,7 @@ namespace tpyapp::main {
 void main() {
     // s = Source(10)
     Source s = Source(10);
-    // data: list[Int32] = [1, 2]
+    // data: list[int32] = [1, 2]
     std::vector<int32_t> data = {1, 2};
     // for v in s.windowed(data):
     {
@@ -36,7 +36,7 @@ void main() {
     }
 }
 
-// def windowed(self, xs: list[Int32]) -> Iterator[Int32]:  # tpyc: ok
+// def windowed(self, xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
 std::expected<int32_t, ::tpy::StopIteration> __gen_Source_windowed::__next__() {
     try {
     while (true) switch (__state) {
@@ -114,7 +114,7 @@ void __gen_Source_windowed::__finally_0() {
     std::cout << "windowed done" << "\n";
 }
 
-// def doubled(self) -> Iterator[Int32]:  # tpyc: ok
+// def doubled(self) -> Iterator[int32]:  # tpyc: ok
 std::expected<int32_t, ::tpy::StopIteration> __gen_Source_doubled::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {

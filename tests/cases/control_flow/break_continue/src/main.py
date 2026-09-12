@@ -1,8 +1,8 @@
-from tpy import Int32
+from tpy import int32
 
 def test_break():
     # Break in while loop
-    i: Int32 = 0
+    i: int32 = 0
     while i < 10:
         if i == 5:
             break
@@ -11,7 +11,7 @@ def test_break():
 
 def test_continue():
     # Continue in for loop - skip even numbers
-    total: Int32 = 0
+    total: int32 = 0
     for i in range(10):
         if i % 2 == 0:
             continue
@@ -20,7 +20,7 @@ def test_continue():
 
 def test_nested_break():
     # Break only exits innermost loop
-    count: Int32 = 0
+    count: int32 = 0
     for i in range(3):
         for j in range(5):
             if j == 2:
@@ -30,7 +30,7 @@ def test_nested_break():
 
 def test_nested_continue():
     # Continue only affects innermost loop
-    count: Int32 = 0
+    count: int32 = 0
     for i in range(3):
         for j in range(4):
             if j == 1:

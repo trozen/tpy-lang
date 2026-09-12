@@ -6,7 +6,7 @@
 namespace tpyapp::b {
 
 
-// def bb() -> Int32:
+// def bb() -> int32:
 int32_t bb() {
     // return 2 + cc()
     return (::tpy::add_check<int32_t>(2, ::tpyapp::c::cc()));

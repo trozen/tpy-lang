@@ -3,7 +3,7 @@
 # path of the wider flag-forwarding fix. Without flag forwarding through
 # validate_record_type_args, the hashable check would fire on Point before
 # Point's __hash__/__eq__ were registered, false-rejecting Point.
-from tpy import Own, Int32, UInt64
+from tpy import Own, int32, uint64
 
 
 class Container[T]:
@@ -21,13 +21,13 @@ class Holder:
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
-    def __hash__(self) -> UInt64:
-        return UInt64(self.x)
+    def __hash__(self) -> uint64:
+        return uint64(self.x)
 
     def __eq__(self, other: "Point") -> bool:
         return self.x == other.x

@@ -5,16 +5,16 @@
 # ("Default field value must be a constant expression") rather than
 # the incidental "Cannot infer type for field 'coord'" that F.3f.2's
 # sema-only inference path previously surfaced.
-from tpy import Int32
+from tpy import int32
 
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
     def __init__(self) -> None:
-        self.x = Int32(0)
-        self.y = Int32(0)
+        self.x = int32(0)
+        self.y = int32(0)
 
 
 class Shape:

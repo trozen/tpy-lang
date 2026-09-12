@@ -21,7 +21,7 @@ template<::std::default_initializable T>
     // return make_default()
     return T{};
 }
-// def fill[T: Default](n: Int32) -> Own[list[T]]:
+// def fill[T: Default](n: int32) -> Own[list[T]]:
 template<::std::default_initializable T>
 std::vector<T> fill(int32_t n) {
     // result: list[T] = []

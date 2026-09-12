@@ -1,1 +1,1 @@
-main.py:5: error: Cannot assign to elements of Span[readonly[Int32]] (read-only)
+main.py:5: error: Cannot assign to elements of Span[readonly[int32]] (read-only)

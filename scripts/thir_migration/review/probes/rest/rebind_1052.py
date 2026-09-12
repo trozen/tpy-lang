@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 class P:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 def main() -> None:
     p: P | None = None

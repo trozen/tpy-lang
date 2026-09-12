@@ -19,7 +19,7 @@ template<Measurable T_items>
 int32_t count(const T_items& items);
 void main();
 
-// def count(items: Measurable) -> Int32:
+// def count(items: Measurable) -> int32:
 template<Measurable T_items>
 int32_t count(const T_items& items) {
     // return len(items)

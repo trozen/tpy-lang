@@ -3,18 +3,18 @@
 # pointee type but cannot launder away const: a readonly source can
 # only coerce to a readonly target.
 from typing import Protocol
-from tpy import Int32, Ptr, dynamic, nocopy, readonly
+from tpy import int32, Ptr, dynamic, nocopy, readonly
 
 
 @dynamic
 class Awaker(Protocol):
-    def mark(self, task_id: Int32) -> None: ...
+    def mark(self, task_id: int32) -> None: ...
 
 
 @nocopy
 class Executor(Awaker):
     def __init__(self) -> None: pass
-    def mark(self, task_id: Int32) -> None: pass
+    def mark(self, task_id: int32) -> None: pass
 
 
 def aim_mut(p: Ptr[Awaker]) -> None:

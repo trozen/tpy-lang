@@ -28,7 +28,7 @@ void main() {
     // print(t.__eq__(s))  # tpyc: ok
     std::cout << ::tpy::print_bool((t) == (s)) << "\n";
     // # The remaining operand families, each against a literal its own dunder
-    // # slot accepts. The Int32 legs are the ones a narrowing conversion would
+    // # slot accepts. The int32 legs are the ones a narrowing conversion would
     // # have made diverge from CPython.
     // c = Count(2)
     Count c = Count(2);
@@ -54,11 +54,11 @@ void main() {
     std::cout << ::tpy::print_bool(((r) == (2))) << "\n";
     // print(r != 3)  # tpyc: ok
     std::cout << ::tpy::print_bool((r != 3)) << "\n";
-    // i = Initial(Char("a"))
+    // i = Initial(char("a"))
     Initial i = Initial(::tpy::char_from_str("a"));
-    // print(i == Char("a"))  # tpyc: ok
+    // print(i == char("a"))  # tpyc: ok
     std::cout << ::tpy::print_bool(((i) == (::tpy::char_from_str("a")))) << "\n";
-    // print(i != Char("b"))  # tpyc: ok
+    // print(i != char("b"))  # tpyc: ok
     std::cout << ::tpy::print_bool((i != ::tpy::char_from_str("b"))) << "\n";
 }
 

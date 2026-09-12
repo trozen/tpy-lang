@@ -1,5 +1,5 @@
 # F-string interpolation with various types and format specs.
-from tpy import Int32
+from tpy import int32
 
 
 def test_basic() -> None:
@@ -30,7 +30,7 @@ def test_expressions() -> None:
 def test_format_spec() -> None:
     val: float = 3.14159
     print(f"{val:.2f}")
-    n: Int32 = Int32(255)
+    n: int32 = int32(255)
     print(f"{n:#x}")
     print(f"{n:>10}")
     # '=' and '_' as fill characters (not alignment/grouping)

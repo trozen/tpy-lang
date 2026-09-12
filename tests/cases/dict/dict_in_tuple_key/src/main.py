@@ -3,20 +3,20 @@
 # as a tuple operation. Also exercises tuple-literal membership
 # (`x in (1, 2, 3)`) and dict/set/list literals with tuple-of-literal
 # keys/elements (the literal-resolution recurses into tuples).
-from tpy import Int32
+from tpy import int32
 
 
 def main() -> None:
     # Annotated dict/set literals with tuple-of-literals keys/elements.
-    d: dict[tuple[Int32, Int32], str] = {(1, 2): "a", (3, 4): "b"}
-    s: set[tuple[Int32, Int32]] = {(1, 2), (5, 6)}
+    d: dict[tuple[int32, int32], str] = {(1, 2): "a", (3, 4): "b"}
+    s: set[tuple[int32, int32]] = {(1, 2), (5, 6)}
     # Unannotated dict literal: exercises the default-int resolution path.
     d2 = {(1, 2): "a", (3, 4): "b"}
     # List literal of tuples mixing literal and concrete element types.
-    pairs = [(1, 2), (Int32(3), 4)]
+    pairs = [(1, 2), (int32(3), 4)]
 
-    k1: tuple[Int32, Int32] = (1, 2)
-    k2: tuple[Int32, Int32] = (9, 9)
+    k1: tuple[int32, int32] = (1, 2)
+    k2: tuple[int32, int32] = (9, 9)
 
     print(k1 in d, k2 in d)
     print(k1 not in d, k2 not in d)
@@ -28,7 +28,7 @@ def main() -> None:
     print(pairs[0][0], pairs[1][0])
 
     # Tuple-literal membership still works (regression guard).
-    x: Int32 = 2
+    x: int32 = 2
     print(x in (1, 2, 3), x in (4, 5, 6))
 
 

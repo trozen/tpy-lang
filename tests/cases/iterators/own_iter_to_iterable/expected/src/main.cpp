@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // nums: list[Int32] = [3, 1, 2]
+    // nums: list[int32] = [3, 1, 2]
     std::vector<int32_t> nums = {3, 1, 2};
     // print(list(each(nums)))
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(each<int32_t>(nums))) << "\n";

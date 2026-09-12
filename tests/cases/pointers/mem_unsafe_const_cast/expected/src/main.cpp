@@ -5,9 +5,9 @@ namespace tpyapp::main {
 
 // s: str = "hello"
 std::string s;
-// cp: Ptr[readonly[Char]] = unsafe_ptr(s)
+// cp: Ptr[readonly[char]] = unsafe_ptr(s)
 const char* cp{};
-// p: Ptr[Char] = unsafe_const_cast(cp)
+// p: Ptr[char] = unsafe_const_cast(cp)
 char* p{};
 
 void __tpy_init() {
@@ -18,13 +18,13 @@ void __tpy_init() {
     // from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store, unsafe_const_cast
     // s: str = "hello"
     s = "hello";
-    // cp: Ptr[readonly[Char]] = unsafe_ptr(s)
+    // cp: Ptr[readonly[char]] = unsafe_ptr(s)
     cp = s.data();
-    // p: Ptr[Char] = unsafe_const_cast(cp)
+    // p: Ptr[char] = unsafe_const_cast(cp)
     p = const_cast<char*>(cp);
-    // print(unsafe_load(p, UInt32(0)))
+    // print(unsafe_load(p, uint32(0)))
     std::cout << p[0] << "\n";
-    // print(unsafe_load(p, UInt32(4)))
+    // print(unsafe_load(p, uint32(4)))
     std::cout << p[4] << "\n";
 }
 

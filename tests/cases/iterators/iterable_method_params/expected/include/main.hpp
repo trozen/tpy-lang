@@ -17,7 +17,7 @@ template<::tpystd::typing::Iterable<int32_t> T_items>
 std::vector<int32_t> list_from(const T_items& items);
 void main();
 
-// def extend_from(target: list[Int32], items: Iterable[Int32]) -> None:
+// def extend_from(target: list[int32], items: Iterable[int32]) -> None:
 template<::tpystd::typing::Iterable<int32_t> T_items>
 void extend_from(std::vector<int32_t>& target, T_items& items) {
     // target.extend(items)
@@ -29,7 +29,7 @@ std::string join_from(std::string_view sep, const T_items& items) {
     // return sep.join(items)
     return ::tpy::str_join(sep, items);
 }
-// def list_from(items: Iterable[Int32]) -> Own[list[Int32]]:
+// def list_from(items: Iterable[int32]) -> Own[list[int32]]:
 template<::tpystd::typing::Iterable<int32_t> T_items>
 std::vector<int32_t> list_from(const T_items& items) {
     // return list(items)

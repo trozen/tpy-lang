@@ -1,16 +1,16 @@
 # readonly[T]: passing readonly param to a mutable T parameter is rejected.
-from tpy import Int32, readonly
+from tpy import int32, readonly
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32) -> None:
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 
 def mutate(p: Point) -> None:
-    p.x = Int32(99)
+    p.x = int32(99)
 
 def bad(p: readonly[Point]) -> None:
     mutate(p)  # tpyc: error(/readonly/)

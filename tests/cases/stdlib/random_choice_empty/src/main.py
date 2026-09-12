@@ -1,10 +1,10 @@
 # random.choice on an empty sequence raises IndexError (CPython parity),
 # via both the module-level function and the Random instance method.
 import random
-from tpy import Int32
+from tpy import int32
 
 def main() -> None:
-    empty: list[Int32] = []
+    empty: list[int32] = []
     try:
         x = random.choice(empty)
         print(x)

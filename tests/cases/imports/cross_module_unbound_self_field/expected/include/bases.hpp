@@ -14,7 +14,7 @@ inline constexpr std::string_view __name__ = "bases";
 
 // class Counter:
 struct Counter {
-    // value: Int32
+    // value: int32
     int32_t value;
 
     static constexpr std::string_view __tpy_class_name__ = "bases.Counter";

@@ -4,7 +4,7 @@
 # a name assigned both inside and after the try, so the fresh-declaration path
 # is never reached here. Kept as coverage of an otherwise untested interaction,
 # not as a regression guard.
-from tpy import Int32, error_return, ReturnException
+from tpy import int32, error_return, ReturnException
 
 
 class ParseError(Exception, ReturnException):
@@ -12,7 +12,7 @@ class ParseError(Exception, ReturnException):
 
 
 @error_return(ParseError)
-def parse_digit(s: str) -> Int32:
+def parse_digit(s: str) -> int32:
     if s == "0":
         return 0
     if s == "1":
@@ -20,7 +20,7 @@ def parse_digit(s: str) -> Int32:
     raise ParseError
 
 
-def handler_declares(s: str) -> Int32:
+def handler_declares(s: str) -> int32:
     try:
         d = parse_digit(s)
         print(d)
@@ -31,7 +31,7 @@ def handler_declares(s: str) -> Int32:
     return n
 
 
-def handler_binding_declares(s: str) -> Int32:
+def handler_binding_declares(s: str) -> int32:
     # Same shape through the `as e` binding arm, which emits the handler body
     # inside an extra brace block.
     try:
@@ -44,7 +44,7 @@ def handler_binding_declares(s: str) -> Int32:
     return n
 
 
-def try_body_declares(s: str) -> Int32:
+def try_body_declares(s: str) -> int32:
     # The try body is the sibling block; its declaration must not reach the
     # post-try assignment either.
     try:

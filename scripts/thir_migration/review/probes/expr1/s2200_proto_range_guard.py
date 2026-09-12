@@ -1,6 +1,6 @@
 import math
-from tpy import Int32
-def f(n: Int32) -> Int32:
+from tpy import int32
+def f(n: int32) -> int32:
     match n:
         case 1 if math.prod(range(1, 4)) > 0:
             return 1

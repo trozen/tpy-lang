@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // xs: list[Int32] = [200, 999]
+    // xs: list[int32] = [200, 999]
     std::vector<int32_t> xs = {200, 999};
     // print(bytes(xs))
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_from_int_iterable(xs)) << "\n";

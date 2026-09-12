@@ -1,7 +1,7 @@
-from tpy import Int32, Own, Ptr, StrView, Char, String
+from tpy import int32, Own, Ptr, StrView, char, String
 class Box:
-    n: Int32
-    def __init__(self, n: Int32) -> None:
+    n: int32
+    def __init__(self, n: int32) -> None:
         self.n = n
 def find(xs: list[Box]) -> Box | None:
     return xs[0]

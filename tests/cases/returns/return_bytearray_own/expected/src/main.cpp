@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def make(n: Int32) -> Own[bytearray]:
+// def make(n: int32) -> Own[bytearray]:
 ::tpy::ByteArray make(int32_t n) {
     // buf = bytearray(n)
     ::tpy::ByteArray buf = ::tpy::bytearray_from_size(n);

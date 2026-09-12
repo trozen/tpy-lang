@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def add_after_guard(x: Int32 | None) -> Int32:
+// def add_after_guard(x: int32 | None) -> int32:
 int32_t add_after_guard(std::optional<int32_t> x) {
     // if x is not None:
     if ((x.has_value())) {

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def sink(p: tuple[Own[A], Own[A]]) -> Int32:
+// def sink(p: tuple[Own[A], Own[A]]) -> int32:
 int32_t sink(std::tuple<A, A>&& p) {
     // return p[0].n + p[1].n
     return (::tpy::add_check<int32_t>(std::get<0>(p).n, std::get<1>(p).n));
@@ -16,7 +16,7 @@ std::tuple<A, A> make() {
     return std::tuple<A, A>{A(1), A(2)};
 }
 
-// def fwd(p: tuple[Own[A], Own[A]]) -> Int32:
+// def fwd(p: tuple[Own[A], Own[A]]) -> int32:
 int32_t fwd(std::tuple<A, A>&& p) {
     // got = sink(p)  # tpyc: warning(/copies tuple\[Own\[A\], Own\[A\]\] into owned storage/)
     int32_t got = sink(auto(p));
@@ -24,7 +24,7 @@ int32_t fwd(std::tuple<A, A>&& p) {
     return (::tpy::add_check<int32_t>(got, std::get<0>(p).n));
 }
 
-// def fwd_local() -> Int32:
+// def fwd_local() -> int32:
 int32_t fwd_local() {
     // t = make()
     std::tuple<A, A> t = make();

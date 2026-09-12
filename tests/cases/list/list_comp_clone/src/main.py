@@ -3,14 +3,14 @@
 # when it detects mutation, and that the trailing __result is moved out of the
 # comprehension's stmt-expr block (otherwise the deleted Rc copy ctor fires
 # at the consumer).
-from tpy import Int32
+from tpy import int32
 from tplib import Rc
 
 
 class Node:
-    value: Int32
+    value: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.value = v
 
 

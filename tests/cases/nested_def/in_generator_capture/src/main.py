@@ -1,13 +1,13 @@
 # Nested def in a resumable (multi-yield) generator: a frame member that
 # mutates a captured frame local, visible across yields.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
-def gen() -> Iterator[Int32]:
+def gen() -> Iterator[int32]:
     total = 0
 
-    def add(x: Int32) -> None:
+    def add(x: int32) -> None:
         nonlocal total
         total += x
 

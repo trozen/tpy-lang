@@ -6,12 +6,12 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // def double(x: Int32) -> Int32:
+    // def double(x: int32) -> int32:
     auto double_ = [](int32_t x) -> int32_t {
         // return x * 2
         return (::tpy::mul_check<int32_t>(x, 2));
     };
-    // def quadruple(x: Int32) -> Int32:
+    // def quadruple(x: int32) -> int32:
     auto quadruple = [&double_](int32_t x) -> int32_t {
         // return double(double(x))
         return double_(double_(x));

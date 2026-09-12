@@ -1,12 +1,12 @@
 # Two complex generators in the same module (state numbering isolation)
-from tpy import Int32
+from tpy import int32
 from typing import Iterator
 
-def gen_a() -> Iterator[Int32]:
+def gen_a() -> Iterator[int32]:
     yield 1
     yield 2
 
-def gen_b() -> Iterator[Int32]:
+def gen_b() -> Iterator[int32]:
     yield 10
     yield 20
     yield 30

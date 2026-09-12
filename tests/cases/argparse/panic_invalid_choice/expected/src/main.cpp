@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def main() -> Int32:
+// def main() -> int32:
 int32_t main() {
     // parser.parse_args(["--mode", "bogus"])
     std::vector<std::string> __tmp_1 = {"--mode", "bogus"};

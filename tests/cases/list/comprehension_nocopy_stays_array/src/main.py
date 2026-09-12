@@ -2,14 +2,14 @@
 # aggregate construction -- no copy, no default-construct, no assign. The
 # elements are borrowed by iteration, subscript, and param passing; @nocopy
 # turns any silent copy into a compile error.
-from tpy import Int32, Array, nocopy
+from tpy import int32, Array, nocopy
 
 
 @nocopy
 class Handle:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 

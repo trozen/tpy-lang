@@ -6,9 +6,9 @@ namespace tpyapp::main {
 
 // def test_while_basic() -> None:
 void test_while_basic() {
-    // arr: Array[Int32, 5] = [10, 20, 30, 40, 50]
+    // arr: Array[int32, 5] = [10, 20, 30, 40, 50]
     std::array<int32_t, 5> arr = {10, 20, 30, 40, 50};
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < len(arr):
     while ((i < ::tpy::__len__(arr))) {
@@ -21,9 +21,9 @@ void test_while_basic() {
 
 // def test_while_increment_before_access() -> None:
 void test_while_increment_before_access() {
-    // arr: Array[Int32, 5] = [10, 20, 30, 40, 50]
+    // arr: Array[int32, 5] = [10, 20, 30, 40, 50]
     std::array<int32_t, 5> arr = {10, 20, 30, 40, 50};
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < len(arr) - 1:
     while ((i < (::tpy::sub_check<int32_t>(::tpy::__len__(arr), 1)))) {
@@ -36,9 +36,9 @@ void test_while_increment_before_access() {
 
 // def test_while_no_literal_init() -> None:
 void test_while_no_literal_init() {
-    // arr: Array[Int32, 5] = [10, 20, 30, 40, 50]
+    // arr: Array[int32, 5] = [10, 20, 30, 40, 50]
     std::array<int32_t, 5> arr = {10, 20, 30, 40, 50};
-    // i: Int32 = Int32(0)
+    // i: int32 = int32(0)
     int32_t i = 0;
     // while i < len(arr):
     while ((i < ::tpy::__len__(arr))) {
@@ -51,9 +51,9 @@ void test_while_no_literal_init() {
 
 // def test_while_negative_init() -> None:
 void test_while_negative_init() {
-    // arr: Array[Int32, 5] = [10, 20, 30, 40, 50]
+    // arr: Array[int32, 5] = [10, 20, 30, 40, 50]
     std::array<int32_t, 5> arr = {10, 20, 30, 40, 50};
-    // i: Int32 = -1
+    // i: int32 = -1
     int32_t i = -1;
     // i += 1
     i = ::tpy::add_check<int32_t>(i, 1);
@@ -68,9 +68,9 @@ void test_while_negative_init() {
 
 // def test_while_list() -> None:
 void test_while_list() {
-    // lst: list[Int32] = [1, 2, 3]
+    // lst: list[int32] = [1, 2, 3]
     std::vector<int32_t> lst = {1, 2, 3};
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < len(lst):
     while ((i < ::tpy::__len__(lst))) {
@@ -83,7 +83,7 @@ void test_while_list() {
 
 // def test_while_bigint_index() -> None:
 void test_while_bigint_index() {
-    // lst: list[Int32] = [1, 2, 3]
+    // lst: list[int32] = [1, 2, 3]
     std::vector<int32_t> lst = {1, 2, 3};
     // i: int = 0
     ::tpy::BigInt i = ::tpy::BigInt(0);
@@ -98,9 +98,9 @@ void test_while_bigint_index() {
 
 // def test_while_post_loop_not_safe() -> None:
 void test_while_post_loop_not_safe() {
-    // arr: Array[Int32, 5] = [1, 2, 3, 4, 5]
+    // arr: Array[int32, 5] = [1, 2, 3, 4, 5]
     std::array<int32_t, 5> arr = {1, 2, 3, 4, 5};
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < len(arr):
     while ((i < ::tpy::__len__(arr))) {

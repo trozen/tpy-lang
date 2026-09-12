@@ -1,24 +1,24 @@
-from tpy import Int32, Span
+from tpy import int32, Span
 
 # Global with annotation -> vector (ListType)
-global_list: list[Int32] = [1, 2, 3]
+global_list: list[int32] = [1, 2, 3]
 
 # Global without annotation -> also vector (ListType)
 global_inferred = [10, 20, 30]
 
 # Local no mutation -> array (ArrayType)
-def test_no_mutation() -> Int32:
+def test_no_mutation() -> int32:
     local = [1, 2, 3]
     return local[0]
 
 # Local with mutation -> vector (ListType)
-def test_mutation() -> Int32:
+def test_mutation() -> int32:
     items = [1, 2, 3]
     items.append(4)
     return len(items)
 
 # Passed to list param -> vector (ListType)
-def takes_list(x: list[Int32]) -> None:
+def takes_list(x: list[int32]) -> None:
     x.append(42)
 
 def test_list_param() -> None:
@@ -26,10 +26,10 @@ def test_list_param() -> None:
     takes_list(data)
 
 # Passed to Span param -> array (ArrayType)
-def takes_span(x: Span[Int32]) -> Int32:
+def takes_span(x: Span[int32]) -> int32:
     return x[0]
 
-def test_span_param() -> Int32:
+def test_span_param() -> int32:
     data = [10, 20, 30]
     return takes_span(data)
 

@@ -49,7 +49,7 @@ void test_bool() {
     // # Boolean in while condition (inferred type)
     // flag = True
     bool flag = true;
-    // count: Int32 = 0
+    // count: int32 = 0
     int32_t count = 0;
     // while flag:
     while (flag) {

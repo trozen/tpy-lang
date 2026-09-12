@@ -3,12 +3,12 @@
 # function param's `const std::tuple<T&, T&>&`. The fix wraps the
 # value-tuple source with ::tpy::tuple_value_to_borrow so the resulting
 # tuple holds T& slots bound to the source temp.
-from tpy import Int32
+from tpy import int32
 
 
 class T:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 

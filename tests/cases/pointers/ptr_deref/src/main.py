@@ -1,15 +1,15 @@
-from tpy import Ptr, Int32, take_ptr
+from tpy import Ptr, int32, take_ptr
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32) -> None:
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 
 def main() -> None:
-    x: Int32 = 42
-    p: Ptr[Int32] = take_ptr(x)
+    x: int32 = 42
+    p: Ptr[int32] = take_ptr(x)
     print(p.__deref__())
 
     pt: Point = Point(10, 20)

@@ -18,14 +18,14 @@ void main();
 
 // class Animal:
 struct Animal {
-    // code: Int32
+    // code: int32
     int32_t code;
 
-    // def __init__(self, code: Int32) -> None:
+    // def __init__(self, code: int32) -> None:
     Animal() = default;
     explicit Animal(int32_t code);
 
-    // def base_code(self) -> Int32:
+    // def base_code(self) -> int32:
     int32_t base_code() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Animal";
 };
@@ -48,10 +48,10 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 }
 
 
-// def __init__(self, code: Int32) -> None:
+// def __init__(self, code: int32) -> None:
 inline Animal::Animal(int32_t code) : code(code) {}
 
-// def base_code(self) -> Int32:
+// def base_code(self) -> int32:
 inline int32_t Animal::base_code() const {
     // return self.code
     return this->code;

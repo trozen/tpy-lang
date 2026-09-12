@@ -1,8 +1,8 @@
 # Single-element tuple with trailing comma in print output
-from tpy import Int32
+from tpy import int32
 
 def main() -> None:
-    single = (Int32(42),)
+    single = (int32(42),)
     print(single)
     print(single[0])
 

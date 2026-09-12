@@ -1,1 +1,1 @@
-2 args: Int32, 8
+2 args: int32, 8

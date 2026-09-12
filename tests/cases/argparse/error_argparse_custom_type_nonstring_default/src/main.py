@@ -4,7 +4,7 @@
 # default would require macro-time evaluation of an arbitrary
 # T-valued expression, which v1 doesn't do.
 from __future__ import annotations
-from tpy import Own, Int32
+from tpy import Own, int32
 from argparse import ArgumentParser
 
 
@@ -19,7 +19,7 @@ class Tag:
         return Tag(s)
 
 
-def main() -> Int32:
+def main() -> int32:
     parser = ArgumentParser()
     parser.add_argument("--tag", type=Tag, default=42)  # tpyc: error(/type=<custom> with default= requires a string literal/)
     parser.parse_args([])

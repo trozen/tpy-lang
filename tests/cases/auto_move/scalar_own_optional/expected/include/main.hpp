@@ -32,10 +32,10 @@ void main();
 
 // class P:
 struct P {
-    // x: Int32
+    // x: int32
     int32_t x;
 
-    // def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: int32) -> None:
     P() = default;
     explicit P(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.P";
@@ -65,7 +65,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 }
 
 
-// def __init__(self, x: Int32) -> None:
+// def __init__(self, x: int32) -> None:
 inline P::P(int32_t x) : x(x) {}
 
 // def __init__(self) -> None:

@@ -93,7 +93,7 @@ inline int32_t __len__(const char* x) {
     return static_cast<int32_t>(std::string_view(x).size());
 }
 
-// Overload: char (Char type -- always length 1)
+// Overload: char (char type -- always length 1)
 inline int32_t __len__(char) {
     return 1;
 }

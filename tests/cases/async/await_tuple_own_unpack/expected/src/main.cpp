@@ -30,7 +30,7 @@ namespace tpyapp::main {
         // print(c.n, tag)
         std::cout << (*c).n << " " << tag << "\n";
         // # Re-await in a loop: the frame_slot must re-emplace each iteration.
-        // i: Int32 = 0
+        // i: int32 = 0
         i = 0;
         __state = S_JOIN_0;
         continue;

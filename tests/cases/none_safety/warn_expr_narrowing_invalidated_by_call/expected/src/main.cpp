@@ -10,7 +10,7 @@ void opaque(const Box& b) {
     std::cout << 0 << "\n";
 }
 
-// def use_after_call(b: Box) -> Int32:
+// def use_after_call(b: Box) -> int32:
 int32_t use_after_call(const Box& b) {
     // if b.value is not None:
     if ((b.value.has_value())) {

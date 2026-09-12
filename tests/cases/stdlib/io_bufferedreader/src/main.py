@@ -5,10 +5,10 @@
 # compile error (covers the value-vs-reference boundary).
 import os
 from io import FileIO, BufferedReader
-from tpy import Int64
+from tpy import int64
 
 
-def feed(data: bytes) -> Int64:
+def feed(data: bytes) -> int64:
     r, w = os.pipe()
     os.write(w, data)
     os.close(w)

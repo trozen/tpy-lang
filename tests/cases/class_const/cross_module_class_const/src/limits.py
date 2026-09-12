@@ -1,7 +1,7 @@
 from typing import Final
-from tpy import Int32
+from tpy import int32
 
 
 class Limits:
-    MAX_RETRIES: Final[Int32] = 7
+    MAX_RETRIES: Final[int32] = 7
     GREETING: Final[str] = "hello"

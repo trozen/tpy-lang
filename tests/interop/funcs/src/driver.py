@@ -1,6 +1,6 @@
 # Shared across the ext-exec and cpy-parity runs: only values that match
 # between the compiled extension and the TPy source under CPython (all fit the
-# declared types). Error cases that DO diverge (TPy Int64 is bounded; CPython
+# declared types). Error cases that DO diverge (TPy int64 is bounded; CPython
 # int is not) live in ext_checks.py.
 import funcs
 

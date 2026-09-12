@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // @resolve_bool
-// def run() -> Int32:
+// def run() -> int32:
 int32_t run() {
     // flag = "true"
     bool flag = true;
@@ -25,7 +25,7 @@ void __tpy_init() {
     initialized = true;
 
     // # A function macro mints the bool type via ctx.resolve_type("bool") -- not
-    // # borrowed from the return type (which is Int32) -- to retype a string-literal
+    // # borrowed from the return type (which is int32) -- to retype a string-literal
     // # bool local. Proves resolve_type supplies a usable type by name.
     // from resolvemod import resolve_bool
     // main()

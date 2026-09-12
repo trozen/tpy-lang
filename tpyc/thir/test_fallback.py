@@ -102,18 +102,18 @@ def _emitted(src, name):
 
 
 _SRC = (
-    "from tpy import Int32\n"
+    "from tpy import int32\n"
     "async def af() -> None:\n"
     "    pass\n"
-    "def pair(a: Int32) -> tuple[Int32, Int32]:\n"
+    "def pair(a: int32) -> tuple[int32, int32]:\n"
     "    return (a, a + 1)\n"
-    "def comp(xs: list[Int32]) -> Int32:\n"
+    "def comp(xs: list[int32]) -> int32:\n"
     # Value-tuple element from a plain CALL: the list-comp element ladder
     # takes tuple LITERAL / bare NAME / mixed-own CALL sources only -- this
     # shape stays AST
     "    ys = [pair(a) for a in xs]\n"
     "    return len(ys)\n"
-    "def ok(n: Int32) -> Int32:\n"
+    "def ok(n: int32) -> int32:\n"
     "    return n + 1\n"
 )
 
@@ -147,14 +147,14 @@ def test_function_lowering_reject_falls_back_without_scope_residue():
     # verdicts are looked up by name). A param default, the previous
     # vehicle, routes now.
     compiler, modules = _compile(
-        "from tpy import Int32\n"
-        "def g(a: Int32) -> Int32:\n"
+        "from tpy import int32\n"
+        "def g(a: int32) -> int32:\n"
         "    return a\n"
-        "def rejected(d: dict[Int32, Int32]) -> Int32:\n"
-        "    def g(a: Int32) -> Int32:\n"
+        "def rejected(d: dict[int32, int32]) -> int32:\n"
+        "    def g(a: int32) -> int32:\n"
         "        return a + 1\n"
         "    return g(2)\n"
-        "def clean(n: Int32) -> Int32:\n"
+        "def clean(n: int32) -> int32:\n"
         "    return n + 1\n"
     )
     entry = _entry(modules)
@@ -174,14 +174,14 @@ def test_function_lowering_reject_falls_back_without_scope_residue():
 
 def test_constructor_lowering_reject_falls_back():
     compiler, modules = _compile(
-        "from tpy import Int32\n"
-        "def g(a: Int32) -> Int32:\n"
+        "from tpy import int32\n"
+        "def g(a: int32) -> int32:\n"
         "    return a\n"
         "class R:\n"
-        "    n: Int32\n"
-        "    def __init__(self, n: Int32):\n"
+        "    n: int32\n"
+        "    def __init__(self, n: int32):\n"
         "        self.n = n\n"
-        "        def g(a: Int32) -> Int32:\n"
+        "        def g(a: int32) -> int32:\n"
         "            return a + 1\n"
         "        self.n = g(2)\n"
     )
@@ -204,17 +204,17 @@ def test_base_init_arg_lowering_reject_falls_back():
     # structurally-unhandled scalar shape reaches `_lower_expr` and only rejects
     # there -- it must land on the ctor's fallback boundary, not escape as a crash.
     compiler, modules = _compile(
-        "from tpy import Int32\n"
-        "def eat(xs: list[Int32]) -> Int32:\n"
+        "from tpy import int32\n"
+        "def eat(xs: list[int32]) -> int32:\n"
         "    xs.append(1)\n"
         "    return len(xs)\n"
         "class Base:\n"
-        "    x: Int32\n"
-        "    def __init__(self, x: Int32):\n"
+        "    x: int32\n"
+        "    def __init__(self, x: int32):\n"
         "        self.x = x\n"
         "class Derived(Base):\n"
-        "    y: Int32\n"
-        "    def __init__(self, n: Int32):\n"
+        "    y: int32\n"
+        "    def __init__(self, n: int32):\n"
         "        super().__init__(eat([1, 2]))\n"
         "        self.y = n\n"
     )
@@ -234,12 +234,12 @@ def test_base_init_arg_lowering_reject_falls_back():
 
 def test_global_lowering_reject_falls_back_at_sync_boundary():
     compiler, modules = _compile(
-        "from tpy import Int32\n"
+        "from tpy import int32\n"
         "message = b'before'\n"
-        "def rejected(n: Int32) -> Int32:\n"
+        "def rejected(n: int32) -> int32:\n"
         "    global message\n"
         "    return n\n"
-        "def clean(n: Int32) -> Int32:\n"
+        "def clean(n: int32) -> int32:\n"
         "    return n + 1\n"
     )
     entry = _entry(modules)
@@ -259,11 +259,11 @@ def test_global_lowering_reject_falls_back_at_sync_boundary():
 
 def test_global_lowering_reject_falls_back_at_constructor_boundary():
     compiler, modules = _compile(
-        "from tpy import Int32\n"
+        "from tpy import int32\n"
         "message = b'before'\n"
         "class R:\n"
-        "    n: Int32\n"
-        "    def __init__(self, n: Int32):\n"
+        "    n: int32\n"
+        "    def __init__(self, n: int32):\n"
         "        global message\n"
         "        self.n = n\n"
     )
@@ -283,14 +283,14 @@ def test_global_lowering_reject_falls_back_at_constructor_boundary():
 
 def test_raise_lowering_reject_falls_back_at_sync_boundary():
     compiler, modules = _compile(
-        "from tpy import Int32\n"
+        "from tpy import int32\n"
         "err = ValueError('bad')\n"
-        "def rejected(n: Int32) -> Int32:\n"
+        "def rejected(n: int32) -> int32:\n"
         "    if n > 0:\n"
         "        raise err\n"
         "    err = ValueError('x')\n"
         "    raise err\n"
-        "def clean(n: Int32) -> Int32:\n"
+        "def clean(n: int32) -> int32:\n"
         "    return n + 1\n"
     )
     entry = _entry(modules)
@@ -314,14 +314,14 @@ def test_raise_lowering_reject_falls_back_at_sync_boundary():
 
 def test_wide_integer_and_nonfinite_float_both_route():
     compiler, modules = _compile(
-        "from tpy import Float64, Int64\n"
-        "def take_int(n: Int64) -> Int64:\n"
+        "from tpy import float64, int64\n"
+        "def take_int(n: int64) -> int64:\n"
         "    return n\n"
-        "def take_float(n: Float64) -> Float64:\n"
+        "def take_float(n: float64) -> float64:\n"
         "    return n\n"
-        "def wide() -> Int64:\n"
+        "def wide() -> int64:\n"
         "    return take_int(2147483648)\n"
-        "def nonfinite() -> Float64:\n"
+        "def nonfinite() -> float64:\n"
         "    return take_float(1e400)\n"
     )
     entry = _entry(modules)
@@ -342,11 +342,11 @@ def test_unhandled_expression_rejects_from_lowering_tail():
     compiler, modules = _compile(
         # A VIEW-form walrus target needs the pending-view pre-declaration,
         # which is unmirrored -- the body rejects at the walrus.
-        "from tpy import Int32, StrView\n"
-        "def rejected(s: StrView) -> Int32:\n"
+        "from tpy import int32, StrView\n"
+        "def rejected(s: StrView) -> int32:\n"
         "    x = (y := s)\n"
         "    return len(x) + len(y)\n"
-        "def clean(n: Int32) -> Int32:\n"
+        "def clean(n: int32) -> int32:\n"
         "    return n + 1\n"
     )
     entry = _entry(modules)
@@ -365,12 +365,12 @@ def test_unhandled_expression_rejects_from_lowering_tail():
 
 def test_while_bool_literal_routes_at_sync_boundary():
     compiler, modules = _compile(
-        "from tpy import Int32\n"
-        "def rejected(n: Int32) -> Int32:\n"
+        "from tpy import int32\n"
+        "def rejected(n: int32) -> int32:\n"
         "    while True:\n"
         "        n = n + 1\n"
         "    return n\n"
-        "def clean(n: Int32) -> Int32:\n"
+        "def clean(n: int32) -> int32:\n"
         "    return n + 1\n"
     )
     entry = _entry(modules)
@@ -390,10 +390,10 @@ def test_while_bool_literal_routes_at_sync_boundary():
 
 def test_while_bool_literal_routes_at_constructor_boundary():
     compiler, modules = _compile(
-        "from tpy import Int32\n"
+        "from tpy import int32\n"
         "class R:\n"
-        "    n: Int32\n"
-        "    def __init__(self, n: Int32):\n"
+        "    n: int32\n"
+        "    def __init__(self, n: int32):\n"
         "        while True:\n"
         "            n = n + 1\n"
         "        self.n = n\n"
@@ -417,15 +417,15 @@ def test_for_lowering_reject_falls_back_at_sync_boundary():
     # body falls back whole. (The plain-record flavor of this shape routes now
     # -- its element lifts to a reseatable `T*`.)
     compiler, modules = _compile(
-        "from tpy import Int32\n"
-        "class R:\n    v: Int32\n"
-        "    def __init__(self, v: Int32):\n        self.v = v\n"
-        "def rejected(m: list[list[R]]) -> Int32:\n"
+        "from tpy import int32\n"
+        "class R:\n    v: int32\n"
+        "    def __init__(self, v: int32):\n        self.v = v\n"
+        "def rejected(m: list[list[R]]) -> int32:\n"
         "    keep = m[0]\n"
         "    for row in m:\n"
         "        keep = row\n"
-        "    return Int32(len(keep))\n"
-        "def clean(n: Int32) -> Int32:\n"
+        "    return int32(len(keep))\n"
+        "def clean(n: int32) -> int32:\n"
         "    return n + 1\n"
     )
     entry = _entry(modules)
@@ -448,11 +448,11 @@ def test_for_each_generator_call_iterable_routes():
     # A free generator-call iterable takes the iter_proto route (the
     # universal __iter__/__next__ loop) -- routed, no sub-tag.
     compiler, entry, f = _fn_body(
-        "from tpy import Int32\n"
+        "from tpy import int32\n"
         "from typing import Iterator\n"
-        "def gen(n: Int32) -> Iterator[Int32]:\n"
+        "def gen(n: int32) -> Iterator[int32]:\n"
         "    yield n\n"
-        "def routed(n: Int32) -> Int32:\n"
+        "def routed(n: int32) -> int32:\n"
         "    t = 0\n"
         "    for x in gen(n):\n"
         "        t = t + x\n"
@@ -470,12 +470,12 @@ def test_for_each_gen_call_container_literal_arg_routes():
     # temp-hoisting row: the emit flushes the temp inside the rvalue brace
     # scope right before the `__src` bind (the AST's for-each flush point).
     _, body = _emitted(
-        "from tpy import Int32\n"
+        "from tpy import int32\n"
         "from typing import Iterator\n"
-        "def gen(xs: list[Int32]) -> Iterator[Int32]:\n"
+        "def gen(xs: list[int32]) -> Iterator[int32]:\n"
         "    for x in xs:\n"
         "        yield x\n"
-        "def routed() -> Int32:\n"
+        "def routed() -> int32:\n"
         "    t = 0\n"
         "    for x in gen([1, 2, 3]):\n"
         "        t = t + x\n"
@@ -493,11 +493,11 @@ def test_iterator_object_decl_routes():
     # admits the LOCAL despite its protocol declared type (a protocol PARAM
     # stays deferred -- pinned below).
     compiler, body = _emitted(
-        "from tpy import Int32\n"
+        "from tpy import int32\n"
         "from typing import Iterator\n"
-        "def gen(n: Int32) -> Iterator[Int32]:\n"
+        "def gen(n: int32) -> Iterator[int32]:\n"
         "    yield n\n"
-        "def routed(n: Int32) -> Int32:\n"
+        "def routed(n: int32) -> int32:\n"
         "    it = gen(n)\n"
         "    t = 0\n"
         "    for v in it:\n"
@@ -516,9 +516,9 @@ def test_iterator_protocol_param_iterable_routes():
     # iterators/for_*_protocol). NativeIterable/Spannable, Own-element, and
     # resumable shapes keep deferring (see the still-defers pins).
     compiler, entry, f = _fn_body(
-        "from tpy import Int32\n"
+        "from tpy import int32\n"
         "from typing import Iterator\n"
-        "def routed(it: Iterator[Int32]) -> Int32:\n"
+        "def routed(it: Iterator[int32]) -> int32:\n"
         "    t = 0\n"
         "    for v in it:\n"
         "        t = t + v\n"
@@ -562,15 +562,15 @@ def test_for_each_gen_call_record_rvalue_arg_routes():
     # A record-ctor rvalue arg is a DISTINCT temp row (_record_rvalue_temp_arg)
     # from the container-literal one -- pin it at the iter_proto iterable too.
     _, body = _emitted(
-        "from tpy import Int32\n"
+        "from tpy import int32\n"
         "from typing import Iterator\n"
         "class Rec:\n"
-        "    v: Int32\n"
-        "    def __init__(self, v: Int32) -> None:\n"
+        "    v: int32\n"
+        "    def __init__(self, v: int32) -> None:\n"
         "        self.v = v\n"
-        "def gen(r: Rec) -> Iterator[Int32]:\n"
+        "def gen(r: Rec) -> Iterator[int32]:\n"
         "    yield r.v\n"
-        "def routed() -> Int32:\n"
+        "def routed() -> int32:\n"
         "    t = 0\n"
         "    for x in gen(Rec(7)):\n"
         "        t = t + x\n"
@@ -585,10 +585,10 @@ def test_for_each_container_route_literal_arg_still_rejects():
     # (widening it would be the stale-snapshot miscompile the validator
     # guards). Only the iter_proto route admits temps.
     compiler, entry, f = _fn_body(
-        "from tpy import Int32, Own\n"
-        "def make(xs: list[Int32]) -> Own[list[Int32]]:\n"
+        "from tpy import int32, Own\n"
+        "def make(xs: list[int32]) -> Own[list[int32]]:\n"
         "    return [x * 2 for x in xs]\n"
-        "def rejected() -> Int32:\n"
+        "def rejected() -> int32:\n"
         "    t = 0\n"
         "    for x in make([1, 2]):\n"
         "        t = t + x\n"
@@ -608,15 +608,15 @@ def test_for_each_method_generator_call_routes():
     # A bare-name-receiver member generator call takes the iter_proto route
     # (the _member_gen_call_iterable_ok override).
     compiler, entry, f = _fn_body(
-        "from tpy import Int32\n"
+        "from tpy import int32\n"
         "from typing import Iterator\n"
         "class Maker:\n"
-        "    base: Int32\n"
-        "    def __init__(self, b: Int32) -> None:\n"
+        "    base: int32\n"
+        "    def __init__(self, b: int32) -> None:\n"
         "        self.base = b\n"
-        "    def gen(self, n: Int32) -> Iterator[Int32]:\n"
+        "    def gen(self, n: int32) -> Iterator[int32]:\n"
         "        yield self.base + n\n"
-        "def routed(m: Maker, n: Int32) -> Int32:\n"
+        "def routed(m: Maker, n: int32) -> int32:\n"
         "    t = 0\n"
         "    for x in m.gen(n):\n"
         "        t = t + x\n"
@@ -635,19 +635,19 @@ def test_for_each_field_recv_generator_call_defers():
     # now fires at the member arm's fi gate (expr.method_call), not the
     # route classifier's iter.call.generator tag.
     compiler, entry, f = _fn_body(
-        "from tpy import Int32, Own\n"
+        "from tpy import int32, Own\n"
         "from typing import Iterator\n"
         "class Maker:\n"
-        "    base: Int32\n"
-        "    def __init__(self, b: Int32) -> None:\n"
+        "    base: int32\n"
+        "    def __init__(self, b: int32) -> None:\n"
         "        self.base = b\n"
-        "    def gen(self, n: Int32) -> Iterator[Int32]:\n"
+        "    def gen(self, n: int32) -> Iterator[int32]:\n"
         "        yield self.base + n\n"
         "class Holder:\n"
         "    maker: Maker\n"
         "    def __init__(self, maker: Own[Maker]) -> None:\n"
         "        self.maker = maker\n"
-        "def rejected(h: Holder, n: Int32) -> Int32:\n"
+        "def rejected(h: Holder, n: int32) -> int32:\n"
         "    t = 0\n"
         "    for x in h.maker.gen(n):\n"
         "        t = t + x\n"
@@ -668,19 +668,19 @@ def test_for_each_user_iterator_name_routes():
     # lvalue `auto& __src_N` capture).
     compiler, entry, f = _fn_body(
         "from __future__ import annotations\n"
-        "from tpy import Int32\n"
+        "from tpy import int32\n"
         "class Ticker:\n"
-        "    n: Int32\n"
-        "    def __init__(self, n: Int32) -> None:\n"
+        "    n: int32\n"
+        "    def __init__(self, n: int32) -> None:\n"
         "        self.n = n\n"
         "    def __iter__(self) -> Ticker:\n"
         "        return self\n"
-        "    def __next__(self) -> Int32:\n"
+        "    def __next__(self) -> int32:\n"
         "        if self.n <= 0:\n"
         "            raise StopIteration\n"
         "        self.n -= 1\n"
         "        return self.n\n"
-        "def routed(t: Ticker) -> Int32:\n"
+        "def routed(t: Ticker) -> int32:\n"
         "    total = 0\n"
         "    for v in t:\n"
         "        total = total + v\n"
@@ -699,8 +699,8 @@ def test_for_each_spannable_protocol_param_routes_begin_end():
     # synthesizes begin()/end() for conformers), mirrored via the
     # container route -- routed since the native-proto-param widening.
     compiler, entry, f = _fn_body(
-        "from tpy import Int32, Spannable\n"
-        "def routed(it: Spannable[Int32]) -> Int32:\n"
+        "from tpy import int32, Spannable\n"
+        "def routed(it: Spannable[int32]) -> int32:\n"
         "    total = 0\n"
         "    for v in it:\n"
         "        total = total + v\n"
@@ -722,12 +722,12 @@ def test_for_each_own_elem_protocol_param_routes():
     # test_own_iterable_slot_routes_consuming_wrap and the flipped
     # auto_move/consuming_iterable_own_param corpus case).
     compiler, entry, f = _fn_body(
-        "from tpy import Int32, Own\n"
+        "from tpy import int32, Own\n"
         "from typing import Iterable\n"
         "class Item:\n"
-        "    v: Int32\n"
-        "    def __init__(self, v: Int32) -> None:\n        self.v = v\n"
-        "def rejected(source: Iterable[Own[Item]]) -> Int32:\n"
+        "    v: int32\n"
+        "    def __init__(self, v: int32) -> None:\n        self.v = v\n"
+        "def rejected(source: Iterable[Own[Item]]) -> int32:\n"
         "    total = 0\n"
         "    for x in source:\n"
         "        total = total + x.v\n"
@@ -747,8 +747,8 @@ def test_for_each_native_iterable_protocol_param_routes_begin_end():
     # since the native-proto-param widening; byte-identity is pinned by
     # iterators/iterable_native_narrowing_bare and the wave test file.
     compiler, entry, f = _fn_body(
-        "from tpy import Int32, NativeIterable\n"
-        "def routed(it: NativeIterable[Int32]) -> Int32:\n"
+        "from tpy import int32, NativeIterable\n"
+        "def routed(it: NativeIterable[int32]) -> int32:\n"
         "    total = 0\n"
         "    for v in it:\n"
         "        total = total + v\n"
@@ -768,21 +768,21 @@ def test_for_each_plain_call_iterable_routes():
     # return is an rvalue -- the owning `auto __src_N` capture).
     compiler, entry, f = _fn_body(
         "from __future__ import annotations\n"
-        "from tpy import Int32, Own\n"
+        "from tpy import int32, Own\n"
         "class Ticker:\n"
-        "    n: Int32\n"
-        "    def __init__(self, n: Int32) -> None:\n"
+        "    n: int32\n"
+        "    def __init__(self, n: int32) -> None:\n"
         "        self.n = n\n"
         "    def __iter__(self) -> Ticker:\n"
         "        return self\n"
-        "    def __next__(self) -> Int32:\n"
+        "    def __next__(self) -> int32:\n"
         "        if self.n <= 0:\n"
         "            raise StopIteration\n"
         "        self.n -= 1\n"
         "        return self.n\n"
-        "def make_ticker(n: Int32) -> Own[Ticker]:\n"
+        "def make_ticker(n: int32) -> Own[Ticker]:\n"
         "    return Ticker(n)\n"
-        "def routed(n: Int32) -> Int32:\n"
+        "def routed(n: int32) -> int32:\n"
         "    t = 0\n"
         "    for x in make_ticker(n):\n"
         "        t = t + x\n"
@@ -800,19 +800,19 @@ def test_for_each_iterator_ctor_call_iterable_routes():
     # -- a record-ctor rvalue into the same universal loop.
     compiler, entry, f = _fn_body(
         "from __future__ import annotations\n"
-        "from tpy import Int32\n"
+        "from tpy import int32\n"
         "class Ticker:\n"
-        "    n: Int32\n"
-        "    def __init__(self, n: Int32) -> None:\n"
+        "    n: int32\n"
+        "    def __init__(self, n: int32) -> None:\n"
         "        self.n = n\n"
         "    def __iter__(self) -> Ticker:\n"
         "        return self\n"
-        "    def __next__(self) -> Int32:\n"
+        "    def __next__(self) -> int32:\n"
         "        if self.n <= 0:\n"
         "            raise StopIteration\n"
         "        self.n -= 1\n"
         "        return self.n\n"
-        "def routed(n: Int32) -> Int32:\n"
+        "def routed(n: int32) -> int32:\n"
         "    t = 0\n"
         "    for x in Ticker(n):\n"
         "        t = t + x\n"
@@ -829,10 +829,10 @@ def test_for_each_container_returning_call_stays_container_route():
     # A list-returning call is NativeIterable: _iter_proto_call_ret must NOT
     # claim it -- it keeps the container route's begin/end emit.
     compiler, entry, f = _fn_body(
-        "from tpy import Int32, Own\n"
-        "def make() -> Own[list[Int32]]:\n"
+        "from tpy import int32, Own\n"
+        "def make() -> Own[list[int32]]:\n"
         "    return [1, 2]\n"
-        "def routed() -> Int32:\n"
+        "def routed() -> int32:\n"
         "    t = 0\n"
         "    for x in make():\n"
         "        t = t + x\n"
@@ -849,12 +849,12 @@ def test_for_each_tuple_unpack_over_gen_call_routes():
     # `for a, b in gen():` -- the tuple-unpack head rides the universal
     # __iter__/__next__ loop (THIRForIterProto) for scalar targets.
     compiler, entry, f = _fn_body(
-        "from tpy import Int32\n"
+        "from tpy import int32\n"
         "from typing import Iterator\n"
-        "def pairs(n: Int32) -> Iterator[tuple[Int32, Int32]]:\n"
+        "def pairs(n: int32) -> Iterator[tuple[int32, int32]]:\n"
         "    for i in range(n):\n"
         "        yield (i, i * 2)\n"
-        "def routed(n: Int32) -> Int32:\n"
+        "def routed(n: int32) -> int32:\n"
         "    t = 0\n"
         "    for a, b in pairs(n):\n"
         "        t = t + a + b\n"
@@ -873,16 +873,16 @@ def test_for_each_tuple_unpack_over_gen_record_target_routes():
     # unwrap_ref/tuple_elem_ref off the mutable `auto& __tup_N` head
     # (corpus witness: iterators/gen_resumable_mixed_tuple_yield).
     compiler, entry, f = _fn_body(
-        "from tpy import Int32\n"
+        "from tpy import int32\n"
         "from typing import Iterator\n"
         "class P:\n"
-        "    x: Int32\n"
-        "    def __init__(self, x: Int32) -> None:\n"
+        "    x: int32\n"
+        "    def __init__(self, x: int32) -> None:\n"
         "        self.x = x\n"
-        "def gen(ps: list[P]) -> Iterator[tuple[Int32, P]]:\n"
+        "def gen(ps: list[P]) -> Iterator[tuple[int32, P]]:\n"
         "    for i in range(len(ps)):\n"
-        "        yield (Int32(i), ps[i])\n"
-        "def routed(ps: list[P]) -> Int32:\n"
+        "        yield (int32(i), ps[i])\n"
+        "def routed(ps: list[P]) -> int32:\n"
         "    t = 0\n"
         "    for i, p in gen(ps):\n"
         "        t = t + i + p.x\n"
@@ -904,12 +904,12 @@ def test_for_each_tuple_unpack_ref_target_routes():
     # element's tuple_to_pointer lift -- routes (was a deferred ref-target rung).
     # A generator source keeps deferring (see the _over_gen_ test above).
     compiler, entry, f = _fn_body(
-        "from tpy import Int32\n"
+        "from tpy import int32\n"
         "class Point:\n"
-        "    x: Int32\n"
-        "    def __init__(self, x: Int32) -> None:\n"
+        "    x: int32\n"
+        "    def __init__(self, x: int32) -> None:\n"
         "        self.x = x\n"
-        "def routed(pairs: list[tuple[Int32, Point]]) -> Int32:\n"
+        "def routed(pairs: list[tuple[int32, Point]]) -> int32:\n"
         "    total = 0\n"
         "    for i, p in pairs:\n"
         "        total = total + i + p.x\n"
@@ -925,14 +925,14 @@ def test_tuple_unpack_lowering_reject_falls_back_at_sync_boundary():
     # A REFERENCE-element tuple keeps the unpack source rejecting (only
     # VALUE-tuple elements render bare at the capture).
     compiler, modules = _compile(
-        "from tpy import Int32\n"
+        "from tpy import int32\n"
         "class Box:\n"
-        "    n: Int32\n"
-        "    def __init__(self, n: Int32) -> None:\n        self.n = n\n"
-        "def rejected(pairs: list[tuple[Int32, Box]]) -> Int32:\n"
+        "    n: int32\n"
+        "    def __init__(self, n: int32) -> None:\n        self.n = n\n"
+        "def rejected(pairs: list[tuple[int32, Box]]) -> int32:\n"
         "    a, b = pairs[0]\n"
         "    return a + b.n\n"
-        "def clean(n: Int32) -> Int32:\n"
+        "def clean(n: int32) -> int32:\n"
         "    return n + 1\n"
     )
     entry = _entry(modules)
@@ -956,11 +956,11 @@ def test_tuple_unpack_lowering_reject_falls_back_at_sync_boundary():
 
 def test_expr_stmt_lowering_reject_falls_back_at_sync_boundary():
     compiler, modules = _compile(
-        "from tpy import Int32\n"
-        "def rejected(n: Int32) -> Int32:\n"
+        "from tpy import int32\n"
+        "def rejected(n: int32) -> int32:\n"
         "    (n, n)\n"
         "    return n\n"
-        "def clean(n: Int32) -> Int32:\n"
+        "def clean(n: int32) -> int32:\n"
         "    return n + 1\n"
     )
     entry = _entry(modules)
@@ -980,11 +980,11 @@ def test_expr_stmt_lowering_reject_falls_back_at_sync_boundary():
 
 def test_aug_assign_lowering_reject_falls_back_at_sync_boundary():
     compiler, modules = _compile(
-        "from tpy import Int32\n"
-        "def rejected(s: str) -> Int32:\n"
+        "from tpy import int32\n"
+        "def rejected(s: str) -> int32:\n"
         "    s += 'x'\n"
-        "    return Int32(len(s))\n"
-        "def clean(n: Int32) -> Int32:\n"
+        "    return int32(len(s))\n"
+        "def clean(n: int32) -> int32:\n"
         "    return n + 1\n"
     )
     entry = _entry(modules)
@@ -1003,11 +1003,11 @@ def test_aug_assign_lowering_reject_falls_back_at_sync_boundary():
 
 def test_assert_lowering_routes_at_sync_boundary():
     compiler, modules = _compile(
-        "from tpy import Int32\n"
-        "def rejected(n: Int32) -> Int32:\n"
+        "from tpy import int32\n"
+        "def rejected(n: int32) -> int32:\n"
         "    assert True\n"
         "    return n\n"
-        "def clean(n: Int32) -> Int32:\n"
+        "def clean(n: int32) -> int32:\n"
         "    return n + 1\n"
     )
     entry = _entry(modules)
@@ -1026,7 +1026,7 @@ def test_assert_lowering_routes_at_sync_boundary():
 
 
 _ASSERT_MSG_RECORD = (
-    "from tpy import Int32\n"
+    "from tpy import int32\n"
     "class E:\n"
     "    message: str\n"
     "    def __init__(self, message: str):\n"
@@ -1037,7 +1037,7 @@ _ASSERT_MSG_RECORD = (
 def test_assert_message_clean_field_routes():
     compiler, entry, f = _fn_body(
         _ASSERT_MSG_RECORD
-        + "def checked(n: Int32, e: E) -> Int32:\n"
+        + "def checked(n: int32, e: E) -> int32:\n"
         "    assert n > 0, e.message\n"
         "    return n\n",
         "checked")
@@ -1053,7 +1053,7 @@ def test_assert_message_optional_field_falls_back():
     # `::tpy::deref_check(e).message` -- out of the admitted slice.
     compiler, entry, f = _fn_body(
         _ASSERT_MSG_RECORD
-        + "def rejected(n: Int32, e: E | None) -> Int32:\n"
+        + "def rejected(n: int32, e: E | None) -> int32:\n"
         "    assert n > 0, e.message\n"
         "    return n\n",
         "rejected")
@@ -1069,7 +1069,7 @@ def test_assert_message_optional_field_falls_back():
 def test_assert_message_property_field_falls_back():
     # A property message is a getter CALL on the AST path, not a member read.
     compiler, entry, f = _fn_body(
-        "from tpy import Int32\n"
+        "from tpy import int32\n"
         "class F:\n"
         "    _m: str\n"
         "    def __init__(self, m: str):\n"
@@ -1077,7 +1077,7 @@ def test_assert_message_property_field_falls_back():
         "    @property\n"
         "    def msg(self) -> str:\n"
         "        return self._m\n"
-        "def rejected(n: Int32, f: F) -> Int32:\n"
+        "def rejected(n: int32, f: F) -> int32:\n"
         "    assert n > 0, f.msg\n"
         "    return n\n",
         "rejected")
@@ -1091,7 +1091,7 @@ def test_assert_message_property_field_falls_back():
 
 
 _DELATTR_RECORD = (
-    "from tpy import Int32\n"
+    "from tpy import int32\n"
     "from typing import Any\n"
     "class Bag:\n"
     "    _data: dict[str, Any]\n"
@@ -1161,12 +1161,12 @@ def test_del_attr_multi_target_unresolved_falls_back():
 
 def test_if_bool_literal_routes_at_sync_boundary():
     compiler, modules = _compile(
-        "from tpy import Int32\n"
-        "def rejected(n: Int32) -> Int32:\n"
+        "from tpy import int32\n"
+        "def rejected(n: int32) -> int32:\n"
         "    if True:\n"
         "        n = n + 1\n"
         "    return n\n"
-        "def clean(n: Int32) -> Int32:\n"
+        "def clean(n: int32) -> int32:\n"
         "    return n + 1\n"
     )
     entry = _entry(modules)
@@ -1186,10 +1186,10 @@ def test_if_bool_literal_routes_at_sync_boundary():
 
 def test_assign_lowering_reject_falls_back_at_sync_boundary():
     compiler, modules = _compile(
-        "from tpy import Int32\n"
+        "from tpy import int32\n"
         "class R:\n"
-        "    xs: list[Int32]\n"
-        "    def __init__(self, xs: list[Int32]):\n"
+        "    xs: list[int32]\n"
+        "    def __init__(self, xs: list[int32]):\n"
         "        self.xs = xs\n"
         "def rejected(r: R, r2: R) -> None:\n"
         "    r.xs = r2.xs\n"
@@ -1232,8 +1232,8 @@ def test_sync_lowering_reports_first_reject_in_source_order():
     compiler, modules = _compile(
         # The `assert` is admitted, so the VIEW-form walrus below it is the
         # first reject in source order.
-        "from tpy import Int32, StrView\n"
-        "def rejected(s: StrView) -> Int32:\n"
+        "from tpy import int32, StrView\n"
+        "def rejected(s: StrView) -> int32:\n"
         "    assert True\n"
         "    x = (y := s)\n"
         "    return len(x) + len(y)\n"
@@ -1251,7 +1251,7 @@ def test_sync_lowering_reports_first_reject_in_source_order():
 
 def test_constructor_lowering_reports_first_reject_in_source_order():
     compiler, modules = _compile(
-        "from tpy import Int32, StrView\n"
+        "from tpy import int32, StrView\n"
         "class R:\n"
         "    n: StrView\n"
         "    def __init__(self, n: StrView):\n"
@@ -1274,8 +1274,8 @@ def test_constructor_lowering_reports_first_reject_in_source_order():
 
 def test_detail_composes_into_stmt_tag():
     compiler, modules = _compile(
-        "from tpy import Int32\n"
-        "def g(n: Int32) -> None:\n"
+        "from tpy import int32\n"
+        "def g(n: int32) -> None:\n"
         "    print(n)\n"
     )
     entry = _entry(modules)
@@ -1296,8 +1296,8 @@ def test_detail_composes_into_stmt_tag():
         # A landmark tag stands alone -- no detail suffix.
         note_detail("call.imported_symbol")
         comp_stmt = _compile(
-            "from tpy import Int32\n"
-            "def h(n: Int32) -> None:\n"
+            "from tpy import int32\n"
+            "def h(n: int32) -> None:\n"
             "    d = {i: i for i in range(n)}\n"
         )[1]
     entry2 = _entry(comp_stmt)
@@ -1317,8 +1317,8 @@ def test_detail_noop_without_active_compiler():
 
 def test_classify_stmt_tags():
     compiler, modules = _compile(
-        "from tpy import Int32\n"
-        "def g(n: Int32) -> None:\n"
+        "from tpy import int32\n"
+        "def g(n: int32) -> None:\n"
         "    d = {i: i for i in range(n)}\n"
         "    print(n)\n"
     )
@@ -1332,10 +1332,10 @@ def test_type_family_tag_on_signature_types():
     # The shared drilldown family chain, pinned per family so a tag-chain
     # regression (wrong label, broken Own recursion) fails loudly.
     compiler, modules = _compile(
-        "from tpy import Int32, Own, Ptr\n"
-        "def f(a: Int32, b: Int32 | None, c: list[Int32],\n"
-        "      d: tuple[Int32, str], e: Ptr[Int32], g: str,\n"
-        "      i: Own[list[Int32]]) -> None:\n"
+        "from tpy import int32, Own, Ptr\n"
+        "def f(a: int32, b: int32 | None, c: list[int32],\n"
+        "      d: tuple[int32, str], e: Ptr[int32], g: str,\n"
+        "      i: Own[list[int32]]) -> None:\n"
         "    pass\n"
     )
     entry = _entry(modules)
@@ -1355,16 +1355,16 @@ def test_iterator_object_local_as_protocol_arg_byte_identical():
     # as a byte-identity regression guard).
     from .testutil import _assert_byte_identical
     _assert_byte_identical(
-        "from tpy import Int32\n"
+        "from tpy import int32\n"
         "from typing import Iterator, Iterable\n"
-        "def gen(n: Int32) -> Iterator[Int32]:\n"
+        "def gen(n: int32) -> Iterator[int32]:\n"
         "    yield n\n"
-        "def total(it: Iterable[Int32]) -> Int32:\n"
+        "def total(it: Iterable[int32]) -> int32:\n"
         "    t = 0\n"
         "    for v in it:\n"
         "        t = t + v\n"
         "    return t\n"
-        "def use(n: Int32) -> Int32:\n"
+        "def use(n: int32) -> int32:\n"
         "    it = gen(n)\n"
         "    return total(it)\n")
 
@@ -1373,11 +1373,11 @@ def test_reassigned_iterator_object_local_falls_back():
     # The iterator-object decl gate excludes reassigned names -- a rebind
     # would need pointer machinery the arm does not carry.
     compiler, entry, f = _fn_body(
-        "from tpy import Int32\n"
+        "from tpy import int32\n"
         "from typing import Iterator\n"
-        "def gen(n: Int32) -> Iterator[Int32]:\n"
+        "def gen(n: int32) -> Iterator[int32]:\n"
         "    yield n\n"
-        "def rejected(n: Int32) -> Int32:\n"
+        "def rejected(n: int32) -> int32:\n"
         "    it = gen(n)\n"
         "    it = gen(n + 1)\n"
         "    t = 0\n"
@@ -1398,11 +1398,11 @@ def test_branch_first_iterator_object_decl_falls_back():
     # branch-first iterator decl must reject (function scope only), so the
     # registration can never leak past its branch.
     compiler, entry, f = _fn_body(
-        "from tpy import Int32\n"
+        "from tpy import int32\n"
         "from typing import Iterator\n"
-        "def gen(n: Int32) -> Iterator[Int32]:\n"
+        "def gen(n: int32) -> Iterator[int32]:\n"
         "    yield n\n"
-        "def rejected(c: bool, n: Int32) -> Int32:\n"
+        "def rejected(c: bool, n: int32) -> int32:\n"
         "    t = 0\n"
         "    if c:\n"
         "        it = gen(n)\n"
@@ -1432,8 +1432,8 @@ def test_native_arg_container_is_not_labelled_a_record():
     # deeper (the double-subscript receiver arm), so the reject moved to the
     # inner subscript's own receiver frontier -- still a rejected container
     # shape, never the record label.
-    src = ("from tpy import Int32\n"
-           "def f(m: list[list[list[Int32]]]) -> None:\n"
+    src = ("from tpy import int32\n"
+           "def f(m: list[list[list[int32]]]) -> None:\n"
            "    print(len(m[0][1]))\n"
            "def main() -> None:\n    pass\nmain()\n")
     reasons = _reasons(src)
@@ -1451,10 +1451,10 @@ def test_print_arg_reports_the_inner_reject_not_its_own_shape():
     # haystack rides the ranges_contains arm, whose needle set is
     # scalar/str/ptr-tuple only. (The previous fixture -- a view-keyed set
     # membership -- routed when the view-key family landed.)
-    src = ("from tpy import Int32\n"
+    src = ("from tpy import int32\n"
            "class Point:\n"
-           "    x: Int32\n"
-           "    def __init__(self, x: Int32) -> None:\n        self.x = x\n"
+           "    x: int32\n"
+           "    def __init__(self, x: int32) -> None:\n        self.x = x\n"
            "    def __eq__(self, other: Point) -> bool:\n"
            "        return self.x == other.x\n"
            "class Item:\n"

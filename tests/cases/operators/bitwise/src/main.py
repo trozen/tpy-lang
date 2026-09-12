@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 
-a: Int32 = 12      # 0b1100
-b: Int32 = 10      # 0b1010
+a: int32 = 12      # 0b1100
+b: int32 = 10      # 0b1010
 
 # Bitwise AND
 print(a & b)       # 8 (0b1000)
@@ -13,7 +13,7 @@ print(a | b)       # 14 (0b1110)
 print(a ^ b)       # 6 (0b0110)
 
 # Bitwise NOT
-c: Int32 = 0
+c: int32 = 0
 print(~c)          # -1
 
 # Left shift
@@ -40,8 +40,8 @@ z = 5
 print(~z)          # -6
 
 # Large BigInt bitwise
-big1 = (1 << 100) | (1 << 50)  # tpyc: warning(/outside default Int32 range/)
-big2 = (1 << 100) | (1 << 25)  # tpyc: warning(/outside default Int32 range/)
+big1 = (1 << 100) | (1 << 50)  # tpyc: warning(/outside default int32 range/)
+big2 = (1 << 100) | (1 << 25)  # tpyc: warning(/outside default int32 range/)
 print((big1 & big2) >> 100)         # 1 - only bit 100 in common
 print((big1 | big2) >> 100)         # 1 - bit 100 is set
 print((big1 ^ big2) >> 50)          # 1 - bit 50 differs (in big1 only)

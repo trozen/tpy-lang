@@ -25,7 +25,7 @@ template<typename __F0, typename __F1>
 void do_both(__F0&& a, __F1&& b, int32_t x);
 void main();
 
-// def apply_both(f: Fn[[Int32], Int32], g: Fn[[Int32], Int32], x: Int32) -> Int32:
+// def apply_both(f: Fn[[int32], int32], g: Fn[[int32], int32], x: int32) -> int32:
 template<typename __F0, typename __F1>
   requires requires(__F0& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<int32_t>;
@@ -36,7 +36,7 @@ int32_t apply_both(__F0&& f, __F1&& g, int32_t x) {
     // return g(f(x))
     return g(f(x));
 }
-// def do_both(a: Fn[[Int32], None], b: Fn[[Int32], None], x: Int32) -> None:
+// def do_both(a: Fn[[int32], None], b: Fn[[int32], None], x: int32) -> None:
 template<typename __F0, typename __F1>
   requires requires(__F0& __fn, int32_t __a0) {
       __fn(__a0);

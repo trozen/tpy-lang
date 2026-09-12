@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def take(cb: Send[Callable[[Int32], None]]) -> None:
+// def take(cb: Send[Callable[[int32], None]]) -> None:
 void take(const std::function<void(int32_t)>& cb) {
     // cb(1)
     cb(1);
 }
 
-// def free_fn(n: Int32) -> None:
+// def free_fn(n: int32) -> None:
 void free_fn(int32_t n) {
     // print("free", n)
     std::cout << "free" << " " << n << "\n";
@@ -30,7 +30,7 @@ void main() {
     std::array<int32_t, 2> xs = {1, 2};
     // take(lambda n: print("list", n + xs[0]))
     take([xs](int32_t n) { std::cout << "list" << " " << (::tpy::add_check<int32_t>(n, ::tpy::__getitem__(xs, 0))) << "\n"; });
-    // def nested(n: Int32) -> None:
+    // def nested(n: int32) -> None:
     auto nested = [k](int32_t n) {
         // print("nested", n + k)
         std::cout << "nested" << " " << (::tpy::add_check<int32_t>(n, k)) << "\n";

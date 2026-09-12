@@ -20,7 +20,7 @@ void main();
 // class Combined(Counter, Tag):
 struct Combined : ::tpyapp::bases::Counter, ::tpyapp::bases::Tag {
 
-    // def __init__(self, n: Int32, label: str) -> None:
+    // def __init__(self, n: int32, label: str) -> None:
     Combined() = default;
     explicit Combined(int32_t n, std::string_view label);
 
@@ -35,7 +35,7 @@ inline std::ostream& operator<<(std::ostream& os, const Combined& obj) {
 }
 
 
-// def __init__(self, n: Int32, label: str) -> None:
+// def __init__(self, n: int32, label: str) -> None:
 inline Combined::Combined(int32_t n, std::string_view label) {
     // Counter.value = n  # tpyc: ok
     this->::tpyapp::bases::Counter::value = n;

@@ -1,5 +1,5 @@
 # Global (module-level) @dynamic protocol variable with reassignment and control flow
-from tpy import dynamic, Int32
+from tpy import dynamic, int32
 from typing import Protocol
 
 @dynamic
@@ -32,7 +32,7 @@ if True:
 print(pet.name())
 
 # Global reassign inside loop
-i: Int32 = 0
+i: int32 = 0
 while i < 2:
     pet = Dog()
     i = i + 1

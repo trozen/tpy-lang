@@ -1,18 +1,18 @@
 # Sources at a `T | None` pointer slot that are NOT the hoisted-temp shape: a
 # field lvalue, and a call returning a SUBCLASS (whose temp class would have to
 # be re-derived to avoid slicing). Both reject where an exact rvalue routes.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Pet:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
 class Dog(Pet):
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         super().__init__(n)
 
 

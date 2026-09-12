@@ -2,17 +2,17 @@
 # elements, no Optional wrapper). Same diagnostic family as the
 # Optional-element case, exercising the parallel path through
 # own_tuple_target's per-element Own synthesis for non-value elements.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class P:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
-def take(t: Own[tuple[P, P]]) -> Int32:
-    return Int32(0)
+def take(t: Own[tuple[P, P]]) -> int32:
+    return int32(0)
 
 
 def main() -> None:

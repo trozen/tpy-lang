@@ -173,7 +173,7 @@ void walk_sorted(std::string_view root) {
     }
 }
 
-// def count_dirs(root: str, follow: bool) -> Int32:
+// def count_dirs(root: str, follow: bool) -> int32:
 int32_t count_dirs(std::string_view root, bool follow) {
     // n = 0
     int32_t n = 0;
@@ -198,7 +198,7 @@ int32_t count_dirs(std::string_view root, bool follow) {
     return n;
 }
 
-// def prune_all(root: str) -> Int32:
+// def prune_all(root: str) -> int32:
 int32_t prune_all(std::string_view root) {
     // # dirnames[:] = [] stops all descent -- only the root tuple is yielded.
     // n = 0

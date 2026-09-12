@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // # Extract keys from list of tuples (deterministic insertion order)
-    // pairs: list[tuple[str, Int32]] = [("apple", 3), ("banana", 1), ("cherry", 5)]
+    // pairs: list[tuple[str, int32]] = [("apple", 3), ("banana", 1), ("cherry", 5)]
     std::vector<std::tuple<std::string, int32_t>> pairs = {std::tuple<std::string, int32_t>{"apple", 3}, std::tuple<std::string, int32_t>{"banana", 1}, std::tuple<std::string, int32_t>{"cherry", 5}};
     // names: set[str] = {k for k, _ in pairs}
     ::tpy::ordered_set<std::string> names = ({
@@ -31,9 +31,9 @@ void main() {
     // print("cherry" in names)
     std::cout << ::tpy::print_bool((names.contains("cherry"))) << "\n";
     // # Extract values with dedup
-    // pairs2: list[tuple[str, Int32]] = [("a", 10), ("b", 20), ("c", 10)]
+    // pairs2: list[tuple[str, int32]] = [("a", 10), ("b", 20), ("c", 10)]
     std::vector<std::tuple<std::string, int32_t>> pairs2 = {std::tuple<std::string, int32_t>{"a", 10}, std::tuple<std::string, int32_t>{"b", 20}, std::tuple<std::string, int32_t>{"c", 10}};
-    // vals: set[Int32] = {v for _, v in pairs2}
+    // vals: set[int32] = {v for _, v in pairs2}
     ::tpy::ordered_set<int32_t> vals = ({
         ::tpy::ordered_set<int32_t> __result;
         auto& __obj_1 = pairs2;

@@ -1,16 +1,16 @@
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Product:
-    value: Int32
+    value: int32
 
-    def __init__(self, value: Int32) -> None:
+    def __init__(self, value: int32) -> None:
         self.value = value
 
 
 class Factory:
     def create(self) -> Own[Product]:
-        return Product(Int32(9))
+        return Product(int32(9))
 
 
 def get_factory() -> Own[Factory]:

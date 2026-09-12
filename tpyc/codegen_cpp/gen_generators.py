@@ -841,7 +841,7 @@ class GeneratorCodegen:
 
         Iterator yields hand out references like function returns (CPython
         semantics), so borrow form is the default for tuple yields:
-        `tuple[Int32, Point]` -> `std::tuple<int32_t, Point&>`,
+        `tuple[int32, Point]` -> `std::tuple<int32_t, Point&>`,
         `tuple[P | None, P | None]` -> `std::tuple<P*, P*>`. The outer tuple
         is a value type that std::optional can hold, with reference-bearing
         inner elements preserved through the yield boundary.

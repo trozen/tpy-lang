@@ -1,18 +1,18 @@
 # Test bounded generic function with user-defined type
 # The user type implements __len__ so satisfies Sized
 from typing import Sized
-from tpy import Int32
+from tpy import int32
 
 class MyContainer:
-    data: list[Int32]
+    data: list[int32]
 
-    def __init__(self, items: list[Int32]) -> None:
+    def __init__(self, items: list[int32]) -> None:
         self.data = items
 
-    def __len__(self) -> Int32:
+    def __len__(self) -> int32:
         return len(self.data)
 
-def get_length[T: Sized](item: T) -> Int32:
+def get_length[T: Sized](item: T) -> int32:
     # Note: Can't call len(item) here yet - returning fixed value
     # This tests that the bound is validated during inference
     return 42

@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // s = SimpleList[Int32, 8]()
+    // s = SimpleList[int32, 8]()
     SimpleList<int32_t, 8> s = SimpleList<int32_t, 8>();
     // s.add(10)
     s.add(10);

@@ -6,11 +6,11 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // c = Cell[Int32](Int32(42))
+    // c = Cell[int32](int32(42))
     Cell<int32_t> c = Cell<int32_t>(42);
     // print(second_of(c))                   # 1
     std::cout << second_of<int32_t>(c) << "\n";
-    // print(use_consume(c, Int32(100)))     # 2
+    // print(use_consume(c, int32(100)))     # 2
     std::cout << use_consume<int32_t>(c, 100) << "\n";
 }
 

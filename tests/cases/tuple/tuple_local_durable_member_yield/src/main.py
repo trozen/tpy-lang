@@ -4,16 +4,16 @@
 # shared-reference semantics (no silent copy). Mutate-and-observe, not a
 # read-only match, so a silent copy would diverge.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    val: Int32
-    def __init__(self, v: Int32) -> None:
+    val: int32
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 
-def gen(b: Box) -> Iterator[tuple[Int32, Box]]:
+def gen(b: Box) -> Iterator[tuple[int32, Box]]:
     t = (1, b)
     yield t
 

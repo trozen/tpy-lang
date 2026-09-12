@@ -5,13 +5,13 @@
 # mutating the result would show at `h.p.n` there and not here. The cpy phase
 # byte-compares output, so this case prints only what both agree on and the
 # WARNING is the pin; `take_copy` is the spelling that silences it.
-from tpy import Int32, Own, copy
+from tpy import int32, Own, copy
 
 
 class Payload:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 

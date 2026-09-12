@@ -2,12 +2,12 @@
 # (`Outer.Inner`) and codegen must translate it to `Outer::Inner::LIMIT`,
 # not the invalid `Outer.Inner::LIMIT`.
 from typing import Final
-from tpy import Int32
+from tpy import int32
 
 
 class Outer:
     class Inner:
-        LIMIT: Final[Int32] = 42
+        LIMIT: Final[int32] = 42
         TAG: Final[str] = "inner"
 
 

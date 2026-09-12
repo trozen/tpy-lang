@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def total(items: list[Int32]) -> Int32:
+// def total(items: list[int32]) -> int32:
 int32_t total(const std::vector<int32_t>& items) {
     // s = 0
     int32_t s = 0;
@@ -21,7 +21,7 @@ int32_t total(const std::vector<int32_t>& items) {
     return s;
 }
 
-// def count_pos(xs: list[Int32]) -> Int32:
+// def count_pos(xs: list[int32]) -> int32:
 int32_t count_pos(const std::vector<int32_t>& xs) {
     // n = 0
     int32_t n = 0;
@@ -38,7 +38,7 @@ int32_t count_pos(const std::vector<int32_t>& xs) {
     return n;
 }
 
-// def keysum(d: dict[Int32, Int32]) -> Int32:
+// def keysum(d: dict[int32, int32]) -> int32:
 int32_t keysum(const ::tpy::ordered_map<int32_t, int32_t>& d) {
     // s = 0
     int32_t s = 0;

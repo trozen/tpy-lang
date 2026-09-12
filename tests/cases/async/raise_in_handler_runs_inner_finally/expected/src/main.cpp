@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def fail_value() -> Int32:
+// async def fail_value() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_fail_value::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
@@ -18,12 +18,12 @@ namespace tpyapp::main {
 }
 
 
-// async def fail_value() -> Int32:
+// async def fail_value() -> int32:
 __coro_fail_value fail_value() {
     return __coro_fail_value();
 }
 
-// async def go() -> Int32:
+// async def go() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_go::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
@@ -72,7 +72,7 @@ __coro_fail_value fail_value() {
             try {
                 // print("outer-handler")
                 std::cout << "outer-handler" << "\n";
-                // return Int32(42)
+                // return int32(42)
                 int32_t __tpy_async_ret_1 = 42;
                 __fin_ran_4 = true;
                 this->__finally_0();
@@ -104,7 +104,7 @@ __coro_fail_value fail_value() {
             try {
                 // print("outer-handler")
                 std::cout << "outer-handler" << "\n";
-                // return Int32(42)
+                // return int32(42)
                 int32_t __tpy_async_ret_2 = 42;
                 __fin_ran_6 = true;
                 this->__finally_0();
@@ -145,7 +145,7 @@ void __coro_go::__finally_1() {
     std::cout << "inner-finally" << "\n";
 }
 
-// async def go() -> Int32:
+// async def go() -> int32:
 __coro_go go() {
     return __coro_go();
 }

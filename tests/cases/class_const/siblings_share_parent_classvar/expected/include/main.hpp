@@ -17,7 +17,7 @@ void main();
 
 // class Parent:
 struct Parent {
-    // counter: ClassVar[Int32] = 0
+    // counter: ClassVar[int32] = 0
     static inline int32_t counter = 0;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.Parent";

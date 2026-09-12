@@ -1,10 +1,10 @@
 # The hidden-temp desugar must preserve Python's "evaluate the whole RHS
 # before binding any target" rule: swaps and self-referential RHS stay
 # correct, and a target is left unbound when a later element raises.
-from tpy import Int32
+from tpy import int32
 
 
-def boom() -> Int32:
+def boom() -> int32:
     raise ValueError("nope")
 
 

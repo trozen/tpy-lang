@@ -12,15 +12,15 @@
 # are position-independent, and the generator, closure and module-level
 # sections cover the positions with a different variable model.
 from typing import Iterator, Optional
-from tpy import Int32
+from tpy import int32
 
 
 class Pic:
-    data: list[list[Int32]]
-    flat: list[Int32]
-    d: dict[str, Int32]
-    s: set[Int32]
-    opt: Optional[list[Int32]]
+    data: list[list[int32]]
+    flat: list[int32]
+    d: dict[str, int32]
+    s: set[int32]
+    opt: Optional[list[int32]]
 
     def __init__(self) -> None:
         self.data = []
@@ -30,18 +30,18 @@ class Pic:
         self.opt = None
 
     # Method body, a nested comprehension.
-    def fill(self, w: Int32, h: Int32) -> None:
+    def fill(self, w: int32, h: int32) -> None:
         self.data = [[0 for k in range(h)] for j in range(w)]  # tpyc: ok
 
 
 class Grid:
-    width: Int32
-    height: Int32
-    data: list[list[Int32]]
+    width: int32
+    height: int32
+    data: list[list[int32]]
 
     # The doom shape: locals first, so the field writes land in the
     # constructor BODY rather than the member-init prefix.
-    def __init__(self, raw: list[Int32]) -> None:
+    def __init__(self, raw: list[int32]) -> None:
         width = raw[0]
         height = raw[1]
         self.width = width
@@ -52,7 +52,7 @@ class Grid:
 
 
 # Free function: the dict and set comprehensions, and the Optional field.
-def fill_free(p: Pic, n: Int32) -> None:
+def fill_free(p: Pic, n: int32) -> None:
     p.d = {str(j): j for j in range(n)}  # tpyc: ok
     p.s = {j * 2 for j in range(n)}  # tpyc: ok
     p.opt = [j for j in range(n)]  # tpyc: ok
@@ -68,8 +68,8 @@ def reseat_opt(p: Pic) -> None:
 
 
 # Element setitems: a local list, a dict, and a field container.
-def setitems(p: Pic, n: Int32) -> None:
-    rows: list[list[Int32]] = [[], []]
+def setitems(p: Pic, n: int32) -> None:
+    rows: list[list[int32]] = [[], []]
     rows[0] = [j for j in range(n)]  # tpyc: ok
     rows[0].append(7)
     print("setitem_list", rows)
@@ -78,7 +78,7 @@ def setitems(p: Pic, n: Int32) -> None:
         rows[i] = [j + i for j in range(2)]  # tpyc: ok bounds_safe(rows)
         rows[i].append(8)
     print("setitem_list_safe", rows)
-    d: dict[str, list[Int32]] = {}
+    d: dict[str, list[int32]] = {}
     d["a"] = [j for j in range(n)]  # tpyc: ok
     d["a"].append(7)
     print("setitem_dict", d)
@@ -88,7 +88,7 @@ def setitems(p: Pic, n: Int32) -> None:
 
 
 # Generator body.
-def gen(p: Pic, k: Int32) -> Iterator[Int32]:
+def gen(p: Pic, k: int32) -> Iterator[int32]:
     for i in range(k):
         p.flat = [i + j for j in range(2)]  # tpyc: ok
         p.flat.append(9)
@@ -97,7 +97,7 @@ def gen(p: Pic, k: Int32) -> Iterator[Int32]:
 
 # Closure body.
 def closure(p: Pic) -> None:
-    def inner(n: Int32) -> Int32:
+    def inner(n: int32) -> int32:
         p.flat = [j for j in range(n)]  # tpyc: ok
         p.flat.append(1)
         return len(p.flat)

@@ -1,1 +1,1 @@
-main.py:10: error: cannot copy non-copyable type 'Box[Int32]' into owned storage (tuple element 1) (use Own[...] to transfer ownership, copy() if a copy is truly intended, or let auto-move apply at last use)
+main.py:10: error: cannot copy non-copyable type 'Box[int32]' into owned storage (tuple element 1) (use Own[...] to transfer ownership, copy() if a copy is truly intended, or let auto-move apply at last use)

@@ -279,6 +279,6 @@ def unsafe_str_from_cstr(p) -> str:
 
 
 def unsafe_str_view(p, size: int) -> str:
-    """Create a string view from a Ptr[Char] and length."""
+    """Create a string view from a Ptr[char] and length."""
     obj = p.__deref__() if hasattr(p, '__deref__') else p._obj
     return ''.join(obj[i] for i in range(size))

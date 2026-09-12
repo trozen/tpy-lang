@@ -74,7 +74,7 @@ __coro_drive drive() {
     return __coro_drive();
 }
 
-// async def direct(self) -> Int32:
+// async def direct(self) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_Holder_direct::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
@@ -97,7 +97,7 @@ __coro_drive drive() {
 }
 
 
-// async def reguard(self) -> Int32:
+// async def reguard(self) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_Holder_reguard::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {

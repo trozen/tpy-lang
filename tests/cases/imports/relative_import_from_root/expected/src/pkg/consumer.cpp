@@ -4,7 +4,7 @@
 namespace tpyapp::pkg::consumer {
 
 
-// def compute() -> Int32:
+// def compute() -> int32:
 int32_t compute() {
     // return utils.root_func()
     return ::tpyapp::utils::root_func();

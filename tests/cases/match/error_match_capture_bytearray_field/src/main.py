@@ -3,7 +3,7 @@
 # binding machinery downstream has no bytearray rung, so the match still
 # rejects as a whole -- pinned so widening the predicate alone cannot be read
 # as having opened this shape.
-from tpy import Int32
+from tpy import int32
 
 
 class H:

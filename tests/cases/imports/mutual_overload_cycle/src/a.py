@@ -7,10 +7,10 @@
 # finalizes, a's analyzer registry holds the stale empty FI and
 # overload resolution at a's call sites fails (or picks wrong target).
 from b import g
-from tpy import Int32
+from tpy import int32
 
-def use_g_int(n: Int32) -> Int32:
+def use_g_int(n: int32) -> int32:
     return g(n)
 
-def use_g_str(s: str) -> Int32:
+def use_g_str(s: str) -> int32:
     return g(s)

@@ -3,20 +3,20 @@
 # dispatch happens.
 from typing import Protocol
 
-from tpy import Int32, dynamic
+from tpy import int32, dynamic
 
 
 @dynamic
 class Pet(Protocol):
-    def sound(self) -> Int32: ...
+    def sound(self) -> int32: ...
 
 
 class Dog(Pet):
-    def sound(self) -> Int32:
+    def sound(self) -> int32:
         return 7
 
 
-def dyn_on_optional(p: Pet | None) -> Int32:
+def dyn_on_optional(p: Pet | None) -> int32:
     return p.sound()  # tpyc: warning(/Potential None access/)
 
 

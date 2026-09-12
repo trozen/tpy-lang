@@ -1,17 +1,17 @@
 import asyncio
-from tpy import Int32
+from tpy import int32
 from asyncio import Task, task_from_coro
 from tpy.coro import task_poll_cancelled, poll_once
 
-async def coro() -> Int32:
+async def coro() -> int32:
     try:
         await asyncio.sleep(60.0)
-        return Int32(99)
+        return int32(99)
     finally:
         print("cleanup ran")
 
 def main() -> None:
-    t: Task[Int32] = task_from_coro(coro())
+    t: Task[int32] = task_from_coro(coro())
     if poll_once(t).is_pending():
         print("first-poll-pending")
     t.cancel()

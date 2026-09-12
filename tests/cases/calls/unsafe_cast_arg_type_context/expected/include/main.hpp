@@ -21,7 +21,7 @@ int32_t take_ptr(void* p);
 struct Sink {
 
 
-    // def put(self, p: Ptr[None]) -> Int32:
+    // def put(self, p: Ptr[None]) -> int32:
     int32_t put(void* p) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Sink";
 };
@@ -32,9 +32,9 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
 }
 
 
-// def put(self, p: Ptr[None]) -> Int32:
+// def put(self, p: Ptr[None]) -> int32:
 inline int32_t Sink::put(void* p) const {
-    // return Int32(20)
+    // return int32(20)
     return 20;
 }
 void __tpy_init();

@@ -33,7 +33,7 @@ struct Tree {
     }
 };
 
-// def depth[T](t: Tree[T]) -> Int32:
+// def depth[T](t: Tree[T]) -> int32:
 template<typename T>
 int32_t depth(const Tree<T>& t) {
     // match t:

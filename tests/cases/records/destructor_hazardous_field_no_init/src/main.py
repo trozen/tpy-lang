@@ -6,13 +6,13 @@
 # `str` field has a well-defined empty state, so default-construction is
 # safe even with a __del__ that reads it. The snapshot is the regression
 # guard: Safe must have `Safe() = default;`, Hazard must not.
-from tpy import Int32, Ptr
+from tpy import int32, Ptr
 
 
 # Hazardous: raw pointer field with no in-class initializer. Codegen
 # suppresses Hazard()'s default ctor so default-construction is impossible.
 class Hazard:
-    _handle: Ptr[Int32]
+    _handle: Ptr[int32]
 
     def __del__(self) -> None:
         print("dropping hazard")

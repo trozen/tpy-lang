@@ -72,10 +72,10 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
 struct Tagged {
     // tag: str
     std::string tag;
-    // value: str | Int32
+    // value: str | int32
     ::tpy::Union<int32_t, std::string> value;
 
-    // def __init__(self, tag: str, value: str | Int32) -> None:
+    // def __init__(self, tag: str, value: str | int32) -> None:
     explicit Tagged(std::string_view tag, const ::tpy::Union<int32_t, std::string>& value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Tagged";
 };
@@ -95,7 +95,7 @@ inline Dog::Dog(std::string_view name) : name(name) {}
 // def __init__(self, pet: Cat | Dog) -> None:
 inline Wrapper::Wrapper(::tpy::Union<const Cat*, const Dog*> pet) : pet(::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet)) {}
 
-// def __init__(self, tag: str, value: str | Int32) -> None:
+// def __init__(self, tag: str, value: str | int32) -> None:
 inline Tagged::Tagged(std::string_view tag, const ::tpy::Union<int32_t, std::string>& value) : tag(tag), value(value) {}
 void __tpy_init();
 } // namespace tpyapp::main

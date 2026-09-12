@@ -1,5 +1,5 @@
 from typing import Final
-from tpy import Int32
+from tpy import int32
 
 VERSION: Final[str] = "1.2.3"
-LIMIT: Final[Int32] = 16
+LIMIT: Final[int32] = 16

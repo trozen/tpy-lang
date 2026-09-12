@@ -1,15 +1,15 @@
 # Tests iter() builtin and explicit __next__() with try/except
-from tpy import Int32, Own
+from tpy import int32, Own
 
 class CounterIter:
-    current: Int32
-    limit: Int32
+    current: int32
+    limit: int32
 
-    def __init__(self, limit: Int32) -> None:
+    def __init__(self, limit: int32) -> None:
         self.current = 0
         self.limit = limit
 
-    def __next__(self) -> Int32:
+    def __next__(self) -> int32:
         if self.current < self.limit:
             result = self.current
             self.current += 1
@@ -17,9 +17,9 @@ class CounterIter:
         raise StopIteration
 
 class Counter:
-    limit: Int32
+    limit: int32
 
-    def __init__(self, limit: Int32) -> None:
+    def __init__(self, limit: int32) -> None:
         self.limit = limit
 
     def __iter__(self) -> Own[CounterIter]:

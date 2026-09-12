@@ -11,9 +11,9 @@ void main() {
     ::tpystd::tplib::fix_str::FixStr<16> s = ::tpystd::tplib::fix_str::FixStr<16>();
     // print(len(s))               # 0
     std::cout << ::tpy::__len__(s) << "\n";
-    // h: Char = "h"
+    // h: char = "h"
     char h = 'h';
-    // i: Char = "i"
+    // i: char = "i"
     char i = 'i';
     // s.append(h)
     s.append(h);
@@ -27,7 +27,7 @@ void main() {
     // print(s[1])                 # i
     std::cout << s[1] << "\n";
     // # -- setitem --
-    // o: Char = "o"
+    // o: char = "o"
     char o = 'o';
     // s[1] = o
     ::tpy::__setitem__(s, 1, o);
@@ -39,9 +39,9 @@ void main() {
     // print(len(s))               # 1
     std::cout << ::tpy::__len__(s) << "\n";
     // # -- iter --
-    // e: Char = "e"
+    // e: char = "e"
     char e = 'e';
-    // y: Char = "y"
+    // y: char = "y"
     char y = 'y';
     // s.append(e)
     s.append(e);
@@ -80,7 +80,7 @@ void main() {
     // # -- copy --
     // t = copy(s)
     ::tpystd::tplib::fix_str::FixStr<16> t = ::tpystd::tplib::fix_str::FixStr<16>(s);
-    // b: Char = "b"
+    // b: char = "b"
     char b = 'b';
     // t[0] = b
     ::tpy::__setitem__(t, 0, b);

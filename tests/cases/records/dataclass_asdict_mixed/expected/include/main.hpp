@@ -19,9 +19,9 @@ void main();
 // @dataclass
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
-    // y: Int32
+    // y: int32
     int32_t y;
 
     Point() = default;
@@ -47,7 +47,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 struct Person {
     // name: str
     std::string name;
-    // age: Int32
+    // age: int32
     int32_t age;
 
     Person() = default;

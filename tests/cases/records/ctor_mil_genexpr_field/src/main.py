@@ -1,25 +1,25 @@
 # A generator expression inside a constructor member-init list: the genexpr's
 # IIFE captures the ctor PARAM it reads, at a plain tuple field and at a nested
 # tuple field.
-from tpy import Int32
+from tpy import int32
 
 
 class H:
-    t: tuple[Int32, Int32]
+    t: tuple[int32, int32]
 
-    def __init__(self, d: dict[Int32, Int32]) -> None:
+    def __init__(self, d: dict[int32, int32]) -> None:
         # The genexpr reads `d`, so its lambda must capture it.
         self.t = (sum(k for k in d), 1)
 
 
 class N:
-    t: tuple[Int32, tuple[Int32, str]]
+    t: tuple[int32, tuple[int32, str]]
 
-    def __init__(self, d: dict[Int32, Int32]) -> None:
+    def __init__(self, d: dict[int32, int32]) -> None:
         # ... the same capture one tuple level deeper.
         self.t = (1, (sum(k for k in d), "a"))
 
-    def inner(self) -> Int32:
+    def inner(self) -> int32:
         a, b = self.t
         c, s = b
         return c

@@ -1,11 +1,11 @@
 from typing import Protocol
-from tpy import Int32
+from tpy import int32
 class Speaker(Protocol):
-    def speak(self) -> Int32: ...
+    def speak(self) -> int32: ...
 class Dog:
-    def speak(self) -> Int32:
+    def speak(self) -> int32:
         return 1
-def use(x: Speaker | None) -> Int32:
+def use(x: Speaker | None) -> int32:
     if x is not None:
         r = x.speak()
     else:

@@ -10,7 +10,7 @@ std::tuple<Point*, Point> split(Point& p) {
     return std::tuple<Point*, Point>{&(p), Point(p)};
 }
 
-// def split3(p: Point) -> tuple[Point, Own[Point], Int32, str]:
+// def split3(p: Point) -> tuple[Point, Own[Point], int32, str]:
 std::tuple<Point*, Point, int32_t, std::string> split3(Point& p) {
     // return (p, copy(p), 7, "hi")
     return std::tuple<Point*, Point, int32_t, std::string>{&(p), Point(p), 7, "hi"};

@@ -3,13 +3,13 @@
 # an EMPTY container literal would emit a bare `= {}` with no element spelling.
 import asyncio
 
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 # The reject is reported on the `def` line, not the `return`: a resumable's
 # terminator rejects carry no location and fall back to the enclosing
 # callable's.
-async def empty() -> Own[list[Int32]]:  # tpyc: error(/not yet supported/)
+async def empty() -> Own[list[int32]]:  # tpyc: error(/not yet supported/)
     return []
 
 

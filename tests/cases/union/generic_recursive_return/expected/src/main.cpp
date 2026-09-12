@@ -4,19 +4,19 @@
 namespace tpyapp::main {
 
 
-// def make_leaf() -> Own[Tree[Int32]]:
+// def make_leaf() -> Own[Tree[int32]]:
 Tree<int32_t> make_leaf() {
-    // return Int32(7)
+    // return int32(7)
     return 7;
 }
 
-// def make_branch() -> Own[Tree[Int32]]:
+// def make_branch() -> Own[Tree[int32]]:
 Tree<int32_t> make_branch() {
-    // return [Int32(1), Int32(2), Int32(3)]
+    // return [int32(1), int32(2), int32(3)]
     return std::vector<Tree<int32_t>>{1, 2, 3};
 }
 
-// def leaf_count(t: Tree[Int32]) -> Int32:
+// def leaf_count(t: Tree[int32]) -> int32:
 int32_t leaf_count(const Tree<int32_t>& t) {
     // match t:
     auto& __match_subject_1 = t;

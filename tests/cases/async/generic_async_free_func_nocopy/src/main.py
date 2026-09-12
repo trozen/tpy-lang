@@ -4,7 +4,7 @@
 # store by reference without triggering the deleted copy. Mirrors the
 # task_generic_param_nocopy precedent on the sync side.
 import asyncio
-from tpy import Int32
+from tpy import int32
 from tplib import Box
 
 
@@ -13,8 +13,8 @@ async def unwrap[T](b: Box[T]) -> T:
 
 
 async def main_coro() -> None:
-    box = Box(Int32(99))
-    result = await unwrap(box)  # tpyc: type(Int32)
+    box = Box(int32(99))
+    result = await unwrap(box)  # tpyc: type(int32)
     print(result)
 
 

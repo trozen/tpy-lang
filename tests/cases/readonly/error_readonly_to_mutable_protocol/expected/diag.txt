@@ -1,1 +1,1 @@
-main.py:11: error: Cannot pass readonly[list[Int32]] as mutable MutableSequence[Int32] in argument 'xs'
+main.py:11: error: Cannot pass readonly[list[int32]] as mutable MutableSequence[int32] in argument 'xs'

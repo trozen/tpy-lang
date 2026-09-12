@@ -1,7 +1,7 @@
 main.py:18: warning: copies Node into Any; use copy() to make this explicit
-main.py:43: warning: copies list[Int32] into Any; use copy() to make this explicit
-main.py:49: warning: copies dict[str, Int32] into Any; use copy() to make this explicit
-main.py:55: warning: copies set[Int32] into Any; use copy() to make this explicit
+main.py:43: warning: copies list[int32] into Any; use copy() to make this explicit
+main.py:49: warning: copies dict[str, int32] into Any; use copy() to make this explicit
+main.py:55: warning: copies set[int32] into Any; use copy() to make this explicit
 main.py:78: warning: copies Node into Any; use copy() to make this explicit
 main.py:83: warning: copies Node into Any; use copy() to make this explicit
 main.py:98: warning: copies Node into Any; use copy() to make this explicit

@@ -16,13 +16,13 @@ void main();
 
 // class Counter:
 struct Counter {
-    // count: Int32
+    // count: int32
     int32_t count;
 
     // def __init__(self):
     Counter();
 
-    // def __call__(self, inc: Int32) -> Int32:
+    // def __call__(self, inc: int32) -> int32:
     int32_t __call__(int32_t inc);
 
     int32_t operator()(int32_t inc) {
@@ -63,7 +63,7 @@ inline std::ostream& operator<<(std::ostream& os, const Accumulator& obj) {
 // def __init__(self):
 inline Counter::Counter() : count(0) {}
 
-// def __call__(self, inc: Int32) -> Int32:
+// def __call__(self, inc: int32) -> int32:
 inline int32_t Counter::__call__(int32_t inc) {
     // self.count += inc
     this->count = ::tpy::add_check<int32_t>(this->count, inc);

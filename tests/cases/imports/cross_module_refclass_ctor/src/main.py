@@ -3,7 +3,7 @@
 # through _call_returns_cpp_ref's lvalue rule (the return type is non-value
 # nominal, so the rule misclassified it). Constructors are rvalue and now
 # carry FunctionInfo.is_constructor=True for codegen to short-circuit.
-from tpy import Int32
+from tpy import int32
 import storage
 
 

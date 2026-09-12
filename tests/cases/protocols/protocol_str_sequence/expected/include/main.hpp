@@ -15,13 +15,13 @@ template<::tpystd::typing::Sequence<char> T_s>
 int32_t count_chars(const T_s& s);
 void main();
 
-// def first_char(s: Sequence[Char]) -> Char:
+// def first_char(s: Sequence[char]) -> char:
 template<::tpystd::typing::Sequence<char> T_s>
 char first_char(const T_s& s) {
     // return s[0]
     return ::tpy::__getitem__(s, 0);
 }
-// def count_chars(s: Sequence[Char]) -> Int32:
+// def count_chars(s: Sequence[char]) -> int32:
 template<::tpystd::typing::Sequence<char> T_s>
 int32_t count_chars(const T_s& s) {
     // return len(s)

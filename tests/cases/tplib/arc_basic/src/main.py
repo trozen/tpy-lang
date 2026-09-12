@@ -3,17 +3,17 @@
 # would be a compile error), and the Send + Sync classification the spawn path
 # relies on. Arc's atomic refcount is exercised under real thread contention by
 # tests/cases/threading/arc_spawn.
-from tpy import Int32
+from tpy import int32
 from tplib.arc import Arc
 
 
 class State:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
-    def doubled(self) -> Int32:
+    def doubled(self) -> int32:
         return self.x * 2
 
 

@@ -1,5 +1,5 @@
 # Method-level type parameter with explicit type arguments
-from tpy import Int32
+from tpy import int32
 
 class Box[T]:
     val: T
@@ -11,7 +11,7 @@ class Box[T]:
         return other
 
 def main() -> None:
-    b = Box[Int32](Int32(10))
+    b = Box[int32](int32(10))
     r1 = b.transform[int](42)
     print(r1)
     r2 = b.transform[str]("world")

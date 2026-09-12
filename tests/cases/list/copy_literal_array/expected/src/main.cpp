@@ -18,7 +18,7 @@ void literal_array() {
 
 // def annotated_array() -> None:
 void annotated_array() {
-    // xs = Array[Int32, 2]([3, 4])  # the spelled-out inverse of the leg above
+    // xs = Array[int32, 2]([3, 4])  # the spelled-out inverse of the leg above
     std::array<int32_t, 2> xs = std::array<int32_t, 2>({3, 4});
     // ys = copy(xs)
     std::array<int32_t, 2> ys = std::array<int32_t, 2>(xs);

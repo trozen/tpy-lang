@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 
 class NotAnIterator:
-    value: Int32
+    value: int32
 
     def __init__(self) -> None:
         self.value = 0

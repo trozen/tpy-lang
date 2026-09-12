@@ -4,42 +4,42 @@
 namespace tpyapp::main {
 
 
-// def same_rank(a: Int32, b: UInt32) -> bool:
+// def same_rank(a: int32, b: uint32) -> bool:
 bool same_rank(int32_t a, uint32_t b) {
-    // return a < b  # tpyc: warning(/comparison between signed and unsigned.*Int32.*UInt32.*cast one operand/)
+    // return a < b  # tpyc: warning(/comparison between signed and unsigned.*int32.*uint32.*cast one operand/)
     return ::std::cmp_less(a, b);
 }
 
-// def diff_rank_signed_smaller(a: Int32, b: UInt64) -> bool:
+// def diff_rank_signed_smaller(a: int32, b: uint64) -> bool:
 bool diff_rank_signed_smaller(int32_t a, uint64_t b) {
-    // # Negative Int32 reinterpreted as UInt64 would be a huge positive value,
+    // # Negative int32 reinterpreted as uint64 would be a huge positive value,
     // # so the codegen handles it; the warning surfaces the type mismatch.
-    // return a < b  # tpyc: warning(/comparison between signed and unsigned.*Int32.*UInt64.*cast one operand/)
+    // return a < b  # tpyc: warning(/comparison between signed and unsigned.*int32.*uint64.*cast one operand/)
     return ::std::cmp_less(a, b);
 }
 
-// def diff_rank_unsigned_smaller(a: Int64, b: UInt32) -> bool:
+// def diff_rank_unsigned_smaller(a: int64, b: uint32) -> bool:
 bool diff_rank_unsigned_smaller(int64_t a, uint32_t b) {
-    // # UInt32 widens losslessly to Int64 in C++ (so the warning is informational
+    // # uint32 widens losslessly to int64 in C++ (so the warning is informational
     // # here, not a correctness signal) -- TPy warns regardless for consistency.
-    // return a < b  # tpyc: warning(/comparison between signed and unsigned.*Int64.*UInt32.*cast one operand/)
+    // return a < b  # tpyc: warning(/comparison between signed and unsigned.*int64.*uint32.*cast one operand/)
     return ::std::cmp_less(a, b);
 }
 
-// def equality_too(a: Int32, b: UInt32) -> bool:
+// def equality_too(a: int32, b: uint32) -> bool:
 bool equality_too(int32_t a, uint32_t b) {
-    // return a == b  # tpyc: warning(/comparison between signed and unsigned.*Int32.*UInt32.*cast one operand/)
+    // return a == b  # tpyc: warning(/comparison between signed and unsigned.*int32.*uint32.*cast one operand/)
     return ::std::cmp_equal(a, b);
 }
 
 // # Negative case: same-sign comparisons must NOT warn.
-// def same_sign_signed(a: Int32, b: Int32) -> bool:
+// def same_sign_signed(a: int32, b: int32) -> bool:
 bool same_sign_signed(int32_t a, int32_t b) {
     // return a < b  # tpyc: ok
     return (a < b);
 }
 
-// def same_sign_unsigned(a: UInt32, b: UInt32) -> bool:
+// def same_sign_unsigned(a: uint32, b: uint32) -> bool:
 bool same_sign_unsigned(uint32_t a, uint32_t b) {
     // return a < b  # tpyc: ok
     return (a < b);
@@ -47,15 +47,15 @@ bool same_sign_unsigned(uint32_t a, uint32_t b) {
 
 // # Negative case: literal-seeded local that retro-widens to match the
 // # unsigned target must NOT warn at the comparison site. The arg slot
-// # `take_u64(offset)` locks the seed to UInt64 so by the end of body
-// # analysis offset is UInt64 and `offset < limit` is same-sign.
-// def take_u64(x: UInt64) -> UInt64:
+// # `take_u64(offset)` locks the seed to uint64 so by the end of body
+// # analysis offset is uint64 and `offset < limit` is same-sign.
+// def take_u64(x: uint64) -> uint64:
 uint64_t take_u64(uint64_t x) {
     // return x
     return x;
 }
 
-// def literal_seed(limit: UInt64) -> UInt64:
+// def literal_seed(limit: uint64) -> uint64:
 uint64_t literal_seed(uint64_t limit) {
     // offset = 0
     uint64_t offset = 0;
@@ -70,19 +70,19 @@ uint64_t literal_seed(uint64_t limit) {
 
 // def main() -> None:
 void main() {
-    // print(same_rank(-1, UInt32(1)))
+    // print(same_rank(-1, uint32(1)))
     std::cout << ::tpy::print_bool(same_rank(-1, 1)) << "\n";
-    // print(diff_rank_signed_smaller(Int32(0), UInt64(1)))
+    // print(diff_rank_signed_smaller(int32(0), uint64(1)))
     std::cout << ::tpy::print_bool(diff_rank_signed_smaller(0, 1)) << "\n";
-    // print(diff_rank_unsigned_smaller(Int64(0), UInt32(1)))
+    // print(diff_rank_unsigned_smaller(int64(0), uint32(1)))
     std::cout << ::tpy::print_bool(diff_rank_unsigned_smaller(0, 1)) << "\n";
-    // print(equality_too(Int32(0), UInt32(0)))
+    // print(equality_too(int32(0), uint32(0)))
     std::cout << ::tpy::print_bool(equality_too(0, 0)) << "\n";
     // print(same_sign_signed(1, 2))
     std::cout << ::tpy::print_bool(same_sign_signed(1, 2)) << "\n";
-    // print(same_sign_unsigned(UInt32(1), UInt32(2)))
+    // print(same_sign_unsigned(uint32(1), uint32(2)))
     std::cout << ::tpy::print_bool(same_sign_unsigned(1, 2)) << "\n";
-    // print(literal_seed(UInt64(3)))
+    // print(literal_seed(uint64(3)))
     std::cout << literal_seed(3) << "\n";
 }
 

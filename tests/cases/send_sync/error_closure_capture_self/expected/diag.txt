@@ -1,3 +1,3 @@
-main.py:19: error: 'Callable[[], Int32]' is not Send -- cannot use it where 'Send[Callable[[], Int32]]' is expected in argument 'f'
-Callable[[], Int32] is not Send
+main.py:19: error: 'Callable[[], int32]' is not Send -- cannot use it where 'Send[Callable[[], int32]]' is expected in argument 'f'
+Callable[[], int32] is not Send
 +-- captured 'self' is not Send (borrow/reference capture aliases originating-thread memory)

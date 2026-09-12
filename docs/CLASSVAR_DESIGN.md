@@ -105,7 +105,7 @@ The split happens in sema's `register_record`, where `linkage`, the resolved ann
   - on `@native` class: error ("Final initializer conflicts with C++-owned storage").
   - on regular class: route to class constants.
 
-For each routed entry, validate the inner type matches the same allow-list as module-level `Final` (`statements.py:2264-2267`: numeric / `Char` / `StrView` / `bool` / tuple), strip the wrapper, and store on `RecordInfo.class_constants: dict[str, FieldInfo]` (reusing `FieldInfo` -- it already has `name`, `type`, `default_expr`, `native_name`, `loc`; no new dataclass needed). Add `RecordInfo.class_constants_finality: dict[str, bool]` if a future non-Final form needs distinguishing; for v1 every entry is implicitly Final, so this is unnecessary.
+For each routed entry, validate the inner type matches the same allow-list as module-level `Final` (`statements.py:2264-2267`: numeric / `char` / `StrView` / `bool` / tuple), strip the wrapper, and store on `RecordInfo.class_constants: dict[str, FieldInfo]` (reusing `FieldInfo` -- it already has `name`, `type`, `default_expr`, `native_name`, `loc`; no new dataclass needed). Add `RecordInfo.class_constants_finality: dict[str, bool]` if a future non-Final form needs distinguishing; for v1 every entry is implicitly Final, so this is unnecessary.
 
 Routed entries are removed from `RecordInfo.fields` so downstream passes (instance-field iteration, `__init__` synthesis, `@dataclass`, value-type checks, codegen non-static layout) naturally skip them.
 
@@ -145,7 +145,7 @@ static inline const <T> <name> = <init>;    // non-constexpr-eligible (rare; tup
 
 For `@native` classes: **no class-body emission.** The C++ struct is provided by the user; TPy declares nothing.
 
-The constexpr/inline-const choice falls out of the inner type: numeric / `Char` / `StrView` / `bool` / literal-tuple are all constexpr-eligible in C++23. Non-literal tuple members fall back to `static inline const`. Module-level `Final` already makes the same choice via `final_type_str_to_strview`; reuse the same predicate.
+The constexpr/inline-const choice falls out of the inner type: numeric / `char` / `StrView` / `bool` / literal-tuple are all constexpr-eligible in C++23. Non-literal tuple members fall back to `static inline const`. Module-level `Final` already makes the same choice via `final_type_str_to_strview`; reuse the same predicate.
 
 **Use-site emission** (`expressions.py` field-access branch): when `expr.is_class_constant` is set, emit `<cpp_qname>::<member>` where:
 
@@ -237,7 +237,7 @@ class constant. The existing `Cannot reassign Final variable` guard
 already discriminates by finality; the same predicate gates the new path.
 
 Initializer allow-list: tighter than `Final`. Mutable `ClassVar` accepts
-numeric / `Char` / `bool` / tuple-of-allowed; `StrView` is rejected
+numeric / `char` / `bool` / tuple-of-allowed; `StrView` is rejected
 because a write through a temporary (`C.X = make_string()`) would store
 a view into freed storage. `Final[StrView]` remains the right form for
 read-only string constants because constexpr forbids the dangerous
@@ -254,7 +254,7 @@ unconditionally. Phase 8 relaxes the non-final case:
   storage, `Parent.X` resolves to parent's. Matches Python semantics
   (child's `__dict__` overrides parent's lookup).
 - Type compatibility on shadow: child's declared type must equal the
-  parent's. The Phase 7 allow-list (numeric / Char / bool / tuple-of-allowed)
+  parent's. The Phase 7 allow-list (numeric / char / bool / tuple-of-allowed)
   has no useful subtyping relations, so exact equality is the right check.
 - Child redeclares parent's `Final` -> error (unchanged from v1).
 - Cross-finality redeclaration (parent `ClassVar` + child `Final`) -> error.
@@ -275,13 +275,13 @@ qname via Phase 6's MRO walk (which stops at the first declaring class).
 
 ### Phase 9: Generic Classes (T-Independent)
 
-`class C[T]: MAX: Final[Int32] = 10`. The inner type and initializer must
+`class C[T]: MAX: Final[int32] = 10`. The inner type and initializer must
 not reference any of the class's type parameters. The static is emitted
 on the class template; instance-side access (`obj.X` where
-`obj: C[Int32]` or `self.X` inside a method of `C[T]`) renders the
+`obj: C[int32]` or `self.X` inside a method of `C[T]`) renders the
 qname via the receiver's parameterized type so codegen lands on
 `C<int32_t>::X` or `C<T>::X` respectively. Same allow-list as the
-non-generic case (numeric / Char / bool / tuple-of-allowed for ClassVar;
+non-generic case (numeric / char / bool / tuple-of-allowed for ClassVar;
 + StrView for Final).
 
 Two access patterns are deferred:
@@ -289,7 +289,7 @@ Two access patterns are deferred:
 - **Bare class-name access** (`C.X` for generic C): no type-args at the
   access site, can't render `C::X` (template name without args is
   invalid C++). Rejected with a hint pointing at instance access.
-- **Inheritance with fixed type-args** (`class Child(C[Int32]): pass;
+- **Inheritance with fixed type-args** (`class Child(C[int32]): pass;
   obj: Child; obj.X`): the receiver-record `Child` doesn't carry the
   parent's concrete type-args, and the codegen would need to walk the
   inheritance chain to recover them. Rejected for now; pairs with the
@@ -377,7 +377,7 @@ No declaration of `BuildOpts` is emitted by TPy -- the user's `<x/build_opts.hpp
 
 ```python
 class Counter:
-    instances: ClassVar[Int32] = 0
+    instances: ClassVar[int32] = 0
     def __init__(self) -> None:
         Counter.instances += 1
 ```
@@ -455,7 +455,7 @@ V1 native cases under `tests/cases/native/`:
 
 - **Phase 7**: `classvar_mutable/` -- `ClassVar[T] = value`, read and mutate via `ClassName.X`. `classvar_final_explicit/` -- `ClassVar[Final[T]] = value` aliases `Final[T] = value`. `error_classvar_no_value/` -- `ClassVar[T]` without initializer rejected. `error_classvar_native/` -- `ClassVar` on `@native` class rejected.
 - **Phase 8**: `subclass_shadow_classvar/` -- child redeclares non-final `ClassVar`, both storages observable. `subclass_shadow_three_level/` -- Grandparent -> Parent -> Child chain, each with its own slot. `error_subclass_shadow_type_mismatch/` -- shadow with incompatible type rejected. `error_subclass_classvar_to_final/` -- cross-finality redeclaration rejected. `multi_base_classvar_compatible/` -- `class C(A, B)` where A and B both declare the same `ClassVar` with matching type and finality. `error_multi_base_classvar_type_mismatch/` -- multi-base where one parent's type differs from the other's. `error_multi_base_final_blocks_classvar_shadow/` -- multi-base where one parent has `Final`; the Final blocks the shadow regardless of BFS order.
-- **Phase 9**: `generic_class_const_t_independent/` -- `class C[T]: MAX: Final[Int32] = 10` accessed through multiple instantiations. `generic_class_const_via_self/` -- `self.X` inside a method of a generic class. `generic_classvar_t_independent/` -- mutable `ClassVar` on a generic class. `generic_classvar_aug_assign/` -- aug-assign on a generic `ClassVar` (parameterized lvalue + RHS, single receiver eval). `cross_module_generic_class_const/` -- generic class with class constant defined in another module, accessed across modules with full namespace + type-args qualification. `error_generic_class_const_t_dependent_inner/` -- `Final[T]` rejected. `error_generic_class_const_t_dependent_init/` -- initializer references T. `error_generic_class_const_typeparam_shadows_global/` -- type-param name colliding with a module-level Final still rejected (C++ template parameter shadows the surrounding namespace inside the template body). `error_generic_class_const_via_class_name/` -- bare-class access on generic rejected. `error_generic_class_const_via_subclass/` -- non-generic subclass of a generic ancestor rejected (deferred).
+- **Phase 9**: `generic_class_const_t_independent/` -- `class C[T]: MAX: Final[int32] = 10` accessed through multiple instantiations. `generic_class_const_via_self/` -- `self.X` inside a method of a generic class. `generic_classvar_t_independent/` -- mutable `ClassVar` on a generic class. `generic_classvar_aug_assign/` -- aug-assign on a generic `ClassVar` (parameterized lvalue + RHS, single receiver eval). `cross_module_generic_class_const/` -- generic class with class constant defined in another module, accessed across modules with full namespace + type-args qualification. `error_generic_class_const_t_dependent_inner/` -- `Final[T]` rejected. `error_generic_class_const_t_dependent_init/` -- initializer references T. `error_generic_class_const_typeparam_shadows_global/` -- type-param name colliding with a module-level Final still rejected (C++ template parameter shadows the surrounding namespace inside the template body). `error_generic_class_const_via_class_name/` -- bare-class access on generic rejected. `error_generic_class_const_via_subclass/` -- non-generic subclass of a generic ancestor rejected (deferred).
 - **Phase 10**: `native_class_final_renamed/` -- `@native class X: FLAG: Final[bool] = native_field("g_flag")` emits `X::g_flag`. `error_native_field_class_const_on_regular_class/` -- `native_field()` on a non-`@native` class constant rejected via `_partition_class_constants` (distinct from the instance-field path).
 
 ---
@@ -468,7 +468,7 @@ Items past Phase 10. Phases 5-10 themselves are covered in [Later Phases](#later
 |---------|-------|
 | T-dependent class constants on generic classes (`class C[T]: ZERO: Final[T] = T()`) | Per-monomorphization initializer evaluation. Restrictions: initializer must be valid for every concrete `T` used in the program (e.g. `T()` requires every monomorphization to have a constexpr default constructor). For non-constexpr-default-constructible monomorphizations, fall back to `static inline const T X{};` rather than `static constexpr`. Deferred -- Phase 9's T-independent form covers known use cases; revisit when a concrete need surfaces |
 | Instance-final (`Final[T]` no value, regular class) | PEP 591 form; needs init-time set-once tracking. Separate feature, not a class-constant extension |
-| Record-typed `Final[T] = T(...)` | Today the inner-type allow-list (`is_final_allowed_inner`, shared with module-level Final) accepts only numeric/Char/StrView/bool/tuple. Lifting it to user-defined records is feasible in three tiers: (a) **constexpr-eligible records** -- all-primitive fields, no `__del__`, default args themselves constexpr; emit `static constexpr T X = T{...};` and mark the record's `__init__` `constexpr`. Cleanest tier. (b) **Non-constexpr value-type records** (fields needing dynamic alloc like `String` / `list[T]`); emit `static inline const T X = T{...};` -- C++17 inline makes cross-TU well-defined, runs at static-init. (c) **Reference-type records / records with `__del__`**; harder -- needs ownership/destructor story (does the static destruct at exit, interact with `tpy_terminate_handler`?). Implementation: new predicate `is_constexpr_constructible(record_info)` (recursive over fields), extend `is_final_allowed_inner`, extend `__init__` codegen to emit `constexpr` when eligible, codegen picks constexpr vs inline-const per-record. Module-level Final gets the same lift for free. M effort. |
+| Record-typed `Final[T] = T(...)` | Today the inner-type allow-list (`is_final_allowed_inner`, shared with module-level Final) accepts only numeric/char/StrView/bool/tuple. Lifting it to user-defined records is feasible in three tiers: (a) **constexpr-eligible records** -- all-primitive fields, no `__del__`, default args themselves constexpr; emit `static constexpr T X = T{...};` and mark the record's `__init__` `constexpr`. Cleanest tier. (b) **Non-constexpr value-type records** (fields needing dynamic alloc like `String` / `list[T]`); emit `static inline const T X = T{...};` -- C++17 inline makes cross-TU well-defined, runs at static-init. (c) **Reference-type records / records with `__del__`**; harder -- needs ownership/destructor story (does the static destruct at exit, interact with `tpy_terminate_handler`?). Implementation: new predicate `is_constexpr_constructible(record_info)` (recursive over fields), extend `is_final_allowed_inner`, extend `__init__` codegen to emit `constexpr` when eligible, codegen picks constexpr vs inline-const per-record. Module-level Final gets the same lift for free. M effort. |
 | Bare `X` in a method body resolving to class scope | Python's resolution: bare `X` in a method body looks at locals then globals, never class scope. We match Python -- explicit `self.X` or `ClassName.X` is always required. Listed only to record the choice |
 | `ClassVar` in protocols | Class-side protocol members; separate design |
 | Class-level `@native` static methods | Different feature (not storage); declare as `@staticmethod` with `@native` |

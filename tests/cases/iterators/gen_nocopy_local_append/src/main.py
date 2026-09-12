@@ -1,12 +1,12 @@
 # A @nocopy Box local live across a yield is frame-promoted; appending it to a
 # list moves out of the frame slot at its last use rather than copying.
 from tplib.box import Box
-from tpy import Int32
+from tpy import int32
 from typing import Iterator
 
 
-def collect() -> Iterator[Int32]:
-    boxes: list[Box[Int32]] = []
+def collect() -> Iterator[int32]:
+    boxes: list[Box[int32]] = []
     a = Box(7)
     yield 0
     boxes.append(a)  # tpyc: ok

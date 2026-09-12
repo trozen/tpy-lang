@@ -3,13 +3,13 @@
 # that still aliases the operand -- source mutation is visible through it,
 # matching CPython. Mutation THROUGH the result is sema-rejected (see
 # error_op_readonly_result_mutate).
-from tpy import Int32, readonly
+from tpy import int32, readonly
 
 
 class Acc:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
     def __add__(self, o: "Acc") -> "readonly[Acc]":

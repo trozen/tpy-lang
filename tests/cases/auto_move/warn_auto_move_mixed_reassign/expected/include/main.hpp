@@ -16,7 +16,7 @@ int32_t test(Point& a, bool cond);
 
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";

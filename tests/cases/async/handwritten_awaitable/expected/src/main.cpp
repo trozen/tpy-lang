@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // a = ReadyAwaitable(Int32(123))
+    // a = ReadyAwaitable(int32(123))
     ReadyAwaitable a = ReadyAwaitable(123);
     // print(poll_once(a).value())
     std::cout << ::tpystd::coro::poll_once<int32_t>(a).value() << "\n";

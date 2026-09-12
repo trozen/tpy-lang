@@ -1,4 +1,4 @@
 main.py:25: warning: copies list[int] | None into field; use copy() to make this explicit
-main.py:26: warning: copies dict[str, Int32] | None into field; use copy() to make this explicit
-main.py:27: warning: copies set[Int32] | None into field; use copy() to make this explicit
+main.py:26: warning: copies dict[str, int32] | None into field; use copy() to make this explicit
+main.py:27: warning: copies set[int32] | None into field; use copy() to make this explicit
 main.py:29: warning: copies bytearray | None into field; use copy() to make this explicit

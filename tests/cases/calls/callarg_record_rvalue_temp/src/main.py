@@ -1,16 +1,16 @@
 # Record-ctor rvalues into same-record ref slots hoist named temps; each
 # call constructs a fresh object, so the callee prints its own mutation.
-from tpy import Int32
+from tpy import int32
 
 
 class A:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
-def take_rec(r: A) -> Int32:
+def take_rec(r: A) -> int32:
     return r.x
 
 
@@ -19,11 +19,11 @@ def mutate_rec(r: A) -> None:
     print(r.x)
 
 
-def use_ret() -> Int32:
+def use_ret() -> int32:
     return take_rec(A(7))
 
 
-def use_decl() -> Int32:
+def use_decl() -> int32:
     r = take_rec(A(8))
     return r
 

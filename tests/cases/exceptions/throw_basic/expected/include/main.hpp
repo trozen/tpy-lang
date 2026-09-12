@@ -16,10 +16,10 @@ void main();
 
 // class MyError(Exception):
 struct MyError : ::tpy::Exception {
-    // code: Int32
+    // code: int32
     int32_t code;
 
-    // def __init__(self, code: Int32) -> None:
+    // def __init__(self, code: int32) -> None:
     MyError() = default;
     explicit MyError(int32_t code);
 
@@ -35,7 +35,7 @@ inline std::ostream& operator<<(std::ostream& os, const MyError& obj) {
 }
 
 
-// def __init__(self, code: Int32) -> None:
+// def __init__(self, code: int32) -> None:
 inline MyError::MyError(int32_t code) : code(code) {}
 void __tpy_init();
 } // namespace tpyapp::main

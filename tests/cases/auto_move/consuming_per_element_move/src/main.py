@@ -1,12 +1,12 @@
 # Consuming for-loop with per-element move: when the loop variable is
 # consumed (appended to a container) and the source is at last use,
 # auto-consuming fires and elements are std::move'd at last use.
-from tpy import Int32
+from tpy import int32
 
 class Item:
-    value: Int32
+    value: int32
     name: str
-    def __init__(self, v: Int32, n: str) -> None:
+    def __init__(self, v: int32, n: str) -> None:
         self.value = v
         self.name = n
 

@@ -35,13 +35,13 @@ struct Point {
     // self.x = x
     int32_t x;
 
-    // def __init__(self, x: Int32):
+    // def __init__(self, x: int32):
     Point() = default;
     explicit Point(int32_t x);
 
     // @error_return(Invalid)
     // @classmethod
-    // def parse(cls, x: Int32) -> Own[Self]:
+    // def parse(cls, x: int32) -> Own[Self]:
     static std::expected<Point, Invalid> parse(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
@@ -52,12 +52,12 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 }
 
 
-// def __init__(self, x: Int32):
+// def __init__(self, x: int32):
 inline Point::Point(int32_t x) : x(x) {}
 
 // @error_return(Invalid)
 // @classmethod
-// def parse(cls, x: Int32) -> Own[Self]:
+// def parse(cls, x: int32) -> Own[Self]:
 inline std::expected<Point, Invalid> Point::parse(int32_t x) {
     // if x < 0:
     if ((x < 0)) {

@@ -12,15 +12,15 @@
 # be a fresh Inner, never Holder itself). Only a source with no live object
 # behind it (the module global) still copies; that residue and the view
 # re-init guard are asserted ext-only in ext_checks.py.
-from tpy import Int32, Int64, Own, readonly
+from tpy import int32, int64, Own, readonly
 from tpy.extern import export
 
 
 @export
 class Box:
-    v: Int64
+    v: int64
 
-    def __init__(self, v: Int64):
+    def __init__(self, v: int64):
         self.v = v
 
     def me(self) -> "Box":
@@ -50,10 +50,10 @@ class Box:
 
 @export
 class Cursor:
-    n: Int32
-    _i: Int32
+    n: int32
+    _i: int32
 
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
         self._i = 0
 
@@ -63,7 +63,7 @@ class Cursor:
         # original would diverge).
         return self
 
-    def __next__(self) -> Int32:
+    def __next__(self) -> int32:
         if self._i >= self.n:
             raise StopIteration
         result = self._i
@@ -80,9 +80,9 @@ class CursorSub(Cursor):
 
 @export
 class Inner:
-    x: Int64
+    x: int64
 
-    def __init__(self, x: Int64):
+    def __init__(self, x: int64):
         self.x = x
 
 
@@ -90,7 +90,7 @@ class Inner:
 class Holder:
     _inner: Inner
 
-    def __init__(self, x: Int64):
+    def __init__(self, x: int64):
         self._inner = Inner(x)
 
     def get_inner(self) -> Inner:
@@ -119,5 +119,5 @@ def identity(b: Box) -> Box:
 
 
 @export
-def fresh(v: Int64) -> Own[Box]:
+def fresh(v: int64) -> Own[Box]:
     return Box(v)

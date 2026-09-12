@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def make_pair() -> tuple[Own[Counter], Int32]:
+// async def make_pair() -> tuple[Own[Counter], int32]:
 ::tpystd::tpy::Poll<std::tuple<Counter, int32_t>> __coro_make_pair::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
@@ -24,7 +24,7 @@ namespace tpyapp::main {
 }
 
 
-// async def make_pair() -> tuple[Own[Counter], Int32]:
+// async def make_pair() -> tuple[Own[Counter], int32]:
 __coro_make_pair make_pair() {
     return __coro_make_pair();
 }

@@ -1,6 +1,6 @@
 # struct.unpack_from, struct.unpack, struct.calcsize
 from struct import unpack_from, unpack, calcsize
-from tpy import Int32
+from tpy import int32
 
 def main() -> None:
     ba = bytearray(16)
@@ -17,7 +17,7 @@ def main() -> None:
     print(b)  # 2
 
     # unpack_from with int16 at offset
-    c, d = unpack_from('<hh', data, Int32(4))
+    c, d = unpack_from('<hh', data, int32(4))
     print(c)  # -1
     print(d)  # 3
 

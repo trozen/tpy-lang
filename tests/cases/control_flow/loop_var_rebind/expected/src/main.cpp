@@ -17,7 +17,7 @@ void scalar() {
     std::cout << x << "\n";
 }
 
-// def param_rebind(x: Int32) -> None:
+// def param_rebind(x: int32) -> None:
 void param_rebind(int32_t x) {
     // for x in range(2):
     for (int32_t __range_0 = 0; __range_0 < 2; ++__range_0) {

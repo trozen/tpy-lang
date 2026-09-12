@@ -1,11 +1,11 @@
 # Annotation-driven literal inference for recursive union types
 # Nested list/dict literals infer element types from the target annotation
 from dataclasses import dataclass
-from tpy import Int32
+from tpy import int32
 
 @dataclass
 class Leaf:
-    value: Int32
+    value: int32
 
 type Tree = Leaf | list[Tree]
 
@@ -16,7 +16,7 @@ type IntTree = int | list[IntTree]
 type JsonValue = str | int | dict[str, JsonValue]
 
 
-def depth(t: Tree) -> Int32:
+def depth(t: Tree) -> int32:
     if isinstance(t, Leaf):
         return 0
     else:

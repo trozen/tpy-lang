@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def total(a: Acc, b: Acc) -> Int32:
+// def total(a: Acc, b: Acc) -> int32:
 int32_t total(const Acc& a, const Acc& b) {
     // return a.__add__(b)  # the record arg interpolates into the + template
     return (a) + (b);

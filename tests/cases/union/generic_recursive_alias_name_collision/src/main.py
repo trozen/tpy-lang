@@ -4,15 +4,15 @@
 # `::tpyapp::treelib::Tree<...>`. Identity is keyed by qualified name, not the
 # short name, so the local alias never shadows the qualified reference and the
 # renders never collide. Read-only traversal is intentional (targets resolution
-# + distinct rendering, not value-vs-reference). (Int32 traversal width avoids
+# + distinct rendering, not value-vs-reference). (int32 traversal width avoids
 # the pre-existing member-template-on-dependent-receiver bug; see BUGS.md.)
 import treelib
-from tpy import Int32
+from tpy import int32
 
 type Tree[T] = T | list[Tree[T]]
 
 
-def local_count[T](t: Tree[T]) -> Int32:
+def local_count[T](t: Tree[T]) -> int32:
     match t:
         case list() as branches:
             total = 0

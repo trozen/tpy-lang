@@ -1,1 +1,1 @@
-main.py:5: error: List literal has mixed types: element 2 is PendingList[str, 3]#1, but earlier elements are PendingList[Int32, 2]#0. Use a type annotation like list[PendingList[Int32, 2]#0 | PendingList[str, 3]#1]
+main.py:5: error: List literal has mixed types: element 2 is PendingList[str, 3]#1, but earlier elements are PendingList[int32, 2]#0. Use a type annotation like list[PendingList[int32, 2]#0 | PendingList[str, 3]#1]

@@ -1,9 +1,9 @@
 # Test nonlocal mutated inside a loop
-from tpy import Int32
+from tpy import int32
 
 def main() -> None:
-    total: Int32 = 0
-    def add(x: Int32) -> None:
+    total: int32 = 0
+    def add(x: int32) -> None:
         nonlocal total
         total += x
     items = [1, 2, 3, 4, 5]

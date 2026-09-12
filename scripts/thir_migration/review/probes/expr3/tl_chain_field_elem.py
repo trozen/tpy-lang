@@ -1,7 +1,7 @@
-from tpy import Int32, Own
+from tpy import int32, Own
 class A:
-    n: Int32
-    def __init__(self, n: Int32) -> None:
+    n: int32
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 class Inner:
@@ -12,7 +12,7 @@ class H:
     inner: Inner
     def __init__(self) -> None:
         self.inner = Inner()
-def pair(h: H, n: Int32) -> tuple[A, Int32]:
+def pair(h: H, n: int32) -> tuple[A, int32]:
     return (h.inner.a, n)
 def main() -> None:
     h = H()

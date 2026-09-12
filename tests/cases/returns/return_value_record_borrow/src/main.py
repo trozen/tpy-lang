@@ -2,12 +2,12 @@
 # lvalue ternary, a container element, a call passthrough, a value variant.
 from dataclasses import dataclass
 
-from tpy import Int32, ValueType
+from tpy import int32, ValueType
 
 
 @dataclass(frozen=True)
 class F(ValueType):
-    k: Int32
+    k: int32
 
     def __add__(self, o: "F") -> "F":  # tpyc: ok
         # The ternary is a C++ lvalue over two lvalues; the by-value return
@@ -16,16 +16,16 @@ class F(ValueType):
 
 
 class D(ValueType):
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
 class E(ValueType):
-    m: Int32
+    m: int32
 
-    def __init__(self, m: Int32) -> None:
+    def __init__(self, m: int32) -> None:
         self.m = m
 
 

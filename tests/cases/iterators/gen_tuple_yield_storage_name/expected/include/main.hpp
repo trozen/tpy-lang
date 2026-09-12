@@ -20,10 +20,10 @@ void main();
 
 // class C:
 struct C {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     C() = default;
     explicit C(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.C";
@@ -36,10 +36,10 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
 
 // class Holder:
 struct Holder {
-    // items: list[tuple[Int32, C]]
+    // items: list[tuple[int32, C]]
     std::vector<std::tuple<int32_t, C>> items;
 
-    // def __init__(self, items: Own[list[tuple[Int32, C]]]) -> None:
+    // def __init__(self, items: Own[list[tuple[int32, C]]]) -> None:
     Holder() = default;
     explicit Holder(std::vector<std::tuple<int32_t, C>>&& items);
 
@@ -111,10 +111,10 @@ inline __gen_Holder_relay Holder::relay() {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline C::C(int32_t v) : v(v) {}
 
-// def __init__(self, items: Own[list[tuple[Int32, C]]]) -> None:
+// def __init__(self, items: Own[list[tuple[int32, C]]]) -> None:
 inline Holder::Holder(std::vector<std::tuple<int32_t, C>>&& items) : items(std::move(items)) {}
 inline auto storage_relay(std::vector<std::tuple<int32_t, C>>& items) {
     return ::tpy::make_generator<std::tuple<int32_t, C*>>(

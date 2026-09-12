@@ -2,13 +2,13 @@
 # __del__-bearing field that deletes the wrapper's copy ops) builds a stack
 # Array by aggregate construction: no default ctor, no assignment, move-out
 # through the record's drop-flag move ops.
-from tpy import Int32
+from tpy import int32
 
 
 class Res:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
     def __del__(self) -> None:
@@ -17,9 +17,9 @@ class Res:
 
 class Wrap:
     res: Res
-    tag: Int32
+    tag: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.res = Res(v)
         self.tag = v * 100
 

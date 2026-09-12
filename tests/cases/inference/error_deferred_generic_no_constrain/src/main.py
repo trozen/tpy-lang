@@ -1,5 +1,5 @@
 # Deferred generic inference: no constraining calls -- safety net error
-from tpy import Int32
+from tpy import int32
 
 class Container[T]:
     val: T

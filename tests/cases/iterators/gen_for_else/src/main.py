@@ -1,8 +1,8 @@
 # Generator with for...else (break skips else, no-break runs else)
-from tpy import Int32
+from tpy import int32
 from typing import Iterator
 
-def gen(items: list[Int32], limit: Int32) -> Iterator[Int32]:
+def gen(items: list[int32], limit: int32) -> Iterator[int32]:
     yield 999
     for x in items:
         if x >= limit:

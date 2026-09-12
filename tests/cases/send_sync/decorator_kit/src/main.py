@@ -4,45 +4,45 @@
 # FrameType answer (@unsafe_send on a borrowing async def, @nosend making
 # a free function unusable as Send[Callable]).
 import asyncio
-from tpy import Int32, Ptr, Send, unsafe_send, unsafe_sync, nosend, nosync, take_ptr
+from tpy import int32, Ptr, Send, unsafe_send, unsafe_sync, nosend, nosync, take_ptr
 from typing import Iterator
 
 class Trade(Send):
-    sym: Int32
-    qty: Int32
+    sym: int32
+    qty: int32
 
-    def __init__(self, sym: Int32, qty: Int32) -> None:
+    def __init__(self, sym: int32, qty: int32) -> None:
         self.sym = sym
         self.qty = qty
 
 @unsafe_send
 class NativeHandle:
-    raw: Ptr[Int32]
+    raw: Ptr[int32]
 
-    def __init__(self, raw: Ptr[Int32]) -> None:
+    def __init__(self, raw: Ptr[int32]) -> None:
         self.raw = raw
 
 @nosend
 @nosync
 class ArenaBuffer:
-    data: list[Int32]
+    data: list[int32]
 
     def __init__(self) -> None:
         self.data = []
 
 @unsafe_sync
 class SharedTable:
-    data: list[Int32]
+    data: list[int32]
 
     def __init__(self) -> None:
         self.data = []
 
 @unsafe_send
-async def forced(xs: list[Int32]) -> Int32:    # tpyc: frame_send(yes)
+async def forced(xs: list[int32]) -> int32:    # tpyc: frame_send(yes)
     return len(xs)
 
 @nosync
-def gen_forced(n: Int32) -> Iterator[Int32]:    # tpyc: frame_send(yes) frame_sync(no)
+def gen_forced(n: int32) -> Iterator[int32]:    # tpyc: frame_send(yes) frame_sync(no)
     i = 0
     while i < n:
         yield i

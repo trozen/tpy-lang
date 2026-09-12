@@ -1,6 +1,6 @@
-from tpy import Int32, String, Char
+from tpy import int32, String, char
 def main() -> None:
-    c = Char("x")
+    c = char("x")
     s = String(c)
     print(s)
 main()

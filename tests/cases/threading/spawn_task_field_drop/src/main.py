@@ -6,14 +6,14 @@
 # defers the drop to join() deadlocks here (main reaches join() only after the
 # wait). no_cpython: this pins a TPy ownership guarantee CPython's GC-based
 # finalization does not make.
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 from tplib.arc import Arc
 from tpy.thread import spawn
 from tpy.sync import Mutex, Condvar
 
 
 class State:
-    done: Int32
+    done: int32
 
     def __init__(self) -> None:
         self.done = 0

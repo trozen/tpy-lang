@@ -1,12 +1,12 @@
-from tpy import Int32
+from tpy import int32
 from typing import Protocol
 
 # Base class
 class Entity:
     name: str
-    id: Int32
+    id: int32
 
-    def __init__(self, name: str, id: Int32) -> None:
+    def __init__(self, name: str, id: int32) -> None:
         self.name = name
         self.id = id
 
@@ -22,9 +22,9 @@ class Printable(Protocol):
 
 # Inherit from class AND implement protocol
 class Person(Entity, Printable):
-    age: Int32
+    age: int32
 
-    def __init__(self, name: str, id: Int32, age: Int32) -> None:
+    def __init__(self, name: str, id: int32, age: int32) -> None:
         self.name = name
         self.id = id
         self.age = age

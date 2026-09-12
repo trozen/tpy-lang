@@ -5,11 +5,11 @@
 # admitted row's own receiver check does not cover. The ELEMENT-read flavour
 # is its own case (list/error_container_field_elem_concrete_slot): a rejected
 # module reports only its first blocking construct.
-from tpy import Int32
+from tpy import int32
 
 
 class Inner:
-    ages: dict[str, Int32]
+    ages: dict[str, int32]
 
     def __init__(self) -> None:
         self.ages = {"a": 1}
@@ -24,7 +24,7 @@ class Holder:
 
 def main() -> None:
     h = Holder()
-    d: dict[str, Int32] = {}
+    d: dict[str, int32] = {}
     d.update(h.inner.ages)  # tpyc: error(/method.arg_shape/)
     print(len(d))
 

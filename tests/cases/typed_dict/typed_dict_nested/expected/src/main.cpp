@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // addr = Address(city="Berlin", zip_code=Int32(10115))
+    // addr = Address(city="Berlin", zip_code=int32(10115))
     Address addr = Address("Berlin", 10115);
     // p = Person(name="Alice", addr=addr)
     Person p = Person("Alice", addr);
@@ -16,7 +16,7 @@ void main() {
     // print(p.addr["zip_code"])
     std::cout << p.addr.zip_code << "\n";
     // # Chained write
-    // p.addr["zip_code"] = Int32(10117)
+    // p.addr["zip_code"] = int32(10117)
     p.addr.zip_code = 10117;
     // print(p.addr["zip_code"])
     std::cout << p.addr.zip_code << "\n";

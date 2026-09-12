@@ -2,11 +2,11 @@
 # (Without the walk, B contributes no class_constants and C's redeclaration
 # would silently shadow A's, emitting two `static constexpr X` members.)
 from typing import Final
-from tpy import Int32
+from tpy import int32
 
 
 class A:
-    X: Final[Int32] = 1
+    X: Final[int32] = 1
 
 
 class B(A):
@@ -14,4 +14,4 @@ class B(A):
 
 
 class C(B):
-    X: Final[Int32] = 2  # tpyc: error(/cannot override Final class constant 'X' from base 'A'/)
+    X: Final[int32] = 2  # tpyc: error(/cannot override Final class constant 'X' from base 'A'/)

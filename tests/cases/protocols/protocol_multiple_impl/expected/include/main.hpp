@@ -34,12 +34,12 @@ inline constexpr std::string_view __name__ = "__main__";
 // # Class that implements multiple protocols
 // class Box(Printable, Describable, Measurable):
 struct Box {
-    // width: Int32
+    // width: int32
     int32_t width;
-    // height: Int32
+    // height: int32
     int32_t height;
 
-    // def __init__(self, width: Int32, height: Int32) -> None:
+    // def __init__(self, width: int32, height: int32) -> None:
     Box() = default;
     explicit Box(int32_t width, int32_t height);
 
@@ -49,7 +49,7 @@ struct Box {
     // def describe(self) -> str:
     std::string describe() const;
 
-    // def size(self) -> Int32:
+    // def size(self) -> int32:
     int32_t size() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
@@ -60,7 +60,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 }
 
 
-// def __init__(self, width: Int32, height: Int32) -> None:
+// def __init__(self, width: int32, height: int32) -> None:
 inline Box::Box(int32_t width, int32_t height) : width(width), height(height) {}
 
 // def __str__(self) -> str:
@@ -75,7 +75,7 @@ inline std::string Box::describe() const {
     return "A rectangular box";
 }
 
-// def size(self) -> Int32:
+// def size(self) -> int32:
 inline int32_t Box::size() const {
     // return self.width * self.height
     return (::tpy::mul_check<int32_t>(this->width, this->height));

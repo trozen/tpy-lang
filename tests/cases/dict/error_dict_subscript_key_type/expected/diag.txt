@@ -1,1 +1,1 @@
-main.py:6: error: Type mismatch in dict key (expected str): expected str, got Int32
+main.py:6: error: Type mismatch in dict key (expected str): expected str, got int32

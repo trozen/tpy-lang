@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def dyn_on_optional(p: Pet | None) -> Int32:
+// def dyn_on_optional(p: Pet | None) -> int32:
 int32_t dyn_on_optional(Pet* p) {
     // return p.sound()  # tpyc: warning(/Potential None access/)
     return ::tpy::deref_check(p).sound();

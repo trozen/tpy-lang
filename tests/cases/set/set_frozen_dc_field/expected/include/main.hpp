@@ -20,7 +20,7 @@ void main();
 struct Tag {
     // name: str
     std::string name;
-    // value: Int32
+    // value: int32
     int32_t value;
 
     Tag() = default;

@@ -48,7 +48,7 @@ __coro_handle handle(::tpystd::asyncio::StreamReader reader, ::tpystd::asyncio::
     return __coro_handle(std::move(reader), std::move(writer));
 }
 
-// async def client(port: Int32, msg: str) -> str:
+// async def client(port: int32, msg: str) -> str:
 ::tpystd::tpy::Poll<std::string> __coro_client::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -112,7 +112,7 @@ __coro_handle handle(::tpystd::asyncio::StreamReader reader, ::tpystd::asyncio::
 }
 
 
-// async def client(port: Int32, msg: str) -> str:
+// async def client(port: int32, msg: str) -> str:
 __coro_client client(int32_t port, std::string_view msg) {
     return __coro_client(port, msg);
 }

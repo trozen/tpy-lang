@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def double_all(xs: Array[Int32, 4]) -> None:
+// def double_all(xs: Array[int32, 4]) -> None:
 void double_all(const std::array<int32_t, 4>& xs) {
-    // ys = [x * 2 for x in xs]  # tpyc: type(/Array\[Int32, 4\]/)
+    // ys = [x * 2 for x in xs]  # tpyc: type(/Array\[int32, 4\]/)
     std::array<int32_t, 4> ys = ({
         auto& __obj_0 = xs;
         ::tpy::array_from_index<int32_t, 4>([&](std::size_t __i_0) -> int32_t {
@@ -18,9 +18,9 @@ void double_all(const std::array<int32_t, 4>& xs) {
     std::cout << ::tpy::__getitem__(ys, 0) << " " << ::tpy::__getitem__(ys, 3) << "\n";
 }
 
-// def pass_through(xs: Array[Int32, 4]) -> None:
+// def pass_through(xs: Array[int32, 4]) -> None:
 void pass_through(const std::array<int32_t, 4>& xs) {
-    // same = [x for x in xs]  # tpyc: type(/Array\[Int32, 4\]/)
+    // same = [x for x in xs]  # tpyc: type(/Array\[int32, 4\]/)
     std::array<int32_t, 4> same = ({
         auto& __obj_0 = xs;
         ::tpy::array_from_index<int32_t, 4>([&](std::size_t __i_0) -> int32_t {
@@ -32,9 +32,9 @@ void pass_through(const std::array<int32_t, 4>& xs) {
     std::cout << ::tpy::__getitem__(same, 1) << " " << ::tpy::__getitem__(same, 2) << "\n";
 }
 
-// def sum_pairs(ps: Array[tuple[Int32, Int32], 3]) -> None:
+// def sum_pairs(ps: Array[tuple[int32, int32], 3]) -> None:
 void sum_pairs(const std::array<std::tuple<int32_t, int32_t>, 3>& ps) {
-    // sums = [a + b for a, b in ps]  # tpyc: type(/Array\[Int32, 3\]/)
+    // sums = [a + b for a, b in ps]  # tpyc: type(/Array\[int32, 3\]/)
     std::array<int32_t, 3> sums = ({
         auto& __obj_0 = ps;
         ::tpy::array_from_index<int32_t, 3>([&](std::size_t __i_0) -> int32_t {

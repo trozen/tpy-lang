@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // @readonly
-// def alias_param(b: Box) -> Int32:
+// def alias_param(b: Box) -> int32:
 int32_t alias_param(const Box& b) {
     // alias = b  # lvalue alias -> const Box*
     const Box& alias = b;
@@ -15,7 +15,7 @@ int32_t alias_param(const Box& b) {
 
 // def main() -> None:
 void main() {
-    // b = Box(Int32(42))
+    // b = Box(int32(42))
     Box b = Box(42);
     // print(alias_param(b))
     std::cout << alias_param(b) << "\n";

@@ -4,18 +4,18 @@
 # yielded tuple literal must construct const-ref element slots -- a regression
 # guard for _iter_slot_for_yield / _gen_tuple_literal peeling ReadonlyType.
 from typing import Iterator
-from tpy import Int32, readonly
+from tpy import int32, readonly
 
 
 class P:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
 def pairs(items: list[P]) -> Iterator[readonly[tuple[P, P]]]:
-    n = Int32(len(items))
-    i: Int32 = 0
+    n = int32(len(items))
+    i: int32 = 0
     while i + 1 < n:
         if i == 0:
             yield (items[i], items[i + 1])

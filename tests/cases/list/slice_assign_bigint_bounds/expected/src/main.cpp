@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def stepped(lo: int, step: int) -> Own[list[Int32]]:
+// def stepped(lo: int, step: int) -> Own[list[int32]]:
 std::vector<int32_t> stepped(const ::tpy::BigInt& lo, const ::tpy::BigInt& step) {
     // xs = list(range(0, 12))
     std::vector<int32_t> xs = ::tpy::construct<std::vector<int32_t>>(::tpy::Range<int32_t>(0, 12));
@@ -14,7 +14,7 @@ std::vector<int32_t> stepped(const ::tpy::BigInt& lo, const ::tpy::BigInt& step)
     return xs;
 }
 
-// def basic(lo: int, hi: int) -> Own[list[Int32]]:
+// def basic(lo: int, hi: int) -> Own[list[int32]]:
 std::vector<int32_t> basic(const ::tpy::BigInt& lo, const ::tpy::BigInt& hi) {
     // xs = list(range(0, 12))
     std::vector<int32_t> xs = ::tpy::construct<std::vector<int32_t>>(::tpy::Range<int32_t>(0, 12));
@@ -25,7 +25,7 @@ std::vector<int32_t> basic(const ::tpy::BigInt& lo, const ::tpy::BigInt& hi) {
     return xs;
 }
 
-// def upper_only(hi: int) -> Own[list[Int32]]:
+// def upper_only(hi: int) -> Own[list[int32]]:
 std::vector<int32_t> upper_only(const ::tpy::BigInt& hi) {
     // xs = list(range(0, 6))
     std::vector<int32_t> xs = ::tpy::construct<std::vector<int32_t>>(::tpy::Range<int32_t>(0, 6));

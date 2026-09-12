@@ -6,21 +6,21 @@
 # form (was always single -- the inverse), a direct union method arg, and a
 # cpp_template-backed method (list.append -- the other regenerating branch).
 from dataclasses import dataclass
-from tpy import ValueType, Int32
+from tpy import ValueType, int32
 
 
 @dataclass(frozen=True)
 class Fixed(ValueType):
-    off: Int32
+    off: int32
 
 
 @dataclass(frozen=True)
 class Zone(ValueType):
-    zid: Int32
+    zid: int32
 
 
 class Box:
-    v: Int32
+    v: int32
 
     def __init__(self, tz: Fixed | Zone | None = None) -> None:
         if tz is None:

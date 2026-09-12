@@ -16,10 +16,10 @@ void main();
 
 // class Tag:
 struct Tag {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Tag() = default;
     explicit Tag(int32_t n);
 
@@ -45,7 +45,7 @@ inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
 }
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Tag::Tag(int32_t n) : n(n) {}
 
 // def __eq__(self, other: str) -> bool:

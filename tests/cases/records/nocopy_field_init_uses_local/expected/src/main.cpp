@@ -4,15 +4,15 @@
 namespace tpyapp::main {
 
 
-// def pick(n: Int32) -> Int32:
+// def pick(n: int32) -> int32:
 int32_t pick(int32_t n) {
-    // return n + Int32(1)
+    // return n + int32(1)
     return (::tpy::add_check<int32_t>(n, 1));
 }
 
 // def main() -> None:
 void main() {
-    // f = Foo(Int32(10))
+    // f = Foo(int32(10))
     Foo f = Foo(10);
     // print(f._x.v)
     std::cout << f._x.v << "\n";

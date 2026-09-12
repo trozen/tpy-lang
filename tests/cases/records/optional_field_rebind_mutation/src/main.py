@@ -1,13 +1,13 @@
 # A reassigned Optional-field pointer local ALIASES the field storage:
 # mutating through the rebound local is visible on the holder (not a copy).
 from typing import Optional
-from tpy import Int32, copy
+from tpy import int32, copy
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 

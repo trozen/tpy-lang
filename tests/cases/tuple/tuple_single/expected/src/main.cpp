@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // single = (Int32(42),)
+    // single = (int32(42),)
     std::tuple<int32_t> single = std::tuple<int32_t>(42);
     // print(single)
     std::cout << ::tpy::TuplePrinter(single) << "\n";

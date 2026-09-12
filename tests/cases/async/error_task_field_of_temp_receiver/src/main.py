@@ -5,16 +5,16 @@
 # at lowering, and sema already rejects it at a bound / awaited position.
 import asyncio
 
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Summer:
-    base: Int32
+    base: int32
 
-    def __init__(self, base: Int32) -> None:
+    def __init__(self, base: int32) -> None:
         self.base = base
 
-    async def add(self, x: Int32) -> Int32:
+    async def add(self, x: int32) -> int32:
         await asyncio.sleep(0.0)
         return self.base + x
 
@@ -28,11 +28,11 @@ class Pair:
         self.right = right
 
 
-def make_pair(a: Int32, b: Int32) -> Own[Pair]:
+def make_pair(a: int32, b: int32) -> Own[Pair]:
     return Pair(Summer(a), Summer(b))
 
 
-async def outer() -> Int32:
+async def outer() -> int32:
     # The receiver's OWNER is the temporary; `.left` only borrows into it.
     t = asyncio.create_task(make_pair(100, 200).left.add(1))  # tpyc: error(/must be a stable lvalue/)
     await asyncio.sleep(0.0)

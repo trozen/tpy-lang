@@ -1,18 +1,18 @@
 # field(default=...) and field(default_factory=...) for @dataclass
 from dataclasses import dataclass, field
-from tpy import Int32
+from tpy import int32
 
 @dataclass
 class Point:
-    x: Int32 = 0
-    y: Int32 = 0
+    x: int32 = 0
+    y: int32 = 0
 
 @dataclass
 class Config:
     name: str
-    value: Int32 = field(default=42)
+    value: int32 = field(default=42)
     tags: list[str] = field(default_factory=list)
-    lookup: dict[str, Int32] = field(default_factory=dict)
+    lookup: dict[str, int32] = field(default_factory=dict)
 
 # Non-generic user type as factory default
 @dataclass

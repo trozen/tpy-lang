@@ -17,10 +17,10 @@ void main();
 // @nocopy
 // class Holder:
 struct Holder {
-    // _slot: Poll[Int32]
+    // _slot: Poll[int32]
     ::tpystd::tpy::Poll<int32_t> _slot;
 
-    // def __init__(self, p: Own[Poll[Int32]]) -> None:
+    // def __init__(self, p: Own[Poll[int32]]) -> None:
     explicit Holder(::tpystd::tpy::Poll<int32_t>&& p);
     // non-copyable (@nocopy)
     Holder(const Holder&) = delete;
@@ -28,7 +28,7 @@ struct Holder {
     Holder(Holder&&) = default;
     Holder& operator=(Holder&&) = default;
 
-    // def take(self: Own[Self]) -> Own[Poll[Int32]]:
+    // def take(self: Own[Self]) -> Own[Poll[int32]]:
     ::tpystd::tpy::Poll<int32_t> take() &&;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
@@ -39,10 +39,10 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 }
 
 
-// def __init__(self, p: Own[Poll[Int32]]) -> None:
+// def __init__(self, p: Own[Poll[int32]]) -> None:
 inline Holder::Holder(::tpystd::tpy::Poll<int32_t>&& p) : _slot(std::move(p)) {}
 
-// def take(self: Own[Self]) -> Own[Poll[Int32]]:
+// def take(self: Own[Self]) -> Own[Poll[int32]]:
 inline ::tpystd::tpy::Poll<int32_t> Holder::take() && {
     // return self._slot
     return std::move(this->_slot);

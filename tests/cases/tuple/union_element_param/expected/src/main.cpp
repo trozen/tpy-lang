@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def read_second(pair: tuple[Dog | Cat, Int32]) -> Int32:
+// def read_second(pair: tuple[Dog | Cat, int32]) -> int32:
 int32_t read_second(const std::tuple<::tpy::Union<const Cat*, const Dog*>, int32_t>& pair) {
     // return pair[1]
     return std::get<1>(pair);
 }
 
-// def passthrough(pair: tuple[Dog | Cat, Int32]) -> Int32:
+// def passthrough(pair: tuple[Dog | Cat, int32]) -> int32:
 int32_t passthrough(const std::tuple<::tpy::Union<const Cat*, const Dog*>, int32_t>& pair) {
     // return read_second(pair)
     return read_second(pair);

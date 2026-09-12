@@ -1,17 +1,17 @@
 # A narrowed value-Optional param returned from an async def derefs to
 # the inner value at the coroutine return slot.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
-async def pick(p: Int32 | None) -> Int32:
+async def pick(p: int32 | None) -> int32:
     await asyncio.sleep(0)
     if p is not None:
         return p
     return -1
 
 
-async def pick_whole(p: Int32 | None) -> Int32 | None:
+async def pick_whole(p: int32 | None) -> int32 | None:
     await asyncio.sleep(0)
     if p is not None:
         return p

@@ -2,14 +2,14 @@
 # rename. Exercises the deref_chain branch in codegen that was previously
 # emitting `expr.method` directly; it must now honor the native rename too.
 # tpy: include("native_types.hpp")
-from tpy import Int32, copy, auto_readonly
+from tpy import int32, copy, auto_readonly
 from tpy.extern import native
 
 @native("x::Widget")
 class Widget:
-    id_: Int32
+    id_: int32
     @native("getId")
-    def GetId(self) -> Int32: ...
+    def GetId(self) -> int32: ...
 
 class WRef:
     _target: Widget

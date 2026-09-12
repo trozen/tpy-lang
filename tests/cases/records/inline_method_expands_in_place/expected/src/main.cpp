@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def sink(n: Int32) -> None:
+// def sink(n: int32) -> None:
 void sink(int32_t n) {
     // print(n)
     std::cout << n << "\n";

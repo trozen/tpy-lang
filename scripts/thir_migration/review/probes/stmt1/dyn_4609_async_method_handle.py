@@ -1,10 +1,10 @@
-from tpy import Int32
+from tpy import int32
 import asyncio
 class C:
-    n: Int32
+    n: int32
     def __init__(self) -> None:
         self.n = 3
-    async def step(self) -> Int32:
+    async def step(self) -> int32:
         return self.n
 def main() -> None:
     c = C()

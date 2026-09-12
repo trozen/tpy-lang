@@ -11,11 +11,11 @@ come from the _version.py macros, which read tpyc.__version__ and
 tpyc.VERSION_INFO at compile time.
 """
 from typing import Final
-from tpy import Int32
+from tpy import int32
 from ._version import version as _version, version_info as _version_info
 
 __version__: Final[str] = _version()
-# Int32 components rather than `int` (BigInt): version numbers are small
+# int32 components rather than `int` (BigInt): version numbers are small
 # and BigInt would waste heap allocations on every access.
-version_info: Final[tuple[Int32, Int32, Int32, str, Int32]] = _version_info()
+version_info: Final[tuple[int32, int32, int32, str, int32]] = _version_info()
 is_compiled: Final[bool] = True

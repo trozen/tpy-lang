@@ -4,16 +4,16 @@
 # across the region; observing the count through the global afterward
 # forces the borrow -- a silent copy would lose it.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
 class Counter:
-    opens: Int32
+    opens: int32
 
     def __init__(self) -> None:
         self.opens = 0
 
-    async def __aenter__(self) -> Int32:
+    async def __aenter__(self) -> int32:
         self.opens += 1
         return self.opens
 

@@ -8,7 +8,7 @@ namespace tpyapp::main {
 ::tpy::Union<int32_t, std::string> global_text;
 
 // # Free functions: original subjects, isinstance twins, and runtime BigInt indices.
-// def string_reads(x: str | Int32, index: int) -> None:
+// def string_reads(x: str | int32, index: int) -> None:
 void string_reads(const ::tpy::Union<int32_t, std::string>& x, const ::tpy::BigInt& index) {
     // match x:
     auto& __match_subject_1 = x;
@@ -97,14 +97,14 @@ void bytes_reads(::tpy::Union<const Indexed*, const ::tpy::Bytes*> x, const ::tp
 }
 
 // # BUGS.md#bytes-value-union-boundary-rejects blocks callers; this body still builds.
-// def bytes_value_union(x: bytes | Int32) -> None:
-void bytes_value_union(const ::tpy::Union<int32_t, ::tpy::Bytes>& x) {
+// def bytes_value_union(x: bytes | int32) -> None:
+void bytes_value_union(const ::tpy::Union<::tpy::Bytes, int32_t>& x) {
     // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
     // case bytes():
-    case 1: {
-        auto& __case_0 = std::get<1>(__match_subject_1);
+    case 0: {
+        auto& __case_0 = std::get<0>(__match_subject_1);
         // print("bytes-value-union", x[0])  # tpyc: ok
         std::cout << "bytes-value-union" << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, 0)) << "\n";
         break;
@@ -117,14 +117,14 @@ void bytes_value_union(const ::tpy::Union<int32_t, ::tpy::Bytes>& x) {
     }
 }
 
-// def bytearray_reads(x: bytearray | Int32, index: int) -> None:
-void bytearray_reads(::tpy::Union<const int32_t*, const ::tpy::ByteArray*> x, const ::tpy::BigInt& index) {
+// def bytearray_reads(x: bytearray | int32, index: int) -> None:
+void bytearray_reads(::tpy::Union<const ::tpy::ByteArray*, const int32_t*> x, const ::tpy::BigInt& index) {
     // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
     // case bytearray():
-    case 1: {
-        auto& __case_0 = *std::get<1>(__match_subject_1);
+    case 0: {
+        auto& __case_0 = *std::get<0>(__match_subject_1);
         // print("bytearray-match", x[0], x[-1], x[index])  # tpyc: ok
         std::cout << "bytearray-match" << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, -1)) << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, index.to_fixed_check<int32_t>())) << "\n";
         // try:
@@ -165,7 +165,7 @@ void bytearray_reads(::tpy::Union<const int32_t*, const ::tpy::ByteArray*> x, co
 }
 
 // # As-captures and guarded arms use different narrowing producers.
-// def capture_reads(x: str | Int32, allowed: bool) -> None:
+// def capture_reads(x: str | int32, allowed: bool) -> None:
 void capture_reads(const ::tpy::Union<int32_t, std::string>& x, bool allowed) {
     // match x:
     auto& __match_subject_1 = x;
@@ -201,7 +201,7 @@ __match_end_2:;
 }
 
 // # A generic enclosing body and scalar/tuple sinks keep the same indexed value.
-// def monomorphic_read(marker: Int32) -> None:
+// def monomorphic_read(marker: int32) -> None:
 void monomorphic_read(int32_t marker) {
     // x = union_text(True)
     ::tpy::Union<int32_t, std::string> x = union_text(true);
@@ -223,14 +223,14 @@ void monomorphic_read(int32_t marker) {
     }
 }
 
-// def tuple_reads(x: bytearray | Int32) -> None:
-void tuple_reads(::tpy::Union<const int32_t*, const ::tpy::ByteArray*> x) {
+// def tuple_reads(x: bytearray | int32) -> None:
+void tuple_reads(::tpy::Union<const ::tpy::ByteArray*, const int32_t*> x) {
     // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
     // case bytearray():
-    case 1: {
-        auto& __case_0 = *std::get<1>(__match_subject_1);
+    case 0: {
+        auto& __case_0 = *std::get<0>(__match_subject_1);
         // one = (x[0],)  # tpyc: ok
         std::tuple<uint8_t> one = std::tuple<uint8_t>(::tpy::bytes_getitem(__case_0, 0));
         // two = (x[0], x[-1])  # tpyc: ok
@@ -247,15 +247,15 @@ void tuple_reads(::tpy::Union<const int32_t*, const ::tpy::ByteArray*> x) {
     }
 }
 
-// def generate(x: bytearray | Int32) -> Iterator[Int32]:
+// def generate(x: bytearray | int32) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_generate::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         auto& __match_subject_1 = x;
         switch (__match_subject_1.index()) {
         // case bytearray():
-        case 1: {
-            auto& __case_0 = *std::get<1>(__match_subject_1);
+        case 0: {
+            auto& __case_0 = *std::get<0>(__match_subject_1);
             // yield x[0]  # tpyc: ok
             __state = S_RESUME_0;
             return static_cast<int32_t>(::tpy::bytes_getitem(__case_0, 0));
@@ -297,20 +297,20 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_generate::__next__() {
 }
 
 
-// def generate(x: bytearray | Int32) -> Iterator[Int32]:
-__gen_generate generate(::tpy::Union<const int32_t*, const ::tpy::ByteArray*> x) {
+// def generate(x: bytearray | int32) -> Iterator[int32]:
+__gen_generate generate(::tpy::Union<const ::tpy::ByteArray*, const int32_t*> x) {
     return __gen_generate(x);
 }
 
-// async def async_read(x: bytearray | Int32) -> Int32:
+// async def async_read(x: bytearray | int32) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_async_read::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         auto& __match_subject_1 = x;
         switch (__match_subject_1.index()) {
         // case bytearray():
-        case 1: {
-            auto& __case_0 = *std::get<1>(__match_subject_1);
+        case 0: {
+            auto& __case_0 = *std::get<0>(__match_subject_1);
             // first = x[0]  # tpyc: ok
             first = ::tpy::bytes_getitem(__case_0, 0);
             // await asyncio.sleep(0)
@@ -348,20 +348,20 @@ __gen_generate generate(::tpy::Union<const int32_t*, const ::tpy::ByteArray*> x)
 }
 
 
-// async def async_read(x: bytearray | Int32) -> Int32:
-__coro_async_read async_read(::tpy::Union<const int32_t*, const ::tpy::ByteArray*> x) {
+// async def async_read(x: bytearray | int32) -> int32:
+__coro_async_read async_read(::tpy::Union<const ::tpy::ByteArray*, const int32_t*> x) {
     return __coro_async_read(x);
 }
 
 // # Comprehension: each element consumes the scalar, not the original union.
-// def comprehension(x: bytearray | Int32) -> None:
-void comprehension(::tpy::Union<const int32_t*, const ::tpy::ByteArray*> x) {
+// def comprehension(x: bytearray | int32) -> None:
+void comprehension(::tpy::Union<const ::tpy::ByteArray*, const int32_t*> x) {
     // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
     // case bytearray():
-    case 1: {
-        auto& __case_0 = *std::get<1>(__match_subject_1);
+    case 0: {
+        auto& __case_0 = *std::get<0>(__match_subject_1);
         // values = [x[i] for i in range(3)]  # tpyc: ok
         std::array<uint8_t, 3> values = ::tpy::array_from_index<uint8_t, 3>([&](std::size_t __i_0) -> uint8_t {
             int32_t i = int32_t(__i_0);
@@ -379,7 +379,7 @@ void comprehension(::tpy::Union<const int32_t*, const ::tpy::ByteArray*> x) {
     }
 }
 
-// def union_text(choose_text: bool) -> str | Int32:
+// def union_text(choose_text: bool) -> str | int32:
 ::tpy::Union<int32_t, std::string> union_text(bool choose_text) {
     // if choose_text:
     if (choose_text) {
@@ -420,7 +420,7 @@ void closure(bool choose_text) {
 }
 
 // # Context-manager, try and finally bodies preserve the extraction alias.
-// def cleanup_reads(x: str | Int32) -> None:
+// def cleanup_reads(x: str | int32) -> None:
 void cleanup_reads(const ::tpy::Union<int32_t, std::string>& x) {
     // match x:
     auto& __match_subject_1 = x;
@@ -469,14 +469,14 @@ void cleanup_reads(const ::tpy::Union<int32_t, std::string>& x) {
 
 // # Error-return body: the normal result remains a scalar value.
 // @error_return(Err)
-// def error_read(x: bytearray | Int32) -> Int32:
-std::expected<int32_t, Err> error_read(::tpy::Union<const int32_t*, const ::tpy::ByteArray*> x) {
+// def error_read(x: bytearray | int32) -> int32:
+std::expected<int32_t, Err> error_read(::tpy::Union<const ::tpy::ByteArray*, const int32_t*> x) {
     // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
     // case bytearray():
-    case 1: {
-        auto& __case_0 = *std::get<1>(__match_subject_1);
+    case 0: {
+        auto& __case_0 = *std::get<0>(__match_subject_1);
         // return x[1]  # tpyc: ok
         return static_cast<int32_t>(::tpy::bytes_getitem(__case_0, 1));
         break;
@@ -492,7 +492,7 @@ std::expected<int32_t, Err> error_read(::tpy::Union<const int32_t*, const ::tpy:
 }
 
 // # Conditional operands: skipped reads cannot throw or evaluate their index.
-// def conditional_reads(x: str | Int32, counter: Counter) -> None:
+// def conditional_reads(x: str | int32, counter: Counter) -> None:
 void conditional_reads(const ::tpy::Union<int32_t, std::string>& x, Counter& counter) {
     // match x:
     auto& __match_subject_1 = x;
@@ -519,7 +519,7 @@ void conditional_reads(const ::tpy::Union<int32_t, std::string>& x, Counter& cou
 }
 
 // # Sibling controls: container and record dispatch already admit narrowed reads.
-// def list_read(x: list[Int32] | Int32) -> None:
+// def list_read(x: list[int32] | int32) -> None:
 void list_read(::tpy::Union<const int32_t*, const std::vector<int32_t>*> x) {
     // match x:
     auto& __match_subject_1 = x;
@@ -549,14 +549,14 @@ void list_read(::tpy::Union<const int32_t*, const std::vector<int32_t>*> x) {
     }
 }
 
-// def dict_read(x: dict[Int32, Int32] | Int32) -> None:
-void dict_read(::tpy::Union<const int32_t*, const ::tpy::ordered_map<int32_t, int32_t>*> x) {
+// def dict_read(x: dict[int32, int32] | int32) -> None:
+void dict_read(::tpy::Union<const ::tpy::ordered_map<int32_t, int32_t>*, const int32_t*> x) {
     // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
     // case dict():
-    case 1: {
-        auto& __case_0 = *std::get<1>(__match_subject_1);
+    case 0: {
+        auto& __case_0 = *std::get<0>(__match_subject_1);
         // print("dict", x[0])  # tpyc: ok
         std::cout << "dict" << " " << ::tpy::__getitem__(__case_0, 0) << "\n";
         // try:
@@ -579,7 +579,7 @@ void dict_read(::tpy::Union<const int32_t*, const ::tpy::ordered_map<int32_t, in
     }
 }
 
-// def record_read(x: Indexed | Int32) -> None:
+// def record_read(x: Indexed | int32) -> None:
 void record_read(::tpy::Union<const Indexed*, const int32_t*> x) {
     // match x:
     auto& __match_subject_1 = x;
@@ -599,17 +599,17 @@ void record_read(::tpy::Union<const Indexed*, const int32_t*> x) {
     }
 }
 
-// def make_buffer() -> Own[bytearray | Int32]:
-::tpy::Union<int32_t, ::tpy::ByteArray> make_buffer() {
+// def make_buffer() -> Own[bytearray | int32]:
+::tpy::Union<::tpy::ByteArray, int32_t> make_buffer() {
     // buffer = bytearray(b"abc")
     ::tpy::ByteArray buffer = ::tpy::ByteArray(::tpy::bytes_literal("abc", 3));
     // return buffer
     return buffer;
 }
 
-// def make_list() -> Own[list[Int32] | Int32]:
+// def make_list() -> Own[list[int32] | int32]:
 ::tpy::Union<int32_t, std::vector<int32_t>> make_list() {
-    // items: list[Int32] = [10, 20]
+    // items: list[int32] = [10, 20]
     std::vector<int32_t> items = {10, 20};
     // return items
     return items;
@@ -617,11 +617,11 @@ void record_read(::tpy::Union<const Indexed*, const int32_t*> x) {
 
 // def main() -> None:
 void main() {
-    // text: str | Int32 = "abc"
+    // text: str | int32 = "abc"
     ::tpy::Union<int32_t, std::string> text = "abc";
     // buffer = make_buffer()
-    ::tpy::Union<int32_t, ::tpy::ByteArray> __slot_1 = make_buffer();
-    ::tpy::Union<int32_t*, ::tpy::ByteArray*> buffer = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<::tpy::ByteArray, int32_t> __slot_1 = make_buffer();
+    ::tpy::Union<::tpy::ByteArray*, int32_t*> buffer = ::tpy::to_ptr_variant(__slot_1);
     // index = int("1")
     ::tpy::BigInt index = ::tpy::BigInt::from_str("1");
     // string_reads(text, index)
@@ -693,7 +693,7 @@ void main() {
     list_read(items.as_const());
     // dict_read({0: 30})
     ::tpy::ordered_map<int32_t, int32_t> __tmp_2 = ::tpy::ordered_map<int32_t, int32_t>({{0, 30}});
-    dict_read(::tpy::Union<const int32_t*, const ::tpy::ordered_map<int32_t, int32_t>*>{&__tmp_2});
+    dict_read(::tpy::Union<const ::tpy::ordered_map<int32_t, int32_t>*, const int32_t*>{&__tmp_2});
     // record_read(indexed)
     record_read(::tpy::Union<const Indexed*, const int32_t*>{&(indexed)});
 }

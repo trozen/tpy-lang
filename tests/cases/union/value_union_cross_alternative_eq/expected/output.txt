@@ -9,12 +9,12 @@ try True
 error_return True
 match True
 async True
-family Int32|Float64 True True
-family Int32|Int64 True True
-family bool|Int32 True True
-family UInt8|Int32 True True
-family UInt32|Int32 True True
-family int|Float64 True True
+family int32|float64 True True
+family int32|int64 True True
+family bool|int32 True True
+family uint8|int32 True True
+family uint32|int32 True True
+family int|float64 True True
 ne False
 readonly True
 same alternative True False

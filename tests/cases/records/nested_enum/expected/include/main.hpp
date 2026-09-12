@@ -23,10 +23,10 @@ struct Message {
 
     // kind: Kind
     Message::Kind kind;
-    // data: Int32
+    // data: int32
     int32_t data;
 
-    // def __init__(self, kind: Kind, data: Int32) -> None:
+    // def __init__(self, kind: Kind, data: int32) -> None:
     Message() = default;
     explicit Message(Message::Kind kind, int32_t data);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Message";
@@ -56,7 +56,7 @@ inline std::ostream& operator<<(std::ostream& __os, Message::Kind __e) {
 }
 
 
-// def __init__(self, kind: Kind, data: Int32) -> None:
+// def __init__(self, kind: Kind, data: int32) -> None:
 inline Message::Message(Message::Kind kind, int32_t data) : kind(kind), data(data) {}
 void __tpy_init();
 } // namespace tpyapp::main

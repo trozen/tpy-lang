@@ -4,10 +4,10 @@
 # with any class.
 from typing import Iterator
 
-from tpy import Int32
+from tpy import int32
 
 
-def classify(n: Int32) -> Iterator[Int32]:
+def classify(n: int32) -> Iterator[int32]:
     match n:
         case 5 as hit:
             yield hit

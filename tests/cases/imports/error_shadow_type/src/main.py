@@ -1,8 +1,8 @@
-# Type name shadowed by local def -- Int32 not resolved in annotations
-from tpy import Int32
+# Type name shadowed by local def -- int32 not resolved in annotations
+from tpy import int32
 
-def Int32() -> int:
+def int32() -> int:
     return 0
 
-def foo(x: Int32) -> Int32:  # tpyc: error(/Int32/)
+def foo(x: int32) -> int32:  # tpyc: error(/int32/)
     return x

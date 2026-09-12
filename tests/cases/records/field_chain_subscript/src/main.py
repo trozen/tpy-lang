@@ -1,10 +1,10 @@
 # A container reached through a MULTI-level record field chain is a valid
 # subscript receiver: the read/write render as the flat postfix chain.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Inner:
-    items: list[Int32]
+    items: list[int32]
 
     def __init__(self) -> None:
         self.items = [1, 2, 3]
@@ -16,11 +16,11 @@ class Outer:
     def __init__(self, inner: Own[Inner]) -> None:
         self.inner = inner
 
-    def at(self, i: Int32) -> Int32:
+    def at(self, i: int32) -> int32:
         # The subject inside a method (a `this->` rooted chain).
         return self.inner.items[i]  # tpyc: ok
 
-    def bump(self, i: Int32) -> None:
+    def bump(self, i: int32) -> None:
         self.inner.items[i] += 10  # tpyc: ok
 
 

@@ -1,5 +1,5 @@
-from tpy import Int32
-def f(xs: list[Int32]) -> Int32:
+from tpy import int32
+def f(xs: list[int32]) -> int32:
     if sum(v for v in reversed(xs)) > 2:
         return 1
     return 0

@@ -1,20 +1,20 @@
 # A tuple literal at a native protocol slot with an OWNED-view element: the
 # str element would render owned in the borrow form and bare otherwise, so
 # the whole literal is refused rather than half-mirrored.
-from tpy import Int32, UInt64
+from tpy import int32, uint64
 
 
 class Box:
-    val: Int32
+    val: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.val = v
 
-    def __hash__(self) -> UInt64:
-        return UInt64(self.val)
+    def __hash__(self) -> uint64:
+        return uint64(self.val)
 
 
-def h(b: Box, s: str) -> UInt64:
+def h(b: Box, s: str) -> uint64:
     # The tuple literal mixes an owned view with a record borrow.
     return hash((s, b))  # tpyc: error(/expr\.tuple_literal/)
 

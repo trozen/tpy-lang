@@ -4,46 +4,46 @@
 namespace tpystd::hashlib {
 
 // # ---------- SHA-256 ----------
-// _SHA256_H0: list[UInt32] = [
-// UInt32(0x6a09e667), UInt32(0xbb67ae85), UInt32(0x3c6ef372), UInt32(0xa54ff53a),
-// UInt32(0x510e527f), UInt32(0x9b05688c), UInt32(0x1f83d9ab), UInt32(0x5be0cd19),
+// _SHA256_H0: list[uint32] = [
+// uint32(0x6a09e667), uint32(0xbb67ae85), uint32(0x3c6ef372), uint32(0xa54ff53a),
+// uint32(0x510e527f), uint32(0x9b05688c), uint32(0x1f83d9ab), uint32(0x5be0cd19),
 // ]
 std::vector<uint32_t>* _SHA256_H0{};
-// _SHA256_K: list[UInt32] = [
-// UInt32(0x428a2f98), UInt32(0x71374491), UInt32(0xb5c0fbcf), UInt32(0xe9b5dba5),
-// UInt32(0x3956c25b), UInt32(0x59f111f1), UInt32(0x923f82a4), UInt32(0xab1c5ed5),
-// UInt32(0xd807aa98), UInt32(0x12835b01), UInt32(0x243185be), UInt32(0x550c7dc3),
-// UInt32(0x72be5d74), UInt32(0x80deb1fe), UInt32(0x9bdc06a7), UInt32(0xc19bf174),
-// UInt32(0xe49b69c1), UInt32(0xefbe4786), UInt32(0x0fc19dc6), UInt32(0x240ca1cc),
-// UInt32(0x2de92c6f), UInt32(0x4a7484aa), UInt32(0x5cb0a9dc), UInt32(0x76f988da),
-// UInt32(0x983e5152), UInt32(0xa831c66d), UInt32(0xb00327c8), UInt32(0xbf597fc7),
-// UInt32(0xc6e00bf3), UInt32(0xd5a79147), UInt32(0x06ca6351), UInt32(0x14292967),
-// UInt32(0x27b70a85), UInt32(0x2e1b2138), UInt32(0x4d2c6dfc), UInt32(0x53380d13),
-// UInt32(0x650a7354), UInt32(0x766a0abb), UInt32(0x81c2c92e), UInt32(0x92722c85),
-// UInt32(0xa2bfe8a1), UInt32(0xa81a664b), UInt32(0xc24b8b70), UInt32(0xc76c51a3),
-// UInt32(0xd192e819), UInt32(0xd6990624), UInt32(0xf40e3585), UInt32(0x106aa070),
-// UInt32(0x19a4c116), UInt32(0x1e376c08), UInt32(0x2748774c), UInt32(0x34b0bcb5),
-// UInt32(0x391c0cb3), UInt32(0x4ed8aa4a), UInt32(0x5b9cca4f), UInt32(0x682e6ff3),
-// UInt32(0x748f82ee), UInt32(0x78a5636f), UInt32(0x84c87814), UInt32(0x8cc70208),
-// UInt32(0x90befffa), UInt32(0xa4506ceb), UInt32(0xbef9a3f7), UInt32(0xc67178f2),
+// _SHA256_K: list[uint32] = [
+// uint32(0x428a2f98), uint32(0x71374491), uint32(0xb5c0fbcf), uint32(0xe9b5dba5),
+// uint32(0x3956c25b), uint32(0x59f111f1), uint32(0x923f82a4), uint32(0xab1c5ed5),
+// uint32(0xd807aa98), uint32(0x12835b01), uint32(0x243185be), uint32(0x550c7dc3),
+// uint32(0x72be5d74), uint32(0x80deb1fe), uint32(0x9bdc06a7), uint32(0xc19bf174),
+// uint32(0xe49b69c1), uint32(0xefbe4786), uint32(0x0fc19dc6), uint32(0x240ca1cc),
+// uint32(0x2de92c6f), uint32(0x4a7484aa), uint32(0x5cb0a9dc), uint32(0x76f988da),
+// uint32(0x983e5152), uint32(0xa831c66d), uint32(0xb00327c8), uint32(0xbf597fc7),
+// uint32(0xc6e00bf3), uint32(0xd5a79147), uint32(0x06ca6351), uint32(0x14292967),
+// uint32(0x27b70a85), uint32(0x2e1b2138), uint32(0x4d2c6dfc), uint32(0x53380d13),
+// uint32(0x650a7354), uint32(0x766a0abb), uint32(0x81c2c92e), uint32(0x92722c85),
+// uint32(0xa2bfe8a1), uint32(0xa81a664b), uint32(0xc24b8b70), uint32(0xc76c51a3),
+// uint32(0xd192e819), uint32(0xd6990624), uint32(0xf40e3585), uint32(0x106aa070),
+// uint32(0x19a4c116), uint32(0x1e376c08), uint32(0x2748774c), uint32(0x34b0bcb5),
+// uint32(0x391c0cb3), uint32(0x4ed8aa4a), uint32(0x5b9cca4f), uint32(0x682e6ff3),
+// uint32(0x748f82ee), uint32(0x78a5636f), uint32(0x84c87814), uint32(0x8cc70208),
+// uint32(0x90befffa), uint32(0xa4506ceb), uint32(0xbef9a3f7), uint32(0xc67178f2),
 // ]
 std::vector<uint32_t>* _SHA256_K{};
 
-// def _load_be32(data: bytes, off: Int32) -> UInt32:
+// def _load_be32(data: bytes, off: int32) -> uint32:
 uint32_t _load_be32(::tpy::BytesView data, int32_t off) {
-    // return (UInt32(data[off]) << 24) | (UInt32(data[off + 1]) << 16) | (UInt32(data[off + 2]) << 8) | UInt32(data[off + 3])
+    // return (uint32(data[off]) << 24) | (uint32(data[off + 1]) << 16) | (uint32(data[off + 2]) << 8) | uint32(data[off + 3])
     return (static_cast<uint32_t>((static_cast<uint32_t>((static_cast<uint32_t>((::tpy::lshift_check<uint32_t>(::tpy::int_cast_check<uint32_t>(::tpy::bytes_getitem(data, off)), 24)) | (::tpy::lshift_check<uint32_t>(::tpy::int_cast_check<uint32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(off, 1)))), 16)))) | (::tpy::lshift_check<uint32_t>(::tpy::int_cast_check<uint32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(off, 2)))), 8)))) | ::tpy::int_cast_check<uint32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(off, 3))))));
 }
 
-// def _pack_be32(out: bytearray, v: UInt32) -> None:
+// def _pack_be32(out: bytearray, v: uint32) -> None:
 void _pack_be32(::tpy::ByteArray& out, uint32_t v) {
-    // out.append(UInt8((v >> 24) & UInt32(0xFF)))
+    // out.append(uint8((v >> 24) & uint32(0xFF)))
     out.push_back(::tpy::int_cast_check<uint8_t>((static_cast<uint32_t>((::tpy::rshift_check<uint32_t>(v, 24)) & 255))));
-    // out.append(UInt8((v >> 16) & UInt32(0xFF)))
+    // out.append(uint8((v >> 16) & uint32(0xFF)))
     out.push_back(::tpy::int_cast_check<uint8_t>((static_cast<uint32_t>((::tpy::rshift_check<uint32_t>(v, 16)) & 255))));
-    // out.append(UInt8((v >> 8) & UInt32(0xFF)))
+    // out.append(uint8((v >> 8) & uint32(0xFF)))
     out.push_back(::tpy::int_cast_check<uint8_t>((static_cast<uint32_t>((::tpy::rshift_check<uint32_t>(v, 8)) & 255))));
-    // out.append(UInt8(v & UInt32(0xFF)))
+    // out.append(uint8(v & uint32(0xFF)))
     out.push_back(::tpy::int_cast_check<uint8_t>((static_cast<uint32_t>(v & 255))));
 }
 
@@ -60,7 +60,7 @@ SHA256 sha256(::tpy::BytesView data) {
 
 // def __init__(self) -> None:
 SHA256::SHA256() : h(std::vector<uint32_t>{}) {
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < 8:
     while ((i < 8)) {
@@ -83,15 +83,15 @@ SHA256::SHA256() : h(std::vector<uint32_t>{}) {
 
 // def _drain_blocks(self) -> None:
 void SHA256::_drain_blocks() {
-    // while Int32(len(self.buffer)) >= 64:
+    // while int32(len(self.buffer)) >= 64:
     while ((::tpy::__len__(this->buffer) >= 64)) {
         // self._process_block(bytes(self.buffer), 0)
         this->_process_block(::tpy::Bytes(this->buffer), 0);
         // new_buf: bytearray = bytearray()
         ::tpy::ByteArray new_buf = ::tpy::ByteArray();
-        // j: Int32 = 64
+        // j: int32 = 64
         int32_t j = 64;
-        // total: Int32 = Int32(len(self.buffer))
+        // total: int32 = int32(len(self.buffer))
         int32_t total = ::tpy::__len__(this->buffer);
         // while j < total:
         while ((j < total)) {
@@ -105,11 +105,11 @@ void SHA256::_drain_blocks() {
     }
 }
 
-// def _process_block(self, data: bytes, off: Int32) -> None:
+// def _process_block(self, data: bytes, off: int32) -> None:
 void SHA256::_process_block(::tpy::BytesView data, int32_t off) {
-    // w: list[UInt32] = []
+    // w: list[uint32] = []
     std::vector<uint32_t> w = std::vector<uint32_t>{};
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < 16:
     while ((i < 16)) {
@@ -120,50 +120,50 @@ void SHA256::_process_block(::tpy::BytesView data, int32_t off) {
     }
     // while i < 64:
     while ((i < 64)) {
-        // w15: UInt32 = w[i - 15]
+        // w15: uint32 = w[i - 15]
         uint32_t w15 = ::tpy::__getitem__(w, (::tpy::sub_check<int32_t>(i, 15)));
-        // w2: UInt32 = w[i - 2]
+        // w2: uint32 = w[i - 2]
         uint32_t w2 = ::tpy::__getitem__(w, (::tpy::sub_check<int32_t>(i, 2)));
-        // s0: UInt32 = rotr32(w15, 7) ^ rotr32(w15, 18) ^ (w15 >> 3)
+        // s0: uint32 = rotr32(w15, 7) ^ rotr32(w15, 18) ^ (w15 >> 3)
         uint32_t s0 = (static_cast<uint32_t>((static_cast<uint32_t>(std::rotr<uint32_t>(w15, 7) ^ std::rotr<uint32_t>(w15, 18))) ^ (::tpy::rshift_check<uint32_t>(w15, 3))));
-        // s1: UInt32 = rotr32(w2, 17) ^ rotr32(w2, 19) ^ (w2 >> 10)
+        // s1: uint32 = rotr32(w2, 17) ^ rotr32(w2, 19) ^ (w2 >> 10)
         uint32_t s1 = (static_cast<uint32_t>((static_cast<uint32_t>(std::rotr<uint32_t>(w2, 17) ^ std::rotr<uint32_t>(w2, 19))) ^ (::tpy::rshift_check<uint32_t>(w2, 10))));
-        // w.append(UInt32.add_wrap(UInt32.add_wrap(UInt32.add_wrap(w[i - 16], s0), w[i - 7]), s1))
+        // w.append(uint32.add_wrap(uint32.add_wrap(uint32.add_wrap(w[i - 16], s0), w[i - 7]), s1))
         w.push_back(static_cast<uint32_t>(static_cast<uint32_t>(static_cast<uint32_t>(::tpy::__getitem__(w, (::tpy::sub_check<int32_t>(i, 16))) + s0) + ::tpy::__getitem__(w, (::tpy::sub_check<int32_t>(i, 7)))) + s1));
         // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // a: UInt32 = self.h[0]
+    // a: uint32 = self.h[0]
     uint32_t a = ::tpy::__getitem__(this->h, 0);
-    // b: UInt32 = self.h[1]
+    // b: uint32 = self.h[1]
     uint32_t b = ::tpy::__getitem__(this->h, 1);
-    // c: UInt32 = self.h[2]
+    // c: uint32 = self.h[2]
     uint32_t c = ::tpy::__getitem__(this->h, 2);
-    // d: UInt32 = self.h[3]
+    // d: uint32 = self.h[3]
     uint32_t d = ::tpy::__getitem__(this->h, 3);
-    // e: UInt32 = self.h[4]
+    // e: uint32 = self.h[4]
     uint32_t e = ::tpy::__getitem__(this->h, 4);
-    // f: UInt32 = self.h[5]
+    // f: uint32 = self.h[5]
     uint32_t f = ::tpy::__getitem__(this->h, 5);
-    // g: UInt32 = self.h[6]
+    // g: uint32 = self.h[6]
     uint32_t g = ::tpy::__getitem__(this->h, 6);
-    // hh: UInt32 = self.h[7]
+    // hh: uint32 = self.h[7]
     uint32_t hh = ::tpy::__getitem__(this->h, 7);
-    // t: Int32 = 0
+    // t: int32 = 0
     int32_t t = 0;
     // while t < 64:
     while ((t < 64)) {
-        // bsig1: UInt32 = rotr32(e, 6) ^ rotr32(e, 11) ^ rotr32(e, 25)
+        // bsig1: uint32 = rotr32(e, 6) ^ rotr32(e, 11) ^ rotr32(e, 25)
         uint32_t bsig1 = (static_cast<uint32_t>((static_cast<uint32_t>(std::rotr<uint32_t>(e, 6) ^ std::rotr<uint32_t>(e, 11))) ^ std::rotr<uint32_t>(e, 25)));
-        // ch: UInt32 = (e & f) ^ ((~e) & g)
+        // ch: uint32 = (e & f) ^ ((~e) & g)
         uint32_t ch = (static_cast<uint32_t>((static_cast<uint32_t>(e & f)) ^ (static_cast<uint32_t>(static_cast<uint32_t>(~(e)) & g))));
-        // t1: UInt32 = UInt32.add_wrap(UInt32.add_wrap(UInt32.add_wrap(UInt32.add_wrap(hh, bsig1), ch), _SHA256_K[t]), w[t])
+        // t1: uint32 = uint32.add_wrap(uint32.add_wrap(uint32.add_wrap(uint32.add_wrap(hh, bsig1), ch), _SHA256_K[t]), w[t])
         uint32_t t1 = static_cast<uint32_t>(static_cast<uint32_t>(static_cast<uint32_t>(static_cast<uint32_t>(hh + bsig1) + ch) + ::tpy::__getitem__((*_SHA256_K), t)) + ::tpy::__getitem__(w, t));
-        // bsig0: UInt32 = rotr32(a, 2) ^ rotr32(a, 13) ^ rotr32(a, 22)
+        // bsig0: uint32 = rotr32(a, 2) ^ rotr32(a, 13) ^ rotr32(a, 22)
         uint32_t bsig0 = (static_cast<uint32_t>((static_cast<uint32_t>(std::rotr<uint32_t>(a, 2) ^ std::rotr<uint32_t>(a, 13))) ^ std::rotr<uint32_t>(a, 22)));
-        // maj: UInt32 = (a & b) ^ (a & c) ^ (b & c)
+        // maj: uint32 = (a & b) ^ (a & c) ^ (b & c)
         uint32_t maj = (static_cast<uint32_t>((static_cast<uint32_t>((static_cast<uint32_t>(a & b)) ^ (static_cast<uint32_t>(a & c)))) ^ (static_cast<uint32_t>(b & c))));
-        // t2: UInt32 = UInt32.add_wrap(bsig0, maj)
+        // t2: uint32 = uint32.add_wrap(bsig0, maj)
         uint32_t t2 = static_cast<uint32_t>(bsig0 + maj);
         // hh = g
         hh = g;
@@ -171,7 +171,7 @@ void SHA256::_process_block(::tpy::BytesView data, int32_t off) {
         g = f;
         // f = e
         f = e;
-        // e = UInt32.add_wrap(d, t1)
+        // e = uint32.add_wrap(d, t1)
         e = static_cast<uint32_t>(d + t1);
         // d = c
         d = c;
@@ -179,26 +179,26 @@ void SHA256::_process_block(::tpy::BytesView data, int32_t off) {
         c = b;
         // b = a
         b = a;
-        // a = UInt32.add_wrap(t1, t2)
+        // a = uint32.add_wrap(t1, t2)
         a = static_cast<uint32_t>(t1 + t2);
         // t += 1
         t = ::tpy::add_check<int32_t>(t, 1);
     }
-    // self.h[0] = UInt32.add_wrap(self.h[0], a)
+    // self.h[0] = uint32.add_wrap(self.h[0], a)
     ::tpy::__setitem__(this->h, 0, static_cast<uint32_t>(::tpy::__getitem__(this->h, 0) + a));
-    // self.h[1] = UInt32.add_wrap(self.h[1], b)
+    // self.h[1] = uint32.add_wrap(self.h[1], b)
     ::tpy::__setitem__(this->h, 1, static_cast<uint32_t>(::tpy::__getitem__(this->h, 1) + b));
-    // self.h[2] = UInt32.add_wrap(self.h[2], c)
+    // self.h[2] = uint32.add_wrap(self.h[2], c)
     ::tpy::__setitem__(this->h, 2, static_cast<uint32_t>(::tpy::__getitem__(this->h, 2) + c));
-    // self.h[3] = UInt32.add_wrap(self.h[3], d)
+    // self.h[3] = uint32.add_wrap(self.h[3], d)
     ::tpy::__setitem__(this->h, 3, static_cast<uint32_t>(::tpy::__getitem__(this->h, 3) + d));
-    // self.h[4] = UInt32.add_wrap(self.h[4], e)
+    // self.h[4] = uint32.add_wrap(self.h[4], e)
     ::tpy::__setitem__(this->h, 4, static_cast<uint32_t>(::tpy::__getitem__(this->h, 4) + e));
-    // self.h[5] = UInt32.add_wrap(self.h[5], f)
+    // self.h[5] = uint32.add_wrap(self.h[5], f)
     ::tpy::__setitem__(this->h, 5, static_cast<uint32_t>(::tpy::__getitem__(this->h, 5) + f));
-    // self.h[6] = UInt32.add_wrap(self.h[6], g)
+    // self.h[6] = uint32.add_wrap(self.h[6], g)
     ::tpy::__setitem__(this->h, 6, static_cast<uint32_t>(::tpy::__getitem__(this->h, 6) + g));
-    // self.h[7] = UInt32.add_wrap(self.h[7], hh)
+    // self.h[7] = uint32.add_wrap(self.h[7], hh)
     ::tpy::__setitem__(this->h, 7, static_cast<uint32_t>(::tpy::__getitem__(this->h, 7) + hh));
 }
 
@@ -206,26 +206,26 @@ void SHA256::_process_block(::tpy::BytesView data, int32_t off) {
 ::tpy::Bytes SHA256::digest() const {
     // clone: SHA256 = self.copy()
     SHA256 clone = this->copy();
-    // bit_len: UInt64 = UInt64.add_wrap(clone.length, clone.length)
+    // bit_len: uint64 = uint64.add_wrap(clone.length, clone.length)
     uint64_t bit_len = static_cast<uint64_t>(clone.length + clone.length);
-    // bit_len = UInt64.add_wrap(bit_len, bit_len)
+    // bit_len = uint64.add_wrap(bit_len, bit_len)
     bit_len = static_cast<uint64_t>(bit_len + bit_len);
-    // bit_len = UInt64.add_wrap(bit_len, bit_len)  # x8 for bits
+    // bit_len = uint64.add_wrap(bit_len, bit_len)  # x8 for bits
     bit_len = static_cast<uint64_t>(bit_len + bit_len);
     // clone.buffer.append(0x80)
     clone.buffer.push_back(128);
-    // while Int32(len(clone.buffer)) % 64 != 56:
+    // while int32(len(clone.buffer)) % 64 != 56:
     while (((::tpy::mod_floor<int32_t>(::tpy::__len__(clone.buffer), 64)) != 56)) {
         // clone.buffer.append(0)
         clone.buffer.push_back(0);
     }
-    // i: Int32 = 7
+    // i: int32 = 7
     int32_t i = 7;
     // while i >= 0:
     while ((i >= 0)) {
-        // shift: UInt64 = UInt64(i * 8)
+        // shift: uint64 = uint64(i * 8)
         uint64_t shift = ::tpy::int_cast_check<uint64_t>((::tpy::mul_check<int32_t>(i, 8)));
-        // clone.buffer.append(UInt8((bit_len >> shift) & 0xFF))
+        // clone.buffer.append(uint8((bit_len >> shift) & 0xFF))
         clone.buffer.push_back(::tpy::int_cast_check<uint8_t>((static_cast<uint64_t>((::tpy::rshift_check<uint64_t>(bit_len, shift)) & 255))));
         // i -= 1
         i = ::tpy::sub_check<int32_t>(i, 1);
@@ -251,7 +251,7 @@ void SHA256::_process_block(::tpy::BytesView data, int32_t off) {
 SHA256 SHA256::copy() const {
     // c: SHA256 = SHA256()
     SHA256 c = SHA256();
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < 8:
     while ((i < 8)) {
@@ -262,9 +262,9 @@ SHA256 SHA256::copy() const {
     }
     // c.length = self.length
     c.length = this->length;
-    // j: Int32 = 0
+    // j: int32 = 0
     int32_t j = 0;
-    // n: Int32 = Int32(len(self.buffer))
+    // n: int32 = int32(len(self.buffer))
     int32_t n = ::tpy::__len__(this->buffer);
     // while j < n:
     while ((j < n)) {
@@ -283,29 +283,29 @@ void __tpy_init() {
 
     // from tpy.bits import rotr32
     // # ---------- SHA-256 ----------
-    // _SHA256_H0: list[UInt32] = [
-    // UInt32(0x6a09e667), UInt32(0xbb67ae85), UInt32(0x3c6ef372), UInt32(0xa54ff53a),
-    // UInt32(0x510e527f), UInt32(0x9b05688c), UInt32(0x1f83d9ab), UInt32(0x5be0cd19),
+    // _SHA256_H0: list[uint32] = [
+    // uint32(0x6a09e667), uint32(0xbb67ae85), uint32(0x3c6ef372), uint32(0xa54ff53a),
+    // uint32(0x510e527f), uint32(0x9b05688c), uint32(0x1f83d9ab), uint32(0x5be0cd19),
     // ]
     static std::vector<uint32_t> __global_slot_1 = {1779033703, static_cast<uint32_t>(3144134277), 1013904242, static_cast<uint32_t>(2773480762), 1359893119, static_cast<uint32_t>(2600822924), 528734635, 1541459225};
     _SHA256_H0 = &__global_slot_1;
-    // _SHA256_K: list[UInt32] = [
-    // UInt32(0x428a2f98), UInt32(0x71374491), UInt32(0xb5c0fbcf), UInt32(0xe9b5dba5),
-    // UInt32(0x3956c25b), UInt32(0x59f111f1), UInt32(0x923f82a4), UInt32(0xab1c5ed5),
-    // UInt32(0xd807aa98), UInt32(0x12835b01), UInt32(0x243185be), UInt32(0x550c7dc3),
-    // UInt32(0x72be5d74), UInt32(0x80deb1fe), UInt32(0x9bdc06a7), UInt32(0xc19bf174),
-    // UInt32(0xe49b69c1), UInt32(0xefbe4786), UInt32(0x0fc19dc6), UInt32(0x240ca1cc),
-    // UInt32(0x2de92c6f), UInt32(0x4a7484aa), UInt32(0x5cb0a9dc), UInt32(0x76f988da),
-    // UInt32(0x983e5152), UInt32(0xa831c66d), UInt32(0xb00327c8), UInt32(0xbf597fc7),
-    // UInt32(0xc6e00bf3), UInt32(0xd5a79147), UInt32(0x06ca6351), UInt32(0x14292967),
-    // UInt32(0x27b70a85), UInt32(0x2e1b2138), UInt32(0x4d2c6dfc), UInt32(0x53380d13),
-    // UInt32(0x650a7354), UInt32(0x766a0abb), UInt32(0x81c2c92e), UInt32(0x92722c85),
-    // UInt32(0xa2bfe8a1), UInt32(0xa81a664b), UInt32(0xc24b8b70), UInt32(0xc76c51a3),
-    // UInt32(0xd192e819), UInt32(0xd6990624), UInt32(0xf40e3585), UInt32(0x106aa070),
-    // UInt32(0x19a4c116), UInt32(0x1e376c08), UInt32(0x2748774c), UInt32(0x34b0bcb5),
-    // UInt32(0x391c0cb3), UInt32(0x4ed8aa4a), UInt32(0x5b9cca4f), UInt32(0x682e6ff3),
-    // UInt32(0x748f82ee), UInt32(0x78a5636f), UInt32(0x84c87814), UInt32(0x8cc70208),
-    // UInt32(0x90befffa), UInt32(0xa4506ceb), UInt32(0xbef9a3f7), UInt32(0xc67178f2),
+    // _SHA256_K: list[uint32] = [
+    // uint32(0x428a2f98), uint32(0x71374491), uint32(0xb5c0fbcf), uint32(0xe9b5dba5),
+    // uint32(0x3956c25b), uint32(0x59f111f1), uint32(0x923f82a4), uint32(0xab1c5ed5),
+    // uint32(0xd807aa98), uint32(0x12835b01), uint32(0x243185be), uint32(0x550c7dc3),
+    // uint32(0x72be5d74), uint32(0x80deb1fe), uint32(0x9bdc06a7), uint32(0xc19bf174),
+    // uint32(0xe49b69c1), uint32(0xefbe4786), uint32(0x0fc19dc6), uint32(0x240ca1cc),
+    // uint32(0x2de92c6f), uint32(0x4a7484aa), uint32(0x5cb0a9dc), uint32(0x76f988da),
+    // uint32(0x983e5152), uint32(0xa831c66d), uint32(0xb00327c8), uint32(0xbf597fc7),
+    // uint32(0xc6e00bf3), uint32(0xd5a79147), uint32(0x06ca6351), uint32(0x14292967),
+    // uint32(0x27b70a85), uint32(0x2e1b2138), uint32(0x4d2c6dfc), uint32(0x53380d13),
+    // uint32(0x650a7354), uint32(0x766a0abb), uint32(0x81c2c92e), uint32(0x92722c85),
+    // uint32(0xa2bfe8a1), uint32(0xa81a664b), uint32(0xc24b8b70), uint32(0xc76c51a3),
+    // uint32(0xd192e819), uint32(0xd6990624), uint32(0xf40e3585), uint32(0x106aa070),
+    // uint32(0x19a4c116), uint32(0x1e376c08), uint32(0x2748774c), uint32(0x34b0bcb5),
+    // uint32(0x391c0cb3), uint32(0x4ed8aa4a), uint32(0x5b9cca4f), uint32(0x682e6ff3),
+    // uint32(0x748f82ee), uint32(0x78a5636f), uint32(0x84c87814), uint32(0x8cc70208),
+    // uint32(0x90befffa), uint32(0xa4506ceb), uint32(0xbef9a3f7), uint32(0xc67178f2),
     // ]
     static std::vector<uint32_t> __global_slot_2 = {1116352408, 1899447441, static_cast<uint32_t>(3049323471), static_cast<uint32_t>(3921009573), 961987163, 1508970993, static_cast<uint32_t>(2453635748), static_cast<uint32_t>(2870763221), static_cast<uint32_t>(3624381080), 310598401, 607225278, 1426881987, 1925078388, static_cast<uint32_t>(2162078206), static_cast<uint32_t>(2614888103), static_cast<uint32_t>(3248222580), static_cast<uint32_t>(3835390401), static_cast<uint32_t>(4022224774), 264347078, 604807628, 770255983, 1249150122, 1555081692, 1996064986, static_cast<uint32_t>(2554220882), static_cast<uint32_t>(2821834349), static_cast<uint32_t>(2952996808), static_cast<uint32_t>(3210313671), static_cast<uint32_t>(3336571891), static_cast<uint32_t>(3584528711), 113926993, 338241895, 666307205, 773529912, 1294757372, 1396182291, 1695183700, 1986661051, static_cast<uint32_t>(2177026350), static_cast<uint32_t>(2456956037), static_cast<uint32_t>(2730485921), static_cast<uint32_t>(2820302411), static_cast<uint32_t>(3259730800), static_cast<uint32_t>(3345764771), static_cast<uint32_t>(3516065817), static_cast<uint32_t>(3600352804), static_cast<uint32_t>(4094571909), 275423344, 430227734, 506948616, 659060556, 883997877, 958139571, 1322822218, 1537002063, 1747873779, 1955562222, 2024104815, static_cast<uint32_t>(2227730452), static_cast<uint32_t>(2361852424), static_cast<uint32_t>(2428436474), static_cast<uint32_t>(2756734187), static_cast<uint32_t>(3204031479), static_cast<uint32_t>(3329325298)};
     _SHA256_K = &__global_slot_2;

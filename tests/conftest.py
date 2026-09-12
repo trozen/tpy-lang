@@ -215,7 +215,7 @@ def _setup_stdlib_cache(cache_dir: Path) -> _StdlibCache:
 
     from tpyc.compilation_context import activate_compiler
 
-    compiler = Compiler(stub_src, default_int="Int32", lib_dirs=DEFAULT_LIB_DIRS)
+    compiler = Compiler(stub_src, default_int="int32", lib_dirs=DEFAULT_LIB_DIRS)
     compiled_modules = compiler.compile()
     entry = next(m for m in compiled_modules if m.is_entry_point)
 
@@ -776,7 +776,7 @@ class CompileResult:
     third_party_c_sources: list[tuple[Path, list[str]]] = field(default_factory=list)
 
 def _validate_default_int_name(name: str) -> str:
-    allowed = {"Int32", "Int64", "BigInt"}
+    allowed = {"int32", "int64", "BigInt"}
     if name not in allowed:
         pytest.fail(
             f"Invalid default int '{name}'. Expected one of: {', '.join(sorted(allowed))}"
@@ -870,7 +870,7 @@ def load_case_options(case_dir: Path) -> dict:
 def get_case_default_int(case_dir: Path) -> str:
     """Resolve default integer mode for a test case."""
     options = load_case_options(case_dir)
-    return _validate_default_int_name(options.get("default_int", "Int32"))
+    return _validate_default_int_name(options.get("default_int", "int32"))
 
 
 def get_case_snapshot_lib_modules(case_dir: Path) -> frozenset[str]:
@@ -995,7 +995,7 @@ def compile_with_diagnostics(
     plugin_extensions = (frontend_registry.all_extensions()
                          if frontend_registry is not None else frozenset())
     module_name = get_module_name(src_file, plugin_extensions)
-    default_int = _validate_default_int_name(default_int or "Int32")
+    default_int = _validate_default_int_name(default_int or "int32")
     # Plugin libraries come ahead of the implicit TPy stdlib so the
     # search order matches what the CLI uses (`cli._run_cli` slots
     # plugin lib dirs in front of the stdlib for the same reason).

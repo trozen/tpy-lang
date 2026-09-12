@@ -1,1 +1,1 @@
-TurboPython panic: Int8 overflow in left shift
+TurboPython panic: int8 overflow in left shift

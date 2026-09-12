@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def ne_check(x: Int32 | None, y: Int32) -> bool:
+// def ne_check(x: int32 | None, y: int32) -> bool:
 bool ne_check(std::optional<int32_t> x, int32_t y) {
     // return x != y  # tpyc: ok
     return (x != y);

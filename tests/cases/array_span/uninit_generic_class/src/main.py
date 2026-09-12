@@ -1,5 +1,5 @@
 # Test UninitHeapStorage used inside a generic class (exercises const T& overload).
-from tpy import Int32, Own
+from tpy import int32, Own
 from tpy.mem import UninitHeapStorage
 
 class Holder[T]:
@@ -20,7 +20,7 @@ class Holder[T]:
         return self._storage.take0()
 
 # Value type
-h = Holder[Int32](42)
+h = Holder[int32](42)
 print(h.get())
 h.set(100)
 print(h.take())

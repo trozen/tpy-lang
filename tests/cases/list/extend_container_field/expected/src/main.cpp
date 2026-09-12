@@ -8,7 +8,7 @@ namespace tpyapp::main {
 void main() {
     // h = Holder()
     Holder h = Holder();
-    // out: list[Int32] = []
+    // out: list[int32] = []
     std::vector<int32_t> out = std::vector<int32_t>{};
     // out.extend(h.nums)  # tpyc: ok
     ::tpy::list_extend(out, h.nums);
@@ -23,7 +23,7 @@ void main() {
     // print(h.nums)
     std::cout << ::tpy::ListPrinter(h.nums) << "\n";
     // # ... a SET field at the same slot.
-    // from_set: list[Int32] = []
+    // from_set: list[int32] = []
     std::vector<int32_t> from_set = std::vector<int32_t>{};
     // from_set.extend(h.tags)  # tpyc: ok
     ::tpy::list_extend(from_set, h.tags);
@@ -43,11 +43,11 @@ void main() {
     // # ... and the CONCRETE container slot (`dict.update` / `set.update` take
     // # a dict / set, not a structural Iterable): the field read binds it
     // # exactly as the bare name does.
-    // d: dict[str, Int32] = {}
+    // d: dict[str, int32] = {}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>();
     // d.update(h.ages)  # tpyc: ok
     ::tpy::dict_update(d, h.ages);
-    // st: set[Int32] = set()
+    // st: set[int32] = set()
     ::tpy::ordered_set<int32_t> st = ::tpy::ordered_set<int32_t>();
     // st.update(h.tags)  # tpyc: ok
     ::tpy::set_update(st, h.tags);

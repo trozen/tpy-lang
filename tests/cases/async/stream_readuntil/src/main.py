@@ -1,11 +1,11 @@
 # asyncio StreamReader.readuntil: reads through a bytes separator (included in
 # the result); IncompleteReadError on EOF first; empty separator is a ValueError.
 import asyncio
-from tpy import Int32
+from tpy import int32
 from socket import socket, AF_INET, SOCK_STREAM
 
 
-async def client_role(port: Int32) -> None:
+async def client_role(port: int32) -> None:
     reader, writer = await asyncio.open_connection("127.0.0.1", port)
     try:
         await reader.readuntil(b"")

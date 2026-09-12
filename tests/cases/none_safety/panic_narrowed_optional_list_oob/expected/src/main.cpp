@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def read_oob(lst: list[Int32] | None) -> None:
+// def read_oob(lst: list[int32] | None) -> None:
 void read_oob(const std::vector<int32_t>* lst) {
     // if lst is None:
     if ((lst == nullptr)) {

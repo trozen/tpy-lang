@@ -2,7 +2,7 @@
 # type is rejected at sema (message uses display types, not PendingList repr).
 def main() -> None:
     xs = [1, 2]
-    xs = ["x"]  # tpyc: error(/expected list\[Int32\], got list\[str\]/)
+    xs = ["x"]  # tpyc: error(/expected list\[int32\], got list\[str\]/)
     print(xs)
 
 main()

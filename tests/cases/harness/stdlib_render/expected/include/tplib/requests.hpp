@@ -153,7 +153,7 @@ struct CaseInsensitiveDict {
     // def __contains__(self, key: str) -> bool:
     bool __contains__(std::string_view key) const;
 
-    // def __len__(self) -> Int32:
+    // def __len__(self) -> int32:
     int32_t __len__() const;
 
     // def get(self, key: str, default: str | None = None) -> str | None:
@@ -290,7 +290,7 @@ struct CookieJar {
     // def __contains__(self, name: str) -> bool:
     bool __contains__(std::string_view name) const;
 
-    // def __len__(self) -> Int32:
+    // def __len__(self) -> int32:
     int32_t __len__() const;
 
     // def get(self, name: str, default: str | None = None) -> str | None:
@@ -337,7 +337,7 @@ inline std::ostream& operator<<(std::ostream& os, const CookieJar& obj) {
 
 // class Response:
 struct Response {
-    // status_code: Int32
+    // status_code: int32
     int32_t status_code;
     // reason: str
     std::string reason;
@@ -364,7 +364,7 @@ struct Response {
     // _raw: HTTPResponse | None
     std::optional<::tpystd::http::client::HTTPResponse> _raw;
 
-    // def __init__(self, status_code: Int32, reason: str, url: str,
+    // def __init__(self, status_code: int32, reason: str, url: str,
     // headers: Own[CaseInsensitiveDict], content: bytes,
     // cookies: Own[CookieJar],
     // raw: Own[HTTPResponse] | None = None) -> None:
@@ -444,7 +444,7 @@ struct Session {
     std::vector<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>> _redirect_connections;
     // _pool: dict[str, Box[_Connection]]
     ::tpy::ordered_map<std::string, ::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>> _pool;
-    // max_redirects: Int32
+    // max_redirects: int32
     int32_t max_redirects;
 
     // def __init__(self) -> None:
@@ -467,7 +467,7 @@ struct Session {
     // files: dict[str, FileField] | None,
     // json: JsonValue | None, headers: dict[str, str],
     // auth: tuple[str, str] | None,
-    // timeout: float | None, hop: Int32,
+    // timeout: float | None, hop: int32,
     // send_cookies: CookieJar,
     // verify: bool | str = True,
     // stream: bool = False,
@@ -480,7 +480,7 @@ struct Session {
     // json: JsonValue | None,
     // headers: dict[str, str], auth: tuple[str, str] | None,
     // timeout: float | None, history: Own[list[Response]],
-    // hop: Int32, follow: bool, send_cookies: CookieJar,
+    // hop: int32, follow: bool, send_cookies: CookieJar,
     // verify: bool | str = True,
     // stream: bool = False) -> Own[Response]:
     Response _hop(std::string_view method, std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpy::ordered_map<std::string, FileField>* files, const ::tpystd::json::JsonValue* json, ::tpy::ordered_map<std::string, std::string>& headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout, std::vector<Response>&& history, int32_t hop, bool follow, CookieJar& send_cookies, const ::tpy::Union<bool, std::string>& verify = true, bool stream = false);
@@ -762,7 +762,7 @@ inline bool CaseInsensitiveDict::__contains__(std::string_view key) const {
     return std::ranges::contains(this->_store, ::tpy::str_lower(key));
 }
 
-// def __len__(self) -> Int32:
+// def __len__(self) -> int32:
 inline int32_t CaseInsensitiveDict::__len__() const {
     // return len(self._store)
     return ::tpy::__len__(this->_store);
@@ -965,9 +965,9 @@ inline bool CookieJar::__contains__(std::string_view name) const {
     return (std::ranges::contains(this->_store, name) && (!(::tpy::__getitem__(this->_store, name).deleted)));
 }
 
-// def __len__(self) -> Int32:
+// def __len__(self) -> int32:
 inline int32_t CookieJar::__len__() const {
-    // n: Int32 = 0
+    // n: int32 = 0
     int32_t n = 0;
     // for name in self._store:
     auto& __obj_0 = this->_store;

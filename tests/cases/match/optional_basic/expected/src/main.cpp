@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def classify(x: Optional[Int32]) -> str:
+// def classify(x: Optional[int32]) -> str:
 std::string classify(std::optional<int32_t> x) {
     // match x:
     auto& __match_subject_1 = x;
@@ -63,9 +63,9 @@ std::string describe(std::optional<std::string_view> s) {
 void main() {
     // print(classify(None))
     std::cout << classify(std::nullopt) << "\n";
-    // print(classify(Int32(0)))
+    // print(classify(int32(0)))
     std::cout << classify(0) << "\n";
-    // print(classify(Int32(42)))
+    // print(classify(int32(42)))
     std::cout << classify(42) << "\n";
     // print(describe(None))
     std::cout << describe(std::nullopt) << "\n";

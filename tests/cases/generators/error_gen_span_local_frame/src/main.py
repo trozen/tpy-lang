@@ -3,11 +3,11 @@
 # lowered -- the reject must stay while the param rides.
 from typing import Iterator
 
-from tpy import Int32, Span
+from tpy import int32, Span
 
 
-def gen(xs: list[Int32]) -> Iterator[Int32]:  # tpyc: error(/not yet supported/)
-    sp: Span[Int32] = xs
+def gen(xs: list[int32]) -> Iterator[int32]:  # tpyc: error(/not yet supported/)
+    sp: Span[int32] = xs
     yield sp[0]
     yield sp[1]
 

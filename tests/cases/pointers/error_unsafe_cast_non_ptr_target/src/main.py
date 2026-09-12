@@ -1,6 +1,6 @@
-from tpy import Ptr, Int32, UInt32, Array
+from tpy import Ptr, int32, uint32, Array
 from tpy.unsafe import unsafe_ptr, unsafe_cast
 
-arr: Array[Int32, 2] = [Int32(1), Int32(2)]
-p: Ptr[Int32] = unsafe_ptr(arr)
-x: Int32 = unsafe_cast(p)  # tpyc: error(/target must be a pointer type/)
+arr: Array[int32, 2] = [int32(1), int32(2)]
+p: Ptr[int32] = unsafe_ptr(arr)
+x: int32 = unsafe_cast(p)  # tpyc: error(/target must be a pointer type/)

@@ -3,11 +3,11 @@
 # dependency-ordered emission still puts the method struct before its free
 # awaiter.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
 class Svc:
-    async def fetch(self) -> Int32:
+    async def fetch(self) -> int32:
         await asyncio.sleep(0)
         return 7
 

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def pick(b: Box, cond: bool) -> Int32:
+// def pick(b: Box, cond: bool) -> int32:
 int32_t pick(Box& b, bool cond) {
     // items = [(7, Box(10))]
     std::array<std::tuple<int32_t, Box>, 1> items = {::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{7, Box(10)})};

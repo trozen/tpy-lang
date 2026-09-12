@@ -16,11 +16,11 @@ void main();
 // @dataclass
 // class Rect:
 struct Rect {
-    // w: Int32
+    // w: int32
     int32_t w;
-    // h: Int32
+    // h: int32
     int32_t h;
-    // area: Int32 = 0
+    // area: int32 = 0
     int32_t area = 0;
 
     Rect() = default;

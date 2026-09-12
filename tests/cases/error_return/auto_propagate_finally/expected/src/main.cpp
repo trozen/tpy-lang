@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // @error_return(MyErr)
-// def fallible(x: Int32) -> Int32:
+// def fallible(x: int32) -> int32:
 std::expected<int32_t, MyErr> fallible(int32_t x) {
     // if x < 0:
     if ((x < 0)) {
@@ -17,7 +17,7 @@ std::expected<int32_t, MyErr> fallible(int32_t x) {
 }
 
 // @error_return(MyErr)
-// def caller(x: Int32) -> Int32:
+// def caller(x: int32) -> int32:
 std::expected<int32_t, MyErr> caller(int32_t x) {
     // try:
     int32_t y;
@@ -53,9 +53,9 @@ std::expected<int32_t, MyErr> caller(int32_t x) {
 }
 
 // @error_return(MyErr)
-// def caller_assign(x: Int32) -> Int32:
+// def caller_assign(x: int32) -> int32:
 std::expected<int32_t, MyErr> caller_assign(int32_t x) {
-    // z: Int32 = 0
+    // z: int32 = 0
     int32_t z = 0;
     // try:
     {
@@ -90,7 +90,7 @@ std::expected<int32_t, MyErr> caller_assign(int32_t x) {
 }
 
 // @error_return(MyErr)
-// def caller_stmt(x: Int32) -> None:
+// def caller_stmt(x: int32) -> None:
 std::expected<void, MyErr> caller_stmt(int32_t x) {
     // try:
     {

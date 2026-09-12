@@ -105,10 +105,10 @@ struct DirEntry {
     std::string name;
     // path: str
     std::string path;
-    // _kind: Int64
+    // _kind: int64
     int64_t _kind;
 
-    // def __init__(self, name: str, path: str, kind: Int64) -> None:
+    // def __init__(self, name: str, path: str, kind: int64) -> None:
     DirEntry() = default;
     explicit DirEntry(std::string_view name, std::string_view path, int64_t kind);
 
@@ -178,12 +178,12 @@ inline std::ostream& operator<<(std::ostream& os, const _WalkEmit& obj) {
 // # clean compile error, not a silent divergence.
 // class terminal_size:
 struct terminal_size {
-    // columns: Int64
+    // columns: int64
     int64_t columns;
-    // lines: Int64
+    // lines: int64
     int64_t lines;
 
-    // def __init__(self, columns: Int64, lines: Int64) -> None:
+    // def __init__(self, columns: int64, lines: int64) -> None:
     terminal_size() = default;
     explicit terminal_size(int64_t columns, int64_t lines);
     static constexpr std::string_view __tpy_class_name__ = "os.terminal_size";
@@ -248,7 +248,7 @@ struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, std::tuple<std::st
 };
 
 
-// def __init__(self, name: str, path: str, kind: Int64) -> None:
+// def __init__(self, name: str, path: str, kind: int64) -> None:
 inline DirEntry::DirEntry(std::string_view name, std::string_view path, int64_t kind) : name(name), path(path), _kind(kind) {}
 
 // def is_dir(self) -> bool:
@@ -312,7 +312,7 @@ inline _WalkExpand::_WalkExpand(std::string_view path) : path(path) {}
 // filenames: Own[list[str]]) -> None:
 inline _WalkEmit::_WalkEmit(std::string_view path, std::vector<std::string>&& dirnames, std::vector<std::string>&& filenames) : path(path), dirnames(std::move(dirnames)), filenames(std::move(filenames)) {}
 
-// def __init__(self, columns: Int64, lines: Int64) -> None:
+// def __init__(self, columns: int64, lines: int64) -> None:
 inline terminal_size::terminal_size(int64_t columns, int64_t lines) : columns(columns), lines(lines) {}
 void __tpy_init();
 } // namespace tpystd::os

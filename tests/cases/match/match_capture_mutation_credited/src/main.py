@@ -8,31 +8,31 @@ import asyncio
 from dataclasses import dataclass
 from typing import Iterator, Protocol
 
-from tpy import Int32, Own, dynamic
+from tpy import int32, Own, dynamic
 
 
 class Cat:
-    hunger: Int32
+    hunger: int32
     tags: list[str]
 
-    def __init__(self, hunger: Int32) -> None:
+    def __init__(self, hunger: int32) -> None:
         self.hunger = hunger
         self.tags = []
 
 
 class Dog:
-    bones: Int32
+    bones: int32
     tags: list[str]
 
-    def __init__(self, bones: Int32) -> None:
+    def __init__(self, bones: int32) -> None:
         self.bones = bones
         self.tags = []
 
 
 class Counter:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
@@ -87,7 +87,7 @@ def via_callee(u: Counter | Cat) -> None:
 class Bag:
     c: Counter
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.c = Counter(n)
 
     # method, `self.field` subject: the write is the method's only mutation,
@@ -97,7 +97,7 @@ class Bag:
             case Counter() as q:
                 q.n += 1  # tpyc: ok
 
-    def value(self) -> Int32:
+    def value(self) -> int32:
         return self.c.n
 
 
@@ -124,7 +124,7 @@ def reseated_callee(h: Bag, g: Bag) -> None:
 class Owner:
     mine: Bag
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.mine = Bag(n)
 
     # the capture is re-seated between a `self.field` subject and a PARAM
@@ -140,13 +140,13 @@ class Owner:
                     case Bag(c=q):
                         q.n += 4  # tpyc: ok
 
-    def value(self) -> Int32:
+    def value(self) -> int32:
         return self.mine.c.n
 
 
 # SUBSCRIPT-rooted subject: the loan is rooted at the container, so the write
 # through the capture keeps the container param mutable
-def subscript_subject(xs: list[Counter], i: Int32) -> None:
+def subscript_subject(xs: list[Counter], i: int32) -> None:
     match xs[i]:
         case Counter() as e:
             e.n += 3  # tpyc: ok
@@ -154,7 +154,7 @@ def subscript_subject(xs: list[Counter], i: Int32) -> None:
 
 @dataclass
 class Slot:
-    n: Int32
+    n: int32
 
 
 @dataclass
@@ -174,20 +174,20 @@ def positional_sub_capture(p: Pair) -> None:
 class UnionHolder:
     payload: Counter | Cat
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.payload = Counter(n)
 
     # the literal BUGS shape: a UNION-typed `self.field` matched with an
     # `as`-capture whose write is the method's only mutation, so it alone
     # decides the method's const qualifier
-    def bump(self, v: Int32) -> None:
+    def bump(self, v: int32) -> None:
         match self.payload:
             case Counter() as c:
                 c.n = v  # tpyc: ok
             case Cat() as k:
                 k.hunger = v
 
-    def value(self) -> Int32:
+    def value(self) -> int32:
         match self.payload:
             case Counter() as c:
                 return c.n
@@ -201,9 +201,9 @@ class Pet(Protocol):
 
 
 class Kitty(Pet):
-    lives: Int32
+    lives: int32
 
-    def __init__(self, lives: Int32) -> None:
+    def __init__(self, lives: int32) -> None:
         self.lives = lives
 
     def bump(self) -> None:
@@ -223,7 +223,7 @@ def poly_subject(p: Pet) -> None:
 # turns the capture into a frame field, which is an emplaced COPY, so the
 # mutation would stop at that copy instead of reaching the caller
 # (BUGS.md#resumable-match-capture-frame-emplace-copies)
-def gen_body(a: Counter | Cat) -> Iterator[Int32]:
+def gen_body(a: Counter | Cat) -> Iterator[int32]:
     match a:
         case Counter() as c:
             c.n += 1  # tpyc: ok
@@ -233,7 +233,7 @@ def gen_body(a: Counter | Cat) -> Iterator[Int32]:
 
 
 # async body: the same union param at the coroutine's own parameter slot
-async def async_body(a: Counter | Cat) -> Int32:
+async def async_body(a: Counter | Cat) -> int32:
     match a:
         case Counter() as c:
             c.n += 1  # tpyc: ok
@@ -245,7 +245,7 @@ async def async_body(a: Counter | Cat) -> Int32:
 
 # inverse: an arm that only READS keeps the param's non-mutating verdict --
 # the snapshot pins the `const std::variant<...>` this section must keep
-def read_only(a: Counter | Cat) -> Int32:
+def read_only(a: Counter | Cat) -> int32:
     match a:
         case Counter() as c:
             return c.n
@@ -259,7 +259,7 @@ def clone_of(c: Counter) -> Own[Counter]:
 
 # inverse: an RVALUE subject owns a temporary, so the write reaches no caller
 # storage -- `c` must stay a non-mutating (const) param
-def rvalue_subject(c: Counter) -> Int32:
+def rvalue_subject(c: Counter) -> int32:
     match clone_of(c):
         case Counter() as q:
             q.n += 1
@@ -269,7 +269,7 @@ def rvalue_subject(c: Counter) -> Int32:
 
 # inverse: a free-copy scalar capture is a durable COPY, so rebinding and
 # writing it leaves the subject alone
-def scalar_capture(n: Int32) -> Int32:
+def scalar_capture(n: int32) -> int32:
     match n:
         case v:
             v = v + 1
@@ -279,7 +279,7 @@ def scalar_capture(n: Int32) -> Int32:
 
 # LOCAL subject rather than a param: the local is already mutable, so the
 # section pins that the capture write still lands on it
-def local_subject() -> Int32:
+def local_subject() -> int32:
     loc = Counter(0)
     match loc:
         case Counter() as lc:

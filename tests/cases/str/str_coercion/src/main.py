@@ -1,5 +1,5 @@
-# Test coercions between str, String, StrView, and Char
-from tpy import String, StrView, Char
+# Test coercions between str, String, StrView, and char
+from tpy import String, StrView, char
 
 def take_str(s: str) -> None:
     print(s)
@@ -32,11 +32,11 @@ def main() -> None:
     # StrView -> str (allocates)
     take_str(sv)  # view
 
-    # Char -> str
-    c: Char = "X"
+    # char -> str
+    c: char = "X"
     take_str(c)  # X
 
-    # Char -> String
+    # char -> String
     take_string(c)  # X
 
 main()

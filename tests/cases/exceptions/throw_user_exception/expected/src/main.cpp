@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def validate(x: Int32) -> None:
+// def validate(x: int32) -> None:
 void validate(int32_t x) {
     // if x < 0:
     if ((x < 0)) {

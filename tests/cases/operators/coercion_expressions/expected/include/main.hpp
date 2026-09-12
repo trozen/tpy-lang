@@ -47,12 +47,12 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
-    // y: Int32
+    // y: int32
     int32_t y;
 
-    // def __init__(self, x: Int32, y: Int32) -> None:
+    // def __init__(self, x: int32, y: int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
@@ -68,7 +68,7 @@ struct Container {
     // pt: Point
     Point pt;
 
-    // def __init__(self, x: Int32, y: Int32) -> None:
+    // def __init__(self, x: int32, y: int32) -> None:
     Container() = default;
     explicit Container(int32_t x, int32_t y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
@@ -84,7 +84,7 @@ struct Outer {
     // inner: Container
     Container inner;
 
-    // def __init__(self, x: Int32, y: Int32) -> None:
+    // def __init__(self, x: int32, y: int32) -> None:
     Outer() = default;
     explicit Outer(int32_t x, int32_t y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Outer";
@@ -111,13 +111,13 @@ inline ::tpy::BigInt Counter::add(const ::tpy::BigInt& x) const {
     return ((this->value) + (x));
 }
 
-// def __init__(self, x: Int32, y: Int32) -> None:
+// def __init__(self, x: int32, y: int32) -> None:
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
-// def __init__(self, x: Int32, y: Int32) -> None:
+// def __init__(self, x: int32, y: int32) -> None:
 inline Container::Container(int32_t x, int32_t y) : pt(Point(x, y)) {}
 
-// def __init__(self, x: Int32, y: Int32) -> None:
+// def __init__(self, x: int32, y: int32) -> None:
 inline Outer::Outer(int32_t x, int32_t y) : inner(Container(x, y)) {}
 void __tpy_init();
 } // namespace tpyapp::main

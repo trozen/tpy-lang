@@ -6,23 +6,23 @@ namespace tpyapp::main {
 
 // def main():
 void main() {
-    // c: Char = "A"
+    // c: char = "A"
     char c = 'A';
-    // # str + Char
+    // # str + char
     // print("hello" + c)
     std::cout << (::tpy::str_concat("hello", ::tpy::char_to_str(c))) << "\n";
-    // # Char + str
+    // # char + str
     // print(c + "hello")
     std::cout << (::tpy::str_concat(::tpy::char_to_str(c), "hello")) << "\n";
-    // # Char + Char
+    // # char + char
     // print(c + c)
     std::cout << (::tpy::str_concat(::tpy::char_to_str(c), ::tpy::char_to_str(c))) << "\n";
-    // # Char * int / int * Char
+    // # char * int / int * char
     // print(c * 3)
     std::cout << (::tpy::str_repeat(::tpy::char_to_str(c), 3)) << "\n";
     // print(3 * c)
     std::cout << (::tpy::str_repeat(::tpy::char_to_str(c), 3)) << "\n";
-    // # len(Char) -- always 1
+    // # len(char) -- always 1
     // print(len(c))
     std::cout << ::tpy::__len__(c) << "\n";
     // # ord(str) -- single char string
@@ -30,13 +30,13 @@ void main() {
     std::string_view s = "B";
     // print(ord(s))
     std::cout << ::tpy::ord_str(s) << "\n";
-    // # ord(Char) still works
+    // # ord(char) still works
     // print(ord(c))
     std::cout << static_cast<int32_t>(static_cast<unsigned char>(c)) << "\n";
-    // # Char(str) constructor
+    // # char(str) constructor
     // s2 = "Z"
     std::string_view s2 = "Z";
-    // z = Char(s2)
+    // z = char(s2)
     char z = ::tpy::char_from_str(s2);
     // print(z)
     std::cout << z << "\n";

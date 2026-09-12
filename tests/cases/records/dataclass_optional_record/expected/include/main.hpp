@@ -17,7 +17,7 @@ void main();
 // @dataclass
 // class Inner:
 struct Inner {
-    // x: Int32
+    // x: int32
     int32_t x;
 
     Inner() = default;

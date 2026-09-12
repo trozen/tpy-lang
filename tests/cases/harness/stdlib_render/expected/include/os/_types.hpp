@@ -51,10 +51,10 @@ struct stat_result {
     // self.st_ctime_ns = ctime_ns
     int64_t st_ctime_ns;
 
-    // def __init__(self, mode: Int64, ino: Int64, dev: Int64, nlink: Int64,
-    // uid: Int64, gid: Int64, size: Int64,
+    // def __init__(self, mode: int64, ino: int64, dev: int64, nlink: int64,
+    // uid: int64, gid: int64, size: int64,
     // atime: float, mtime: float, ctime: float,
-    // atime_ns: Int64, mtime_ns: Int64, ctime_ns: Int64) -> None:
+    // atime_ns: int64, mtime_ns: int64, ctime_ns: int64) -> None:
     stat_result() = default;
     explicit stat_result(int64_t mode, int64_t ino, int64_t dev, int64_t nlink, int64_t uid, int64_t gid, int64_t size, double atime, double mtime, double ctime, int64_t atime_ns, int64_t mtime_ns, int64_t ctime_ns);
     static constexpr std::string_view __tpy_class_name__ = "os._types.stat_result";

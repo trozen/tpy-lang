@@ -16,7 +16,7 @@ void main();
 // class C[T]:
 template<typename T>
 struct C {
-    // MAX: Final[Int32] = 10
+    // MAX: Final[int32] = 10
     static constexpr int32_t MAX = 10;
     // SCALE: Final[float] = 1.5
     static constexpr double SCALE = 1.5;

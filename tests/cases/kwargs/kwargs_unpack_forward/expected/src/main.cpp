@@ -22,7 +22,7 @@ void wrapper(const Options& kwargs) {
 
 // def main() -> None:
 void main() {
-    // wrapper(host="example.com", port=Int32(443))
+    // wrapper(host="example.com", port=int32(443))
     Options __tmp_1 = Options("example.com", 443);
     wrapper(__tmp_1);
 }

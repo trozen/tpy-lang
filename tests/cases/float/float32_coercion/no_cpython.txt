@@ -1,2 +1,2 @@
-Float32 is 32-bit single precision in C++ but Python float is always 64-bit double.
+float32 is 32-bit single precision in C++ but Python float is always 64-bit double.
 Output values differ due to precision differences.

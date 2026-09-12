@@ -16,7 +16,7 @@ void main();
 
 // class Parent:
 struct Parent {
-    // LIMIT: Final[Int32] = 10
+    // LIMIT: Final[int32] = 10
     static constexpr int32_t LIMIT = 10;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.Parent";

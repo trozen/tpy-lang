@@ -1,1 +1,1 @@
-main.py:7: error: require_int_return: expected an Int32 return value
+main.py:7: error: require_int_return: expected an int32 return value

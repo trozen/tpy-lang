@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def read_bound(s: Slot) -> Int32:
+// def read_bound(s: Slot) -> int32:
 int32_t read_bound(Slot& s) {
     // # The READ side of the same slot: the storage-form optional field
     // # lifts through `optional_to_ptr` into a plain local, so the narrowed
@@ -72,7 +72,7 @@ void main() {
         // print(len(s.xs))
         std::cout << ::tpy::__len__((*s.xs)) << "\n";
     }
-    // boxes: list[Box[Int32]] = [Box(4), Box(5)]
+    // boxes: list[Box[int32]] = [Box(4), Box(5)]
     std::vector<::tpystd::tplib::box::Box<int32_t>> boxes = ::tpy::make_vector<::tpystd::tplib::box::Box<int32_t>>(::tpystd::tplib::box::Box<int32_t>(4), ::tpystd::tplib::box::Box<int32_t>(5));
     // s.take_boxes(boxes)
     s.take_boxes(std::move(boxes));

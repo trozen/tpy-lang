@@ -20,10 +20,10 @@ void main();
 struct Dog {
     // name: str
     std::string name;
-    // age: Int32
+    // age: int32
     int32_t age;
 
-    // def __init__(self, name: str, age: Int32) -> None:
+    // def __init__(self, name: str, age: int32) -> None:
     Dog() = default;
     explicit Dog(std::string_view name, int32_t age);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
@@ -38,10 +38,10 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 struct Cat {
     // name: str
     std::string name;
-    // lives: Int32
+    // lives: int32
     int32_t lives;
 
-    // def __init__(self, name: str, lives: Int32) -> None:
+    // def __init__(self, name: str, lives: int32) -> None:
     Cat() = default;
     explicit Cat(std::string_view name, int32_t lives);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cat";
@@ -53,10 +53,10 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 }
 
 
-// def __init__(self, name: str, age: Int32) -> None:
+// def __init__(self, name: str, age: int32) -> None:
 inline Dog::Dog(std::string_view name, int32_t age) : name(name), age(age) {}
 
-// def __init__(self, name: str, lives: Int32) -> None:
+// def __init__(self, name: str, lives: int32) -> None:
 inline Cat::Cat(std::string_view name, int32_t lives) : name(name), lives(lives) {}
 void __tpy_init();
 } // namespace tpyapp::main

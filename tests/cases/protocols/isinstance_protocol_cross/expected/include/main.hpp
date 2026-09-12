@@ -13,7 +13,7 @@ template<::tpystd::typing::Sequence<int32_t> T_items>
 void cross_protocol(const T_items& items);
 void main();
 
-// def cross_protocol(items: Sequence[Int32]) -> None:
+// def cross_protocol(items: Sequence[int32]) -> None:
 template<::tpystd::typing::Sequence<int32_t> T_items>
 void cross_protocol(const T_items& items) {
     // if isinstance(items, Hashable):

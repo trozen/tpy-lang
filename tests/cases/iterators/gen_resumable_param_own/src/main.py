@@ -4,16 +4,16 @@
 # could not. (Phase D: params widening.)
 from typing import Iterator
 from tplib.box import Box
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
-def drain(b: Own[Box[Int32]]) -> Iterator[Int32]:
+def drain(b: Own[Box[int32]]) -> Iterator[int32]:
     yield b.get()
     yield b.get() * 2
 
 
 def main() -> None:
-    box = Box(Int32(7))
+    box = Box(int32(7))
     for v in drain(box):
         print(v)
 

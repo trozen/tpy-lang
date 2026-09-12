@@ -21,10 +21,10 @@ void test_span();
 void test_ro_span();
 void test_arraylist();
 
-// def sum_span(c: Spannable[Int32]) -> Int32:
+// def sum_span(c: Spannable[int32]) -> int32:
 template<::tpystd::tpy::Spannable<int32_t> T_c>
 int32_t sum_span(const T_c& c) {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for x in c:
     auto& __obj_0 = c;

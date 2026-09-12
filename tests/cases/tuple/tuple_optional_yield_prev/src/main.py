@@ -4,12 +4,12 @@
 # sentinel element so we exercise the `prev = None` re-assignment path
 # (not just the initial decl).
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
 class P:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
@@ -18,7 +18,7 @@ def gen(items: list[P]) -> Iterator[tuple[P | None, P | None]]:
     for it in items:
         yield (prev, it)
         # Sentinel: x == 0 means "reset prev"; otherwise carry forward.
-        if it.x == Int32(0):
+        if it.x == int32(0):
             prev = None
         else:
             prev = it

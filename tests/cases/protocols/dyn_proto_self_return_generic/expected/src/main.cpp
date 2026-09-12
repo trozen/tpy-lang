@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // c: Cloneable[Int32] = IntBox(7)
+    // c: Cloneable[int32] = IntBox(7)
     IntBox __slot_1{IntBox(7)};
     Cloneable<int32_t>* c = &__slot_1;
     // b = Box(c.replicate())

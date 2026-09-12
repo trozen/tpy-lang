@@ -1,12 +1,12 @@
-from tpy import Ptr, Int32
+from tpy import Ptr, int32
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32) -> None:
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
-    def sum(self) -> Int32:
+    def sum(self) -> int32:
         return self.x + self.y
 
 def use_fields(p: Ptr[Point]) -> None:

@@ -3,7 +3,7 @@
 # before sema sees the parent. Pinned here so a future resolver change
 # can't silently let mismatched arity through.
 from typing import Protocol
-from tpy import Int32
+from tpy import int32
 
 
 class Pair[A, B](Protocol):

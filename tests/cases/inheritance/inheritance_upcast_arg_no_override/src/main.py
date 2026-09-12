@@ -1,7 +1,7 @@
 # Passing a child with only added fields/methods (no overrides) as a parent-typed
 # arg does NOT warn -- static dispatch on Parent's methods is semantically correct
 # because Child didn't override anything.
-from tpy import Int32
+from tpy import int32
 
 class Animal:
     name: str

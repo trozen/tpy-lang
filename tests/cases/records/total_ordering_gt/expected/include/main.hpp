@@ -17,10 +17,10 @@ inline constexpr std::string_view __name__ = "__main__";
 // @total_ordering
 // class Rank:
 struct Rank {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Rank() = default;
     explicit Rank(int32_t v);
 
@@ -64,7 +64,7 @@ inline std::ostream& operator<<(std::ostream& os, const Rank& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Rank::Rank(int32_t v) : n(v) {}
 
 // def __eq__(self, other: "Rank") -> bool:

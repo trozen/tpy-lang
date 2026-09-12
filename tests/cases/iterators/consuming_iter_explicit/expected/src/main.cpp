@@ -10,7 +10,7 @@ void test_last_use() {
     std::vector<Node> b = {Node(1), Node(2)};
     // it = b.__iter__()
     auto it = ::tpy::__iter__(b);
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for x in it:
     auto& __src_0 = it;
@@ -32,7 +32,7 @@ void test_borrowing_not_last_use() {
     std::vector<Node> b = {Node(10), Node(20)};
     // it = b.__iter__()
     auto it = ::tpy::__iter__(b);
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for x in it:
     auto& __src_0 = it;

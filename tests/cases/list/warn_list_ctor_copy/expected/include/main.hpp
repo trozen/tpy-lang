@@ -22,10 +22,10 @@ void test_list_ctor_generic_warns(const std::vector<T>& b);
 
 // class Node:
 struct Node {
-    // val: Int32
+    // val: int32
     int32_t val;
 
-    // def __init__(self, val: Int32) -> None:
+    // def __init__(self, val: int32) -> None:
     Node() = default;
     explicit Node(int32_t val);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Node";
@@ -37,7 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 }
 
 
-// def __init__(self, val: Int32) -> None:
+// def __init__(self, val: int32) -> None:
 inline Node::Node(int32_t val) : val(val) {}
 // def test_list_ctor_generic_warns[T](b: list[T]) -> None:
 template<typename T>

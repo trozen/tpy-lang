@@ -1,7 +1,7 @@
 # Verifies arithmetic behavior when crossing the int63 small-int/big-int boundary.
 # Focuses on small/large operand combinations and boundary canonicalization.
 
-from tpy import Int64
+from tpy import int64
 
 
 def show_mul(label: str, a: int, b: int) -> None:
@@ -54,7 +54,7 @@ print((BIG_NEG + 1) % 2)    # small
 
 # Fixed-width conversion sanity around boundary values.
 print("fixed_width_conversions")
-print(Int64(SMALL_MAX))
-print(Int64(SMALL_MIN))
-print(Int64(BIG_POS - 1))
-print(Int64(BIG_NEG + 1))
+print(int64(SMALL_MAX))
+print(int64(SMALL_MIN))
+print(int64(BIG_POS - 1))
+print(int64(BIG_NEG + 1))

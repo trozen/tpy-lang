@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def work(n: Int32) -> Int32:
+// async def work(n: int32) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_work::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
@@ -20,7 +20,7 @@ namespace tpyapp::main {
 }
 
 
-// async def work(n: Int32) -> Int32:
+// async def work(n: int32) -> int32:
 __coro_work work(int32_t n) {
     return __coro_work(n);
 }
@@ -29,7 +29,7 @@ __coro_work work(int32_t n) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // tasks: list[Task[Int32]] = []
+        // tasks: list[Task[int32]] = []
         tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<int32_t>>{});
         // tasks.append(asyncio.create_task(work(1)))
         (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(work(1))));

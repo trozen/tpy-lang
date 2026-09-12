@@ -55,7 +55,7 @@ struct Bag {
       requires ::tpystd::tpy::Comparable<T> {
         // # Return a field element (not a local): a bare-T local return would
         // # need Own[T] under the borrow rules; irrelevant to what this pins.
-        // idx: Int32 = 0
+        // idx: int32 = 0
         int32_t idx = 0;
         // for i in range(1, len(self.items)):
         int32_t __stop_0 = ::tpy::__len__(this->items);
@@ -78,7 +78,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bag<T, N>& obj) {
     return os;
 }
 
-// class IntBag(Bag[Int32, 4]):
+// class IntBag(Bag[int32, 4]):
 struct IntBag : Bag<int32_t, 4> {
 
     using Bag<int32_t, 4>::Bag;

@@ -3,15 +3,15 @@
 # slot, so Child.X and Parent.X resolve to independent storage -- matching
 # Python's per-`__dict__` shadowing.
 from typing import ClassVar
-from tpy import Int32
+from tpy import int32
 
 
 class Parent:
-    counter: ClassVar[Int32] = 0
+    counter: ClassVar[int32] = 0
 
 
 class Child(Parent):
-    counter: ClassVar[Int32] = 100
+    counter: ClassVar[int32] = 100
 
 
 def main() -> None:

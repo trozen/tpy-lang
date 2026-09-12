@@ -14,10 +14,10 @@ int32_t sum_iterable(T_it& it);
 int32_t sum_readonly(std::span<const int32_t> rs);
 void main();
 
-// def sum_iterable(it: Iterable[Int32]) -> Int32:
+// def sum_iterable(it: Iterable[int32]) -> int32:
 template<::tpystd::typing::Iterable<int32_t> T_it>
 int32_t sum_iterable(T_it& it) {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for x in it:
     auto& __src_0 = it;

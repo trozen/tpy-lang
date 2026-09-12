@@ -1,8 +1,8 @@
 # capture on Optional subject gets inner type, not Optional
 from typing import Optional
-from tpy import Int32
+from tpy import int32
 
-def classify(x: Optional[Int32]) -> str:
+def classify(x: Optional[int32]) -> str:
     match x:
         case None:
             return "none"
@@ -18,7 +18,7 @@ def describe(x: Optional[str]) -> str:
 
 def main() -> None:
     print(classify(None))
-    print(classify(Int32(42)))
+    print(classify(int32(42)))
     print(describe(None))
     print(describe("hello"))
 

@@ -18,11 +18,11 @@ void main();
 // @nocopy
 // class Resource:
 struct Resource {
-    // _ptr: Ptr[Int32]
+    // _ptr: Ptr[int32]
     int32_t* _ptr;
     bool __tpy_owned_ = true;
 
-    // def __init__(self, value: Int32) -> None:
+    // def __init__(self, value: int32) -> None:
     explicit Resource(int32_t value);
     // non-copyable (@nocopy)
     Resource(const Resource&) = delete;
@@ -45,7 +45,7 @@ struct Base {
     // res: Resource
     Resource res;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     explicit Base(int32_t v);
     // non-copyable (field 'res')
     Base(const Base&) = delete;
@@ -63,10 +63,10 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
 // @dataclass
 // class Child(Base):
 struct Child : Base {
-    // extra: Int32
+    // extra: int32
     int32_t extra;
 
-    // def __init__(self, v: Int32, extra: Int32) -> None:
+    // def __init__(self, v: int32, extra: int32) -> None:
     explicit Child(int32_t v, int32_t extra);
     // non-copyable
     Child(const Child&) = delete;
@@ -90,7 +90,7 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 }
 
 
-// def __init__(self, value: Int32) -> None:
+// def __init__(self, value: int32) -> None:
 inline Resource::Resource(int32_t value) : _ptr(static_cast<int32_t*>(::operator new(sizeof(int32_t), std::align_val_t(alignof(int32_t))))) {
     // unsafe_init(self._ptr, value)
     ::new(static_cast<void*>(this->_ptr)) int32_t(value);
@@ -116,10 +116,10 @@ inline Resource::~Resource() {
     ::operator delete(this->_ptr, std::align_val_t(alignof(int32_t)));
 }
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Base::Base(int32_t v) : res(Resource(v)) {}
 
-// def __init__(self, v: Int32, extra: Int32) -> None:
+// def __init__(self, v: int32, extra: int32) -> None:
 inline Child::Child(int32_t v, int32_t extra) : Base(v), extra(extra) {}
 
 inline bool Child::__eq__(const Child& other) const {

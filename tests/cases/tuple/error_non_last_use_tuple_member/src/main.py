@@ -1,12 +1,12 @@
 # A name whose use in an owned tuple literal is NOT its last (it feeds two
 # members) is not a move source for the first, so the return rejects.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Node:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 

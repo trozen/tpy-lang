@@ -7,7 +7,7 @@
 | 1 | List comprehension: `[expr for var in iterable]`, single generator, no filter | Done |
 | 2 | Filter clause: `[expr for var in iterable if cond]` | Done |
 | 3 | Tuple unpacking in generator: `[v for k, v in pairs]` | Done |
-| 4 | Annotation propagation: `result: list[Int32] = [x for x in items]` | Done |
+| 4 | Annotation propagation: `result: list[int32] = [x for x in items]` | Done |
 | 5 | Optimizations: Sized iterables -> `reserve()`, range -> `reserve()` | Done |
 | 6 | Dict comprehension: `{key: value for var in iterable if cond}` | Done |
 | 7 | Set comprehension: `{expr for var in iterable if cond}` | Done |
@@ -38,7 +38,7 @@ List comprehensions are one of Python's most distinctive features -- concise, re
 expressions that build lists from iterables with optional filtering.
 
 ```python
-from tpy import Int32
+from tpy import int32
 
 squares = [x * x for x in range(10)]
 evens = [x for x in items if x % 2 == 0]
@@ -266,8 +266,8 @@ same as `items.append(nocopy_ref)` would be.
 
 ### Edge case: empty iterable
 
-`[f(x) for x in empty_list]` where `empty_list: list[Int32]` works fine -- the
-loop variable type is `Int32` (from the list's element type), the element expression
+`[f(x) for x in empty_list]` where `empty_list: list[int32]` works fine -- the
+loop variable type is `int32` (from the list's element type), the element expression
 is analyzed, and the result is an empty `list[T]`. The iterable's element type is
 always known from the iterable's type, regardless of runtime emptiness.
 
@@ -370,12 +370,12 @@ wraps the same logic inside the IIFE.
 When the user provides an explicit type annotation:
 
 ```python
-result: list[Int32] = [x for x in items]
+result: list[int32] = [x for x in items]
 ```
 
-The expected element type (`Int32`) propagates into the comprehension's element
-expression via `analyze_expr_with_hint`, enabling coercions (e.g., Int32 -> int,
-Int32 -> Int64). This follows the same pattern as list literal annotation propagation.
+The expected element type (`int32`) propagates into the comprehension's element
+expression via `analyze_expr_with_hint`, enabling coercions (e.g., int32 -> int,
+int32 -> int64). This follows the same pattern as list literal annotation propagation.
 
 Without annotation, the element type is inferred purely from the element expression
 (bottom-up). With annotation, the expected type also flows top-down (bi-directional).
@@ -508,7 +508,7 @@ Generator expressions produce lazy iterators consumed by functions accepting
 ```python
 total = sum_items(x * x for x in items)
 joined = ", ".join(str(x) for x in nums)
-squares: list[Int32] = list(x * x for x in range(5))
+squares: list[int32] = list(x * x for x in range(5))
 ```
 
 ### Implementation
@@ -590,8 +590,8 @@ baseline. Fusion can be added later without changing semantics.
 |-------|---------|---------|
 | Nested generators | `[x+y for x in a for y in b]` | "Nested comprehensions not yet supported" |
 | Async comprehension | `[x async for x in aiter]` | "Async comprehensions not yet supported" |
-| Non-iterable source | `[x for x in 42]` | "Type 'Int32' is not iterable" (existing error) |
-| Incompatible annotation | `x: list[Int32] = [s for s in strs]` | "Type mismatch in list comprehension element" |
+| Non-iterable source | `[x for x in 42]` | "Type 'int32' is not iterable" (existing error) |
+| Incompatible annotation | `x: list[int32] = [s for s in strs]` | "Type mismatch in list comprehension element" |
 
 ---
 
@@ -602,7 +602,7 @@ tests/cases/list/
     list_comp_basic/           # Phase 1: [x*2 for x in range(5)], [p.name for p in items]
     list_comp_filter/          # Phase 2: [x for x in items if x > 0]
     list_comp_unpack/          # Phase 3: [v for k, v in pairs]
-    list_comp_annotation/      # Phase 4: annotation propagation (Int32->int, Int32->Int64)
+    list_comp_annotation/      # Phase 4: annotation propagation (int32->int, int32->int64)
     list_comp_types/           # Various element types: records, Optional, str
     list_comp_nested_expr/     # Complex element expressions: method calls, f-strings
     list_comp_in_context/      # Comprehension as function arg, return value, in print()
@@ -616,7 +616,7 @@ tests/cases/dict/
     dict_comp_basic/           # Phase 6: range->dict, list->dict, dict rebuild, 2-arg range
     dict_comp_filter/          # Phase 6: single/multiple filter conditions
     dict_comp_unpack/          # Phase 6: tuple unpacking from dict.items(), list of tuples
-    dict_comp_annotation/      # Phase 6: annotation propagation (Int32->int, Int32->Int64)
+    dict_comp_annotation/      # Phase 6: annotation propagation (int32->int, int32->int64)
     error_dict_comp_nested/    # Error: nested generators
     error_dict_comp_not_iterable/      # Error: non-iterable source
     error_dict_comp_unpack_count/      # Error: unpack count mismatch
@@ -626,7 +626,7 @@ tests/cases/set/
     set_comp_basic/            # Phase 7: range->set, list->set, dedup, 2-arg range
     set_comp_filter/           # Phase 7: single filter, string filtering
     set_comp_unpack/           # Phase 7: tuple unpacking from dict.items(), list of tuples
-    set_comp_annotation/       # Phase 7: annotation propagation (Int32->Int64, Int32->int)
+    set_comp_annotation/       # Phase 7: annotation propagation (int32->int64, int32->int)
     error_set_comp_nested/     # Error: nested generators
     error_set_comp_not_iterable/       # Error: non-iterable source
     error_set_comp_unpack_count/       # Error: unpack count mismatch

@@ -1,8 +1,8 @@
-from tpy import Int32
+from tpy import int32
 from outer.inner.mod import func
 
-def main() -> Int32:
+def main() -> int32:
     func()
-    return Int32(0)
+    return int32(0)
 
 main()

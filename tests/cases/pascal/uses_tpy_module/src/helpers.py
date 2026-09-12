@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 
-def double(n: Int32) -> Int32:
+def double(n: int32) -> int32:
     return n + n
 
-def triple(n: Int32) -> Int32:
+def triple(n: int32) -> int32:
     return n * 3

@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // @error_return(AppError)
-// def run(n: Int32) -> Int32:
+// def run(n: int32) -> int32:
 std::expected<int32_t, ::tpyapp::errdef::AppError> run(int32_t n) {
     // return check(n)
     return ::tpyapp::errdef::check(n);

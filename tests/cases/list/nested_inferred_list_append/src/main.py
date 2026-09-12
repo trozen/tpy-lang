@@ -1,7 +1,7 @@
 # Appending an owned inner list into an UNANNOTATED outer list: both sides
 # carry the same unresolved literal type, so the Own-slot arg row has to
 # resolve the SLOT as well as the argument before comparing them.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 def rows(src: list[list[float]]) -> Own[list[list[float]]]:

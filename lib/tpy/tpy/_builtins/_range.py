@@ -3,8 +3,8 @@
 from .._typing import Sized, Iterator, Iterable
 from .._bootstrap._decorators import readonly, pure, error_return, Own, dispatch
 from .._core._types import (
-    Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64,
-    Char, String, StrView, Float32, AnyFixedInt,
+    int8, int16, int32, int64, uint8, uint16, uint32, uint64,
+    char, String, StrView, float32, AnyFixedInt,
     Hashable, Representable, Stringable, NativeIterable, Truthy, Comparable, Equatable,
 )
 from .._bootstrap._extern import native, cpp_template, builtin_type

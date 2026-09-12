@@ -37,9 +37,9 @@ void test_own_augassign_fallback() {
 
 // def test_list_concat_fresh():
 void test_list_concat_fresh() {
-    // xs: list[Int32] = [1, 2]
+    // xs: list[int32] = [1, 2]
     std::vector<int32_t> xs = {1, 2};
-    // ys: list[Int32] = [3]
+    // ys: list[int32] = [3]
     std::vector<int32_t> ys = {3};
     // zs = xs.__add__(ys)
     std::vector<int32_t> zs = ::tpy::list_concat(xs, ys);

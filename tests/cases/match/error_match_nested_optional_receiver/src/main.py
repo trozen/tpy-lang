@@ -1,13 +1,13 @@
 # A match subject reached through an OPTIONAL intermediate link: the deref
 # check that link needs cannot be spelled inside the subject lift; the same
 # line also draws the ordinary optional-access warning.
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    val: Int32
+    val: int32
 
-    def __init__(self, val: Int32) -> None:
+    def __init__(self, val: int32) -> None:
         self.val = val
 
 

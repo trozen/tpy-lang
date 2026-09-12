@@ -3,11 +3,11 @@
 # supported way to get a per-class factory. See error_inherited_via_subclass.
 from typing import Self
 
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Shape:
-    def __init__(self, sides: Int32):
+    def __init__(self, sides: int32):
         self.sides = sides
 
     @classmethod

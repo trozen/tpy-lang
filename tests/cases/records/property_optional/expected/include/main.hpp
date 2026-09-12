@@ -16,10 +16,10 @@ void main();
 
 // class Node:
 struct Node {
-    // val: Int32
+    // val: int32
     int32_t val;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Node() = default;
     explicit Node(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Node";
@@ -58,7 +58,7 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Node::Node(int32_t v) : val(v) {}
 
 // def __init__(self) -> None:

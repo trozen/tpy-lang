@@ -1,12 +1,12 @@
 # A write through a readonly[tuple[Record, ...]] element is rejected: the
 # tuple borrows its reference elements, so its readonly must be enforced.
-from tpy import Int32, readonly
+from tpy import int32, readonly
 
 
 class Counter:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 

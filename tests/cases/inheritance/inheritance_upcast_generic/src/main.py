@@ -1,22 +1,22 @@
-# Upcast to generic parent: IntContainer -> Container[Int32]
-from tpy import Int32
+# Upcast to generic parent: IntContainer -> Container[int32]
+from tpy import int32
 
 class Container[T]:
     value: T
     def __init__(self, value: T) -> None:
         self.value = value
 
-class IntContainer(Container[Int32]):
-    def __init__(self, value: Int32) -> None:
+class IntContainer(Container[int32]):
+    def __init__(self, value: int32) -> None:
         super().__init__(value)
 
-def read_container(c: Container[Int32]) -> None:
+def read_container(c: Container[int32]) -> None:
     print(c.value)
 
 def main() -> None:
-    ic: IntContainer = IntContainer(Int32(42))
+    ic: IntContainer = IntContainer(int32(42))
     # Value upcast to generic parent
-    c: Container[Int32] = ic  # tpyc: warning(/upcast narrows 'IntContainer' to 'Container\[Int32\]'/)
+    c: Container[int32] = ic  # tpyc: warning(/upcast narrows 'IntContainer' to 'Container\[int32\]'/)
     print(c.value)
     # Param passing
     read_container(ic)

@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // # round(float) -> default int (Int32)
+    // # round(float) -> default int (int32)
     // print(round(3.7))
     std::cout << ::tpy::round_to<int32_t>(3.7) << "\n";
     // print(round(-1.5))
@@ -26,19 +26,19 @@ void main() {
     // print(round(2.71828, 3))
     std::cout << ::tpy::print_float(::tpy::round_float(2.71828, 3)) << "\n";
     // # round with context inference
-    // x: Int64 = round(9.9)
+    // x: int64 = round(9.9)
     int64_t x = ::tpy::round_to<int64_t>(9.9);
     // print(x)
     std::cout << x << "\n";
     // # round(int) is identity
-    // n: Int32 = Int32(42)
+    // n: int32 = int32(42)
     int32_t n = 42;
     // print(round(n))
     std::cout << (n) << "\n";
     // # round(int, ndigits) with negative ndigits
-    // m: Int32 = Int32(1250)
+    // m: int32 = int32(1250)
     int32_t m = 1250;
-    // print(round(m, Int32(-2)))
+    // print(round(m, int32(-2)))
     std::cout << ::tpy::round_fixed<int32_t>(m, -2) << "\n";
 }
 

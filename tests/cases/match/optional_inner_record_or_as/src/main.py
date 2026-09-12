@@ -2,18 +2,18 @@
 # field conditions, and an `as` capture of the inner record. Leaf is @nocopy,
 # so the capture binding the subject rather than copying it is what makes the
 # case compile at all.
-from tpy import Int32, nocopy
+from tpy import int32, nocopy
 
 
 @nocopy
 class Leaf:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
-def pick(x: Leaf | None) -> Int32:
+def pick(x: Leaf | None) -> int32:
     match x:
         case None:
             return 0

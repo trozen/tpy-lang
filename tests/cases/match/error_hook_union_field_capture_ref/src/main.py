@@ -3,13 +3,13 @@
 # through the capture would not reach what the subject holds -- rejected
 # rather than emitted as a silent divergence from CPython.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
 class Pal:
-    lives: Int32
+    lives: int32
 
-    def __init__(self, lives: Int32) -> None:
+    def __init__(self, lives: int32) -> None:
         self.lives = lives
 
 
@@ -21,13 +21,13 @@ class Cat:
 
 
 class Dog:
-    lives: Int32
+    lives: int32
 
-    def __init__(self, lives: Int32) -> None:
+    def __init__(self, lives: int32) -> None:
         self.lives = lives
 
 
-def guarded(a: Cat | Dog) -> Iterator[Int32]:  # tpyc: error(/not yet supported.*res.match_binding/)
+def guarded(a: Cat | Dog) -> Iterator[int32]:  # tpyc: error(/not yet supported.*res.match_binding/)
     match a:
         # `f` names a reference-typed field, so the frame slot would copy it.
         case Cat(pal=f) if f.lives > 1:

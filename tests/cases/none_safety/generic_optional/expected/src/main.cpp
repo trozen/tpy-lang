@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def maybe_val(x: Optional[Int32]) -> Optional[Int32]:
+// def maybe_val(x: Optional[int32]) -> Optional[int32]:
 std::optional<int32_t> maybe_val(std::optional<int32_t> x) {
     // return x
     return x;
@@ -13,7 +13,7 @@ std::optional<int32_t> maybe_val(std::optional<int32_t> x) {
 // def main():
 void main() {
     // # Generic Optional with value type
-    // c = Container[Int32](Int32(42))
+    // c = Container[int32](int32(42))
     Container<int32_t> c = Container<int32_t>(42);
     // v = c.get()
     int32_t* v = c.get();
@@ -39,7 +39,7 @@ void main() {
         // print("after set: None")
         std::cout << "after set: None" << "\n";
     }
-    // c.set(Int32(99))
+    // c.set(int32(99))
     c.set(99);
     // v3 = c.get()
     int32_t* v3 = c.get();
@@ -49,7 +49,7 @@ void main() {
         std::cout << "restored:" << " " << ::tpy::print_optional(v3) << "\n";
     }
     // # None-initialized container
-    // c2 = Container[Int32](None)
+    // c2 = Container[int32](None)
     Container<int32_t> c2 = Container<int32_t>(std::nullopt);
     // v4 = c2.get()
     int32_t* v4 = c2.get();
@@ -59,7 +59,7 @@ void main() {
         std::cout << "none init: ok" << "\n";
     }
     // # Optional[T] from typing (equivalent to T | None)
-    // r = maybe_val(Int32(7))
+    // r = maybe_val(int32(7))
     std::optional<int32_t> r = maybe_val(7);
     // if r is not None:
     if ((r.has_value())) {

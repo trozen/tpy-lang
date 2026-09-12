@@ -16,12 +16,12 @@ void main();
 
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
-    // y: Int32
+    // y: int32
     int32_t y;
 
-    // def __init__(self, x: Int32 = Int32(0), y: Int32 = Int32(0)) -> None:
+    // def __init__(self, x: int32 = int32(0), y: int32 = int32(0)) -> None:
     explicit Point(int32_t x = 0, int32_t y = 0);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
@@ -35,10 +35,10 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 struct Named {
     // name: str
     std::string name;
-    // value: Int32
+    // value: int32
     int32_t value;
 
-    // def __init__(self, name: str, value: Int32 = Int32(42)) -> None:
+    // def __init__(self, name: str, value: int32 = int32(42)) -> None:
     Named() = default;
     explicit Named(std::string_view name, int32_t value = 42);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Named";
@@ -50,10 +50,10 @@ inline std::ostream& operator<<(std::ostream& os, const Named& obj) {
 }
 
 
-// def __init__(self, x: Int32 = Int32(0), y: Int32 = Int32(0)) -> None:
+// def __init__(self, x: int32 = int32(0), y: int32 = int32(0)) -> None:
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
-// def __init__(self, name: str, value: Int32 = Int32(42)) -> None:
+// def __init__(self, name: str, value: int32 = int32(42)) -> None:
 inline Named::Named(std::string_view name, int32_t value) : name(name), value(value) {}
 void __tpy_init();
 } // namespace tpyapp::main

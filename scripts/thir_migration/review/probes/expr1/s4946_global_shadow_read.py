@@ -1,6 +1,6 @@
-from tpy import Int32
+from tpy import int32
 G = 5
-def f(n: Int32) -> Int32:
+def f(n: int32) -> int32:
     if n > 0:
         return G
     G = 7

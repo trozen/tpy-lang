@@ -1,4 +1,4 @@
-from tpy import Int32, Own, copy
+from tpy import int32, Own, copy
 
 
 class Box[T]:
@@ -16,13 +16,13 @@ def main() -> None:
     # Use separate instances to avoid copy-vs-reference semantic differences
 
     # Test 1: Chained method call compiles and runs
-    b1: Box[list[Int32]] = Box[list[Int32]]([1, 2, 3])
+    b1: Box[list[int32]] = Box[list[int32]]([1, 2, 3])
     b1.take().append(4)
     print("chained call ok")
 
     # Test 2: Assign to variable, then call method
-    b2: Box[list[Int32]] = Box[list[Int32]]([10, 20, 30])
-    c: list[Int32] = b2.take()
+    b2: Box[list[int32]] = Box[list[int32]]([10, 20, 30])
+    c: list[int32] = b2.take()
     c.append(40)
     for x in c:
         print(x)

@@ -56,10 +56,10 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 
 // class Cat:
 struct Cat {
-    // age: Int32
+    // age: int32
     int32_t age;
 
-    // def __init__(self, age: Int32) -> None:
+    // def __init__(self, age: int32) -> None:
     Cat() = default;
     explicit Cat(int32_t age);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cat";
@@ -89,7 +89,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 // def __init__(self, shade: Color) -> None:
 inline Dog::Dog(Color shade) : shade(shade) {}
 
-// def __init__(self, age: Int32) -> None:
+// def __init__(self, age: int32) -> None:
 inline Cat::Cat(int32_t age) : age(age) {}
 
 // def __init__(self) -> None:

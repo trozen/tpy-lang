@@ -4,22 +4,22 @@
 namespace tpyapp::main {
 
 
-// def take_u32(x: UInt32) -> UInt32:
+// def take_u32(x: uint32) -> uint32:
 uint32_t take_u32(uint32_t x) {
     // return x
     return x;
 }
 
-// def take_u64(x: UInt64) -> UInt64:
+// def take_u64(x: uint64) -> uint64:
 uint64_t take_u64(uint64_t x) {
     // return x
     return x;
 }
 
-// def loop_shape(limit: UInt64) -> UInt64:
+// def loop_shape(limit: uint64) -> uint64:
 uint64_t loop_shape(uint64_t limit) {
     // # offset starts at literal 0 (no annotation), then both the binop ARG
-    // # at line 18 and the comparison vs limit lock it in as UInt64.
+    // # at line 18 and the comparison vs limit lock it in as uint64.
     // offset = 0
     uint64_t offset = 0;
     // while offset < limit:
@@ -33,7 +33,7 @@ uint64_t loop_shape(uint64_t limit) {
 
 // def repeated_use() -> None:
 void repeated_use() {
-    // # First call retro-widens; later use of the same local just sees UInt32.
+    // # First call retro-widens; later use of the same local just sees uint32.
     // a = 5
     uint32_t a = 5;
     // print(take_u32(a))
@@ -45,7 +45,7 @@ void repeated_use() {
 // def literal_only_branch() -> None:
 void literal_only_branch() {
     // # Reassignment from another integer literal keeps the seed alive, so a
-    // # later UInt64 demand still triggers retro-widen.
+    // # later uint64 demand still triggers retro-widen.
     // n = 0
     uint64_t n = 0;
     // if True:

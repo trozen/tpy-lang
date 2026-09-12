@@ -1,9 +1,9 @@
 # Test reassigning non-value-type global variables with rvalue constructors
-from tpy import Int32
+from tpy import int32
 
 class Container:
-    value: Int32
-    def __init__(self, value: Int32):
+    value: int32
+    def __init__(self, value: int32):
         self.value = value
 
 # First assignment (creates global slot)

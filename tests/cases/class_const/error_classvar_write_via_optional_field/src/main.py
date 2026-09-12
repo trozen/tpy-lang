@@ -2,11 +2,11 @@
 # needs its own None check, so it is outside the bare qualified class-constant
 # lvalue the write arm renders, so `h.c.n = 5` rejects.
 from typing import ClassVar
-from tpy import Int32
+from tpy import int32
 
 
 class C:
-    n: ClassVar[Int32] = 0
+    n: ClassVar[int32] = 0
 
     def __init__(self) -> None:
         pass

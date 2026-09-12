@@ -1,18 +1,18 @@
 # A method call on a generic record instantiated with a module-LOCAL union alias:
 # the alias registers after lowering, so the receiver is outside the
 # spelling-equal record slice and the call rejects.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Alpha:
-    x: Int32
+    x: int32
 
     def __init__(self) -> None:
         self.x = 1
 
 
 class Beta:
-    y: Int32
+    y: int32
 
     def __init__(self) -> None:
         self.y = 2

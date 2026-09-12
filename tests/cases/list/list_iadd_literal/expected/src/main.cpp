@@ -13,8 +13,8 @@ void main() {
     ::tpy::list_extend(a, std::vector<::tpy::BigInt>{4, 5});
     // print(a)
     std::cout << ::tpy::ListPrinter(a) << "\n";
-    // # Int32 -- works with or without prefix, include for completeness
-    // b: list[Int32] = [10, 20]
+    // # int32 -- works with or without prefix, include for completeness
+    // b: list[int32] = [10, 20]
     std::vector<int32_t> b = {10, 20};
     // b += [30, 40]
     ::tpy::list_extend(b, std::vector<int32_t>{30, 40});

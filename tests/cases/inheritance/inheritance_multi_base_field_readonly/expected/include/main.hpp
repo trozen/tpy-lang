@@ -17,7 +17,7 @@ void main();
 
 // class A:
 struct A {
-    // buf: list[Int32]
+    // buf: list[int32]
     std::vector<int32_t> buf;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.A";
@@ -48,7 +48,7 @@ struct Combined : A, B {
     Combined();
 
     // @readonly
-    // def total_int_len(self) -> Int32:
+    // def total_int_len(self) -> int32:
     int32_t total_int_len() const;
 
     // @readonly
@@ -65,18 +65,18 @@ inline std::ostream& operator<<(std::ostream& os, const Combined& obj) {
 
 // def __init__(self) -> None:
 inline Combined::Combined() {
-    // A.buf = [Int32(1), Int32(2)]
+    // A.buf = [int32(1), int32(2)]
     this->A::buf = {1, 2};
     // B.buf = ["x", "y"]
     this->B::buf = {"x", "y"};
 }
 
 // @readonly
-// def total_int_len(self) -> Int32:
+// def total_int_len(self) -> int32:
 inline int32_t Combined::total_int_len() const {
-    // nums = A.buf  # tpyc: type(/readonly\[list\[Int32\]\]/)
+    // nums = A.buf  # tpyc: type(/readonly\[list\[int32\]\]/)
     const std::vector<int32_t>& nums = this->A::buf;
-    // return Int32(len(nums))
+    // return int32(len(nums))
     return ::tpy::__len__(nums);
 }
 

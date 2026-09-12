@@ -24,7 +24,7 @@ std::string known(::tpy::Union<const Bird*, const Cat*, const Dog*> a) {
     return "other";
 }
 
-// def tag(a: Dog | Cat | Bird, t: str) -> Int32:
+// def tag(a: Dog | Cat | Bird, t: str) -> int32:
 int32_t tag(::tpy::Union<Bird*, Cat*, Dog*> a, std::string_view t) {
     // match a:
     auto& __match_subject_1 = a;

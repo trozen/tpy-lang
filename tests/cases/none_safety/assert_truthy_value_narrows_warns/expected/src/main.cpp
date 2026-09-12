@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def use(x: Int32 | None) -> Int32:
+// def use(x: int32 | None) -> int32:
 int32_t use(std::optional<int32_t> x) {
     // assert x  # tpyc: warning(/Truthiness check on optional value/)
     if (!(::tpy::is_truthy(x))) ::tpy::raise_assertion_error();

@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // t = (Int32(42), "hello")
+    // t = (int32(42), "hello")
     std::tuple<int32_t, std::string> t = std::tuple<int32_t, std::string>{42, "hello"};
     // a, b = t
     const auto& __tup_1 = t;

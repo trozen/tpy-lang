@@ -3,15 +3,15 @@
 # ownership via Own[Weak[T]] (typically by passing rc.downgrade() or
 # weak.clone() at the call site). Mirrors error_rc_field_copy for the
 # non-owning companion.
-from tpy import Int32
+from tpy import int32
 from tplib.rc import Rc, Weak
 
 
 class Counter:
-    value: Int32
+    value: int32
 
     def __init__(self) -> None:
-        self.value = Int32(0)
+        self.value = int32(0)
 
 
 class Observer:

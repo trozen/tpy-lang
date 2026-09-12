@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def good(n: Int32) -> Int32:
+// async def good(n: int32) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_good::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -29,12 +29,12 @@ namespace tpyapp::main {
 }
 
 
-// async def good(n: Int32) -> Int32:
+// async def good(n: int32) -> int32:
 __coro_good good(int32_t n) {
     return __coro_good(n);
 }
 
-// async def bad(tag: Int32) -> Int32:
+// async def bad(tag: int32) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_bad::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -57,7 +57,7 @@ __coro_good good(int32_t n) {
 }
 
 
-// async def bad(tag: Int32) -> Int32:
+// async def bad(tag: int32) -> int32:
 __coro_bad bad(int32_t tag) {
     return __coro_bad(tag);
 }
@@ -66,13 +66,13 @@ __coro_bad bad(int32_t tag) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // tasks: list[asyncio.Task[Int32]] = []
+        // tasks: list[asyncio.Task[int32]] = []
         tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<int32_t>>{});
-        // tasks.append(asyncio.create_task(bad(Int32(0))))     # exc at index 0
+        // tasks.append(asyncio.create_task(bad(int32(0))))     # exc at index 0
         (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(bad(0))));
-        // tasks.append(asyncio.create_task(good(Int32(99))))   # ok at index 1
+        // tasks.append(asyncio.create_task(good(int32(99))))   # ok at index 1
         (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(good(99))));
-        // tasks.append(asyncio.create_task(bad(Int32(2))))     # exc at last index
+        // tasks.append(asyncio.create_task(bad(int32(2))))     # exc at last index
         (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(bad(2))));
         // results = await asyncio.gather_list_settled(tasks)
         __sub_0.emplace((*tasks));

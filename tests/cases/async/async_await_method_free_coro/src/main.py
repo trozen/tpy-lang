@@ -4,10 +4,10 @@
 # dependency order (awaited before awaiter), so this compiles. Previously the
 # method struct was emitted before the free coro -> incomplete-type C++ error.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
-async def helper() -> Int32:
+async def helper() -> int32:
     await asyncio.sleep(0)
     return 42
 

@@ -12,7 +12,7 @@ void mutate_param_member(Box& b) {
     std::get<1>(t)->val = 99;
 }
 
-// def local_member() -> Int32:
+// def local_member() -> int32:
 int32_t local_member() {
     // b = Box(5)
     Box b = Box(5);

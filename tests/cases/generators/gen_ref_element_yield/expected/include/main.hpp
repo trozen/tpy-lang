@@ -62,10 +62,10 @@ void main();
 
 // class Box:
 struct Box {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Box() = default;
     explicit Box(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
@@ -78,7 +78,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 // class Rows:
 struct Rows {
-    // buf: list[Int32]
+    // buf: list[int32]
     std::vector<int32_t> buf;
 
     // def __init__(self) -> None:
@@ -118,7 +118,7 @@ inline std::ostream& operator<<(std::ostream& os, const Guard& obj) {
 // #     a pointer instead of copying the whole vector out of the source.
 // class ROBag:
 struct ROBag {
-    // buf: list[Int32]
+    // buf: list[int32]
     std::vector<int32_t> buf;
 
     // def __init__(self) -> None:
@@ -475,7 +475,7 @@ struct __gen_relay : public ::tpy::next_iter_mixin<__gen_relay<T_it>, int32_t> {
         return os << "<generator relay>";
     }
 };
-// def relay(it: Iterator[Box]) -> Iterator[Int32]:
+// def relay(it: Iterator[Box]) -> Iterator[int32]:
 template <::tpystd::typing::Iterator<Box> T_it>
 std::expected<int32_t, ::tpy::StopIteration> __gen_relay<T_it>::__next__() {
     while (true) switch (__state) {
@@ -502,7 +502,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_relay<T_it>::__next__() {
         // # Mutating through the borrowed element reaches the ORIGINAL list.
         // b.v += 100
         b->v = ::tpy::add_check<int32_t>(b->v, 100);
-        // # `yield b.v` would copy an Int32, but the ephemeral-borrow escape
+        // # `yield b.v` would copy an int32, but the ephemeral-borrow escape
         // # check roots on `b` -- BUGS.md#ephemeral-value-read-escape.
         // v = b.v
         v = b->v;
@@ -516,7 +516,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_relay<T_it>::__next__() {
 }
 
 
-// def relay(it: Iterator[Box]) -> Iterator[Int32]:
+// def relay(it: Iterator[Box]) -> Iterator[int32]:
 template <::tpystd::typing::Iterator<Box> T_it>
 __gen_relay<T_it> relay(T_it&& it) {
     return __gen_relay<T_it>(std::forward<T_it>(it));
@@ -609,7 +609,7 @@ inline __gen_ROBag_twice ROBag::twice() const {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Box::Box(int32_t v) : v(v) {}
 
 // def __init__(self) -> None:

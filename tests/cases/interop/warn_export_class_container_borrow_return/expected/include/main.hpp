@@ -16,17 +16,17 @@ inline constexpr std::string_view __name__ = "__main__";
 // @export
 // class Holder:
 struct Holder {
-    // n: Int64
+    // n: int64
     int64_t n;
 
-    // def __init__(self, n: Int64):
+    // def __init__(self, n: int64):
     Holder() = default;
     explicit Holder(int64_t n);
 
-    // def same(self, xs: list[Int64]) -> list[Int64]:  # tpyc: warning(/list parameter 'xs' is copied in/)
+    // def same(self, xs: list[int64]) -> list[int64]:  # tpyc: warning(/list parameter 'xs' is copied in/)
     const std::vector<int64_t>& same(const std::vector<int64_t>& xs) const;
 
-    // def fresh(self, xs: list[Int64]) -> Own[list[Int64]]:  # tpyc: ok
+    // def fresh(self, xs: list[int64]) -> Own[list[int64]]:  # tpyc: ok
     std::vector<int64_t> fresh(const std::vector<int64_t>& xs) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
@@ -37,18 +37,18 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 }
 
 
-// def __init__(self, n: Int64):
+// def __init__(self, n: int64):
 inline Holder::Holder(int64_t n) : n(n) {}
 
-// def same(self, xs: list[Int64]) -> list[Int64]:  # tpyc: warning(/list parameter 'xs' is copied in/)
+// def same(self, xs: list[int64]) -> list[int64]:  # tpyc: warning(/list parameter 'xs' is copied in/)
 inline const std::vector<int64_t>& Holder::same(const std::vector<int64_t>& xs) const {
     // return xs  # tpyc: warning(/method 'same': returns a list by reference.*copied across the CPython boundary.*return Own/)
     return xs;
 }
 
-// def fresh(self, xs: list[Int64]) -> Own[list[Int64]]:  # tpyc: ok
+// def fresh(self, xs: list[int64]) -> Own[list[int64]]:  # tpyc: ok
 inline std::vector<int64_t> Holder::fresh(const std::vector<int64_t>& xs) const {
-    // out: list[Int64] = []
+    // out: list[int64] = []
     std::vector<int64_t> out = std::vector<int64_t>{};
     // for x in xs:
     auto& __obj_0 = xs;

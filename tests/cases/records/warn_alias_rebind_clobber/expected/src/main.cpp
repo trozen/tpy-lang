@@ -9,7 +9,7 @@ Point* g{};
 // galias = g
 Point* galias{};
 
-// def gen_section() -> Iterator[Int32]:
+// def gen_section() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_section::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -40,12 +40,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_section::__next__() {
 }
 
 
-// def gen_section() -> Iterator[Int32]:
+// def gen_section() -> Iterator[int32]:
 __gen_gen_section gen_section() {
     return __gen_gen_section();
 }
 
-// async def async_section() -> Int32:
+// async def async_section() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_async_section::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
@@ -69,7 +69,7 @@ __gen_gen_section gen_section() {
 }
 
 
-// async def async_section() -> Int32:
+// async def async_section() -> int32:
 __coro_async_section async_section() {
     return __coro_async_section();
 }

@@ -3,15 +3,15 @@
 # ownership via Own[Box[T]] (typically by passing .clone() at the call
 # site, or moving an owned local at its last use). Mirrors the Rc analog
 # in error_rc_field_copy.
-from tpy import Int32
+from tpy import int32
 from tplib import Box
 
 
 class Counter:
-    value: Int32
+    value: int32
 
     def __init__(self) -> None:
-        self.value = Int32(0)
+        self.value = int32(0)
 
 
 class Holder:

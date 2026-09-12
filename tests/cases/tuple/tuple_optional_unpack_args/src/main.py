@@ -5,17 +5,17 @@
 # const-inferred source (read-only body) and a mutable one. The callees
 # mutate through the borrow and main observes it, so a silent copy at
 # either boundary would change the printed output.
-from tpy import Int32, readonly
+from tpy import int32, readonly
 
 
 class T:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
-def peek(t: readonly[T]) -> Int32:
+def peek(t: readonly[T]) -> int32:
     return t.x
 
 
@@ -28,7 +28,7 @@ def bump_opt(t: T | None) -> None:
         t.x = t.x + 10
 
 
-def read_first(p: tuple[T | None, T | None]) -> Int32:  # tpyc: ok
+def read_first(p: tuple[T | None, T | None]) -> int32:  # tpyc: ok
     # Read-only body -- slots stay const, so the targets bind `const T*`
     # and the narrowed one passes into a readonly param.
     a, _ = p

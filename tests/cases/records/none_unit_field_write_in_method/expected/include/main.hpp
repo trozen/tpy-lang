@@ -17,7 +17,7 @@ void main();
 struct Field {
     // slot: None
     std::monostate slot;
-    // n: Int32
+    // n: int32
     int32_t n;
 
     // def __init__(self) -> None:

@@ -1,1 +1,1 @@
-main.py:9: error: Cannot pass list repeat directly to Span[Int32]: assign to a variable first
+main.py:9: error: Cannot pass list repeat directly to Span[int32]: assign to a variable first

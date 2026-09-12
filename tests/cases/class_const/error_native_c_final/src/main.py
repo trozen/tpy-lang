@@ -2,9 +2,9 @@
 # tpy: include("native_types.hpp")
 from tpy.extern import native
 from typing import Final
-from tpy import Int32
+from tpy import int32
 
 
 @native("BuildOpts", binding="C")
 class BuildOpts:
-    FLAG: Final[Int32]  # tpyc: error(/`@native_c` classes have no static members/)
+    FLAG: Final[int32]  # tpyc: error(/`@native_c` classes have no static members/)

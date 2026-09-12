@@ -6,9 +6,9 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // x: Int32 = 42
+    // x: int32 = 42
     int32_t x = 42;
-    // p: Ptr[Int32] = take_ptr(x)
+    // p: Ptr[int32] = take_ptr(x)
     int32_t* p = &x;
     // print(p.__deref__())
     std::cout << ::tpy::deref_check(p) << "\n";

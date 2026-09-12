@@ -18,7 +18,7 @@ void main();
 
 // class Inner:
 struct Inner {
-    // value: Int32
+    // value: int32
     int32_t value;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.Inner";
@@ -35,7 +35,7 @@ struct Holder {
     Inner inner;
 
 
-    // def set_with_tag(self, inner: Own[Inner], tag: Int32) -> None:
+    // def set_with_tag(self, inner: Own[Inner], tag: int32) -> None:
     void set_with_tag(Inner&& inner, int32_t tag);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
@@ -55,7 +55,7 @@ struct GenericHolder {
     GenericHolder() = default;
     explicit GenericHolder(::tpy::own_param_t<T> item) : item(std::move(item)) {}
 
-    // def replace_with_flag(self, item: Own[T], flag: Int32) -> Int32:
+    // def replace_with_flag(self, item: Own[T], flag: int32) -> int32:
     int32_t replace_with_flag(::tpy::own_param_t<T> item, int32_t flag) {
         // self.item = item
         this->item = std::move(item);
@@ -90,7 +90,7 @@ inline std::ostream& operator<<(std::ostream& os, const GenericBox<T>& obj) {
 }
 
 
-// def set_with_tag(self, inner: Own[Inner], tag: Int32) -> None:
+// def set_with_tag(self, inner: Own[Inner], tag: int32) -> None:
 inline void Holder::set_with_tag(Inner&& inner, int32_t tag) {
     // self.inner = inner
     this->inner = std::move(inner);

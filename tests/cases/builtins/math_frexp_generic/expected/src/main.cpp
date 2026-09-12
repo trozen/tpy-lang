@@ -13,15 +13,15 @@ std::tuple<double, ::tpy::BigInt> wrap_bigint() {
 
 // def main() -> None:
 void main() {
-    // # (a) Default T -- DefaultInt (Int32 by default)
+    // # (a) Default T -- DefaultInt (int32 by default)
     // m1, e1 = math.frexp(12.0)
     auto __tup_1 = ::tpy::stdlib::math::frexp<int32_t>(12.0);
     double m1 = std::get<0>(__tup_1);
     int32_t e1 = std::get<1>(__tup_1);
     // print(m1, e1)
     std::cout << ::tpy::print_float(m1) << " " << e1 << "\n";
-    // # (b) Explicit subscript: Int64 and BigInt (Python int)
-    // m2, e2 = math.frexp[Int64](12.0)
+    // # (b) Explicit subscript: int64 and BigInt (Python int)
+    // m2, e2 = math.frexp[int64](12.0)
     auto __tup_2 = ::tpy::stdlib::math::frexp<int64_t>(12.0);
     double m2 = std::get<0>(__tup_2);
     int64_t e2 = std::get<1>(__tup_2);
@@ -45,7 +45,7 @@ void main() {
     const ::tpy::BigInt& b = std::get<1>(__tup_4);
     // print(a, b)
     std::cout << ::tpy::print_float(a) << " " << b << "\n";
-    // # Round-trip through ldexp using the Int32 default
+    // # Round-trip through ldexp using the int32 default
     // mm, ee = math.frexp(7.25)
     auto __tup_5 = ::tpy::stdlib::math::frexp<int32_t>(7.25);
     double mm = std::get<0>(__tup_5);
@@ -60,7 +60,7 @@ void __tpy_init() {
     initialized = true;
 
     // # math.frexp is generic over the exponent type. Covers three ways to pick T:
-    // #   (a) default T -- DefaultInt (Int32 under default config)
+    // #   (a) default T -- DefaultInt (int32 under default config)
     // #   (b) explicit subscript `frexp[T](x)` -- TPy-only syntax
     // #   (c) bi-directional inference from annotated target / return-type context
     // # TPy-only because (b) uses subscript syntax CPython's math.frexp doesn't

@@ -2,18 +2,18 @@
 # Subclass actually implements the protocol. Unrelated types get the
 # normal type-mismatch error -- no silent reinterpret_cast.
 from typing import Protocol
-from tpy import Int32, Ptr, dynamic, nocopy
+from tpy import int32, Ptr, dynamic, nocopy
 
 
 @dynamic
 class Awaker(Protocol):
-    def mark(self, task_id: Int32) -> None: ...
+    def mark(self, task_id: int32) -> None: ...
 
 
 @nocopy
 class NotAnAwaker:
     """Doesn't implement Awaker -- coercion must reject."""
-    x: Int32
+    x: int32
     def __init__(self) -> None:
         self.x = 0
 

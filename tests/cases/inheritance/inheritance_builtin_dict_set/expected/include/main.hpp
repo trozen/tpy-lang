@@ -16,7 +16,7 @@ void bump(Counter& c, std::string_view key);
 void add_tag(Tags& t, int32_t tag);
 void main();
 
-// class Counter(dict[StrView, Int32]):
+// class Counter(dict[StrView, int32]):
 struct Counter : ::tpy::ordered_map<std::string_view, int32_t> {
     // label: str
     std::string label;
@@ -32,7 +32,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
-// class Tags(set[Int32]):
+// class Tags(set[int32]):
 struct Tags : ::tpy::ordered_set<int32_t> {
 
     // def __init__(self) -> None:

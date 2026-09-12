@@ -4,12 +4,12 @@
 namespace tpyapp::main {
 
 
-// async def get_val() -> Int32:
+// async def get_val() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_get_val::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return Int32(7)
+        // return int32(7)
         __state = S_DONE;
         int32_t __tpy_async_ret = 7;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -20,7 +20,7 @@ namespace tpyapp::main {
 }
 
 
-// async def get_val() -> Int32:
+// async def get_val() -> int32:
 __coro_get_val get_val() {
     return __coro_get_val();
 }
@@ -41,7 +41,7 @@ __coro_get_val get_val() {
         __sub_0.reset();
         // print(await get_val())  # await in argument position
         std::cout << __await_lift_0 << "\n";
-        // print(await get_val() + Int32(1))  # await mixed with binop
+        // print(await get_val() + int32(1))  # await mixed with binop
         __sub_1.emplace();
         __state = S_RESUME_1;
         continue;
@@ -51,7 +51,7 @@ __coro_get_val get_val() {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
         __sub_1.reset();
-        // print(await get_val() + Int32(1))  # await mixed with binop
+        // print(await get_val() + int32(1))  # await mixed with binop
         std::cout << (::tpy::add_check<int32_t>(__await_lift_1, 1)) << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});

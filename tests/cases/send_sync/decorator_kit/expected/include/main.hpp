@@ -23,12 +23,12 @@ void main();
 
 // class Trade(Send):
 struct Trade {
-    // sym: Int32
+    // sym: int32
     int32_t sym;
-    // qty: Int32
+    // qty: int32
     int32_t qty;
 
-    // def __init__(self, sym: Int32, qty: Int32) -> None:
+    // def __init__(self, sym: int32, qty: int32) -> None:
     Trade() = default;
     explicit Trade(int32_t sym, int32_t qty);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Trade";
@@ -42,10 +42,10 @@ inline std::ostream& operator<<(std::ostream& os, const Trade& obj) {
 // @unsafe_send
 // class NativeHandle:
 struct NativeHandle {
-    // raw: Ptr[Int32]
+    // raw: Ptr[int32]
     int32_t* raw;
 
-    // def __init__(self, raw: Ptr[Int32]) -> None:
+    // def __init__(self, raw: Ptr[int32]) -> None:
     NativeHandle() = default;
     explicit NativeHandle(int32_t* raw);
     static constexpr std::string_view __tpy_class_name__ = "__main__.NativeHandle";
@@ -60,7 +60,7 @@ inline std::ostream& operator<<(std::ostream& os, const NativeHandle& obj) {
 // @nosync
 // class ArenaBuffer:
 struct ArenaBuffer {
-    // data: list[Int32]
+    // data: list[int32]
     std::vector<int32_t> data;
 
     // def __init__(self) -> None:
@@ -76,7 +76,7 @@ inline std::ostream& operator<<(std::ostream& os, const ArenaBuffer& obj) {
 // @unsafe_sync
 // class SharedTable:
 struct SharedTable {
-    // data: list[Int32]
+    // data: list[int32]
     std::vector<int32_t> data;
 
     // def __init__(self) -> None:
@@ -112,10 +112,10 @@ struct __coro_forced {
 };
 
 
-// def __init__(self, sym: Int32, qty: Int32) -> None:
+// def __init__(self, sym: int32, qty: int32) -> None:
 inline Trade::Trade(int32_t sym, int32_t qty) : sym(sym), qty(qty) {}
 
-// def __init__(self, raw: Ptr[Int32]) -> None:
+// def __init__(self, raw: Ptr[int32]) -> None:
 inline NativeHandle::NativeHandle(int32_t* raw) : raw(raw) {}
 
 // def __init__(self) -> None:

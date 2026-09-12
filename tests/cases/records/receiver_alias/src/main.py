@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import asyncio
 from typing import Iterator, Protocol, Self
-from tpy import Int32, Own, dynamic, nocopy, readonly
+from tpy import int32, Own, dynamic, nocopy, readonly
 
 
 class Cell:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
         # Constructor: the alias observes the initialized receiver.
         me = self  # tpyc: ok
@@ -24,12 +24,12 @@ class Cell:
         print("method", self.n, me.n)
 
     @readonly
-    def read(self) -> Int32:
+    def read(self) -> int32:
         # Explicit readonly receiver produces a const reference alias.
         me = self  # tpyc: ok
         return me.n
 
-    def inferred_read(self) -> Int32:
+    def inferred_read(self) -> int32:
         # Inferred readonly receiver has the same alias representation.
         me = self  # tpyc: ok
         return me.n
@@ -54,7 +54,7 @@ class Cell:
         me.n += 1
         return value
 
-    def concrete(self, value: Int32) -> Int32:
+    def concrete(self, value: int32) -> int32:
         me = self  # tpyc: ok
         me.n += 1
         return value
@@ -70,7 +70,7 @@ class Cell:
         me.n += 3
         print("reassign", self.n, other.n)
 
-    def steps(self) -> Iterator[Int32]:
+    def steps(self) -> Iterator[int32]:
         # Generator: the alias remains live before and after suspension.
         me = self  # tpyc: ok
         me.n += 1
@@ -78,7 +78,7 @@ class Cell:
         me.n += 2
         yield self.n
 
-    def rebound_steps(self) -> Iterator[Int32]:
+    def rebound_steps(self) -> Iterator[int32]:
         first = self  # tpyc: ok
         # Existing alias-of-alias sources and rebinds to self share the frame.
         me = first
@@ -88,13 +88,13 @@ class Cell:
         yield self.n
 
     @readonly
-    def readonly_steps(self) -> Iterator[Int32]:
+    def readonly_steps(self) -> Iterator[int32]:
         # The frame alias and its captured receiver must agree on constness.
         me = self  # tpyc: ok
         yield me.n
         yield me.n
 
-    async def update(self) -> Int32:
+    async def update(self) -> int32:
         # Async: the frame alias survives an actual suspension point.
         me = self  # tpyc: ok
         await asyncio.sleep(0)
@@ -105,9 +105,9 @@ class Cell:
 
 @nocopy
 class Consumed:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def finish(self: Own[Self]) -> Own[Self]:
@@ -133,9 +133,9 @@ class Base(Tagged):
 
 
 class Derived(Base):
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 

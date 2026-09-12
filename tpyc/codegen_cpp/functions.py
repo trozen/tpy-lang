@@ -228,8 +228,8 @@ def literal_mangled_name(base_name: str, stub_or_info: TpyFunction | FunctionInf
 # aggregate init `{}`). Covers every fixed-int width plus the three
 # bare numeric/bool builtins -- misnamed `_FIXED_INT_NAMES` historically.
 _SCALAR_ZERO_CTOR_NAMES = {
-    "Int8", "Int16", "Int32", "Int64",
-    "UInt8", "UInt16", "UInt32", "UInt64",
+    "int8", "int16", "int32", "int64",
+    "uint8", "uint16", "uint32", "uint64",
     "int", "float", "bool",
 }
 
@@ -329,10 +329,10 @@ def default_to_cpp_from_analyzer(analyzer, expr: TpyExpr,
     if isinstance(expr, TpyUnaryOp) and expr.op == "-":
         return f"-{default_to_cpp_from_analyzer(analyzer, expr.operand, ptype)}"
     if isinstance(expr, TpyCall):
-        # Int32(5) -> just the literal value
+        # int32(5) -> just the literal value
         if expr.args:
             return default_to_cpp_from_analyzer(analyzer, expr.args[0], ptype)
-        # Zero-arg call: Int32() -> 0, list()/dict()/Record() -> {}
+        # Zero-arg call: int32() -> 0, list()/dict()/Record() -> {}
         if isinstance(expr.func, TpyName) and expr.func_name in _SCALAR_ZERO_CTOR_NAMES:
             return "0"
         return factory_default_to_cpp(ptype)

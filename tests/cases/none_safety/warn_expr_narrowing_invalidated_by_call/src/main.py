@@ -1,10 +1,10 @@
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    value: Int32 | None
+    value: int32 | None
 
-    def __init__(self, value: Int32 | None):
+    def __init__(self, value: int32 | None):
         self.value = value
 
 
@@ -12,7 +12,7 @@ def opaque(b: Box) -> None:
     print(0)
 
 
-def use_after_call(b: Box) -> Int32:
+def use_after_call(b: Box) -> int32:
     if b.value is not None:
         opaque(b)
         return b.value + 1  # tpyc: warning(/Potential None access/)

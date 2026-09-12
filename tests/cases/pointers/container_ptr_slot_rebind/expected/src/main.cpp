@@ -4,19 +4,19 @@
 namespace tpyapp::main {
 
 
-// def mk_list() -> Own[list[Int32]]:
+// def mk_list() -> Own[list[int32]]:
 std::vector<int32_t> mk_list() {
     // return [1]
     return {1};
 }
 
-// def mk_dict() -> Own[dict[str, Int32]]:
+// def mk_dict() -> Own[dict[str, int32]]:
 ::tpy::ordered_map<std::string, int32_t> mk_dict() {
     // return {"a": 1}
     return ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
 }
 
-// def mk_set() -> Own[set[Int32]]:
+// def mk_set() -> Own[set[int32]]:
 ::tpy::ordered_set<int32_t> mk_set() {
     // return {1}
     return ::tpy::ordered_set<int32_t>({1});
@@ -28,13 +28,13 @@ std::vector<int32_t> mk_list() {
     return ::tpy::ByteArray(::tpy::bytes_literal("a", 1));
 }
 
-// def mk_array() -> Own[Array[Int32, 2]]:
+// def mk_array() -> Own[Array[int32, 2]]:
 std::array<int32_t, 2> mk_array() {
     // return [1, 2]
     return {1, 2};
 }
 
-// def rebound_list(other: list[Int32]) -> None:
+// def rebound_list(other: list[int32]) -> None:
 void rebound_list(std::vector<int32_t>& other) {
     // # The rebind aliases `other`, so the append after the boundary is visible
     // # through the caller's own binding.
@@ -47,7 +47,7 @@ void rebound_list(std::vector<int32_t>& other) {
     xs->push_back(9);
 }
 
-// def rebound_dict(other: dict[str, Int32]) -> None:
+// def rebound_dict(other: dict[str, int32]) -> None:
 void rebound_dict(::tpy::ordered_map<std::string, int32_t>& other) {
     // d = mk_dict()
     ::tpy::ordered_map<std::string, int32_t> __slot_1 = mk_dict();
@@ -58,7 +58,7 @@ void rebound_dict(::tpy::ordered_map<std::string, int32_t>& other) {
     ::tpy::__setitem__((*d), "z", 9);
 }
 
-// def rebound_set(other: set[Int32]) -> None:
+// def rebound_set(other: set[int32]) -> None:
 void rebound_set(::tpy::ordered_set<int32_t>& other) {
     // s = mk_set()
     ::tpy::ordered_set<int32_t> __slot_1 = mk_set();
@@ -80,7 +80,7 @@ void rebound_bytes(::tpy::ByteArray& other) {
     b->push_back(9);
 }
 
-// def rebound_array(other: Array[Int32, 2]) -> None:
+// def rebound_array(other: Array[int32, 2]) -> None:
 void rebound_array(std::array<int32_t, 2>& other) {
     // a = mk_array()
     std::array<int32_t, 2> __slot_1 = mk_array();
@@ -91,7 +91,7 @@ void rebound_array(std::array<int32_t, 2>& other) {
     ::tpy::__setitem__((*a), 0, 9);
 }
 
-// def hoisted() -> Int32:
+// def hoisted() -> int32:
 int32_t hoisted() {
     std::optional<std::vector<int32_t>> __slot_1;
     std::optional<std::vector<int32_t>> __slot_2;
@@ -145,7 +145,7 @@ void main() {
     ::tpy::ByteArray b = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
     // rebound_bytes(b)
     rebound_bytes(b);
-    // a: Array[Int32, 2] = [1, 2]
+    // a: Array[int32, 2] = [1, 2]
     std::array<int32_t, 2> a = {1, 2};
     // rebound_array(a)
     rebound_array(a);

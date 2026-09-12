@@ -7,9 +7,9 @@ namespace tpyapp::main {
 // c = Counter(100)
 Counter* c{};
 // # Test multiple print arguments
-// a: Int32 = 42
+// a: int32 = 42
 int32_t a{};
-// b: Int32 = 99
+// b: int32 = 99
 int32_t b{};
 
 void __tpy_init() {
@@ -37,9 +37,9 @@ void __tpy_init() {
     // print(c.get())
     std::cout << c->get() << "\n";
     // # Test multiple print arguments
-    // a: Int32 = 42
+    // a: int32 = 42
     a = 42;
-    // b: Int32 = 99
+    // b: int32 = 99
     b = 99;
     // print(a, b)
     std::cout << a << " " << b << "\n";

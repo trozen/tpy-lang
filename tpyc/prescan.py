@@ -18,9 +18,9 @@ from .parse import (
     TpyNestedDef,
     TpyFStringValue, TpyComprehensionGenerator,
     TpyDictLiteral, TpySetLiteral, TpyTupleLiteral, TpyFString,
-    TpyDelVar, TpyDelAttr, TpyDelItem, TpyNonlocal, TpyGlobal,
+    TpyDelVar, TpyDelAttr, TpyDelItem, TpyNonlocal, TpyGlobal, TpyTry,
 )
-from .parse.nodes import stmts_have_any_suspension
+from .parse.nodes import SourceLocation, stmts_have_any_suspension
 
 
 @dataclass
@@ -44,6 +44,17 @@ class ScanResult:
     # Used by del codegen to avoid destroying through a pointer that may
     # still point at the source variable's storage.
     initial_alias_names: set[str] = field(default_factory=set)
+    # name -> location of its first binding in the body (params excluded).
+    first_bind_loc: dict[str, SourceLocation | None] = field(default_factory=dict)
+    # Bindings whose scope is narrower than the body (comprehension vars,
+    # `except ... as`); kept apart so they never displace a body binding.
+    scoped_bind_loc: dict[str, SourceLocation | None] = field(default_factory=dict)
+
+
+def _declare(name: str, loc: SourceLocation | None, declared: set[str],
+             result: ScanResult) -> None:
+    declared.add(name)
+    result.first_bind_loc.setdefault(name, loc)
 
 
 def scan_reassigned_vars(stmts: list[TpyStmt],
@@ -185,12 +196,17 @@ def _scan_walrus_in_expr(expr: TpyExpr | None, declared: set[str],
             result.reassigned.add(expr.target)
             result.rvalue_reassigned.add(expr.target)
         else:
-            declared.add(expr.target)
+            _declare(expr.target, expr.loc, declared, result)
     for f in dc_fields(expr):
         val = getattr(expr, f.name)
         if isinstance(val, TpyExpr):
             _scan_walrus_in_expr(val, declared, result)
         elif isinstance(val, TpyComprehensionGenerator):
+            # Comprehension-scoped, so not a body declaration; recorded only
+            # so the scalar-type shadow warning can see the binding.
+            for name in (val.unpack_vars or [val.var]):
+                if name is not None:
+                    result.scoped_bind_loc.setdefault(name, expr.loc)
             _scan_walrus_in_expr(val.iterable, declared, result)
             for cond in val.conditions:
                 _scan_walrus_in_expr(cond, declared, result)
@@ -226,7 +242,7 @@ def _scan_stmts(stmts: list[TpyStmt], declared: set[str],
                 else:
                     result.lvalue_reassigned.add(stmt.name)
             else:
-                declared.add(stmt.name)
+                _declare(stmt.name, stmt.loc, declared, result)
                 if (stmt.init is not None
                         and isinstance(stmt.init, TpyName)
                         and stmt.init.name != stmt.name):
@@ -251,7 +267,7 @@ def _scan_stmts(stmts: list[TpyStmt], declared: set[str],
                     # std::get<i>(tmp) is always an rvalue
                     result.rvalue_reassigned.add(name)
                 else:
-                    declared.add(name)
+                    _declare(name, stmt.loc, declared, result)
         elif isinstance(stmt, TpyAugAssign):
             if isinstance(stmt.target, TpyName) and stmt.target.name in declared:
                 result.aug_assigned.add(stmt.target.name)
@@ -261,7 +277,7 @@ def _scan_stmts(stmts: list[TpyStmt], declared: set[str],
                 result.reassigned.add(name)
                 result.rvalue_reassigned.add(name)
             else:
-                declared.add(name)
+                _declare(name, stmt.loc, declared, result)
             # Do NOT recurse into nested body (separate scope)
         # Recurse into sub-bodies (if/while/for/with)
         if isinstance(stmt, TpyForEach):
@@ -272,7 +288,7 @@ def _scan_stmts(stmts: list[TpyStmt], declared: set[str],
                 result.reassigned.add(stmt.var)
                 result.rvalue_reassigned.add(stmt.var)
             else:
-                declared.add(stmt.var)
+                _declare(stmt.var, stmt.loc, declared, result)
         if isinstance(stmt, TpyWith):
             for item in stmt.items:
                 if item.target is not None:
@@ -280,7 +296,12 @@ def _scan_stmts(stmts: list[TpyStmt], declared: set[str],
                         result.reassigned.add(item.target)
                         result.rvalue_reassigned.add(item.target)
                     else:
-                        declared.add(item.target)
+                        _declare(item.target, stmt.loc, declared, result)
+        if isinstance(stmt, TpyTry):
+            # Handler-scoped like a comprehension var: shadow candidate only.
+            for handler in stmt.handlers:
+                if handler.binding is not None:
+                    result.scoped_bind_loc.setdefault(handler.binding, handler.loc)
         for body in stmt.sub_bodies():
             _scan_stmts(body, declared, result)
 

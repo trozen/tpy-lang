@@ -6,18 +6,18 @@ namespace tpyapp::main {
 
 // def test_star_import() -> None:
 void test_star_import() {
-    // x: Float64 = 3.14
+    // x: float64 = 3.14
     double x = 3.14;
-    // y = Float64(2.0)
+    // y = float64(2.0)
     double y = 2.0;
     // print(x + y)
     std::cout << ::tpy::print_float(((x) + (y))) << "\n";
     // # Constructor from fixed-width int types
-    // print(Float64(Int32(42)))
+    // print(float64(int32(42)))
     std::cout << ::tpy::print_float(static_cast<double>(42)) << "\n";
-    // print(Float64(Int64(100)))
+    // print(float64(int64(100)))
     std::cout << ::tpy::print_float(static_cast<double>(100)) << "\n";
-    // print(Float64(UInt32(7)))
+    // print(float64(uint32(7)))
     std::cout << ::tpy::print_float(static_cast<double>(7)) << "\n";
 }
 

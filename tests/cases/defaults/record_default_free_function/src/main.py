@@ -4,16 +4,16 @@
 # an incomplete type. The default is materialized at the call site instead.
 # Pointer-form members (a plain class) stay complete and keep the C++
 # default, so both arms are pinned here.
-from tpy import Int64, ValueType
+from tpy import int64, ValueType
 
 
-def offset_of(tz: "Fixed | None" = None) -> Int64:
+def offset_of(tz: "Fixed | None" = None) -> int64:
     if tz is None:
         return -1
     return tz.off
 
 
-def kind_of(z: "Fixed | Wide | None" = None) -> Int64:
+def kind_of(z: "Fixed | Wide | None" = None) -> int64:
     if z is None:
         return -1
     if isinstance(z, Fixed):
@@ -21,30 +21,30 @@ def kind_of(z: "Fixed | Wide | None" = None) -> Int64:
     return z.span
 
 
-def barks_of(d: "Dog | None" = None) -> Int64:
+def barks_of(d: "Dog | None" = None) -> int64:
     if d is None:
         return -1
     return d.barks
 
 
 class Fixed(ValueType):
-    off: Int64
+    off: int64
 
-    def __init__(self, off: Int64) -> None:
+    def __init__(self, off: int64) -> None:
         self.off = off
 
 
 class Wide(ValueType):
-    span: Int64
+    span: int64
 
-    def __init__(self, span: Int64) -> None:
+    def __init__(self, span: int64) -> None:
         self.span = span
 
 
 class Dog:
-    barks: Int64
+    barks: int64
 
-    def __init__(self, barks: Int64) -> None:
+    def __init__(self, barks: int64) -> None:
         self.barks = barks
 
 

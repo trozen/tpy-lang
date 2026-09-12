@@ -1,14 +1,14 @@
 # T& alias of @nocopy -- non-consuming alias access before move is safe.
 # Alias is dead before close(h), so auto-move of h proceeds.
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 
 
 @nocopy
 class Handle:
-    fd: Int32
+    fd: int32
 
 
-def close(h: Own[Handle]) -> Int32:
+def close(h: Own[Handle]) -> int32:
     return h.fd
 
 

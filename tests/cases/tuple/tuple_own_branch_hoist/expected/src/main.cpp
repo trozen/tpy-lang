@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def make_pair(n: Int32) -> Own[tuple[Int32, Box]]:
+// def make_pair(n: int32) -> Own[tuple[int32, Box]]:
 std::tuple<int32_t, Box> make_pair(int32_t n) {
     // return (n, Box(n))
     return std::tuple<int32_t, Box>{n, Box(n)};
 }
 
-// def use(c: bool) -> Int32:
+// def use(c: bool) -> int32:
 int32_t use(bool c) {
     std::optional<std::tuple<int32_t, Box>> __slot_1;
     // if c:

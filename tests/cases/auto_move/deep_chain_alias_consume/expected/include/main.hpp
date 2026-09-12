@@ -17,7 +17,7 @@ void main();
 
 // class Inner:
 struct Inner {
-    // vals: list[Int32]
+    // vals: list[int32]
     std::vector<int32_t> vals;
 
     // def __init__(self):

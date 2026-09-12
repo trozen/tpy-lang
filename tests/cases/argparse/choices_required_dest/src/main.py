@@ -1,9 +1,9 @@
 # argparse choices= / required= / dest= / help= (Phase 7D4).
-from tpy import Int32
+from tpy import int32
 from argparse import ArgumentParser
 
 
-def main() -> Int32:
+def main() -> int32:
     parser = ArgumentParser()
     parser.add_argument(
         "--mode",

@@ -29,17 +29,17 @@ void main();
 
 // class IntBox:
 struct IntBox {
-    // value: Int32
+    // value: int32
     int32_t value;
 
-    // def __init__(self, v: Int32):
+    // def __init__(self, v: int32):
     IntBox() = default;
     explicit IntBox(int32_t v);
 
-    // def get(self) -> Int32:
+    // def get(self) -> int32:
     int32_t get() const;
 
-    // def set(self, value: Int32) -> None:
+    // def set(self, value: int32) -> None:
     void set(int32_t value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.IntBox";
 };
@@ -72,16 +72,16 @@ inline std::ostream& operator<<(std::ostream& os, const StrBox& obj) {
 }
 
 
-// def __init__(self, v: Int32):
+// def __init__(self, v: int32):
 inline IntBox::IntBox(int32_t v) : value(v) {}
 
-// def get(self) -> Int32:
+// def get(self) -> int32:
 inline int32_t IntBox::get() const {
     // return self.value
     return this->value;
 }
 
-// def set(self, value: Int32) -> None:
+// def set(self, value: int32) -> None:
 inline void IntBox::set(int32_t value) {
     // self.value = value
     this->value = value;
@@ -101,13 +101,13 @@ inline void StrBox::set(std::string_view value) {
     // self.value = value
     this->value = value;
 }
-// def extract[C: Container[Int32]](c: C) -> Int32:
+// def extract[C: Container[int32]](c: C) -> int32:
 template<Container<int32_t> C>
 int32_t extract(::tpy::param_val_or_ref_t<C> c) {
     // return c.get()
     return c.get();
 }
-// def update[C: Container[Int32]](c: C, v: Int32) -> None:
+// def update[C: Container[int32]](c: C, v: int32) -> None:
 template<Container<int32_t> C>
 void update(::tpy::param_val_or_ref_t<C> c, int32_t v) {
     // c.set(v)

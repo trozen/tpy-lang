@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def main() -> Int32:
+// def main() -> int32:
 int32_t main() {
     // args = parser.parse_args(
     // ["--tag", "a", "--tag", "b", "--num", "1", "--num", "2", "--mode"]

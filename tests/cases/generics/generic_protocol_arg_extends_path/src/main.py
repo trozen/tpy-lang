@@ -5,12 +5,12 @@
 # `get_extends_protocol_type_arg`, parallel to the structural-path test
 # in generic_protocol_arg_from_param/.
 from typing import Iterable, Protocol
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class MyIter[T]:
     items: list[T]
-    pos: Int32
+    pos: int32
 
     def __init__(self, items: list[T]) -> None:
         self.items = items
@@ -40,14 +40,14 @@ class MyList[T](Iterable[T]):
         return MyIter[T](self.items)
 
 
-def length[T](xs: Iterable[T]) -> Int32:
-    n: Int32 = 0
+def length[T](xs: Iterable[T]) -> int32:
+    n: int32 = 0
     for _ in xs:
         n += 1
     return n
 
 
-def total_of[T](xs: MyList[T]) -> Int32:
+def total_of[T](xs: MyList[T]) -> int32:
     # Generic outer T -- forces Ref[MyList[T]] at the call site.
     # `length[T]` infers via `Iterable[T]`; conformance is via the
     # extends declaration on MyList, so the path goes through
@@ -56,7 +56,7 @@ def total_of[T](xs: MyList[T]) -> Int32:
 
 
 def main() -> None:
-    xs = MyList[Int32]()
+    xs = MyList[int32]()
     xs.add(3)
     xs.add(4)
     xs.add(5)

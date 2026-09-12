@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def guarded(a: Cat | Dog) -> Iterator[Int32]:
+// def guarded(a: Cat | Dog) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_guarded::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -69,12 +69,12 @@ __match_end_2:;
 }
 
 
-// def guarded(a: Cat | Dog) -> Iterator[Int32]:
+// def guarded(a: Cat | Dog) -> Iterator[int32]:
 __gen_guarded guarded(::tpy::Union<const Cat*, const Dog*> a) {
     return __gen_guarded(a);
 }
 
-// def guarded_cond(a: Cat | Dog, flag: bool) -> Iterator[Int32]:
+// def guarded_cond(a: Cat | Dog, flag: bool) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_guarded_cond::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -139,12 +139,12 @@ __match_end_2:;
 }
 
 
-// def guarded_cond(a: Cat | Dog, flag: bool) -> Iterator[Int32]:
+// def guarded_cond(a: Cat | Dog, flag: bool) -> Iterator[int32]:
 __gen_guarded_cond guarded_cond(::tpy::Union<const Cat*, const Dog*> a, bool flag) {
     return __gen_guarded_cond(a, flag);
 }
 
-// def nested(h: Holder) -> Iterator[Int32]:
+// def nested(h: Holder) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_nested::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -188,12 +188,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_nested::__next__() {
 }
 
 
-// def nested(h: Holder) -> Iterator[Int32]:
+// def nested(h: Holder) -> Iterator[int32]:
 __gen_nested nested(Holder& h) {
     return __gen_nested(h);
 }
 
-// def nested_shadow(h: Holder) -> Iterator[Int32]:
+// def nested_shadow(h: Holder) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_nested_shadow::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -246,12 +246,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_nested_shadow::__next__() {
 }
 
 
-// def nested_shadow(h: Holder) -> Iterator[Int32]:
+// def nested_shadow(h: Holder) -> Iterator[int32]:
 __gen_nested_shadow nested_shadow(Holder& h) {
     return __gen_nested_shadow(h);
 }
 
-// async def a_guarded(a: Cat | Dog) -> Int32:
+// async def a_guarded(a: Cat | Dog) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_a_guarded::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -311,7 +311,7 @@ __match_end_2:;
 }
 
 
-// async def a_guarded(a: Cat | Dog) -> Int32:
+// async def a_guarded(a: Cat | Dog) -> int32:
 __coro_a_guarded a_guarded(::tpy::Union<const Cat*, const Dog*> a) {
     return __coro_a_guarded(a);
 }

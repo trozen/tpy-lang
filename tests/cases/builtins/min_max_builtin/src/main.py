@@ -1,9 +1,9 @@
 """Test min() and max() builtin functions."""
-from tpy import Int32
+from tpy import int32
 
-# Test min/max with Int32
-a: Int32 = 10
-b: Int32 = 20
+# Test min/max with int32
+a: int32 = 10
+b: int32 = 20
 print(min(a, b))
 print(max(a, b))
 print(min(b, a))
@@ -27,7 +27,7 @@ print(min(f1, f2))
 print(max(f1, f2))
 
 # Test 3-argument min/max
-c: Int32 = 5
+c: int32 = 5
 print(min(a, b, c))
 print(max(a, b, c))
 

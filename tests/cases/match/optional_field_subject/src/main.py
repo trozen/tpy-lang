@@ -1,12 +1,12 @@
 # Match on a storage-form Optional source (`Box | None` field) lifts the
 # subject to pointer form; mutation through the arm binding aliases the field.
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    val: Int32
+    val: int32
 
-    def __init__(self, val: Int32) -> None:
+    def __init__(self, val: int32) -> None:
         self.val = val
 
 

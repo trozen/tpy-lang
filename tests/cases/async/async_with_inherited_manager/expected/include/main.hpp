@@ -24,7 +24,7 @@ void main();
 
 // class BaseCM:
 struct BaseCM {
-    // n: Int32
+    // n: int32
     int32_t n;
 
     // def __init__(self) -> None:

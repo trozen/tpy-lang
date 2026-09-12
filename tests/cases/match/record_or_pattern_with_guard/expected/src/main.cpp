@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def f(p: Point, ok: bool) -> Int32:
+// def f(p: Point, ok: bool) -> int32:
 int32_t f(Point& p, bool ok) {
     // match p:
     auto& __match_subject_1 = p;

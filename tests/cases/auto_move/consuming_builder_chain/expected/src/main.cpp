@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def make(n: Int32) -> Own[Point]:
+// def make(n: int32) -> Own[Point]:
 Point make(int32_t n) {
     // return Point(n).updated()  # tpyc: ok
     return Point(n).updated();
 }
 
-// def owned(n: Int32) -> Own[Point]:
+// def owned(n: int32) -> Own[Point]:
 Point owned(int32_t n) {
     // return make(n).updated()  # tpyc: ok
     return make(n).updated();
@@ -22,7 +22,7 @@ Point owned_method(Factory& f) {
     return f.make().updated();
 }
 
-// def issue(n: Int32) -> Own[Ticket]:
+// def issue(n: int32) -> Own[Ticket]:
 Ticket issue(int32_t n) {
     // return Ticket(n).stamped()  # tpyc: ok
     return Ticket(n).stamped();

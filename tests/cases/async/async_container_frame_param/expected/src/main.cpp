@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def fill_buf(b: bytearray) -> Int32:  # tpyc: ok
+// async def fill_buf(b: bytearray) -> int32:  # tpyc: ok
 ::tpystd::tpy::Poll<int32_t> __coro_fill_buf::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -31,12 +31,12 @@ namespace tpyapp::main {
 }
 
 
-// async def fill_buf(b: bytearray) -> Int32:  # tpyc: ok
+// async def fill_buf(b: bytearray) -> int32:  # tpyc: ok
 __coro_fill_buf fill_buf(::tpy::ByteArray& b) {
     return __coro_fill_buf(b);
 }
 
-// async def bump_arr(a: Array[Int32, 2]) -> Int32:  # tpyc: ok
+// async def bump_arr(a: Array[int32, 2]) -> int32:  # tpyc: ok
 ::tpystd::tpy::Poll<int32_t> __coro_bump_arr::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -63,12 +63,12 @@ __coro_fill_buf fill_buf(::tpy::ByteArray& b) {
 }
 
 
-// async def bump_arr(a: Array[Int32, 2]) -> Int32:  # tpyc: ok
+// async def bump_arr(a: Array[int32, 2]) -> int32:  # tpyc: ok
 __coro_bump_arr bump_arr(std::array<int32_t, 2>& a) {
     return __coro_bump_arr(a);
 }
 
-// async def push_list(xs: list[Int32]) -> Int32:
+// async def push_list(xs: list[int32]) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_push_list::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -95,7 +95,7 @@ __coro_bump_arr bump_arr(std::array<int32_t, 2>& a) {
 }
 
 
-// async def push_list(xs: list[Int32]) -> Int32:
+// async def push_list(xs: list[int32]) -> int32:
 __coro_push_list push_list(std::vector<int32_t>& xs) {
     return __coro_push_list(xs);
 }
@@ -120,7 +120,7 @@ __coro_push_list push_list(std::vector<int32_t>& xs) {
         __sub_0.reset();
         // print(await fill_buf(b), len(b))
         std::cout << __await_lift_0 << " " << ::tpy::__len__((*b)) << "\n";
-        // a = Array[Int32, 2]()
+        // a = Array[int32, 2]()
         a.emplace(std::array<int32_t, 2>());
         // print(await bump_arr(a), a[0])
         __sub_1.emplace((*a));

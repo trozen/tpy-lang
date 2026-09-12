@@ -1,8 +1,8 @@
 from a import aye
-from tpy import Int32
+from tpy import int32
 
-def bee() -> Int32:
-    return Int32(7)
+def bee() -> int32:
+    return int32(7)
 
-def use_aye() -> Int32:
+def use_aye() -> int32:
     return aye()

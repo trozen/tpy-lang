@@ -7,7 +7,7 @@
 
 # Calendar constants/helpers, ported from CPython's datetime.py. The lists are
 # annotated list[int] (BigInt elements): the calendar math mixes them with
-# divmod-derived BigInt locals, and the inferred list[Int32] would not compare.
+# divmod-derived BigInt locals, and the inferred list[int32] would not compare.
 _MAXORDINAL: int = 3652059  # date.max.toordinal(): 9999-12-31
 _DAYS_IN_MONTH: list[int] = [-1, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
 _DAYS_BEFORE_MONTH: list[int] = [-1, 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334]

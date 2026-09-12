@@ -135,7 +135,7 @@ std::expected<bool, Boom> in_error_return(const std::vector<Mixed>& xs, const st
 
 // def in_match(xs: list[Mixed], ys: list[Mixed]) -> bool:  # match arm
 bool in_match(const std::vector<Mixed>& xs, const std::vector<Mixed>& ys) {
-    // tag: Int32 = 1
+    // tag: int32 = 1
     int32_t tag = 1;
     // match tag:
     auto& __match_subject_1 = tag;
@@ -158,9 +158,9 @@ bool in_match(const std::vector<Mixed>& xs, const std::vector<Mixed>& ys) {
 
 // # The comprehension binds its result to a local: in a RETURN expression it
 // # rejects at the `expr.list_comp` reject tag for any element type, union or
-// # not -- a plain `[e + 1 for e in xs]` over `list[Int32]` rejects the same
+// # not -- a plain `[e + 1 for e in xs]` over `list[int32]` rejects the same
 // # way -- so the local is what reaches the comprehension body.
-// def in_comprehension(xs: list[Mixed], ys: list[Mixed]) -> Int32:  # comprehension
+// def in_comprehension(xs: list[Mixed], ys: list[Mixed]) -> int32:  # comprehension
 int32_t in_comprehension(const std::vector<Mixed>& xs, const std::vector<Mixed>& ys) {
     // flags = [xs == ys for _ in [1, 2]]  # tpyc: ok
     std::vector<bool> flags = ({
@@ -186,7 +186,7 @@ bool nullable_eq(const std::vector<::tpy::Union<std::monostate, Cat, Dog>>& xs, 
     return (xs == ys);
 }
 
-// def crate_pet_n(c: Crate) -> Int32:
+// def crate_pet_n(c: Crate) -> int32:
 int32_t crate_pet_n(const Crate& c) {
     // p = c.pet
     ::tpy::Union<const Cat*, const Dog*> p = ::tpy::to_const_ptr_variant(c.pet);
@@ -216,7 +216,7 @@ void bump_first(std::vector<Pet>& xs) {
     }
 }
 
-// def first_n(xs: list[Pet]) -> Int32:
+// def first_n(xs: list[Pet]) -> int32:
 int32_t first_n(const std::vector<Pet>& xs) {
     // e = xs[0]
     ::tpy::Union<const Cat*, const Dog*> e = ::tpy::to_const_ptr_variant(::tpy::__getitem__(xs, 0));
@@ -377,7 +377,7 @@ void __tpy_init() {
     initialized = true;
 
     // # A REFERENCE union at a storage position (a container element) compares BY
-    // # VALUE across alternatives, as CPython does: `Dog | Int32 | Float64` holding 1
+    // # VALUE across alternatives, as CPython does: `Dog | int32 | float64` holding 1
     // # equals one holding 1.0. Each section names the position it covers; the
     // # container compares are the subject lines. A union of two records that define
     // # no `__eq__` is NOT a section: it stays a toolchain-level refusal with no TPy

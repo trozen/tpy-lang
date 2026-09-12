@@ -37,7 +37,7 @@ template<typename T, std::size_t N>
 struct Pool {
     // _storage: UninitArrayStorage[T, N]
     ::tpy::UninitArrayStorage<T, N> _storage;
-    // _size: UInt32
+    // _size: uint32
     uint32_t _size;
     bool __tpy_owned_ = true;
 
@@ -68,7 +68,7 @@ struct Pool {
     // def __del__(self) -> None:
     ~Pool() {
         if (!this->__tpy_owned_) return;
-        // self._storage.drop_n(UInt32(0), self._size)
+        // self._storage.drop_n(uint32(0), self._size)
         this->_storage.drop_n(0, this->_size);
     }
 
@@ -81,9 +81,9 @@ struct Pool {
     }
 
     // @readonly
-    // def get(self, i: Int32) -> readonly[T]:
+    // def get(self, i: int32) -> readonly[T]:
     ::tpy::val_or_cref_t<T> get(int32_t i) const {
-        // return self._storage.load(UInt32.trunc(i))
+        // return self._storage.load(uint32.trunc(i))
         return this->_storage.load(static_cast<uint32_t>(i));
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pool";
@@ -97,11 +97,11 @@ inline std::ostream& operator<<(std::ostream& os, const Pool<T, N>& obj) {
 
 // class Tagged:
 struct Tagged {
-    // n: Int32
+    // n: int32
     int32_t n;
     bool __tpy_owned_ = true;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     explicit Tagged(int32_t n);
     Tagged(const Tagged&) = delete;
     Tagged& operator=(const Tagged&) = delete;
@@ -122,7 +122,7 @@ inline std::ostream& operator<<(std::ostream& os, const Tagged& obj) {
 // def __init__(self, name: str) -> None:
 inline Item::Item(std::string_view name) : name(name) {}
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Tagged::Tagged(int32_t n) : n(n) {}
 
 inline Tagged::Tagged(Tagged&& other) noexcept : n() {

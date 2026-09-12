@@ -1,10 +1,10 @@
 # Consuming loop with multiple uses of the loop variable: only the last
 # use is moved, earlier uses still copy and should keep their warning.
-from tpy import Int32
+from tpy import int32
 
 class Item:
-    value: Int32
-    def __init__(self, v: Int32) -> None:
+    value: int32
+    def __init__(self, v: int32) -> None:
         self.value = v
 
 def main() -> None:

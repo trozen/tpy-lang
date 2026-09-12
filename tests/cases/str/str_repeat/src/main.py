@@ -1,9 +1,9 @@
 # Test str * n and n * str repetition operators.
-from tpy import Int32
+from tpy import int32
 
 def main() -> None:
     s: str = "abc"
-    n: Int32 = 3
+    n: int32 = 3
 
     # Basic repetition
     print(s * n)

@@ -2,7 +2,7 @@
 # member-init ladder has no source form for the view family, even though the
 # generator reading that field routes, so `self.blob = blob` rejects.
 from typing import Iterator
-from tpy import BytesView, Int32
+from tpy import BytesView, int32
 
 
 class Holder:
@@ -12,13 +12,13 @@ class Holder:
         # The view parameter is the member-init source.
         self.blob = blob  # tpyc: error(/ctor\.mil_field\.nominal\.name/)
 
-    def chunks(self, size: Int32, alt: bool) -> Iterator[bytes]:
+    def chunks(self, size: int32, alt: bool) -> Iterator[bytes]:
         if alt:
             yield b"alt"
         else:
             data = self.blob
             n = len(data)
-            pos: Int32 = 0
+            pos: int32 = 0
             while pos < n:
                 end = pos + size
                 if end > n:

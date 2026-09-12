@@ -32,10 +32,10 @@ __gen_guarded guarded();
 
 // class Src:
 struct Src {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Src() = default;
     explicit Src(int32_t n);
 
@@ -50,7 +50,7 @@ inline std::ostream& operator<<(std::ostream& os, const Src& obj) {
 
 // class Bag:
 struct Bag {
-    // n: Int32
+    // n: int32
     int32_t n;
 
     // def __init__(self) -> None:
@@ -334,7 +334,7 @@ inline __gen_Box_two<T> Box<T>::two() {
 }
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Src::Src(int32_t n) : n(n) {}
 
 // def __init__(self) -> None:

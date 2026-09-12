@@ -6,13 +6,13 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // c = Child(Int32(7))
+    // c = Child(int32(7))
     Child c = Child(7);
     // print(c.x)
     std::cout << c.x << "\n";
     // print(c.hello())
     std::cout << c.hello() << "\n";
-    // g = GrandChild(Int32(13))
+    // g = GrandChild(int32(13))
     GrandChild g = GrandChild(13);
     // print(g.x)
     std::cout << g.x << "\n";

@@ -83,7 +83,7 @@ from .statements import _lower_stmts
 def _sgen_yield_ok(yt: 'TpyType | None', analyzer) -> bool:
     """Simple-generator yield-slot families whose leaf VALUE render is
     position-blind (the skeleton owns the slot type, `__val` binding and
-    move-out): value scalars/Char/enums (`_res_value_ok`), str/bytes (the
+    move-out): value scalars/char/enums (`_res_value_ok`), str/bytes (the
     bare source render into the owned `std::optional<std::string>` slot),
     the reference axis (the `val_or_ref<T>` borrow slot -- a bare name/field
     render -- for F1 records and the builtin containers alike), `Own[<axis>]`
@@ -447,7 +447,7 @@ def _lower_loop_body(loop_stmt, lc: _LowerCtx, declared: dict[str, TpyType],
                       body_declared.get(yv_src.name)))) == yt_bare):
                 # A STORAGE-form tuple NAME at a POINTER-REPR slot (`yield
                 # pair` off `for pair in items:` over
-                # `list[tuple[Int32, C]]`): the same storage->borrow lift the
+                # `list[tuple[int32, C]]`): the same storage->borrow lift the
                 # container-ELEMENT source below takes
                 # (`tuple_to_pointer<std::tuple<int32_t, C*>>(pair)`).
                 yv = THIRFormConvert(

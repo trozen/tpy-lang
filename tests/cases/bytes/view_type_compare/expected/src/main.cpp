@@ -19,7 +19,7 @@ void compare_pairs(::tpy::BytesView a, ::tpy::BytesView v, ::tpy::ByteArray& ba)
 }
 
 // # free function: a bytes needle in a tuple literal, a list, a set and a dict
-// def membership(name: bytes, xs: list[bytes], s: set[bytes], d: dict[bytes, Int32]) -> None:
+// def membership(name: bytes, xs: list[bytes], s: set[bytes], d: dict[bytes, int32]) -> None:
 void membership(::tpy::BytesView name, const std::vector<::tpy::Bytes>& xs, const ::tpy::ordered_set<::tpy::Bytes>& s, const ::tpy::ordered_map<::tpy::Bytes, int32_t>& d) {
     // print("tuple", name in (b"PLAYPAL", b"COLORMAP"), name not in (b"PLAYPAL", b"COLORMAP"))  # tpyc: ok
     std::cout << "tuple" << " " << ::tpy::print_bool(((name == ::tpy::bytes_literal("PLAYPAL", 7)) || (name == ::tpy::bytes_literal("COLORMAP", 8)))) << " " << ::tpy::print_bool((!((name == ::tpy::bytes_literal("PLAYPAL", 7)) || (name == ::tpy::bytes_literal("COLORMAP", 8))))) << "\n";

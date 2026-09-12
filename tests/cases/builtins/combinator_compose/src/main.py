@@ -1,16 +1,16 @@
 # Combinator composition: chaining map/filter/enumerate/zip.
 # Verifies that __next__()-based iterators (builtin and user-defined)
 # work as inputs to other combinators.
-from tpy import Int32, Span
+from tpy import int32, Span
 from typing import Iterator
 
-def double(x: Int32) -> Int32:
+def double(x: int32) -> int32:
     return x * 2
 
-def is_positive(x: Int32) -> bool:
+def is_positive(x: int32) -> bool:
     return x > 0
 
-def triple_gen(items: Span[Int32]) -> Iterator[Int32]:
+def triple_gen(items: Span[int32]) -> Iterator[int32]:
     for item in items:
         yield item * 3
 

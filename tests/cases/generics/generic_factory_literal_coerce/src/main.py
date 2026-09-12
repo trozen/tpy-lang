@@ -7,7 +7,7 @@ share one resolution helper; this guards against regressions on any of them.
 """
 from tplib.box import Box
 from tplib.rc import Rc
-from tpy import Float64
+from tpy import float64
 
 
 class Converter:
@@ -21,10 +21,10 @@ def pair[T](a: T, b: T) -> None:
 
 def main() -> None:
     # Symmetric inference: literal first, concrete second. T promotes from
-    # FloatLiteralType to Float64 (mirrors the long-standing IntLiteralType
+    # FloatLiteralType to float64 (mirrors the long-standing IntLiteralType
     # promote rule).
-    pair(1.5, Float64(2.5))
-    pair(Float64(3.5), 4.5)
+    pair(1.5, float64(2.5))
+    pair(float64(3.5), 4.5)
 
     # Generic record constructor: int and float literals.
     bi = Box(42)

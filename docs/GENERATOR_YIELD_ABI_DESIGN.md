@@ -50,7 +50,7 @@ several places. Where this section and the prose below disagree, **this section 
   shape no longer dangles silently. `_check_tuple_member_local` rejects the bare-name yield/return
   when the boundary type leaves the fresh element in borrow form ("Cannot yield tuple local 't':
   element 0 ... would dangle. Use Own[A] ..."), and the spellings that get past it -- an
-  `Iterator[tuple[Own[A], Int32]]` boundary, or a local bound from an owning call -- hit the THIR
+  `Iterator[tuple[Own[A], int32]]` boundary, or a local bound from an owning call -- hit the THIR
   reject `res.btuple_yield_source` in a resumable frame. Still open because the fix is to make the
   whole-tuple yield WORK (the frame owns the slot; the yield wants a storage-form handoff), not to
   keep rejecting it; the dangle still wants catching at the local-assignment site (BUGS.md).
@@ -239,7 +239,7 @@ Do not scatter the borrow-vs-owned decision across `get_iterable_element_type`,
 re-deriving ownership is exactly the consumer-side-dispatch anti-pattern CLAUDE.md forbids. Instead:
 
 - One classifier `yield_abi(declared_elem_type, yield_expr) -> {VALUE, BORROW_REF, OWNED}`:
-  - **VALUE** -- value-type element (int/Char/Span/...): unchanged, copies are free.
+  - **VALUE** -- value-type element (int/char/Span/...): unchanged, copies are free.
   - **BORROW_REF** -- `Iterator[T]` non-value, yield expr is a durable borrow (rule 1 above):
     slot `val_or_ref<T>`, emit the pointer, consumer derefs.
   - **OWNED** -- `Iterator[Own[T]]`: slot `T`, move into slot.

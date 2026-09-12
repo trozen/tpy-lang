@@ -1,18 +1,18 @@
 # Defines record types and a union type alias
-from tpy import Int32
+from tpy import int32
 
 
 class Circle:
-    radius: Int32
+    radius: int32
 
-    def __init__(self, radius: Int32) -> None:
+    def __init__(self, radius: int32) -> None:
         self.radius = radius
 
 
 class Rect:
-    width: Int32
+    width: int32
 
-    def __init__(self, width: Int32) -> None:
+    def __init__(self, width: int32) -> None:
         self.width = width
 
 

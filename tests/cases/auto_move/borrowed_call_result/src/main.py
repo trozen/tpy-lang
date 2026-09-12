@@ -3,11 +3,11 @@
 # (SIGSEGV before the fix). The consume copies instead, with the warning.
 # One section per borrow SOURCE the liveness alias maps cannot see: a
 # borrow-returning call, and an explicit `take_ptr`.
-from tpy import Int32, Own, take_ptr
+from tpy import int32, Own, take_ptr
 
 
 class P:
-    vals: list[Int32]
+    vals: list[int32]
 
     def __init__(self):
         self.vals = [5]
@@ -17,13 +17,13 @@ def first(xs: list[P]) -> P:
     return xs[0]
 
 
-def drop(xs: Own[list[P]]) -> Int32:
+def drop(xs: Own[list[P]]) -> int32:
     store: list[list[P]] = []
     store.append(xs)
     return len(store)
 
 
-def hold(p: Own[P]) -> Int32:
+def hold(p: Own[P]) -> int32:
     store: list[P] = []
     store.append(p)
     return len(store)

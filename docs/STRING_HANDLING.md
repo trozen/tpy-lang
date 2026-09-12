@@ -2,10 +2,10 @@
 
 > **Scope note (current-state doc).** This describes the *shipped* string
 > implementation, which is accurate today. The character *representation* axis
-> below -- `Char` = `char`, byte-indexed `str`, and the ASCII-only case/`is*`
+> below -- `char` = `char`, byte-indexed `str`, and the ASCII-only case/`is*`
 > method behavior -- is slated to change: `docs/STRING_WIDTH_DESIGN.md` makes
 > `str` a Python-correct Unicode type with a build-time character width
-> (`Char` becomes a code point). That doc is the target design; this one is
+> (`char` becomes a code point). That doc is the target design; this one is
 > updated when it is implemented. The ownership model (`str`/`StrView`/`String`,
 > PendingStrType), the method list, coercions, and f-strings are unaffected by
 > the width work.
@@ -17,7 +17,7 @@
 | `str` context-dependent type (param=`string_view`, return/field=`string`) | Done |
 | `String` explicit owned type (`const std::string&` params) | Done |
 | `StrView` explicit view type (`std::string_view`) | Done |
-| `Char` single character type | Done |
+| `char` single character type | Done |
 | String concatenation (`+`, `+=`) | Done |
 | `str()` numeric conversions (`str(42)`) | Done |
 | `list[str]` generates `std::vector<std::string>` | Done |
@@ -50,7 +50,7 @@ Methods available on `str`, `String`, and `StrView` types. All methods are `is_r
 | Python method | Status | Notes |
 |---------------|--------|-------|
 | `len(s)` | Working | `__len__` -> `s.size()` |
-| `s[i]` | Working | `__getitem__` -> `tpy::get_char`, returns `Char` |
+| `s[i]` | Working | `__getitem__` -> `tpy::get_char`, returns `char` |
 | `s + t` | Working | `__add__` -> `tpy::str_concat`, returns `String` |
 | `s.split()` | Working | Whitespace split -> `list[str]` |
 | `s.split(sep)` | Working | Separator split -> `list[str]` |
@@ -106,7 +106,7 @@ Always `std::string`. Parameters use `const std::string&` (avoids `string_view` 
 
 Always `std::string_view`. Use when you know the source outlives the variable.
 
-### `Char`
+### `char`
 
 Single character, maps to `char` in C++.
 
@@ -176,8 +176,8 @@ Assignment (`s = sv;` where `s` is already `std::string`) works implicitly via `
 | `StrView` | `String` | `std::string(expr)` | Allocates |
 | `str` | `StrView` | implicit | Safe (view of owned) |
 | `String` | `StrView` | implicit | Safe (view of owned) |
-| `Char` | `String` | `std::string(1, expr)` | Allocates |
-| `Char` | `StrView` | `tpy::char_to_str(expr)` | Static table |
+| `char` | `String` | `std::string(1, expr)` | Allocates |
+| `char` | `StrView` | `tpy::char_to_str(expr)` | Static table |
 
 ## Operators
 
@@ -212,7 +212,7 @@ the emission strategy based on context:
 - User types with `__str__`: `f"{obj}"` dispatches to `__str__()`
 - User types with only `__repr__`: `f"{obj}"`, `str(obj)`, `print(obj)` fall back to `__repr__()` (matches Python)
 - Brace escaping: `f"{{{x}}}"` -> `{42}`
-- Mixed types: int, float, bool, str, Char, fixed ints, BigInt, enum, user records
+- Mixed types: int, float, bool, str, char, fixed ints, BigInt, enum, user records
 
 ### Python-compatible formatting
 

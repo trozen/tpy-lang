@@ -1,13 +1,13 @@
-from tpy import Int32
+from tpy import int32
 class A:
-    n: Int32
-    def __init__(self, n: Int32) -> None:
+    n: int32
+    def __init__(self, n: int32) -> None:
         self.n = n
     def __bool__(self) -> bool:
         return self.n > 0
 class B:
-    m: Int32
-    def __init__(self, m: Int32) -> None:
+    m: int32
+    def __init__(self, m: int32) -> None:
         self.m = m
 def show(x: A | B) -> None:
     if isinstance(x, A):

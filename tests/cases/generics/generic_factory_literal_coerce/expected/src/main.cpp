@@ -7,11 +7,11 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // # Symmetric inference: literal first, concrete second. T promotes from
-    // # FloatLiteralType to Float64 (mirrors the long-standing IntLiteralType
+    // # FloatLiteralType to float64 (mirrors the long-standing IntLiteralType
     // # promote rule).
-    // pair(1.5, Float64(2.5))
+    // pair(1.5, float64(2.5))
     pair<double>(1.5, 2.5);
-    // pair(Float64(3.5), 4.5)
+    // pair(float64(3.5), 4.5)
     pair<double>(3.5, 4.5);
     // # Generic record constructor: int and float literals.
     // bi = Box(42)

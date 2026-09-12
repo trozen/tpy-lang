@@ -4,19 +4,19 @@
 namespace tpyapp::main {
 
 
-// def drop_from(al: ArrayList[Int32, 4], k: Int32) -> None:
+// def drop_from(al: ArrayList[int32, 4], k: int32) -> None:
 void drop_from(::tpystd::tplib::array_list::ArrayList<int32_t, 4>& al, int32_t k) {
     // al.remove(k)  # tpyc: ok -- the library generic record's T slot
     al.remove(k);
 }
 
-// def drop_literal(al: ArrayList[Int32, 4]) -> None:
+// def drop_literal(al: ArrayList[int32, 4]) -> None:
 void drop_literal(::tpystd::tplib::array_list::ArrayList<int32_t, 4>& al) {
     // al.remove(3)  # tpyc: ok
     al.remove(3);
 }
 
-// def drop_from_record(box: Labels[Int32, 4], k: Int32) -> None:
+// def drop_from_record(box: Labels[int32, 4], k: int32) -> None:
 void drop_from_record(Labels<int32_t, 4>& box, int32_t k) {
     // box.drop(k)  # tpyc: ok -- a user generic record's T slot
     box.drop(k);
@@ -80,7 +80,7 @@ bool has_item_str(const std::vector<std::string>& xs, std::string_view v) {
 
 // def main() -> None:
 void main() {
-    // al = ArrayList[Int32, 4]()
+    // al = ArrayList[int32, 4]()
     ::tpystd::tplib::array_list::ArrayList<int32_t, 4> al = ::tpystd::tplib::array_list::ArrayList<int32_t, 4>();
     // al.append(1)
     al.append(1);
@@ -96,7 +96,7 @@ void main() {
     drop_literal(al);
     // print("scalar", len(al), al[0])
     std::cout << "scalar" << " " << ::tpy::__len__(al) << " " << al[0] << "\n";
-    // box = Labels[Int32, 4]()
+    // box = Labels[int32, 4]()
     Labels<int32_t, 4> box = Labels<int32_t, 4>();
     // box.add(7)
     box.add(7);

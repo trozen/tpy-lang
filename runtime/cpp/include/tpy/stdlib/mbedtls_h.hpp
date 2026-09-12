@@ -32,7 +32,7 @@ tpy_tls_session *tpy_tls_new(void);
 void tpy_tls_free(tpy_tls_session *s);
 
 // Configuration (string args are (view ptr, length), not NUL-terminated).
-// Lengths are std::uint64_t to match the TPy UInt64 bindings exactly (the
+// Lengths are std::uint64_t to match the TPy uint64 bindings exactly (the
 // shim defines them size_t -- ABI-identical on every 64-bit target; the
 // linker resolves the extern "C" name, and uint64_t avoids a uint64_t-vs-
 // size_t mismatch on platforms where they are distinct types).

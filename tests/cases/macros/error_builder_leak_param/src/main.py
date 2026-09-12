@@ -1,14 +1,14 @@
 # A tracked builder symbol cannot be passed to an ordinary function --
 # it has no runtime representation and exists only as compile-time state.
-from tpy import Int32
+from tpy import int32
 from _smoke_builder import Config
 
 
-def consume(c: Int32) -> Int32:
+def consume(c: int32) -> int32:
     return c
 
 
-def main() -> Int32:
+def main() -> int32:
     cfg_builder = Config()
     cfg_builder.add("a", "1")
     consume(cfg_builder)  # tpyc: error(/builder-trace symbol 'cfg_builder' may only appear/)

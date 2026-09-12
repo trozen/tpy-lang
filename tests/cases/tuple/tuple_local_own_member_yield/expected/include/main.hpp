@@ -32,14 +32,14 @@ void main();
 
 // class Box:
 struct Box {
-    // val: Int32
+    // val: int32
     int32_t val;
     // # A heap member, so a slot moved out from under a live borrow is observable
     // # (the borrowed read sees the stolen buffer) rather than silently fine.
-    // items: list[Int32]
+    // items: list[int32]
     std::vector<int32_t> items;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Box() = default;
     explicit Box(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
@@ -52,10 +52,10 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 // class Src:
 struct Src {
-    // base: Int32
+    // base: int32
     int32_t base;
 
-    // def __init__(self, base: Int32) -> None:
+    // def __init__(self, base: int32) -> None:
     Src() = default;
     explicit Src(int32_t base);
 
@@ -265,13 +265,13 @@ inline __gen_Src_pairs Src::pairs(int32_t n) const {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Box::Box(int32_t v) : val(v), items(std::vector<int32_t>{v}) {}
 
-// def __init__(self, base: Int32) -> None:
+// def __init__(self, base: int32) -> None:
 inline Src::Src(int32_t base) : base(base) {}
 inline auto gen(int32_t n) {
-    // i = Int32(0)
+    // i = int32(0)
     int32_t i = 0;
     return ::tpy::make_generator<std::tuple<int32_t, Box>>(
         [n, i]() mutable -> std::optional<std::tuple<int32_t, Box>> {
@@ -289,7 +289,7 @@ inline auto gen(int32_t n) {
 }
 
 inline auto gen_call_init_once(int32_t n) {
-    // i = Int32(0)
+    // i = int32(0)
     int32_t i = 0;
     return ::tpy::make_generator<std::tuple<int32_t, Box>>(
         [n, i]() mutable -> std::optional<std::tuple<int32_t, Box>> {

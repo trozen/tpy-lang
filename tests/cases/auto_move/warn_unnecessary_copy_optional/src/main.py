@@ -1,18 +1,18 @@
 # Unnecessary copy() warning should fire for Own[T] | None params too.
-from tpy import Int32, Own, copy
+from tpy import int32, Own, copy
 
 
 class Box:
-    value: Int32
+    value: int32
 
 
-def consume_own(b: Own[Box]) -> Int32:
+def consume_own(b: Own[Box]) -> int32:
     return b.value
 
 
-def consume_optional(b: Own[Box] | None) -> Int32:
+def consume_optional(b: Own[Box] | None) -> int32:
     if b is None:
-        return Int32(-1)
+        return int32(-1)
     return consume_own(b)
 
 

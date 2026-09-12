@@ -4,29 +4,29 @@
 namespace tpyapp::main {
 
 
-// def find(n: Int32) -> Int32 | None:
+// def find(n: int32) -> int32 | None:
 std::optional<int32_t> find(int32_t n) {
     // if n > 0:
     if ((n > 0)) {
         // return n * 2
         return (::tpy::mul_check<int32_t>(n, 2));
     }
-    // def find(n: Int32) -> Int32 | None:
+    // def find(n: int32) -> int32 | None:
     return std::nullopt;
 }
 
-// def pick(n: Int32) -> Own[Point | None]:
+// def pick(n: int32) -> Own[Point | None]:
 std::optional<Point> pick(int32_t n) {
     // if n > 0:
     if ((n > 0)) {
         // return Point(n)
         return Point(n);
     }
-    // def pick(n: Int32) -> Own[Point | None]:
+    // def pick(n: int32) -> Own[Point | None]:
     return std::nullopt;
 }
 
-// def choose(p: Point, t: Tag, flag: Int32) -> Point | Tag | None:
+// def choose(p: Point, t: Tag, flag: int32) -> Point | Tag | None:
 ::tpy::Union<std::monostate, Point*, Tag*> choose(Point& p, Tag& t, int32_t flag) {
     // if flag == 1:
     if ((flag == 1)) {
@@ -38,11 +38,11 @@ std::optional<Point> pick(int32_t n) {
         // return t
         return &(t);
     }
-    // def choose(p: Point, t: Tag, flag: Int32) -> Point | Tag | None:
+    // def choose(p: Point, t: Tag, flag: int32) -> Point | Tag | None:
     return std::monostate{};
 }
 
-// async def afind(n: Int32) -> Int32 | None:
+// async def afind(n: int32) -> int32 | None:
 ::tpystd::tpy::Poll<std::optional<int32_t>> __coro_afind::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -63,7 +63,7 @@ std::optional<Point> pick(int32_t n) {
             std::optional<int32_t> __tpy_async_ret = (::tpy::mul_check<int32_t>(n, 3));
             return ::tpystd::tpy::Poll<std::optional<int32_t>>::ready(std::move(__tpy_async_ret));
         }
-        // async def afind(n: Int32) -> Int32 | None:
+        // async def afind(n: int32) -> int32 | None:
         __state = S_DONE;
         std::optional<int32_t> __tpy_async_ret = std::nullopt;
         return ::tpystd::tpy::Poll<std::optional<int32_t>>::ready(std::move(__tpy_async_ret));
@@ -74,7 +74,7 @@ std::optional<Point> pick(int32_t n) {
 }
 
 
-// async def afind(n: Int32) -> Int32 | None:
+// async def afind(n: int32) -> int32 | None:
 __coro_afind afind(int32_t n) {
     return __coro_afind(n);
 }

@@ -1,4 +1,4 @@
-from tpy import Int32, Own
+from tpy import int32, Own
 def two[T](a: T) -> Own[list[T]]:
     return [a, a]
 def one[T](a: Own[T]) -> Own[list[T]]:

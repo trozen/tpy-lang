@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def apply(f: Callable[[Int32], Int32], v: Int32) -> Int32:
+// def apply(f: Callable[[int32], int32], v: int32) -> int32:
 int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t v) {
     // return f(v)
     return f(v);
 }
 
-// def push(ys: list[Int32], v: Int32) -> Int32:
+// def push(ys: list[int32], v: int32) -> int32:
 int32_t push(std::vector<int32_t>& ys, int32_t v) {
     // ys.append(v)
     ys.push_back(v);
@@ -18,7 +18,7 @@ int32_t push(std::vector<int32_t>& ys, int32_t v) {
     return ::tpy::__len__(ys);
 }
 
-// def two_yield(n: Int32) -> Iterator[Int32]:
+// def two_yield(n: int32) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_two_yield::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -41,12 +41,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_two_yield::__next__() {
 }
 
 
-// def two_yield(n: Int32) -> Iterator[Int32]:
+// def two_yield(n: int32) -> Iterator[int32]:
 __gen_two_yield two_yield(int32_t n) {
     return __gen_two_yield(n);
 }
 
-// def store(n: Int32, r: Registry) -> Iterator[Int32]:
+// def store(n: int32, r: Registry) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_store::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -71,18 +71,18 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_store::__next__() {
 }
 
 
-// def store(n: Int32, r: Registry) -> Iterator[Int32]:
+// def store(n: int32, r: Registry) -> Iterator[int32]:
 __gen_store store(int32_t n, Registry& r) {
     return __gen_store(n, r);
 }
 
-// def cell() -> Iterator[Int32]:
+// def cell() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_cell::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         // step = 1
         step = 1;
-        // f: Callable[[Int32], Int32] = lambda x: x + step  # tpyc: warning(/reassigned after the closure is created/)
+        // f: Callable[[int32], int32] = lambda x: x + step  # tpyc: warning(/reassigned after the closure is created/)
         f = [step = step](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, step)); };
         // yield apply(f, 1)
         __state = S_RESUME_0;
@@ -105,12 +105,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_cell::__next__() {
 }
 
 
-// def cell() -> Iterator[Int32]:
+// def cell() -> Iterator[int32]:
 __gen_cell cell() {
     return __gen_cell();
 }
 
-// def ref_capture(xs: list[Int32]) -> Iterator[Int32]:
+// def ref_capture(xs: list[int32]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_ref_capture::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -133,12 +133,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_ref_capture::__next__() {
 }
 
 
-// def ref_capture(xs: list[Int32]) -> Iterator[Int32]:
+// def ref_capture(xs: list[int32]) -> Iterator[int32]:
 __gen_ref_capture ref_capture(std::vector<int32_t>& xs) {
     return __gen_ref_capture(xs);
 }
 
-// def own_capture(p: Own[Pt]) -> Iterator[Int32]:
+// def own_capture(p: Own[Pt]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_own_capture::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -161,7 +161,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_own_capture::__next__() {
 }
 
 
-// def own_capture(p: Own[Pt]) -> Iterator[Int32]:
+// def own_capture(p: Own[Pt]) -> Iterator[int32]:
 __gen_own_capture own_capture(Pt p) {
     return __gen_own_capture(std::move(p));
 }
@@ -265,7 +265,7 @@ void main() {
     }
 }
 
-// def emit(self) -> Iterator[Int32]:
+// def emit(self) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_D_emit::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {

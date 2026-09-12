@@ -24,7 +24,7 @@ void branch_rvalue_independent(bool cond) {
     }
 }
 
-// def branch_rvalue_three_way(flag: Int32) -> None:
+// def branch_rvalue_three_way(flag: int32) -> None:
 void branch_rvalue_three_way(int32_t flag) {
     std::optional<Point> __slot_1;
     // # Three-way: each elif/else branch has its own independent local

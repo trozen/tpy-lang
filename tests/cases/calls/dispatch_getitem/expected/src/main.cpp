@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // # readonly receiver: the const operator serves both index types
-// def read_store(s: readonly[Store[Int32]]) -> None:
+// def read_store(s: readonly[Store[int32]]) -> None:
 void read_store(const Store<int32_t>& s) {
     // first = s[0]
     int32_t first = s[0];
@@ -34,7 +34,7 @@ void main() {
     ::tpy::__getitem__(win, 0).v = 20;
     // print("mutable:", s[0].v, s[1].v, s[2].v)
     std::cout << "mutable:" << " " << s[0].v << " " << s[1].v << " " << s[2].v << "\n";
-    // n = Store[Int32]()
+    // n = Store[int32]()
     Store<int32_t> n = Store<int32_t>();
     // n.add(7)
     n.add(7);

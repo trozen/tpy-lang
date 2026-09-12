@@ -5,13 +5,13 @@
 namespace tpyapp::b {
 
 
-// def b_func() -> Int32:
+// def b_func() -> int32:
 int32_t b_func() {
     // return boost(7)
     return ::tpyapp::util::boost(7);
 }
 
-// def b_helper() -> Int32:
+// def b_helper() -> int32:
 int32_t b_helper() {
     // return 3
     return 3;
@@ -21,7 +21,7 @@ int32_t b_helper() {
 // # function, which in turn calls b_helper above. Without this, the
 // # `from a import a_func` line above would be a dead import and the
 // # cycle would be registered solely on the import-statement edge.
-// def b_func_via_a() -> Int32:
+// def b_func_via_a() -> int32:
 int32_t b_func_via_a() {
     // return a_func()
     return ::tpyapp::a::a_func();

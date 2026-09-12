@@ -1,11 +1,11 @@
 # del of a nonlocal inside a closure is rejected when an enclosing finally-
 # deferred return borrows the name (the closure could free the storage the
 # pending return materializes from).
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Box:
-    n: Int32
+    n: int32
 
     def __init__(self) -> None:
         self.n = 10

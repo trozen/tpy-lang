@@ -77,21 +77,21 @@ the frozen fields.
 
 - **Constructor params are `int` (BigInt)**, matching CPython's signature.
   This is required, not stylistic: `timedelta` legitimately accepts
-  components far beyond Int32 (`timedelta(seconds=10**10)`,
+  components far beyond int32 (`timedelta(seconds=10**10)`,
   `timedelta(microseconds=10**18)` are valid, normalizing into days), and
   the normalization intermediate (`days * 86400 * 10**6` for days near the
-  10**9 legal max) exceeds Int64. CPython's own pure-Python `datetime.py`
+  10**9 legal max) exceeds int64. CPython's own pure-Python `datetime.py`
   normalizes with arbitrary-precision `int` for exactly this reason; we port
   that.
-- **Field storage is narrow and private, behind Int32-widening
+- **Field storage is narrow and private, behind int32-widening
   `@property` getters** (since the v3 packing pass): `date` stores
-  `Int16/Int8/Int8` (4 bytes), `time` `Int8 x3 + Int32` (8),
-  `datetime` adds the inline tz block -- offset `Int64` + interned
-  name id `Int32` + aware flag -- for 24 bytes total, all trivially
-  copyable. Public attribute types are unchanged (`d.year` is Int32 via
+  `int16/int8/int8` (4 bytes), `time` `int8 x3 + int32` (8),
+  `datetime` adds the inline tz block -- offset `int64` + interned
+  name id `int32` + aware flag -- for 24 bytes total, all trivially
+  copyable. Public attribute types are unchanged (`d.year` is int32 via
   the getter), so user arithmetic never touches the narrow storage and
   the sub-default-int promotion question stays orthogonal. `timezone`
-  is a 16-byte `(offset Int64, name id Int32)` mirror of datetime's tz
+  is a 16-byte `(offset int64, name id int32)` mirror of datetime's tz
   block; names live in a process-global append-only intern table
   (`tpy/stdlib/tz_intern.hpp`, mutex-guarded, id 0 = unnamed --
   distinct from an interned empty string), touched only on
@@ -102,12 +102,12 @@ the frozen fields.
   (year 1..9999, month 1..12, hour 0..23, ...); `timedelta` stores the
   normalized triple `(days, seconds, microseconds)` with
   `days in [-999999999, 999999999]`, `seconds in [0, 86399]`,
-  `microseconds in [0, 999999]` -- all Int32-sized, matching CPython's
+  `microseconds in [0, 999999]` -- all int32-sized, matching CPython's
   attributes exactly.
 - **Validate-and-normalize in BigInt, before the store.** The constructor
   checks ranges (and normalizes `timedelta`) while values are still BigInt,
-  raising the appropriate exception, *then* assigns to the Int32 fields.
-  Because validation bounds the value first, the implicit BigInt->Int32
+  raising the appropriate exception, *then* assigns to the int32 fields.
+  Because validation bounds the value first, the implicit BigInt->int32
   narrowing can never hit its overflow panic.
 
 ## Errors
@@ -215,7 +215,7 @@ kinds** stored inside a single `datetime`, never an open subclassable base.
   closed value union `timezone | ZoneInfo | None`
   (`std::variant<std::monostate, ZoneInfo, timezone>` at params/returns;
   the packed datetime keeps scalars: a kind tag naive/fixed/zoneinfo +
-  fold packed in one Int8, with `_tz_name_id` doubling as the zone id).
+  fold packed in one int8, with `_tz_name_id` doubling as the zone id).
   `ZoneInfo` is one interned zone id (the provider pins the zone handle
   process-globally), equal-by-key -- behaviorally CPython's per-key
   instance cache; the divergence only becomes reachable if `no_cache()`
@@ -290,7 +290,7 @@ TPy cannot do is read the OS's local UTC offset and the IANA zone rules.
 
 `isoformat`, `str`, `repr`, and (v3) `strftime`/`strptime`/`fromisoformat`
 are implemented in TPy for exact CPython parity, not delegated to C
-`strftime` (locale-sensitive and divergent). Int32 fields support format
+`strftime` (locale-sensitive and divergent). int32 fields support format
 specs, so `isoformat` is `f"{self.year:04d}-{self.month:02d}-{self.day:02d}"`
 etc. `repr` is hand-written to match CPython exactly -- module-qualified and
 zero-omitting where CPython omits:
@@ -349,7 +349,7 @@ rounded in the runtime; it now matches CPython for all magnitudes.)
   ordering and subtraction raise `TypeError`, `==` is `False`, matching
   CPython exactly. (Supersedes the earlier compile-time-rejection note.)
 - **Extreme-arg construction** raises the correct catchable exception because
-  we validate on BigInt before the Int32 store (no divergence -- noted here
+  we validate on BigInt before the int32 store (no divergence -- noted here
   because the naive store-then-check ordering *would* have panicked).
 - **A bare POSIX std/dst `TZ` pair without a rule suffix**
   (`TZ=EST5EDT`, no `,M3.2.0,...`) yields a constant permanent-DST
@@ -395,7 +395,7 @@ differs): an out-of-range `fromtimestamp()`/`utcfromtimestamp()` raises
 64-bit time_t, and **OverflowError** ("timestamp out of range") beyond it --
 unlike ordinal overflow in `date`/`datetime` +/- `timedelta`, which raises
 OverflowError in both CPython and TPy. Both checks run BEFORE the local
-offset is applied (and before the Int64 narrowing at the native boundary,
+offset is applied (and before the int64 narrowing at the native boundary,
 which would otherwise panic): CPython rejects an out-of-range UTC instant
 even when the historical LMT offset would shift it into year 1. Known
 non-emulated nuance: glibc's `localtime` fails with OSError in an

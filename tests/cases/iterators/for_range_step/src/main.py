@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 
 # range(stop) - basic
 for i in range(5):
@@ -16,9 +16,9 @@ for i in range(0, 10, 2):
 for i in range(10, 0, -2):
     print(i)
 
-# range with Int32 variables
-def sum_range_step(start: Int32, stop: Int32, step: Int32) -> Int32:
-    total: Int32 = 0
+# range with int32 variables
+def sum_range_step(start: int32, stop: int32, step: int32) -> int32:
+    total: int32 = 0
     for i in range(start, stop, step):
         total += i
     return total

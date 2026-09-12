@@ -1,11 +1,11 @@
-from tpy import Int32
+from tpy import int32
 class Rec:
-    n: Int32
-    def __init__(self, n: Int32) -> None:
+    n: int32
+    def __init__(self, n: int32) -> None:
         self.n = n
-def make(b: Rec) -> tuple[Int32, Rec]:
+def make(b: Rec) -> tuple[int32, Rec]:
     return (1, b)
-def f(b: Rec) -> Int32:
+def f(b: Rec) -> int32:
     return make(b)[0]
 def main() -> None:
     print(f(Rec(1)))

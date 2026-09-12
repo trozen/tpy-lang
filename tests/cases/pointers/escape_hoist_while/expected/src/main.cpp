@@ -10,7 +10,7 @@ void while_escape() {
     // saved: Point = Point(0, 0)
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < 3:
     while ((i < 3)) {

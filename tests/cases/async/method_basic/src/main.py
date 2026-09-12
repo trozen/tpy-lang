@@ -2,16 +2,16 @@
 # thin returner of the coro struct (__coro_<Class>_<method>); self is
 # captured as the first ctor arg on the struct.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
 class Adder:
-    base: Int32
+    base: int32
 
-    def __init__(self, b: Int32) -> None:
+    def __init__(self, b: int32) -> None:
         self.base = b
 
-    async def add(self, x: Int32) -> Int32:
+    async def add(self, x: int32) -> int32:
         return self.base + x
 
 

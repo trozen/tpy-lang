@@ -1,6 +1,6 @@
 # Test importing only the alias (not member types) from another module.
 # Member record types (Circle, Rect) should be implicitly imported for codegen.
-from tpy import Int32
+from tpy import int32
 from shapes import Shape
 
 

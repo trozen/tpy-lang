@@ -1,12 +1,12 @@
 # A reference-type value read from a readonly dict stays readonly, so passing
 # it where a mutable is required is rejected (readonly is not over-unwrapped).
-from tpy import readonly, Int32
+from tpy import readonly, int32
 
 
 class Box:
-    val: Int32
+    val: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 

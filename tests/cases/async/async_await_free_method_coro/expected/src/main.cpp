@@ -70,7 +70,7 @@ void main() {
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
-// async def fetch(self) -> Int32:
+// async def fetch(self) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_Svc_fetch::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {

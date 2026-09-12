@@ -1,6 +1,6 @@
 import asyncio
-from tpy import Int32
-async def f(n: Int32) -> Int32:
+from tpy import int32
+async def f(n: int32) -> int32:
     try:
         await asyncio.sleep(0)
     finally:

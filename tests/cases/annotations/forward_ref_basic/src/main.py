@@ -1,10 +1,10 @@
 # PEP 484 forward-ref string annotations: `-> "ClassName"` and param "ClassName"
 # resolve after the class is defined later in the same module.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 def make() -> Own["Container"]:
-    return Container(Int32(42))
+    return Container(int32(42))
 
 
 def show(c: "Container") -> None:
@@ -12,9 +12,9 @@ def show(c: "Container") -> None:
 
 
 class Container:
-    value: Int32
+    value: int32
 
-    def __init__(self, value: Int32) -> None:
+    def __init__(self, value: int32) -> None:
         self.value = value
 
     def clone(self) -> Own["Container"]:

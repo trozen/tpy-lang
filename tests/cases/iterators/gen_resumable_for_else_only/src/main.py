@@ -4,10 +4,10 @@
 # raises "no registered uid" and the generator falls back to legacy. break
 # still skips the else.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
-def gen(xs: list[Int32], brk: Int32) -> Iterator[Int32]:
+def gen(xs: list[int32], brk: int32) -> Iterator[int32]:
     yield 0
     for x in xs:
         if x == brk:

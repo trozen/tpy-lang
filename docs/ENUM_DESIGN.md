@@ -137,12 +137,12 @@ c: Color = Color.Red        # attribute access on the enum type
 ```python
 c = Color.Red
 print(c.name)      # "Red"   -- StrView
-print(c.value)     # 0       -- Int32 (underlying type)
+print(c.value)     # 0       -- int32 (underlying type)
 ```
 
 `.name` returns a `StrView` -- a view into the enum's static member-name
 storage (safe to hold indefinitely); owned-`str` sinks copy it implicitly.
-`.value` returns the underlying integer type (default `Int32`).
+`.value` returns the underlying integer type (default `int32`).
 
 ### Printing
 
@@ -213,8 +213,8 @@ def default_color() -> Color:
 ```python
 class Pixel:
     color: Color
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 ```
 
 ### Optional
@@ -256,7 +256,7 @@ Note: `member_values` uses `tuple[tuple[str, int], ...]` (not `dict`) because
 `TpyType` is `frozen=True` and dicts are not hashable. A helper property
 `member_value_map` can provide dict-like lookup when needed.
 
-`EnumType` is a value type. It participates in the type system like `Int32` or
+`EnumType` is a value type. It participates in the type system like `int32` or
 `bool` -- passed by value, copyable, comparable with `==`.
 
 `Optional[Color]` correctly uses `std::optional<Color>` (not pointer repr)
@@ -387,7 +387,7 @@ When the target expression has an `EnumType` (i.e., an enum value, not the
 enum type itself):
 
 - `.name` -> result type is `str`
-- `.value` -> result type is the enum's underlying type (default `Int32`)
+- `.value` -> result type is the enum's underlying type (default `int32`)
 
 These are also special-cased in the expression analyzer -- not synthesized
 methods on a `RecordInfo`. Other attribute access on enum values is an error.
@@ -539,9 +539,9 @@ print(Priority.Low)            # Priority.Low (CPython: "Priority.Low")
 Custom underlying types use the same mixin syntax:
 
 ```python
-from tpy import Int8
+from tpy import int8
 
-class SmallColor(Int8, Enum):
+class SmallColor(int8, Enum):
     Red = 0
     Green = 1
 ```
@@ -549,7 +549,7 @@ class SmallColor(Int8, Enum):
 This is CPython-compatible -- `class Foo(int, Enum)` and `class Foo(IntEnum)`
 both work in CPython today.
 
-**Note**: `IntEnum` (and `int, Enum`) defaults to `Int32` as the underlying type,
+**Note**: `IntEnum` (and `int, Enum`) defaults to `int32` as the underlying type,
 not `BigInt`. This differs from TurboPython's `int` type elsewhere (which is `BigInt`),
 but makes sense because `enum class` requires a fixed-width C++ type.
 
@@ -611,7 +611,7 @@ c = Color(0)    # Color.Red
 c = Color(99)   # panic: invalid enum value (ValueError once exceptions land)
 ```
 
-Matches CPython syntax. Accepts both fixed-width types (`Int32`, `Int8`, etc.)
+Matches CPython syntax. Accepts both fixed-width types (`int32`, `int8`, etc.)
 and `int` (BigInt -- coerced via `.to_fixed_check<underlying>()`). Panics on
 invalid value for now -- once exception handling is implemented, this becomes a
 proper `ValueError`.
@@ -783,7 +783,7 @@ Implementation considerations:
   the member range (e.g., `min_value - 1` or `max_value + 1`, clamped to the
   underlying type's range)
 - Falls back to `std::optional` if all underlying values are used (unlikely
-  for typical enums with <100 members on Int32)
+  for typical enums with <100 members on int32)
 
 ---
 

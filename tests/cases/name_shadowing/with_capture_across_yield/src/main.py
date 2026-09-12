@@ -4,11 +4,11 @@
 # wrong value. The name deliberately does NOT collide with any class.
 from typing import Iterator
 
-from tpy import Int32
+from tpy import int32
 
 
 class Counter:
-    def __init__(self, start: Int32):
+    def __init__(self, start: int32):
         self.n = start
 
     def __enter__(self) -> "Counter":
@@ -18,7 +18,7 @@ class Counter:
         pass
 
 
-def steps(limit: Int32) -> Iterator[Int32]:
+def steps(limit: int32) -> Iterator[int32]:
     c = Counter(limit)
     with c as guard:
         yield guard.n

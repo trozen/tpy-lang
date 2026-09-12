@@ -1,6 +1,6 @@
 # Arc[T] / Weak[T] -- atomic-refcount shared-ownership smart pointer with a
 # non-owning companion. The thread-safe sibling of Rc (tplib/rc.py): identical
-# shape, but the strong/weak counters are `Atomic[UInt32]` so handles can cross
+# shape, but the strong/weak counters are `Atomic[uint32]` so handles can cross
 # threads.
 #
 # KEEP IN SYNC WITH tplib/rc.py: the Arc/Weak handle classes and their dunders
@@ -25,7 +25,7 @@
 # std::sync::Weak vs std::rc::Weak in Rust.
 from __future__ import annotations
 from typing import Protocol
-from tpy import Own, Ptr, UInt32, UInt64, Deref, Covariant, Equatable, Comparable, Hashable, dynamic, nocopy, auto_readonly, unsafe_interior_mutable, unsafe_send, unsafe_sync
+from tpy import Own, Ptr, uint32, uint64, Deref, Covariant, Equatable, Comparable, Hashable, dynamic, nocopy, auto_readonly, unsafe_interior_mutable, unsafe_send, unsafe_sync
 from tpy.mem import UninitStorage
 from tpy.atomic import Atomic, MemoryOrder, fence
 from tpy.unsafe import unsafe_take, unsafe_release
@@ -44,8 +44,8 @@ class _ArcCellBase(Protocol):
 
 @nocopy
 class _ArcCell[U](_ArcCellBase):
-    strong: Atomic[UInt32]
-    weak: Atomic[UInt32]
+    strong: Atomic[uint32]
+    weak: Atomic[uint32]
     # A single owning slot: tracks its own liveness and moves correctly, so a
     # cell over a payload with SSO-`str`/non-relocatable fields survives the
     # one move into heap storage at `new_` (the payload is constructed in
@@ -53,8 +53,8 @@ class _ArcCell[U](_ArcCellBase):
     storage: UninitStorage[U]
 
     def __init__(self) -> None:
-        self.strong = Atomic[UInt32](1)
-        self.weak = Atomic[UInt32](1)
+        self.strong = Atomic[uint32](1)
+        self.weak = Atomic[uint32](1)
         self.storage = UninitStorage[U]()
 
     def incr_strong(self) -> None:
@@ -171,7 +171,7 @@ class Arc[T](Deref[T], Covariant[T]):
     def __ge__[T: Comparable](self, other: Arc[T]) -> bool:
         return not self.get() < other.get()
 
-    def __hash__[T: Hashable](self) -> UInt64:
+    def __hash__[T: Hashable](self) -> uint64:
         return hash(self.get())
 
 

@@ -1,14 +1,14 @@
-from tpy import Int32, Own, Char
+from tpy import int32, Own, char
 class Dog:
-    n: Int32
-    def __init__(self, n: Int32) -> None:
+    n: int32
+    def __init__(self, n: int32) -> None:
         self.n = n
 class Cat:
-    m: Int32
-    def __init__(self, m: Int32) -> None:
+    m: int32
+    def __init__(self, m: int32) -> None:
         self.m = m
 type DC = Dog | Cat
-def f(x: DC, y: DC) -> Int32:
+def f(x: DC, y: DC) -> int32:
     if isinstance(x, Dog) and isinstance(y, Cat):
         return x.n + y.m
     else:

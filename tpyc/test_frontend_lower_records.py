@@ -19,9 +19,9 @@ def _by_name(module, name: str):
 
 def test_record_base_threads_into_bases():
     base = Record(name="Base", fields=(
-        Field(name="Id", type=NamedType(name="Int32")),))
+        Field(name="Id", type=NamedType(name="int32")),))
     derived = Record(name="Derived", base=NamedType(name="Base"), fields=(
-        Field(name="Extra", type=NamedType(name="Int32")),))
+        Field(name="Extra", type=NamedType(name="int32")),))
     res = _lower_records(base, derived)
     assert res.module is not None
     d = _by_name(res.module, "Derived")
@@ -31,7 +31,7 @@ def test_record_base_threads_into_bases():
 
 def test_record_without_base_has_no_bases():
     res = _lower_records(Record(name="Plain", fields=(
-        Field(name="X", type=NamedType(name="Int32")),)))
+        Field(name="X", type=NamedType(name="int32")),)))
     assert res.module is not None
     assert _by_name(res.module, "Plain").bases == []
 
@@ -41,7 +41,7 @@ def test_record_with_unlowerable_base_emits_diag():
     # None, None), aborting the lowering with an IR-invalid diagnostic -- the
     # failure surfaces rather than being swallowed into an empty `bases`.
     bad = Record(name="Bad", base=NamedType(name="Base", args=(object(),)),
-                 fields=(Field(name="X", type=NamedType(name="Int32")),))
+                 fields=(Field(name="X", type=NamedType(name="int32")),))
     res = _lower_records(bad)
     assert res.module is None
     assert res.diagnostics

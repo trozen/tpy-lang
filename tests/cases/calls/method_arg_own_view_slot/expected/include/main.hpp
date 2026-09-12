@@ -15,7 +15,7 @@ void main();
 
 // class Bag:
 struct Bag {
-    // n: Int32
+    // n: int32
     int32_t n;
 
     // def __init__(self) -> None:

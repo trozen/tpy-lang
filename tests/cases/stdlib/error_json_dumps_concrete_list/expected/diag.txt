@@ -1,1 +1,1 @@
-main.py:9: error: Type mismatch in argument 'obj': a concrete container (list[Int32]) is not implicitly converted into the recursive-union type JsonValue (it would be a hidden element-wise deep copy). Build it as the alias directly (`x: JsonValue = {...}`) or pass a container literal.
+main.py:9: error: Type mismatch in argument 'obj': a concrete container (list[int32]) is not implicitly converted into the recursive-union type JsonValue (it would be a hidden element-wise deep copy). Build it as the alias directly (`x: JsonValue = {...}`) or pass a container literal.

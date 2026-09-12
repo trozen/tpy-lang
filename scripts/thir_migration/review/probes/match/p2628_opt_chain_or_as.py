@@ -1,7 +1,7 @@
 from typing import Optional
-from tpy import Int32
+from tpy import int32
 
-def f(o: Optional[Int32]) -> str:
+def f(o: Optional[int32]) -> str:
     match o:
         case 1 | 2 as x:
             return str(x)

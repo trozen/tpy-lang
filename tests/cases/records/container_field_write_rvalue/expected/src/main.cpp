@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def mk_arr() -> Own[Array[Int32, 4]]:
+// def mk_arr() -> Own[Array[int32, 4]]:
 std::array<int32_t, 4> mk_arr() {
     // return [7, 7, 7, 7]
     return {7, 7, 7, 7};
@@ -16,7 +16,7 @@ std::array<int32_t, 4> mk_arr() {
     return ::tpy::ByteArray(::tpy::bytes_literal("xy", 2));
 }
 
-// def borrow_arr(x: Array[Int32, 4]) -> Array[Int32, 4]:
+// def borrow_arr(x: Array[int32, 4]) -> Array[int32, 4]:
 std::array<int32_t, 4>& borrow_arr(std::array<int32_t, 4>& x) {
     // return x
     return x;
@@ -44,7 +44,7 @@ void main() {
     b.repeat();
     // print(b.a[0])
     std::cout << ::tpy::__getitem__(b.a, 0) << "\n";
-    // q: Array[Int32, 4] = [5, 5, 5, 5]
+    // q: Array[int32, 4] = [5, 5, 5, 5]
     std::array<int32_t, 4> q = {5, 5, 5, 5};
     // b.alias(q)
     b.alias(q);

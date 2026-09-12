@@ -1,18 +1,18 @@
 # @error_return decorator: function returns error via std::expected, caller uses try/except
-from tpy import Int32, error_return, ReturnException
+from tpy import int32, error_return, ReturnException
 
 class NotFound(Exception, ReturnException):
     pass
 
 @error_return(NotFound)
-def find_index(items: list[Int32], target: Int32) -> Int32:
+def find_index(items: list[int32], target: int32) -> int32:
     for i in range(len(items)):
         if items[i] == target:
             return i
     raise NotFound
 
 def main() -> None:
-    items: list[Int32] = [10, 20, 30, 40]
+    items: list[int32] = [10, 20, 30, 40]
 
     # Success case
     try:

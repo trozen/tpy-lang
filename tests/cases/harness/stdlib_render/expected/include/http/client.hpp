@@ -86,11 +86,11 @@ struct HTTPResponse {
     ::tpystd::io::BufferedReader _fp;
     // _method: str
     std::string _method;
-    // status: Int32
+    // status: int32
     int32_t status;
     // reason: str
     std::string reason;
-    // version: Int32
+    // version: int32
     int32_t version;
     // _headers: list[tuple[str, str]]
     std::vector<std::tuple<std::string, std::string>> _headers;
@@ -131,10 +131,10 @@ struct HTTPResponse {
     // def _check_close(self) -> bool:
     bool _check_close() const;
 
-    // def read(self, amt: Int32 = -1) -> bytes:
+    // def read(self, amt: int32 = -1) -> bytes:
     ::tpy::Bytes read(int32_t amt = -1);
 
-    // def _read_chunked(self, amt: Int32) -> bytes:
+    // def _read_chunked(self, amt: int32) -> bytes:
     ::tpy::Bytes _read_chunked(int32_t amt);
 
     // def _next_chunk(self) -> bool:
@@ -169,7 +169,7 @@ inline std::ostream& operator<<(std::ostream& os, const HTTPResponse& obj) {
 struct HTTPConnection : _Connection {
     // host: str
     std::string host;
-    // port: Int32
+    // port: int32
     int32_t port;
     // timeout: float | None
     std::optional<double> timeout;
@@ -178,7 +178,7 @@ struct HTTPConnection : _Connection {
     // _method: str
     std::string _method;
 
-    // def __init__(self, host: str, port: Int32 = HTTP_PORT,
+    // def __init__(self, host: str, port: int32 = HTTP_PORT,
     // timeout: float | None = None) -> None:
     HTTPConnection() = default;
     explicit HTTPConnection(std::string_view host, int32_t port = HTTP_PORT, std::optional<double> timeout = std::nullopt);
@@ -212,7 +212,7 @@ inline std::ostream& operator<<(std::ostream& os, const HTTPConnection& obj) {
 struct HTTPSConnection : _Connection {
     // host: str
     std::string host;
-    // port: Int32
+    // port: int32
     int32_t port;
     // timeout: float | None
     std::optional<double> timeout;
@@ -223,7 +223,7 @@ struct HTTPSConnection : _Connection {
     // _method: str
     std::string _method;
 
-    // def __init__(self, host: str, port: Int32 = HTTPS_PORT,
+    // def __init__(self, host: str, port: int32 = HTTPS_PORT,
     // timeout: float | None = None,
     // context: ssl.SSLContext | None = None) -> None:
     explicit HTTPSConnection(std::string_view host, int32_t port = HTTPS_PORT, std::optional<double> timeout = std::nullopt, const ::tpystd::ssl::SSLContext* context = nullptr);
@@ -423,7 +423,7 @@ inline void HTTPResponse::__exit__(std::monostate exc_type, const ::tpy::BaseExc
     this->close();
 }
 
-// def __init__(self, host: str, port: Int32 = HTTP_PORT,
+// def __init__(self, host: str, port: int32 = HTTP_PORT,
 // timeout: float | None = None) -> None:
 inline HTTPConnection::HTTPConnection(std::string_view host, int32_t port, std::optional<double> timeout) : host(host), port(port), timeout(timeout), sock(std::nullopt), _method("") {}
 
@@ -482,7 +482,7 @@ inline void HTTPConnection::close() {
     }
 }
 
-// def __init__(self, host: str, port: Int32 = HTTPS_PORT,
+// def __init__(self, host: str, port: int32 = HTTPS_PORT,
 // timeout: float | None = None,
 // context: ssl.SSLContext | None = None) -> None:
 inline HTTPSConnection::HTTPSConnection(std::string_view host, int32_t port, std::optional<double> timeout, const ::tpystd::ssl::SSLContext* context) : host(host), port(port), timeout(timeout), _context((((context != nullptr)) ? (::tpystd::ssl::SSLContext((*context))) : (::tpystd::ssl::create_default_context()))), _tls(std::nullopt), _method("") {}

@@ -22,12 +22,12 @@ void main();
 
 // class Item:
 struct Item {
-    // key: Int32
+    // key: int32
     int32_t key;
-    // tag: Int32
+    // tag: int32
     int32_t tag;
 
-    // def __init__(self, key: Int32, tag: Int32) -> None:
+    // def __init__(self, key: int32, tag: int32) -> None:
     Item() = default;
     explicit Item(int32_t key, int32_t tag);
 
@@ -114,7 +114,7 @@ __gen_each_twice<T> each_twice(std::vector<T>& xs) {
 }
 
 
-// def __init__(self, key: Int32, tag: Int32) -> None:
+// def __init__(self, key: int32, tag: int32) -> None:
 inline Item::Item(int32_t key, int32_t tag) : key(key), tag(tag) {}
 
 // def __lt__(self, other: 'Item') -> bool:
@@ -139,10 +139,10 @@ inline auto each(std::vector<T>& xs) {
 
 // # A user sink typed Iterable[Own[T]] fed an Iterator[Own[T]] -- the same
 // # conformance path as list(), beyond the builtin.
-// def total(xs: Iterable[Own[Int32]]) -> Int32:
+// def total(xs: Iterable[Own[int32]]) -> int32:
 template<::tpystd::typing::Iterable<int32_t> T_xs>
 int32_t total(T_xs&& xs) {
-    // s: Int32 = 0
+    // s: int32 = 0
     int32_t s = 0;
     // for x in xs:
     auto& __src_0 = xs;

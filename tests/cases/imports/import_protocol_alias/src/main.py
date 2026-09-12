@@ -1,7 +1,7 @@
 # User-defined Protocol imported under an alias (`from X import P as Q`)
 # flows through sema's `register_protocol(info, local_name)` at
 # analyzer.py:2054 and the codegen concept path looks it up by the alias.
-from tpy import Int32
+from tpy import int32
 from traits import Printable as P
 
 
@@ -19,10 +19,10 @@ def show(p: P) -> None:
     print(p.to_string())
 
 
-def main() -> Int32:
+def main() -> int32:
     m = Message("Hello")
     show(m)
-    return Int32(0)
+    return int32(0)
 
 
 main()

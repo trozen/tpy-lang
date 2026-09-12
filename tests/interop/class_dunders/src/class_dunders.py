@@ -10,13 +10,13 @@
 # which specific comparison dunder populated tp_richcompare, so it nulls the
 # hash whenever richcompare is populated at all -- see ext_checks.py).
 from __future__ import annotations
-from tpy import Int64, UInt64
+from tpy import int64, uint64
 from tpy.extern import export
 
 
 @export
 class Vec2:
-    def __init__(self, x: Int64, y: Int64):
+    def __init__(self, x: int64, y: int64):
         self.x = x
         self.y = y
 
@@ -29,13 +29,13 @@ class Vec2:
     def __lt__(self, other: Vec2) -> bool:
         return self.x < other.x or (self.x == other.x and self.y < other.y)
 
-    def __hash__(self) -> UInt64:
-        return UInt64(self.x * 31 + self.y)
+    def __hash__(self) -> uint64:
+        return uint64(self.x * 31 + self.y)
 
 
 @export
 class Frac:
-    def __init__(self, num: Int64, den: Int64):
+    def __init__(self, num: int64, den: int64):
         self.num = num
         self.den = den
 
@@ -45,7 +45,7 @@ class Frac:
 
 @export
 class Ordered:
-    def __init__(self, rank: Int64):
+    def __init__(self, rank: int64):
         self.rank = rank
 
     def __lt__(self, other: Ordered) -> bool:

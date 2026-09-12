@@ -4,7 +4,7 @@
 # usual). This test confirms the import is accepted and does not perturb
 # parsing of the surrounding annotations.
 from __future__ import annotations
-from tpy import Int32
+from tpy import int32
 
 
 class Apple:
@@ -17,7 +17,7 @@ class Banana:
         pass
 
 
-def first(items: list[Int32]) -> Int32:
+def first(items: list[int32]) -> int32:
     return items[0]
 
 
@@ -29,7 +29,7 @@ def take(f: Apple | Banana) -> None:
 
 
 def main() -> None:
-    print(first([Int32(11), Int32(12), Int32(13)]))
+    print(first([int32(11), int32(12), int32(13)]))
     take(Apple())
     take(Banana())
 

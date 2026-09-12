@@ -45,7 +45,7 @@ struct _Environ {
     // def __contains__(self, key: str) -> bool:
     bool __contains__(std::string_view key) const;
 
-    // def __len__(self) -> Int32:
+    // def __len__(self) -> int32:
     int32_t __len__() const;
 
     // def __iter__(self) -> Iterator[str]:
@@ -160,7 +160,7 @@ inline bool _Environ::__contains__(std::string_view key) const {
     return std::ranges::contains(this->_data, key);
 }
 
-// def __len__(self) -> Int32:
+// def __len__(self) -> int32:
 inline int32_t _Environ::__len__() const {
     // return len(self._data)
     return ::tpy::__len__(this->_data);

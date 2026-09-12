@@ -3,17 +3,17 @@
 
 namespace tpyapp::main {
 
-// # Exactly Int32 min -- should stay Int32
+// # Exactly int32 min -- should stay int32
 // a = -2147483648
 int32_t a{};
-// # One below Int32 min -- should promote to BigInt with warning
-// b = -2147483649  # tpyc: warning(/outside default Int32 range/)
+// # One below int32 min -- should promote to BigInt with warning
+// b = -2147483649  # tpyc: warning(/outside default int32 range/)
 ::tpy::BigInt b;
-// # Exactly Int32 max -- should stay Int32
+// # Exactly int32 max -- should stay int32
 // c = 2147483647
 int32_t c{};
-// # One above Int32 max -- should promote to BigInt with warning
-// d = 2147483648  # tpyc: warning(/outside default Int32 range/)
+// # One above int32 max -- should promote to BigInt with warning
+// d = 2147483648  # tpyc: warning(/outside default int32 range/)
 ::tpy::BigInt d;
 
 void __tpy_init() {
@@ -21,23 +21,23 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Exactly Int32 min -- should stay Int32
+    // # Exactly int32 min -- should stay int32
     // a = -2147483648
     a = -2147483648;
     // print(a)
     std::cout << a << "\n";
-    // # One below Int32 min -- should promote to BigInt with warning
-    // b = -2147483649  # tpyc: warning(/outside default Int32 range/)
+    // # One below int32 min -- should promote to BigInt with warning
+    // b = -2147483649  # tpyc: warning(/outside default int32 range/)
     b = ::tpy::BigInt(static_cast<int64_t>(-2147483649LL));
     // print(b)
     std::cout << b << "\n";
-    // # Exactly Int32 max -- should stay Int32
+    // # Exactly int32 max -- should stay int32
     // c = 2147483647
     c = 2147483647;
     // print(c)
     std::cout << c << "\n";
-    // # One above Int32 max -- should promote to BigInt with warning
-    // d = 2147483648  # tpyc: warning(/outside default Int32 range/)
+    // # One above int32 max -- should promote to BigInt with warning
+    // d = 2147483648  # tpyc: warning(/outside default int32 range/)
     d = ::tpy::BigInt(static_cast<int64_t>(2147483648LL));
     // print(d)
     std::cout << d << "\n";

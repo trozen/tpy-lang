@@ -1,19 +1,19 @@
-from tpy import Int32, Own
+from tpy import int32, Own
 class A:
-    n: Int32
-    def __init__(self, n: Int32) -> None:
+    n: int32
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 class B:
-    m: Int32
-    def __init__(self, m: Int32) -> None:
+    m: int32
+    def __init__(self, m: int32) -> None:
         self.m = m
 
 class C:
-    k: Int32
-    def __init__(self, k: Int32) -> None:
+    k: int32
+    def __init__(self, k: int32) -> None:
         self.k = k
-def f(x: A | B | C) -> Int32:
+def f(x: A | B | C) -> int32:
     return 1 if isinstance(x, A) else 2
 def main() -> None:
     print(f(A(1)))

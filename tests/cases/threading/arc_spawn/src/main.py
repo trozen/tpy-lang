@@ -6,28 +6,28 @@
 # -> crash / wrong total, so a clean deterministic run is strong evidence the
 # cell is correct under contention. Arc[Counter] is Send + Sync (Counter's fields
 # are), so the @nocopy task moves across the spawn boundary carrying its clone.
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 from tplib.arc import Arc
 from tpy.thread import spawn
 
 
 class Counter:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
 @nocopy
 class Hammer:
     shared: Arc[Counter]
-    iters: Int32
+    iters: int32
 
-    def __init__(self, shared: Own[Arc[Counter]], iters: Int32) -> None:
+    def __init__(self, shared: Own[Arc[Counter]], iters: int32) -> None:
         self.shared = shared
         self.iters = iters
 
-    def run(self) -> Int32:
+    def run(self) -> int32:
         total = 0
         i = 0
         while i < self.iters:

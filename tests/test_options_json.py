@@ -24,8 +24,8 @@ def test_parse_options_file_missing_returns_empty(tmp_path: Path) -> None:
 
 def test_parse_options_file_minimal_default_int(tmp_path: Path) -> None:
     p = tmp_path / "options.json"
-    p.write_text('{"default_int": "Int64"}')
-    assert conftest._parse_options_file(p) == {"default_int": "Int64"}
+    p.write_text('{"default_int": "int64"}')
+    assert conftest._parse_options_file(p) == {"default_int": "int64"}
 
 
 def test_parse_options_file_plugin_and_dsl_opts(tmp_path: Path) -> None:
@@ -128,14 +128,14 @@ def test_load_case_options_per_case_overrides_group(
 ) -> None:
     case_dir = _layered_case_dir(
         tmp_path,
-        group_cfg='{"plugin": "frontends/x/x.py", "default_int": "Int32"}',
-        case_cfg='{"default_int": "Int64"}',
+        group_cfg='{"plugin": "frontends/x/x.py", "default_int": "int32"}',
+        case_cfg='{"default_int": "int64"}',
     )
     monkeypatch.setattr(conftest, "CASES_DIR", tmp_path / "cases")
     cfg = conftest.load_case_options(case_dir)
     # Group-level plugin survives, per-case default_int wins.
     assert cfg["plugin"] == "frontends/x/x.py"
-    assert cfg["default_int"] == "Int64"
+    assert cfg["default_int"] == "int64"
 
 
 def test_load_case_options_dsl_opts_merge_keywise(

@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def make_point(x: Int32, y: Int32) -> Own[Point]:
+// def make_point(x: int32, y: int32) -> Own[Point]:
 Point make_point(int32_t x, int32_t y) {
     // return Point(x, y)
     return Point(x, y);
 }
 
-// def use_owned_point(p: Own[Point]) -> Int32:
+// def use_owned_point(p: Own[Point]) -> int32:
 int32_t use_owned_point(Point&& p) {
     // # Field access on Own[T] parameter
     // return p.x + p.y

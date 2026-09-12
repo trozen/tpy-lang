@@ -12,7 +12,7 @@ std::tuple<Point*, Point> split(Point& p) {
 
 // def main() -> None:
 void main() {
-    // p = Point(Int32(1), Int32(2))
+    // p = Point(int32(1), int32(2))
     Point p = Point(1, 2);
     // ref, owned = split(p)
     auto __tup_1 = split(p);
@@ -23,7 +23,7 @@ void main() {
     // print(owned)
     std::cout << owned << "\n";
     // # Mutation visible through ref, not through owned copy
-    // p.x = Int32(99)
+    // p.x = int32(99)
     p.x = 99;
     // print(ref)
     std::cout << ref << "\n";

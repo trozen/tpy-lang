@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def outer(flag: bool) -> Int32:
+// def outer(flag: bool) -> int32:
 int32_t outer(bool flag) {
     std::optional<Reg> __slot_2;
     std::optional<Reg> __slot_3;
@@ -49,7 +49,7 @@ int32_t outer(bool flag) {
     // # The only use of `v` -- through a capture, after both managers' blocks.
     // # It mutates, so a copy at the boundary would read back the un-incremented
     // # value instead of dangling quietly.
-    // def inner() -> Int32:
+    // def inner() -> int32:
     auto inner = [&v]() -> int32_t {
         // v.n += 1
         v->n = ::tpy::add_check<int32_t>(v->n, 1);

@@ -4,10 +4,10 @@
 namespace tpyapp::main {
 
 // # INT32_MAX operations that don't overflow
-// x: Int32 = 2147483647
+// x: int32 = 2147483647
 int32_t x{};
 // # INT32_MIN operations that don't overflow
-// y: Int32 = -2147483648
+// y: int32 = -2147483648
 int32_t y{};
 
 void __tpy_init() {
@@ -16,7 +16,7 @@ void __tpy_init() {
     initialized = true;
 
     // # INT32_MAX operations that don't overflow
-    // x: Int32 = 2147483647
+    // x: int32 = 2147483647
     x = 2147483647;
     // print(x)
     std::cout << x << "\n";
@@ -25,7 +25,7 @@ void __tpy_init() {
     // print(x // 2)
     std::cout << (::tpy::div_floor<int32_t>(x, 2)) << "\n";
     // # INT32_MIN operations that don't overflow
-    // y: Int32 = -2147483648
+    // y: int32 = -2147483648
     y = -2147483648;
     // print(y)
     std::cout << y << "\n";

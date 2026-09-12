@@ -15,9 +15,9 @@ void main();
 
 // class Grid:
 struct Grid {
-    // cells: list[Int32]
+    // cells: list[int32]
     std::vector<int32_t> cells;
-    // n: Int32 = Int32(4)
+    // n: int32 = int32(4)
     int32_t n = 4;
 
     // def __init__(self) -> None:

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def read_twice(p: Ptr[Cell]) -> Int32:
+// def read_twice(p: Ptr[Cell]) -> int32:
 int32_t read_twice(Cell* p) {
     // a = p.val()    # tpyc: nullable(p)
     int32_t a = ::tpy::deref_check(p).val();

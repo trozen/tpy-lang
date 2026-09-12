@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // @readonly
-// def get_count(f: Foo) -> Int32:
+// def get_count(f: Foo) -> int32:
 int32_t get_count(const Foo& f) {
     // return len(f.items)
     return ::tpy::__len__(f.items());

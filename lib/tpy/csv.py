@@ -22,7 +22,7 @@
 #
 # tpy: cpp_namespace("tpystd::csv")
 from typing import Iterator
-from tpy import Own, Ptr, Readable, Writable, Int32
+from tpy import Own, Ptr, Readable, Writable, int32
 
 
 def _parse_rows[R: Readable](
@@ -41,8 +41,8 @@ def _parse_rows[R: Readable](
             return
         row: list[str] = []
         parts: list[str] = []
-        i: Int32 = 0
-        n: Int32 = len(line)
+        i: int32 = 0
+        n: int32 = len(line)
         in_quotes = False
         at_field_start = True
         ended = False
@@ -127,8 +127,8 @@ def reader(
             return
         row: list[str] = []
         parts: list[str] = []
-        i: Int32 = 0
-        n: Int32 = len(line)
+        i: int32 = 0
+        n: int32 = len(line)
         in_quotes = False
         at_field_start = True
         ended = False
@@ -292,8 +292,8 @@ class DictReader[W: Readable]:
                 # The first row supplies the field names when none were given.
                 # Index loop, not `for name in row` -- the for-loop var over a
                 # list in this resumable frame trips a Pending crash (BUGS.md).
-                h: Int32 = 0
-                hn: Int32 = len(row)
+                h: int32 = 0
+                hn: int32 = len(row)
                 while h < hn:
                     self.fieldnames.append(row[h])
                     h += 1
@@ -304,8 +304,8 @@ class DictReader[W: Readable]:
             # Index loop (not `for name in self.fieldnames`): a for-loop var
             # over a list field in this resumable frame trips a Pending-type
             # crash (BUGS.md). A short row pads missing fields with "".
-            i: Int32 = 0
-            m: Int32 = len(self.fieldnames)
+            i: int32 = 0
+            m: int32 = len(self.fieldnames)
             while i < m:
                 name = self.fieldnames[i]
                 out[name] = row[i] if i < len(row) else ""
@@ -345,9 +345,9 @@ class DictWriter[W: Writable]:
         # the element as a string_view, which dict.__contains__/get reject (they
         # take const str&); the subscript `self.fieldnames[i]` binds a str&.
         ordered: list[str] = []
-        matched: Int32 = 0
-        i: Int32 = 0
-        m: Int32 = len(self.fieldnames)
+        matched: int32 = 0
+        i: int32 = 0
+        m: int32 = len(self.fieldnames)
         while i < m:
             name = self.fieldnames[i]
             if name in row:

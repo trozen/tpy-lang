@@ -1,1 +1,1 @@
-main.py:20: error: Integer literal 201 is outside Int8 range [-128, 127] in parameter 'b'
+main.py:20: error: Integer literal 201 is outside int8 range [-128, 127] in parameter 'b'

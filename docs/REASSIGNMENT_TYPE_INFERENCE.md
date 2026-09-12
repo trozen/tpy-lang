@@ -5,7 +5,7 @@ Status: In Progress
 | Item | Status |
 |---|---|
 | `None -> Optional[T]` inference for unannotated reassignments | Done |
-| Literal anchoring (`x=0; x=Int32(...)` -> `Int32` when range-safe) | Done |
+| Literal anchoring (`x=0; x=int32(...)` -> `int32` when range-safe) | Done |
 | Function/method return-based anchoring (`x=None; x=make_point()`) | Done |
 | Generic function return anchoring (`x=None; x=first(items)`) | Done |
 | Method call anchoring (`x=None; x=obj.method()`) | Done |
@@ -15,16 +15,16 @@ Status: In Progress
 | Late annotation retro-validation in local scopes | Done |
 | Late annotation retro-validation for top-level globals | Done |
 | Numeric lattice helper scaffolding for future numeric families | Done |
-| Augmented assignment policy (`x=0; x += Int32(5)` does not anchor; emits warning) | Done |
-| Numeric widening across reassignments (Int32->Int64, FixedInt->float, FixedInt->BigInt, unsigned->wider signed) | Done |
-| Full lattice extension for remaining numeric families (`Float32`) | TODO |
+| Augmented assignment policy (`x=0; x += int32(5)` does not anchor; emits warning) | Done |
+| Numeric widening across reassignments (int32->int64, FixedInt->float, FixedInt->BigInt, unsigned->wider signed) | Done |
+| Full lattice extension for remaining numeric families (`float32`) | TODO |
 
 This document defines how TurboPython should infer variable types across multiple
 assignments when no explicit annotation is present.
 
 Primary motivation:
 - `x = None; x = Point()` should infer `x: Point | None`.
-- Literal-first code should remain ergonomic (`x = 0; x = Int32(666)`).
+- Literal-first code should remain ergonomic (`x = 0; x = int32(666)`).
 - Inference must stay predictable and safe (no lifetime-sensitive surprises).
 
 ## Scope
@@ -51,7 +51,7 @@ An explicit annotation on a later write becomes authoritative but must be
 compatible with earlier writes.
 
 - Valid:
-  - `x = 0; x: Int32 = 666`
+  - `x = 0; x: int32 = 666`
 - Invalid:
   - `x = None; x: Point = Point()`
   - `x = 0.0; x: int = 100`
@@ -80,24 +80,24 @@ Inference uses a restricted merge lattice, not all compiler coercions.
 Current numeric types in play:
 - `IntLiteral` (internal)
 - `int` (`BigInt`)
-- `Int32`
-- `float` (`FloatType`, future alias `Float64`)
+- `int32`
+- `float` (`FloatType`, future alias `float64`)
 
 Rules:
 1. Literal-only integer chain defaults to `int` (`BigInt`).
    - `x = 1; x = 2` -> `int`
 2. Integer literals can anchor to concrete integer types when present.
-   - `x = 0; x = Int32(666)` -> `Int32` (if literals fit range)
+   - `x = 0; x = int32(666)` -> `int32` (if literals fit range)
 3. Concrete integer + concrete integer uses widening, never narrowing.
-   - `Int32 + int -> int`
+   - `int32 + int -> int`
 4. Any mix with `float` widens to `float`.
-   - `Int32 + float -> float`
+   - `int32 + float -> float`
    - `int + float -> float`
 5. `None` may lift numeric result to optional.
    - `x = None; x = 123` -> `int | None`
 6. Augmented assignment is not an anchoring operation.
-   - `x = 0; x += Int32(5)` keeps `x` as `int` (`BigInt`) and emits a warning.
-   - `x = 0; x += make_i32()` behaves the same when `make_i32() -> Int32`.
+   - `x = 0; x += int32(5)` keeps `x` as `int` (`BigInt`) and emits a warning.
+   - `x = 0; x += make_i32()` behaves the same when `make_i32() -> int32`.
    - Explicit `int` anchors (`x: int = 0`, `x = int(0)`) suppress this warning.
 
 ### Bool
@@ -134,8 +134,8 @@ x = Point()
 
 ```python
 x = None
-x = first([Int32(1), Int32(2)])
-# inferred: Int32 | None
+x = first([int32(1), int32(2)])
+# inferred: int32 | None
 ```
 
 ```python
@@ -152,14 +152,14 @@ x = 123
 
 ```python
 x = 0
-x = Int32(666)
-# inferred: Int32
+x = int32(666)
+# inferred: int32
 ```
 
 ```python
 x = 0
-x: Int32 = 666
-# resolved: Int32 (annotation authoritative, previous literal compatible)
+x: int32 = 666
+# resolved: int32 (annotation authoritative, previous literal compatible)
 ```
 
 ### Invalid
@@ -184,7 +184,7 @@ b = True
 
 ## Forward Compatibility: Additional Numeric Types
 
-Planned types include `Int64`, `Int8`, `UInt32`, `Float32`, `Float64`.
+Planned types include `int64`, `int8`, `uint32`, `float32`, `float64`.
 
 To avoid rewriting inference later, implement numeric merging via metadata:
 - kind: signed int / unsigned int / unbounded int / float
@@ -244,7 +244,7 @@ New errors should include:
 
 Add snippet tests covering:
 1. `None -> T` and `None -> int literal`
-2. literal anchoring to `Int32`
+2. literal anchoring to `int32`
 3. int/float widening
 4. bool/numeric mismatch
 5. late-annotation valid and invalid retro-check cases

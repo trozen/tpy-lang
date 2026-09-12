@@ -1,8 +1,8 @@
 # del on tuple elements is not supported (tuples are immutable)
-from tpy import Int32
+from tpy import int32
 
 def main() -> None:
-    t = (Int32(1), Int32(2), Int32(3))
+    t = (int32(1), int32(2), int32(3))
     del t[0]  # tpyc: error(/immutable/)
 
 main()

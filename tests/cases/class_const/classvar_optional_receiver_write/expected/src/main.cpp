@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def store(c: Optional[Counter], v: Int32) -> None:
+// def store(c: Optional[Counter], v: int32) -> None:
 void store(Counter* c, int32_t v) {
     // c.n = v  # tpyc: warning(/Potential None access/) warning(/Assigning to ClassVar 'Counter.n' via instance/)
     ::tpy::deref_check(c);

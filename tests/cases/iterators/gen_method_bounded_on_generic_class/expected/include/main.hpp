@@ -20,18 +20,18 @@ void main();
 
 // class RangeIter:
 struct RangeIter {
-    // current: Int32
+    // current: int32
     int32_t current;
-    // limit: Int32
+    // limit: int32
     int32_t limit;
 
-    // def __init__(self, start: Int32, limit: Int32) -> None:
+    // def __init__(self, start: int32, limit: int32) -> None:
     RangeIter() = default;
     explicit RangeIter(int32_t start, int32_t limit);
 
     auto& __iter__() { return *this; }
 
-    // def __next__(self) -> Int32:
+    // def __next__(self) -> int32:
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     static constexpr std::string_view __tpy_class_name__ = "__main__.RangeIter";
 };
@@ -43,12 +43,12 @@ inline std::ostream& operator<<(std::ostream& os, const RangeIter& obj) {
 
 // class MyRange:
 struct MyRange {
-    // start: Int32
+    // start: int32
     int32_t start;
-    // limit: Int32
+    // limit: int32
     int32_t limit;
 
-    // def __init__(self, start: Int32, limit: Int32) -> None:
+    // def __init__(self, start: int32, limit: int32) -> None:
     MyRange() = default;
     explicit MyRange(int32_t start, int32_t limit);
 
@@ -62,7 +62,7 @@ inline std::ostream& operator<<(std::ostream& os, const MyRange& obj) {
     return os;
 }
 
-// class Summer[T: Iterable[Int32]]:
+// class Summer[T: Iterable[int32]]:
 template<::tpystd::typing::Iterable<int32_t> T>
 struct Summer {
     // items: T
@@ -110,7 +110,7 @@ struct __gen_Summer_each_doubled : public ::tpy::next_iter_mixin<__gen_Summer_ea
     }
 };
 
-// def each_doubled(self) -> Iterator[Int32]:
+// def each_doubled(self) -> Iterator[int32]:
 template <::tpystd::typing::Iterable<int32_t> T>
 std::expected<int32_t, ::tpy::StopIteration> __gen_Summer_each_doubled<T>::__next__() {
     while (true) switch (__state) {
@@ -151,10 +151,10 @@ inline __gen_Summer_each_doubled<T> Summer<T>::each_doubled() const {
 }
 
 
-// def __init__(self, start: Int32, limit: Int32) -> None:
+// def __init__(self, start: int32, limit: int32) -> None:
 inline RangeIter::RangeIter(int32_t start, int32_t limit) : current(start), limit(limit) {}
 
-// def __next__(self) -> Int32:
+// def __next__(self) -> int32:
 inline std::expected<int32_t, ::tpy::StopIteration> RangeIter::__next__() {
     // if self.current < self.limit:
     if ((this->current < this->limit)) {
@@ -169,7 +169,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> RangeIter::__next__() {
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }
 
-// def __init__(self, start: Int32, limit: Int32) -> None:
+// def __init__(self, start: int32, limit: int32) -> None:
 inline MyRange::MyRange(int32_t start, int32_t limit) : start(start), limit(limit) {}
 
 // def __iter__(self) -> Own[RangeIter]:

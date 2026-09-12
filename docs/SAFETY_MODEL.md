@@ -24,7 +24,7 @@ The compiler tracks when variables are moved (via auto-move at last use or expli
 ownership transfer). Using a moved variable is a compile-time error.
 
 ```python
-b = Box[Int32](42)
+b = Box[int32](42)
 val = b.take()      # moves value out of b
 print(b.get())      # ERROR: b has been moved
 ```
@@ -46,8 +46,8 @@ references, without requiring lifetime annotations:
 - References escaping their scope through assignment to outer variables
 
 ```python
-def bad() -> Ptr[Int32]:
-    x: Int32 = 42
+def bad() -> Ptr[int32]:
+    x: int32 = 42
     return unsafe_ptr(x)    # ERROR: cannot return reference to local
 ```
 

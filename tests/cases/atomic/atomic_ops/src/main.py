@@ -3,11 +3,11 @@
 # compare_exchange[/_weak]) plus the Send/Sync classification the Arc cell relies
 # on. Contention across real threads is exercised by the Arc test, not here.
 from tpy.atomic import Atomic, MemoryOrder, fence
-from tpy import UInt32
+from tpy import uint32
 
 
 def main() -> None:
-    a = Atomic[UInt32](0)  # tpyc: is_send(yes) is_sync(yes)
+    a = Atomic[uint32](0)  # tpyc: is_send(yes) is_sync(yes)
     print(a.load(MemoryOrder.RELAXED))            # 0
 
     a.store(10, MemoryOrder.RELAXED)
@@ -46,7 +46,7 @@ def main() -> None:
     fence(MemoryOrder.SEQ_CST)
 
     # Default ordering (seq_cst) -- no MemoryOrder argument needed.
-    b = Atomic[UInt32](0)
+    b = Atomic[uint32](0)
     b.store(50)
     print(b.load())                               # 50
     print(b.fetch_add(5))                         # 50 -> 55
@@ -69,7 +69,7 @@ def main() -> None:
     print(repr(b))                                # Atomic(2)
 
     # Fixed-width wrapping matches std::atomic<T> (and the CPython stub's _coerce).
-    w = Atomic[UInt32](0xFFFFFFFF)
+    w = Atomic[uint32](0xFFFFFFFF)
     print(w.fetch_add(1, MemoryOrder.RELAXED))    # 4294967295 (old), value wraps to 0
     print(w.load(MemoryOrder.RELAXED))            # 0
     w -= 1                                        # wraps back to 4294967295

@@ -2,27 +2,27 @@
 # of a type-alias name (which CPython rejects at runtime). Verifies positive
 # (branch taken) and negative (else narrows v to the excluded member C, whose
 # field is then read) narrowing, mirroring the tuple-form test.
-from tpy import Int32
+from tpy import int32
 
 
 class A:
-    tag: Int32
+    tag: int32
 
-    def __init__(self, tag: Int32) -> None:
+    def __init__(self, tag: int32) -> None:
         self.tag = tag
 
 
 class B:
-    tag: Int32
+    tag: int32
 
-    def __init__(self, tag: Int32) -> None:
+    def __init__(self, tag: int32) -> None:
         self.tag = tag
 
 
 class C:
-    z: Int32
+    z: int32
 
-    def __init__(self, z: Int32) -> None:
+    def __init__(self, z: int32) -> None:
         self.z = z
 
 
@@ -32,7 +32,7 @@ def classify(v: A | B | C) -> str:
     return "c"
 
 
-def excluded(v: A | B | C) -> Int32:
+def excluded(v: A | B | C) -> int32:
     if not isinstance(v, A | B):
         return v.z
     return -1

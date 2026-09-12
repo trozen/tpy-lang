@@ -1,12 +1,12 @@
-# A non-generic recursive union (type Expr = Int32 | list[Expr]) may be a
+# A non-generic recursive union (type Expr = int32 | list[Expr]) may be a
 # structural protocol method parameter.
-from tpy import Int32
+from tpy import int32
 from typing import Protocol
 
-type Expr = Int32 | list[Expr]
+type Expr = int32 | list[Expr]
 
 
-def depth(e: Expr) -> Int32:
+def depth(e: Expr) -> int32:
     match e:
         case list() as items:
             best = 0
@@ -20,15 +20,15 @@ def depth(e: Expr) -> Int32:
 
 
 class Sink(Protocol):
-    def take(self, e: Expr) -> Int32: ...
+    def take(self, e: Expr) -> int32: ...
 
 
 class Counter:
-    def take(self, e: Expr) -> Int32:
+    def take(self, e: Expr) -> int32:
         return depth(e)
 
 
-def run(s: Sink, e: Expr) -> Int32:
+def run(s: Sink, e: Expr) -> int32:
     return s.take(e)
 
 

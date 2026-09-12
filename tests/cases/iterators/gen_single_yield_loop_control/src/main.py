@@ -1,11 +1,11 @@
 # Single-yield generators whose break/continue the simple peephole can't emit
 # (for-over-iterable any position, real-loop post-yield) route to resumable.
-from tpy import Int32
+from tpy import int32
 from typing import Iterator
 
 
-def take(items: list[Int32], n: Int32) -> Iterator[Int32]:
-    i: Int32 = 0
+def take(items: list[int32], n: int32) -> Iterator[int32]:
+    i: int32 = 0
     for x in items:
         if i >= n:
             break
@@ -13,14 +13,14 @@ def take(items: list[Int32], n: Int32) -> Iterator[Int32]:
         i += 1
 
 
-def evens(items: list[Int32]) -> Iterator[Int32]:
+def evens(items: list[int32]) -> Iterator[int32]:
     for x in items:
         if x % 2 != 0:
             continue
         yield x
 
 
-def stride() -> Iterator[Int32]:
+def stride() -> Iterator[int32]:
     # 3-arg range falls to the iterator branch (no counter loop), so even a
     # pre-yield break must route to resumable.
     for i in range(0, 10, 2):
@@ -29,15 +29,15 @@ def stride() -> Iterator[Int32]:
         yield i
 
 
-def upto_range(n: Int32) -> Iterator[Int32]:
+def upto_range(n: int32) -> Iterator[int32]:
     for i in range(n):
         yield i
         if i >= 2:
             break
 
 
-def upto_while() -> Iterator[Int32]:
-    n: Int32 = 0
+def upto_while() -> Iterator[int32]:
+    n: int32 = 0
     while True:
         yield n
         n += 1
@@ -45,14 +45,14 @@ def upto_while() -> Iterator[Int32]:
             break
 
 
-def iter_post_break(items: list[Int32]) -> Iterator[Int32]:
+def iter_post_break(items: list[int32]) -> Iterator[int32]:
     for x in items:
         yield x
         if x >= 20:
             break
 
 
-def post_continue(items: list[Int32]) -> Iterator[Int32]:
+def post_continue(items: list[int32]) -> Iterator[int32]:
     # Post-yield continue with observable post-continue code: the resumable
     # path runs it after the consumer resumes (CPython order).
     for x in items:
@@ -63,16 +63,16 @@ def post_continue(items: list[Int32]) -> Iterator[Int32]:
 
 
 class Limiter:
-    limit: Int32
+    limit: int32
 
-    def __init__(self, limit: Int32) -> None:
+    def __init__(self, limit: int32) -> None:
         self.limit = limit
 
     # Generator method break/continue through the method resumable emit path.
     # Iterates a parameter, not a self field -- iterating a self field in a
     # resumable method hits a separate const-iterator gap.
-    def first_positives(self, items: list[Int32]) -> Iterator[Int32]:
-        c: Int32 = 0
+    def first_positives(self, items: list[int32]) -> Iterator[int32]:
+        c: int32 = 0
         for x in items:
             if x <= 0:
                 continue
@@ -98,7 +98,7 @@ def main() -> None:
     for v in post_continue([3, -1, 5]):
         print(v)
     lim = Limiter(2)
-    nums: list[Int32] = [-1, 5, -2, 7, 9]
+    nums: list[int32] = [-1, 5, -2, 7, 9]
     for v in lim.first_positives(nums):
         print(v)
 

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def create(name: str, width: Int32 = Int32(100), height: Int32 = Int32(50), visible: bool = True) -> None:
+// def create(name: str, width: int32 = int32(100), height: int32 = int32(50), visible: bool = True) -> None:
 void create(std::string_view name, int32_t width, int32_t height, bool visible) {
     // print(name)
     std::cout << name << "\n";
@@ -20,11 +20,11 @@ void create(std::string_view name, int32_t width, int32_t height, bool visible) 
 void main() {
     // create("a")
     create("a");
-    // create("b", Int32(200))
+    // create("b", int32(200))
     create("b", 200);
-    // create("c", Int32(200), Int32(300))
+    // create("c", int32(200), int32(300))
     create("c", 200, 300);
-    // create("d", Int32(200), Int32(300), False)
+    // create("d", int32(200), int32(300), False)
     create("d", 200, 300, false);
 }
 

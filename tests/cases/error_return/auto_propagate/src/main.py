@@ -1,11 +1,11 @@
 # Auto-propagation: @error_return(E) functions forward matching errors without try/except
-from tpy import Int32, error_return, ReturnException
+from tpy import int32, error_return, ReturnException
 
 class ParseError(Exception, ReturnException):
     pass
 
 @error_return(ParseError)
-def parse_digit(s: str) -> Int32:
+def parse_digit(s: str) -> int32:
     if s == "0":
         return 0
     if s == "1":
@@ -18,7 +18,7 @@ def validate(s: str) -> None:
         raise ParseError
 
 @error_return(ParseError)
-def parse_two_digits(a: str, b: str) -> Int32:
+def parse_two_digits(a: str, b: str) -> int32:
     validate(a)  # ExprStmt propagation (void call, result discarded)
     x = parse_digit(a)
     y = parse_digit(b)

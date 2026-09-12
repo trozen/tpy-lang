@@ -29,7 +29,7 @@ namespace tpyapp::main {
 // in_i64_from_big: int = (ONE_BIG << 62) + 123
 ::tpy::BigInt in_i64_from_big;
 
-// def probe(label: str, a: int, b: int, shift: Int32) -> None:
+// def probe(label: str, a: int, b: int, shift: int32) -> None:
 void probe(std::string_view label, const ::tpy::BigInt& a, const ::tpy::BigInt& b, int32_t shift) {
     // print("===")
     std::cout << "===" << "\n";
@@ -121,21 +121,21 @@ void __tpy_init() {
     // print(((-B - 1) + 2))
     std::cout << ((((-(B)) - (::tpy::BigInt(1)))) + (::tpy::BigInt(2))) << "\n";
     // # Core operation matrix with mixed signs and magnitudes.
-    // probe("small_max + one", SMALL_MAX, 1, Int32(1))
+    // probe("small_max + one", SMALL_MAX, 1, int32(1))
     probe("small_max + one", SMALL_MAX, ::tpy::BigInt(1), 1);
-    // probe("small_min + minus_one", SMALL_MIN, -1, Int32(1))
+    // probe("small_min + minus_one", SMALL_MIN, -1, int32(1))
     probe("small_min + minus_one", SMALL_MIN, ::tpy::BigInt(-1), 1);
-    // probe("big_pos + three", BIG_POS, 3, Int32(2))
+    // probe("big_pos + three", BIG_POS, 3, int32(2))
     probe("big_pos + three", BIG_POS, ::tpy::BigInt(3), 2);
-    // probe("big_neg + three", BIG_NEG, 3, Int32(2))
+    // probe("big_neg + three", BIG_NEG, 3, int32(2))
     probe("big_neg + three", BIG_NEG, ::tpy::BigInt(3), 2);
-    // probe("wide_pos + minus_five", WIDE_POS, -5, Int32(31))
+    // probe("wide_pos + minus_five", WIDE_POS, -5, int32(31))
     probe("wide_pos + minus_five", WIDE_POS, ::tpy::BigInt(-5), 31);
-    // probe("wide_neg + seven", WIDE_NEG, 7, Int32(31))
+    // probe("wide_neg + seven", WIDE_NEG, 7, int32(31))
     probe("wide_neg + seven", WIDE_NEG, ::tpy::BigInt(7), 31);
-    // probe("zero + big_pos", 0, BIG_POS, Int32(63))
+    // probe("zero + big_pos", 0, BIG_POS, int32(63))
     probe("zero + big_pos", ::tpy::BigInt(0), BIG_POS, 63);
-    // probe("minus_one + wide_pos", -1, WIDE_POS, Int32(64))
+    // probe("minus_one + wide_pos", -1, WIDE_POS, int32(64))
     probe("minus_one + wide_pos", ::tpy::BigInt(-1), WIDE_POS, 64);
     // # Shift behavior at and beyond machine-word boundaries.
     // print(BIG_POS << 63)
@@ -174,13 +174,13 @@ void __tpy_init() {
     in_i32_min = -(((ONE_BIG) << (::tpy::BigInt(31))));
     // in_i64_from_big: int = (ONE_BIG << 62) + 123
     in_i64_from_big = ((((ONE_BIG) << (::tpy::BigInt(62)))) + (::tpy::BigInt(123)));
-    // print(Int32(in_i32_max))
+    // print(int32(in_i32_max))
     std::cout << (in_i32_max).to_fixed_check<int32_t>() << "\n";
-    // print(Int32(in_i32_min))
+    // print(int32(in_i32_min))
     std::cout << (in_i32_min).to_fixed_check<int32_t>() << "\n";
-    // print(Int64(in_i64_from_big))
+    // print(int64(in_i64_from_big))
     std::cout << (in_i64_from_big).to_fixed_check<int64_t>() << "\n";
-    // print(Int64(-in_i64_from_big))
+    // print(int64(-in_i64_from_big))
     std::cout << (-(in_i64_from_big)).to_fixed_check<int64_t>() << "\n";
     // # String and float conversions through int() constructor.
     // print(int("  +123456789012345678901234567890  "))

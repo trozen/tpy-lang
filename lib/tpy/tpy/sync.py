@@ -27,7 +27,7 @@ priority. See docs/SEND_SYNC_DESIGN.md (RwLock Sync bound) and BUGS.md.
 """
 from __future__ import annotations
 from typing import Protocol, Self
-from tpy import (Own, Ptr, UInt32, Deref, nocopy, readonly, take_ptr,
+from tpy import (Own, Ptr, uint32, Deref, nocopy, readonly, take_ptr,
                  unsafe_interior_mutable, unsafe_send, unsafe_sync)
 from tpy.mem import UninitStorage
 from tpy.unsafe import unsafe_take, unsafe_release, unsafe_store
@@ -196,7 +196,7 @@ class MutexGuard[T](Deref[T]):
     # Moving in consumes the source, so the two models are indistinguishable.
     def set(self, value: Own[T]) -> None:
         _require_locked(self._locked)
-        unsafe_store(self._payload, UInt32(0), value)
+        unsafe_store(self._payload, uint32(0), value)
 
     # Internal hook for `Condvar.wait` (`_CondvarLock` structural conformance):
     # hands out the raw lock this guard holds so users never touch `_RawMutex`.
@@ -312,7 +312,7 @@ class WriteGuard[T](Deref[T]):
     # Moving in consumes the source, so the two models are indistinguishable.
     def set(self, value: Own[T]) -> None:
         _require_locked(self._locked)
-        unsafe_store(self._payload, UInt32(0), value)
+        unsafe_store(self._payload, uint32(0), value)
 
 
 class _CondvarLock(Protocol):

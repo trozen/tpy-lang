@@ -4,13 +4,13 @@
 # object. Each function writes through the borrowed element and the caller
 # reads the original, so a copy at any of these decl paths shows up as a wrong
 # number rather than passing silently.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Box:
-    val: Int32
+    val: int32
 
-    def __init__(self, val: Int32) -> None:
+    def __init__(self, val: int32) -> None:
         self.val = val
 
 
@@ -18,7 +18,7 @@ def make_mixed(b: Box) -> tuple[Own[Box], Box]:
     return (Box(1), b)
 
 
-def rebind(b: Box, c: Box) -> Int32:
+def rebind(b: Box, c: Box) -> int32:
     p = make_mixed(b)
     p[1].val = 11
     p = make_mixed(c)  # tpyc: ok
@@ -26,7 +26,7 @@ def rebind(b: Box, c: Box) -> Int32:
     return p[0].val
 
 
-def branch_hoisted(b: Box, c: Box, pick: bool) -> Int32:
+def branch_hoisted(b: Box, c: Box, pick: bool) -> int32:
     if pick:
         p = make_mixed(b)
     else:
@@ -35,7 +35,7 @@ def branch_hoisted(b: Box, c: Box, pick: bool) -> Int32:
     return p[0].val
 
 
-def loop_carried(b: Box, c: Box) -> Int32:
+def loop_carried(b: Box, c: Box) -> int32:
     total = 0
     for i in range(2):
         if i == 0:
@@ -47,7 +47,7 @@ def loop_carried(b: Box, c: Box) -> Int32:
     return total
 
 
-def try_hoisted(b: Box) -> Int32:
+def try_hoisted(b: Box) -> int32:
     try:
         p = make_mixed(b)
     except ValueError:
@@ -56,7 +56,7 @@ def try_hoisted(b: Box) -> Int32:
     return p[0].val
 
 
-def walrus(b: Box) -> Int32:
+def walrus(b: Box) -> int32:
     if (p := make_mixed(b))[0].val > 0:  # tpyc: ok
         p[1].val = 77
     return p[0].val

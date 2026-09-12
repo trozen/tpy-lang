@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // items: list[Int32] = [1, 2, 3]
+    // items: list[int32] = [1, 2, 3]
     std::vector<int32_t> items = {1, 2, 3};
     // for x in own_iter(items):  # tpyc: warning(/own_iter\(\) consumes/)
     auto __obj_0 = ::tpy::own_iter(std::move(items));

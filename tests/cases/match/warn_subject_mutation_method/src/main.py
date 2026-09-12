@@ -2,20 +2,20 @@
 # union field) warns when a non-scalar arm binding borrows the subject -- the
 # indirect-mutation case the syntactic stopgap misses. A readonly method does
 # not warn. Runtime takes the non-mutating arm.
-from tpy import Int32, readonly
+from tpy import int32, readonly
 
 
 class Dog:
-    items: list[Int32]
+    items: list[int32]
 
     def __init__(self) -> None:
         self.items = [1, 2, 3]
 
 
 class Cat:
-    age: Int32
+    age: int32
 
-    def __init__(self, age: Int32) -> None:
+    def __init__(self, age: int32) -> None:
         self.age = age
 
 
@@ -29,7 +29,7 @@ class Holder:
         self.pet = Cat(9)
 
     @readonly
-    def peek(self) -> Int32:
+    def peek(self) -> int32:
         return 1
 
 

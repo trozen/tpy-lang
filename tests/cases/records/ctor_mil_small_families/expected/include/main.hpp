@@ -20,10 +20,10 @@ void main();
 
 // class A:
 struct A {
-    // x: Int32
+    // x: int32
     int32_t x;
 
-    // def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: int32) -> None:
     A() = default;
     explicit A(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.A";
@@ -36,10 +36,10 @@ inline std::ostream& operator<<(std::ostream& os, const A& obj) {
 
 // class B:
 struct B {
-    // y: Int32
+    // y: int32
     int32_t y;
 
-    // def __init__(self, y: Int32) -> None:
+    // def __init__(self, y: int32) -> None:
     B() = default;
     explicit B(int32_t y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.B";
@@ -52,29 +52,29 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 
 // class H:
 struct H {
-    // items: list[Int32] | None
+    // items: list[int32] | None
     std::optional<std::vector<int32_t>> items;
-    // ox: Int32 | None
+    // ox: int32 | None
     std::optional<int32_t> ox;
-    // vu: Int32 | Float64
-    ::tpy::Union<int32_t, double> vu;
-    // un: Int32 | Float64 | None
-    ::tpy::Union<std::monostate, int32_t, double> un;
+    // vu: int32 | float64
+    ::tpy::Union<double, int32_t> vu;
+    // un: int32 | float64 | None
+    ::tpy::Union<std::monostate, double, int32_t> un;
     // pu: A | B
     ::tpy::Union<A, B> pu;
     // pr: A | B
     ::tpy::Union<A, B> pr;
     // pn: A | B | None
     ::tpy::Union<std::monostate, A, B> pn;
-    // ft: tuple[A, Int32]
+    // ft: tuple[A, int32]
     std::tuple<A, int32_t> ft;
-    // vt: tuple[Int32, Int32]
+    // vt: tuple[int32, int32]
     std::tuple<int32_t, int32_t> vt;
-    // tl: tuple[Int32, Int32]
+    // tl: tuple[int32, int32]
     std::tuple<int32_t, int32_t> tl;
 
-    // def __init__(self, pu: A | B, ft: tuple[A, Int32],
-    // vt: tuple[Int32, Int32]) -> None:
+    // def __init__(self, pu: A | B, ft: tuple[A, int32],
+    // vt: tuple[int32, int32]) -> None:
     explicit H(::tpy::Union<const A*, const B*> pu, const std::tuple<const A*, int32_t>& ft, const std::tuple<int32_t, int32_t>& vt);
     static constexpr std::string_view __tpy_class_name__ = "__main__.H";
 };
@@ -86,7 +86,7 @@ inline std::ostream& operator<<(std::ostream& os, const H& obj) {
 
 // class P:
 struct P {
-    // p: Ptr[Int32]
+    // p: Ptr[int32]
     int32_t* p;
 
     // def __init__(self) -> None:
@@ -101,7 +101,7 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 
 // class D:
 struct D {
-    // n: Int32
+    // n: int32
     int32_t n;
     // strict: bool
     bool strict;
@@ -117,10 +117,10 @@ inline std::ostream& operator<<(std::ostream& os, const D& obj) {
 }
 
 
-// def __init__(self, x: Int32) -> None:
+// def __init__(self, x: int32) -> None:
 inline A::A(int32_t x) : x(x) {}
 
-// def __init__(self, y: Int32) -> None:
+// def __init__(self, y: int32) -> None:
 inline B::B(int32_t y) : y(y) {}
 
 // def __init__(self) -> None:

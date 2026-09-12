@@ -1,10 +1,10 @@
-from tpy import Int32
+from tpy import int32
 from utils import add, Point
 
-def main() -> Int32:
-    p = Point(Int32(1), Int32(2))
+def main() -> int32:
+    p = Point(int32(1), int32(2))
     result = add(p.x, p.y)
     print(result)
-    return Int32(0)
+    return int32(0)
 
 main()

@@ -16,10 +16,10 @@ void main();
 
 // class Ticket:
 struct Ticket {
-    // id: Int32
+    // id: int32
     int32_t id;
 
-    // def __init__(self, id: Int32) -> None:
+    // def __init__(self, id: int32) -> None:
     Ticket() = default;
     explicit Ticket(int32_t id);
 
@@ -41,10 +41,10 @@ inline std::ostream& operator<<(std::ostream& os, const Ticket& obj) {
 // @nocopy
 // class Badge:
 struct Badge {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Badge() = default;
     explicit Badge(int32_t n);
     // non-copyable (@nocopy)
@@ -65,7 +65,7 @@ inline std::ostream& operator<<(std::ostream& os, const Badge& obj) {
 }
 
 
-// def __init__(self, id: Int32) -> None:
+// def __init__(self, id: int32) -> None:
 inline Ticket::Ticket(int32_t id) : id(id) {}
 
 // # The subject: the finally mutates the receiver the return hands back.
@@ -114,7 +114,7 @@ inline Ticket Ticket::logged() && {
     }
 }
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Badge::Badge(int32_t n) : n(n) {}
 
 // # A copy here cannot compile, so the deferred capture must be a move.

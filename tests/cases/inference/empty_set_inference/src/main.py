@@ -1,8 +1,8 @@
 # Empty set() infers element type from .add(), .discard(), or .remove() calls
-from tpy import Int32, Int64
+from tpy import int32, int64
 
 def test_basic() -> None:
-    s = set()  # tpyc: type(set[Int32])
+    s = set()  # tpyc: type(set[int32])
     s.add(42)
     s.add(10)
     print(s)
@@ -15,33 +15,33 @@ def test_str() -> None:
     print("hello" in s)
 
 def test_multiple() -> None:
-    s = set()  # tpyc: type(set[Int32])
+    s = set()  # tpyc: type(set[int32])
     s.add(1)
     s.add(2)
     s.add(3)
     print(s)
 
 def test_numeric_widen() -> None:
-    s = set()  # tpyc: type(set[Int64])
-    s.add(Int32(1))
-    s.add(Int64(2))
+    s = set()  # tpyc: type(set[int64])
+    s.add(int32(1))
+    s.add(int64(2))
     print(s)
 
-def takes_set(s: set[Int32]) -> None:
+def takes_set(s: set[int32]) -> None:
     for x in s:
         print(x)
 
 def test_param_context() -> None:
-    s = set()  # tpyc: type(set[Int32])
+    s = set()  # tpyc: type(set[int32])
     s.add(42)
     takes_set(s)
 
 def test_param_only() -> None:
-    s = set()  # tpyc: type(set[Int32])
+    s = set()  # tpyc: type(set[int32])
     takes_set(s)
 
 def test_discard_infers() -> None:
-    s = set()  # tpyc: type(set[Int32])
+    s = set()  # tpyc: type(set[int32])
     s.discard(42)
     s.add(10)
     print(s)

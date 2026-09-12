@@ -1,14 +1,14 @@
 # Test astuple() on a flat dataclass
 from dataclasses import dataclass, astuple
-from tpy import Int32
+from tpy import int32
 
 @dataclass
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 def main() -> None:
-    p = Point(Int32(1), Int32(2))
+    p = Point(int32(1), int32(2))
     t = astuple(p)
     print(t)
 

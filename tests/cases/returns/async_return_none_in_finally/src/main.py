@@ -1,10 +1,10 @@
 # Explicit `return None` routed through the CFG-finally pending slot
 # (await inside finally) must emit the storage-form None.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
-async def f(n: Int32) -> Int32 | None:
+async def f(n: int32) -> int32 | None:
     try:
         if n > 0:
             return n

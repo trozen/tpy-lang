@@ -14,11 +14,11 @@ void main() {
     // print(span_sum(buf))
     std::cout << span_sum(buf) << "\n";
     // # span() on builtin types
-    // items: list[Int32] = [1, 2, 3, 4]
+    // items: list[int32] = [1, 2, 3, 4]
     std::vector<int32_t> items = {1, 2, 3, 4};
     // print(len(span(items)))
     std::cout << ::tpy::__len__(::tpy::as_span(items)) << "\n";
-    // arr: Array[Int32, 3] = [5, 6, 7]
+    // arr: Array[int32, 3] = [5, 6, 7]
     std::array<int32_t, 3> arr = {5, 6, 7};
     // print(len(span(arr)))
     std::cout << ::tpy::__len__(::tpy::as_span(arr)) << "\n";

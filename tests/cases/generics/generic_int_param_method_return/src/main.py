@@ -1,6 +1,6 @@
 # Int type param substitution in method return types
 from __future__ import annotations
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Grid[T, N: int]:
@@ -17,7 +17,7 @@ class Grid[T, N: int]:
 
 
 def main() -> None:
-    g = Grid[Int32, 4](10)
+    g = Grid[int32, 4](10)
     g2 = g.copy()
     g3 = g.with_value(99)
     print(g._value)

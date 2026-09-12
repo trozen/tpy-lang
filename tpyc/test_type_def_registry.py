@@ -31,6 +31,7 @@ from tpyc.type_def_registry import (
     _type_defs,
 )
 from tpyc.type_def_registry import IntTraits, FloatTraits
+from tpyc import qnames
 from tpyc.typesys import ALL_FIXED_INTS
 from tpyc.parse.parser import _FIXED_INT_NAMES as PARSER_FIXED_INT_NAMES
 from tpyc.sema.literal_utils import (
@@ -41,21 +42,21 @@ from tpyc.compilation_context import activate_compiler
 
 
 # Map qname -> a concrete TpyType instance with canonical args.
-# Primitives resolve to the typesys singleton. Containers get Int32 /
-# (str, Int32) / (Int32, 10) as their type args.
+# Primitives resolve to the typesys singleton. Containers get int32 /
+# (str, int32) / (int32, 10) as their type args.
 def _canonical_instances() -> dict[str, ts.TpyType]:
     I32 = ts.INT32
     STR = ts.STR
     cases: dict[str, ts.TpyType] = {
-        "tpy.Int8":  ts.INT8,  "tpy.Int16": ts.INT16,
-        "tpy.Int32": ts.INT32, "tpy.Int64": ts.INT64,
-        "tpy.UInt8":  ts.UINT8,  "tpy.UInt16": ts.UINT16,
-        "tpy.UInt32": ts.UINT32, "tpy.UInt64": ts.UINT64,
+        "tpy.int8":  ts.INT8,  "tpy.int16": ts.INT16,
+        "tpy.int32": ts.INT32, "tpy.int64": ts.INT64,
+        "tpy.uint8":  ts.UINT8,  "tpy.uint16": ts.UINT16,
+        "tpy.uint32": ts.UINT32, "tpy.uint64": ts.UINT64,
         "builtins.int":   ts.BIGINT,
         "builtins.float": ts.FLOAT,
-        "tpy.Float32":    ts.FLOAT32,
+        "tpy.float32":    ts.FLOAT32,
         "builtins.bool":  ts.BOOL,
-        "tpy.Char":       ts.CHAR,
+        "tpy.char":       ts.CHAR,
         "builtins.str":   ts.STR,
         "tpy.String":     ts.STRING,
         "tpy.StrView":    ts.STRVIEW,
@@ -207,14 +208,14 @@ def test_span_element_preserves_readonly_only_for_reference_elements():
     # by-value read drops const). Both views share one helper.
     from tpyc.typesys import ReadonlyType, make_span, make_span_iter, make_list, INT32
 
-    ref_elem = make_list(INT32)  # list[Int32] is a reference type
+    ref_elem = make_list(INT32)  # list[int32] is a reference type
     for view in (make_span(ReadonlyType(ref_elem)), make_span_iter(ReadonlyType(ref_elem))):
         elem = view.get_element_type()
         assert isinstance(elem, ReadonlyType), f"{view}: expected readonly preserved, got {elem}"
 
     for view in (make_span(ReadonlyType(INT32)), make_span_iter(ReadonlyType(INT32))):
         elem = view.get_element_type()
-        assert elem == INT32, f"{view}: expected readonly stripped to Int32, got {elem}"
+        assert elem == INT32, f"{view}: expected readonly stripped to int32, got {elem}"
 
 
 def test_user_spellable_flag_marks_only_internal_builtins():
@@ -316,49 +317,49 @@ _RAISES_TYPE_ERROR = object()
 
 PRIMITIVE_SNAPSHOT: dict[str, dict] = {
     # --- Fixed-width integers --------------------------------------------
-    "tpy.Int8":  dict(category=TypeCategory.FIXED_INT, is_value_type=True,
+    "tpy.int8":  dict(category=TypeCategory.FIXED_INT, is_value_type=True,
                       is_send=True, is_sync=True, subscript_borrows=False,
                       is_expensive_copy=False, param_needs_copy_for_reassign=False,
                       is_compile_time_only=False,
                       to_cpp="int8_t", to_cpp_param_type="int8_t",
                       element_qname=None, int_bits=8,  int_signed=True),
-    "tpy.Int16": dict(category=TypeCategory.FIXED_INT, is_value_type=True,
+    "tpy.int16": dict(category=TypeCategory.FIXED_INT, is_value_type=True,
                       is_send=True, is_sync=True, subscript_borrows=False,
                       is_expensive_copy=False, param_needs_copy_for_reassign=False,
                       is_compile_time_only=False,
                       to_cpp="int16_t", to_cpp_param_type="int16_t",
                       element_qname=None, int_bits=16, int_signed=True),
-    "tpy.Int32": dict(category=TypeCategory.FIXED_INT, is_value_type=True,
+    "tpy.int32": dict(category=TypeCategory.FIXED_INT, is_value_type=True,
                       is_send=True, is_sync=True, subscript_borrows=False,
                       is_expensive_copy=False, param_needs_copy_for_reassign=False,
                       is_compile_time_only=False,
                       to_cpp="int32_t", to_cpp_param_type="int32_t",
                       element_qname=None, int_bits=32, int_signed=True),
-    "tpy.Int64": dict(category=TypeCategory.FIXED_INT, is_value_type=True,
+    "tpy.int64": dict(category=TypeCategory.FIXED_INT, is_value_type=True,
                       is_send=True, is_sync=True, subscript_borrows=False,
                       is_expensive_copy=False, param_needs_copy_for_reassign=False,
                       is_compile_time_only=False,
                       to_cpp="int64_t", to_cpp_param_type="int64_t",
                       element_qname=None, int_bits=64, int_signed=True),
-    "tpy.UInt8":  dict(category=TypeCategory.FIXED_INT, is_value_type=True,
+    "tpy.uint8":  dict(category=TypeCategory.FIXED_INT, is_value_type=True,
                        is_send=True, is_sync=True, subscript_borrows=False,
                        is_expensive_copy=False, param_needs_copy_for_reassign=False,
                        is_compile_time_only=False,
                        to_cpp="uint8_t", to_cpp_param_type="uint8_t",
                        element_qname=None, int_bits=8,  int_signed=False),
-    "tpy.UInt16": dict(category=TypeCategory.FIXED_INT, is_value_type=True,
+    "tpy.uint16": dict(category=TypeCategory.FIXED_INT, is_value_type=True,
                        is_send=True, is_sync=True, subscript_borrows=False,
                        is_expensive_copy=False, param_needs_copy_for_reassign=False,
                        is_compile_time_only=False,
                        to_cpp="uint16_t", to_cpp_param_type="uint16_t",
                        element_qname=None, int_bits=16, int_signed=False),
-    "tpy.UInt32": dict(category=TypeCategory.FIXED_INT, is_value_type=True,
+    "tpy.uint32": dict(category=TypeCategory.FIXED_INT, is_value_type=True,
                        is_send=True, is_sync=True, subscript_borrows=False,
                        is_expensive_copy=False, param_needs_copy_for_reassign=False,
                        is_compile_time_only=False,
                        to_cpp="uint32_t", to_cpp_param_type="uint32_t",
                        element_qname=None, int_bits=32, int_signed=False),
-    "tpy.UInt64": dict(category=TypeCategory.FIXED_INT, is_value_type=True,
+    "tpy.uint64": dict(category=TypeCategory.FIXED_INT, is_value_type=True,
                        is_send=True, is_sync=True, subscript_borrows=False,
                        is_expensive_copy=False, param_needs_copy_for_reassign=False,
                        is_compile_time_only=False,
@@ -381,21 +382,21 @@ PRIMITIVE_SNAPSHOT: dict[str, dict] = {
                            is_compile_time_only=False,
                            to_cpp="double", to_cpp_param_type="double",
                            element_qname=None, float_bits=64),
-    "tpy.Float32":    dict(category=TypeCategory.FLOAT, is_value_type=True,
+    "tpy.float32":    dict(category=TypeCategory.FLOAT, is_value_type=True,
                            is_send=True, is_sync=True, subscript_borrows=False,
                            is_expensive_copy=False, param_needs_copy_for_reassign=False,
                            is_compile_time_only=False,
                            to_cpp="float", to_cpp_param_type="float",
                            element_qname=None, float_bits=32),
 
-    # --- Bool / Char -----------------------------------------------------
+    # --- Bool / char -----------------------------------------------------
     "builtins.bool": dict(category=TypeCategory.BOOL, is_value_type=True,
                           is_send=True, is_sync=True, subscript_borrows=False,
                           is_expensive_copy=False, param_needs_copy_for_reassign=False,
                           is_compile_time_only=False,
                           to_cpp="bool", to_cpp_param_type="bool",
                           element_qname=None),
-    "tpy.Char":      dict(category=TypeCategory.CHAR, is_value_type=True,
+    "tpy.char":      dict(category=TypeCategory.CHAR, is_value_type=True,
                           is_send=True, is_sync=True, subscript_borrows=False,
                           is_expensive_copy=False, param_needs_copy_for_reassign=False,
                           is_compile_time_only=False,
@@ -409,21 +410,21 @@ PRIMITIVE_SNAPSHOT: dict[str, dict] = {
                          is_compile_time_only=False,
                          to_cpp="std::string",
                          to_cpp_param_type="std::string_view",
-                         element_qname="tpy.Char"),
+                         element_qname="tpy.char"),
     "tpy.String":   dict(category=TypeCategory.STR, is_value_type=True,
                          is_send=True, is_sync=True, subscript_borrows=False,
                          is_expensive_copy=True, param_needs_copy_for_reassign=True,
                          is_compile_time_only=False,
                          to_cpp="::tpy::String",
                          to_cpp_param_type="const ::tpy::String&",
-                         element_qname="tpy.Char"),
+                         element_qname="tpy.char"),
     "tpy.StrView":  dict(category=TypeCategory.STR, is_value_type=True,
                          is_send=False, is_sync=True, subscript_borrows=False,
                          is_expensive_copy=False, param_needs_copy_for_reassign=False,
                          is_compile_time_only=False,
                          to_cpp="std::string_view",
                          to_cpp_param_type="std::string_view",
-                         element_qname="tpy.Char"),
+                         element_qname="tpy.char"),
     "tpy.FStr":     dict(category=TypeCategory.STR, is_value_type=True,
                          is_send=True, is_sync=True, subscript_borrows=False,
                          is_expensive_copy=False, param_needs_copy_for_reassign=False,
@@ -438,21 +439,21 @@ PRIMITIVE_SNAPSHOT: dict[str, dict] = {
                                is_compile_time_only=False,
                                to_cpp="::tpy::Bytes",
                                to_cpp_param_type="::tpy::BytesView",
-                               element_qname="tpy.UInt8"),
+                               element_qname="tpy.uint8"),
     "builtins.bytearray": dict(category=TypeCategory.BYTES, is_value_type=False,
                                is_send=True, is_sync=False, subscript_borrows=False,
                                is_expensive_copy=True, param_needs_copy_for_reassign=True,
                                is_compile_time_only=False,
                                to_cpp="::tpy::ByteArray",
                                to_cpp_param_type="const ::tpy::ByteArray&",
-                               element_qname="tpy.UInt8"),
+                               element_qname="tpy.uint8"),
     "tpy.BytesView":      dict(category=TypeCategory.BYTES, is_value_type=True,
                                is_send=False, is_sync=True, subscript_borrows=False,
                                is_expensive_copy=False, param_needs_copy_for_reassign=False,
                                is_compile_time_only=False,
                                to_cpp="::tpy::BytesView",
                                to_cpp_param_type="::tpy::BytesView",
-                               element_qname="tpy.UInt8"),
+                               element_qname="tpy.uint8"),
 
     # --- Slices ----------------------------------------------------------
     "tpy.basic_slice":      dict(category=TypeCategory.SLICE, is_value_type=True,
@@ -473,15 +474,15 @@ PRIMITIVE_SNAPSHOT: dict[str, dict] = {
 
 
 _PRIMITIVE_INSTANCES: dict[str, ts.TpyType] = {
-    "tpy.Int8":  ts.INT8,  "tpy.Int16":  ts.INT16,
-    "tpy.Int32": ts.INT32, "tpy.Int64":  ts.INT64,
-    "tpy.UInt8": ts.UINT8, "tpy.UInt16": ts.UINT16,
-    "tpy.UInt32": ts.UINT32, "tpy.UInt64": ts.UINT64,
+    "tpy.int8":  ts.INT8,  "tpy.int16":  ts.INT16,
+    "tpy.int32": ts.INT32, "tpy.int64":  ts.INT64,
+    "tpy.uint8": ts.UINT8, "tpy.uint16": ts.UINT16,
+    "tpy.uint32": ts.UINT32, "tpy.uint64": ts.UINT64,
     "builtins.int":   ts.BIGINT,
     "builtins.float": ts.FLOAT,
-    "tpy.Float32":    ts.FLOAT32,
+    "tpy.float32":    ts.FLOAT32,
     "builtins.bool":  ts.BOOL,
-    "tpy.Char":       ts.CHAR,
+    "tpy.char":       ts.CHAR,
     "builtins.str":   ts.STR,
     "tpy.String":     ts.STRING,
     "tpy.StrView":    ts.STRVIEW,
@@ -665,16 +666,16 @@ def test_primitive_predicates_match_isinstance():
         is_bytearray_type:   "builtins.bytearray",
         is_bytes_view_type:  "tpy.BytesView",
         is_bool_type:        "builtins.bool",
-        is_char_type:        "tpy.Char",
+        is_char_type:        "tpy.char",
         is_float64_type:     "builtins.float",
-        is_float32_type:     "tpy.Float32",
+        is_float32_type:     "tpy.float32",
         is_big_int_type:     "builtins.int",
     }
-    # Fixed-int qnames span Int8..UInt64; is_fixed_int_type is a category
+    # Fixed-int qnames span int8..uint64; is_fixed_int_type is a category
     # predicate, so check it membership-style instead of qname-equality.
     fixed_int_qnames = {
-        "tpy.Int8", "tpy.Int16", "tpy.Int32", "tpy.Int64",
-        "tpy.UInt8", "tpy.UInt16", "tpy.UInt32", "tpy.UInt64",
+        "tpy.int8", "tpy.int16", "tpy.int32", "tpy.int64",
+        "tpy.uint8", "tpy.uint16", "tpy.uint32", "tpy.uint64",
     }
     for qname, inst in _PRIMITIVE_INSTANCES.items():
         assert is_fixed_int_type(inst) == (qname in fixed_int_qnames), (
@@ -761,7 +762,7 @@ def _build_enum_snapshot_instances() -> dict[str, "ts.NominalType"]:
     payload is attached to the TypeDef registry so `enum_info_of(t)`
     returns the members / underlying_type / is_int_enum data. Covers:
     qualified + unqualified (mimicking `__main__`) plain enums, and
-    IntEnum variants with default Int32 and non-default UInt8 underlyings.
+    IntEnum variants with default int32 and non-default uint8 underlyings.
     """
     from tpyc.type_def_registry import (
         attach_dynamic_type_def, TypeCategory, EnumInfo as _EnumInfo,
@@ -807,7 +808,7 @@ ENUM_SNAPSHOT: dict[str, dict] = {
         is_int_enum=False,
         members=("Red", "Green", "Blue"),
         member_values=(("Red", 0), ("Green", 1), ("Blue", 2)),
-        underlying_qname="tpy.Int32",
+        underlying_qname="tpy.int32",
         qualified_name="palette.Color",
         info_module_name="palette",
         to_cpp="Color",
@@ -818,7 +819,7 @@ ENUM_SNAPSHOT: dict[str, dict] = {
         is_int_enum=False,
         members=("Ok", "Err"),
         member_values=(("Ok", 0), ("Err", 1)),
-        underlying_qname="tpy.Int32",
+        underlying_qname="tpy.int32",
         qualified_name="__main__.Status",
         info_module_name=None,  # __main__ enums preserve None on EnumInfo.module_name
         to_cpp="Status",
@@ -829,7 +830,7 @@ ENUM_SNAPSHOT: dict[str, dict] = {
         is_int_enum=True,
         members=("Low", "High"),
         member_values=(("Low", 0), ("High", 1)),
-        underlying_qname="tpy.Int32",
+        underlying_qname="tpy.int32",
         qualified_name="log.Level",
         info_module_name="log",
         to_cpp="Level",
@@ -840,7 +841,7 @@ ENUM_SNAPSHOT: dict[str, dict] = {
         is_int_enum=True,
         members=("Read", "Write", "Exec"),
         member_values=(("Read", 1), ("Write", 2), ("Exec", 4)),
-        underlying_qname="tpy.UInt8",
+        underlying_qname="tpy.uint8",
         qualified_name="perms.Flags",
         info_module_name="perms",
         to_cpp="Flags",
@@ -914,14 +915,14 @@ def test_fixed_int_range_bounds_match_width():
     formula against a few representative widths so Phase D can't silently
     change the range computation."""
     cases = [
-        ("tpy.Int8",   -2**7,  2**7 - 1),
-        ("tpy.Int16",  -2**15, 2**15 - 1),
-        ("tpy.Int32",  -2**31, 2**31 - 1),
-        ("tpy.Int64",  -2**63, 2**63 - 1),
-        ("tpy.UInt8",  0, 2**8 - 1),
-        ("tpy.UInt16", 0, 2**16 - 1),
-        ("tpy.UInt32", 0, 2**32 - 1),
-        ("tpy.UInt64", 0, 2**64 - 1),
+        ("tpy.int8",   -2**7,  2**7 - 1),
+        ("tpy.int16",  -2**15, 2**15 - 1),
+        ("tpy.int32",  -2**31, 2**31 - 1),
+        ("tpy.int64",  -2**63, 2**63 - 1),
+        ("tpy.uint8",  0, 2**8 - 1),
+        ("tpy.uint16", 0, 2**16 - 1),
+        ("tpy.uint32", 0, 2**32 - 1),
+        ("tpy.uint64", 0, 2**64 - 1),
     ]
     for qname, lo, hi in cases:
         td = get_type_def(qname)
@@ -934,8 +935,8 @@ def test_type_matches_numeric_rejects_cross_container():
     """Post-Phase-D all builtin containers (list, set, dict, Array, Span, ...)
     share the NominalType class, so `type(arg) == type(param)` is True for any
     pair of containers. type_matches_numeric must also compare the container
-    name -- otherwise resolve_overload could pick a set[Int32] overload for a
-    list[Int32] argument via the recursive element-matching branch."""
+    name -- otherwise resolve_overload could pick a set[int32] overload for a
+    list[int32] argument via the recursive element-matching branch."""
     from tpyc.sema.overloads import type_matches_numeric
     assert not type_matches_numeric(ts.make_list(ts.INT32), ts.make_set(ts.INT32))
     assert not type_matches_numeric(ts.make_set(ts.INT32), ts.make_list(ts.INT32))
@@ -1088,8 +1089,8 @@ FACTORY_SNAPSHOT: dict[str, tuple[str, ...]] = {
     # Structural wrapper
     "tpy.Ptr":              ("TYPE",),
     # Primitive singletons
-    "tpy.Float32":    (),
-    "tpy.Char":       (),
+    "tpy.float32":    (),
+    "tpy.char":       (),
     "tpy.String":     (),
     "tpy.StrView":    (),
     "tpy.FStr":       (),
@@ -1102,8 +1103,8 @@ FACTORY_SNAPSHOT: dict[str, tuple[str, ...]] = {
     "tpy.BytesView":      (),
     "tpy.basic_slice":    (),
     "builtins.slice":     (),
-    "tpy.Int8":  (), "tpy.Int16": (), "tpy.Int32": (), "tpy.Int64": (),
-    "tpy.UInt8": (), "tpy.UInt16": (), "tpy.UInt32": (), "tpy.UInt64": (),
+    "tpy.int8":  (), "tpy.int16": (), "tpy.int32": (), "tpy.int64": (),
+    "tpy.uint8": (), "tpy.uint16": (), "tpy.uint32": (), "tpy.uint64": (),
 }
 
 
@@ -1213,12 +1214,12 @@ def test_find_factory_helpers_match_old_lookup():
 
 
 def test_fixed_int_names_stay_in_sync():
-    """Three modules carry a `_FIXED_INT_NAMES` set (one hardcoded in
-    parser after F.3f.3; two derived from ALL_FIXED_INTS in literal_utils
-    and macro_api). If a new fixed-int width ever lands in
-    typesys.ALL_FIXED_INTS, the hardcoded copy in parser must update in
-    lockstep; this test pins the invariant so a single addition surfaces
-    all sites at once.
+    """Four copies of the fixed-int name list exist: parser's hardcoded
+    set, the literal_utils and macro_api sets derived from ALL_FIXED_INTS,
+    and qnames.FIXED_INT_NAMES (hardcoded; qnames cannot import typesys).
+    If a new fixed-int width ever lands in typesys.ALL_FIXED_INTS, the
+    hardcoded copies must update in lockstep; this test pins the
+    invariant so a single addition surfaces all sites at once.
 
     codegen_cpp.functions._SCALAR_ZERO_CTOR_NAMES is intentionally
     broader (adds `int`/`float`/`bool` for zero-arg scalar ctor codegen)
@@ -1232,6 +1233,8 @@ def test_fixed_int_names_stay_in_sync():
     )
     assert LITERAL_UTILS_FIXED_INT_NAMES == expected
     assert MACRO_FIXED_INT_NAMES == expected
+    assert frozenset(qnames.FIXED_INT_NAMES.values()) == expected, (
+        "qnames.FIXED_INT_NAMES drifted from ALL_FIXED_INTS")
 
 
 # =========================================================================

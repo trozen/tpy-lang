@@ -9,47 +9,47 @@
 # no section here mutates one.) A `readonly[T]` slot keeps the reference and
 # adds the const -- `const T&`, not the `readonly_form_t<T>` the sibling
 # positions spell, which would be the VIEW at str and dangle.
-from tpy import Int32, readonly
+from tpy import int32, readonly
 from typing import Iterable, Iterator, Protocol
 
 
 class Appendable(Protocol):
-    def append(self, v: Int32) -> None: ...
+    def append(self, v: int32) -> None: ...
 
 
 class Readable(Protocol):
     @readonly
-    def size(self) -> Int32: ...
+    def size(self) -> int32: ...
 
 
 class Bin:
-    total: Int32
+    total: int32
 
     def __init__(self) -> None:
         self.total = 0
 
-    def append(self, v: Int32) -> None:
+    def append(self, v: int32) -> None:
         self.total += v
 
     @readonly
-    def size(self) -> Int32:
+    def size(self) -> int32:
         return self.total
 
 
-def bump_each[T: Appendable](obj: T, count: Int32) -> Iterator[Int32]:
+def bump_each[T: Appendable](obj: T, count: int32) -> Iterator[int32]:
     # the bare-`T` slot, MUTATED through its bound's method
     obj.append(1)
-    i: Int32 = 0
+    i: int32 = 0
     while i < count:
         yield i
         i += 1
 
 
-def size_each[T: Readable](obj: readonly[T], count: Int32) -> Iterator[Int32]:
+def size_each[T: Readable](obj: readonly[T], count: int32) -> Iterator[int32]:
     # the `readonly[T]` slot: `const T&` at every instantiation -- still a
     # reference (the capture rule), but const, so only a @readonly method is
     # callable through it and `obj.append(1)` here would not compile
-    i: Int32 = 0
+    i: int32 = 0
     while i < count:
         yield obj.size() + i
         i += 1
@@ -57,28 +57,28 @@ def size_each[T: Readable](obj: readonly[T], count: Int32) -> Iterator[Int32]:
 
 class Sized(Protocol):
     @readonly
-    def __len__(self) -> Int32: ...
+    def __len__(self) -> int32: ...
 
 
-def len_each[T: Sized](obj: readonly[T], count: Int32) -> Iterator[Int32]:
+def len_each[T: Sized](obj: readonly[T], count: int32) -> Iterator[int32]:
     # the same slot at a VALUE instantiation: `const T&` is a reference at str
     # too, never the view -- which is what makes the peephole's `[&obj]`
     # capture bind the caller's object rather than a parameter that dies with
     # the factory. Fed a NAMED local, because an rvalue here is not hoisted
     # into a caller temp (BUGS.md#readonly-tparam-slot-skips-arg-temp).
-    i: Int32 = 0
+    i: int32 = 0
     while i < count:
         yield len(obj) + i
         i += 1
 
-def repeat[T](value: T, count: Int32) -> Iterator[T]:
-    i: Int32 = 0
+def repeat[T](value: T, count: int32) -> Iterator[T]:
+    i: int32 = 0
     while i < count:
         yield value
         i += 1
 
-def enumerate[T](iterable: Iterable[T]) -> Iterator[tuple[Int32, T]]:
-    i: Int32 = 0
+def enumerate[T](iterable: Iterable[T]) -> Iterator[tuple[int32, T]]:
+    i: int32 = 0
     for item in iterable:
         yield (i, item)
         i += 1
@@ -97,7 +97,7 @@ def main() -> None:
     for i, w in enumerate(words):
         print(i, w)
 
-    # enumerate over list[Int32]
+    # enumerate over list[int32]
     nums = [10, 20, 30]
     for i, n in enumerate(nums):
         print(i, n)

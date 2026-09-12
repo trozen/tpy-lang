@@ -32,7 +32,7 @@ assert src == [1, 2]
 
 # Span strictness at a method param: wrong itemsize is a TypeError.
 try:
-    s.span_sum(array.array("i", [1, 2]))  # int32 buffer into Span[Int64]
+    s.span_sum(array.array("i", [1, 2]))  # int32 buffer into Span[int64]
     raise AssertionError("expected TypeError for an int32 buffer")
 except TypeError:
     pass

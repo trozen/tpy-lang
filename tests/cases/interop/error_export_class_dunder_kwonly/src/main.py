@@ -4,13 +4,13 @@
 # TYPE SLOT: the protocol hands the wrapper its operand directly, with no
 # argument tuple to parse, so there is no keyword to match.
 # tpy: ext_module
-from tpy import Int64
+from tpy import int64
 from tpy.extern import export
 
 
 @export
 class C:
-    def __init__(self, a: Int64):
+    def __init__(self, a: int64):
         self.a = a
 
     def __eq__(self, *, other: "C") -> bool:  # tpyc: error(/'__eq__': keyword-only parameters/)

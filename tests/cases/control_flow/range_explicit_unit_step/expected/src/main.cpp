@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def up(n: Int32) -> Int32:
+// def up(n: int32) -> int32:
 int32_t up(int32_t n) {
     // acc = 0
     int32_t acc = 0;
@@ -18,7 +18,7 @@ int32_t up(int32_t n) {
     return acc;
 }
 
-// def down(n: Int32) -> Int32:
+// def down(n: int32) -> int32:
 int32_t down(int32_t n) {
     // acc = 0
     int32_t acc = 0;

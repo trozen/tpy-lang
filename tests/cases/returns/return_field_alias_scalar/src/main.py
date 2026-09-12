@@ -3,12 +3,12 @@
 # borrow chain, so it stays non-const and the caller's mutation through
 # the returned reference reaches the field -- same as the direct
 # `return h.box` form.
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    val: Int32
-    def __init__(self, v: Int32) -> None:
+    val: int32
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 

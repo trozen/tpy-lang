@@ -6,21 +6,21 @@
 import asyncio
 from typing import Iterator
 
-from tpy import (Int32, Float64, Own, ValueType, readonly, error_return,
+from tpy import (int32, float64, Own, ValueType, readonly, error_return,
                  ReturnException)
 
 
 class A:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
 class B:
-    m: Int32
+    m: int32
 
-    def __init__(self, m: Int32) -> None:
+    def __init__(self, m: int32) -> None:
         self.m = m
 
 
@@ -35,14 +35,14 @@ def bump(u: A | B) -> None:
         u.m = u.m + 1
 
 
-def peek(u: readonly[A | B]) -> Int32:
+def peek(u: readonly[A | B]) -> int32:
     if isinstance(u, A):
         return u.n
     return -1
 
 
 class Sink:
-    k: Int32
+    k: int32
 
     def __init__(self, u: A | B) -> None:
         self.k = 0
@@ -60,7 +60,7 @@ class Guard:
 
 
 class Relay:
-    hits: Int32
+    hits: int32
 
     def __init__(self, v: A | B) -> None:
         self.hits = 0
@@ -70,7 +70,7 @@ class Relay:
 
     # method body (the method mutates self, so its union param is not
     # inferred deep-const)
-    def go(self, v: A | B) -> Int32:
+    def go(self, v: A | B) -> int32:
         self.hits = self.hits + 1
         if isinstance(v, A):
             bump(v)  # tpyc: ok
@@ -81,7 +81,7 @@ class Relay:
 # free function body; the subject is a PARAM narrowed then passed on, the
 # shape the pass-through verdict used to render bare
 # Nested captures cannot lower: BUGS.md#nested-def-narrowed-union-capture.
-def free(v: A | B) -> Int32:
+def free(v: A | B) -> int32:
     if isinstance(v, A):
         bump(v)  # tpyc: ok
         return v.n
@@ -89,14 +89,14 @@ def free(v: A | B) -> Int32:
 
 
 # comprehension element
-def comprehension(v: A | B) -> Int32:
+def comprehension(v: A | B) -> int32:
     if isinstance(v, A):
         xs = [bump_and_read(v) + i for i in range(2)]  # tpyc: ok
         return xs[0] + xs[1]
     return -1
 
 
-def bump_and_read(u: A | B) -> Int32:
+def bump_and_read(u: A | B) -> int32:
     bump(u)
     if isinstance(u, A):
         return u.n
@@ -104,7 +104,7 @@ def bump_and_read(u: A | B) -> Int32:
 
 
 # context-manager body
-def with_body(v: A | B) -> Int32:
+def with_body(v: A | B) -> int32:
     if isinstance(v, A):
         with Guard():
             bump(v)  # tpyc: ok
@@ -113,7 +113,7 @@ def with_body(v: A | B) -> Int32:
 
 
 # try body and finally leg
-def try_finally(v: A | B) -> Int32:
+def try_finally(v: A | B) -> int32:
     k = -1
     if isinstance(v, A):
         try:
@@ -126,7 +126,7 @@ def try_finally(v: A | B) -> Int32:
 
 # @error_return body
 @error_return(Err)
-def error_body(v: A | B) -> Int32:
+def error_body(v: A | B) -> int32:
     if isinstance(v, A):
         bump(v)  # tpyc: ok
         return v.n
@@ -134,7 +134,7 @@ def error_body(v: A | B) -> Int32:
 
 
 # match arm, class pattern
-def match_arm(v: A | B) -> Int32:
+def match_arm(v: A | B) -> int32:
     match v:
         case A():
             bump(v)  # tpyc: ok
@@ -144,7 +144,7 @@ def match_arm(v: A | B) -> Int32:
 
 
 # match arm with an as-capture (the capture is member-typed)
-def match_capture(v: A | B) -> Int32:
+def match_capture(v: A | B) -> int32:
     match v:
         case A() as got:
             bump(got)  # tpyc: ok
@@ -154,7 +154,7 @@ def match_capture(v: A | B) -> Int32:
 
 
 # generator body: the alias survives the yield, so the lift renders after it
-def gen_body(v: A | B) -> Iterator[Int32]:
+def gen_body(v: A | B) -> Iterator[int32]:
     if isinstance(v, A):
         yield v.n
         bump(v)  # tpyc: ok
@@ -162,7 +162,7 @@ def gen_body(v: A | B) -> Iterator[Int32]:
 
 
 # generator body, match arm
-def gen_match(v: A | B) -> Iterator[Int32]:
+def gen_match(v: A | B) -> Iterator[int32]:
     match v:
         case A():
             yield v.n
@@ -174,7 +174,7 @@ def gen_match(v: A | B) -> Iterator[Int32]:
 
 # async body: the resumable frame re-establishes the alias per resume state,
 # so the lift renders both before the suspension and after it
-async def async_body(v: A | B) -> Int32:
+async def async_body(v: A | B) -> int32:
     if isinstance(v, A):
         bump(v)  # tpyc: ok
         await asyncio.sleep(0)
@@ -184,7 +184,7 @@ async def async_body(v: A | B) -> Int32:
 
 
 # async body, match arm across a suspension
-async def async_match(v: A | B) -> Int32:
+async def async_match(v: A | B) -> int32:
     match v:
         case A():
             await asyncio.sleep(0)
@@ -195,12 +195,12 @@ async def async_match(v: A | B) -> Int32:
 
 
 # inline narrowing (the ternary form)
-def inline(v: A | B) -> Int32:
+def inline(v: A | B) -> int32:
     return bump_and_read(v) if isinstance(v, A) else -1  # tpyc: ok
 
 
 # walrus binding over a call taking the narrowed subject
-def walrus(v: A | B) -> Int32:
+def walrus(v: A | B) -> int32:
     if isinstance(v, A):
         if (k := bump_and_read(v)) > 0:  # tpyc: ok
             return k
@@ -210,14 +210,14 @@ def walrus(v: A | B) -> Int32:
 # readonly[A | B] slot: the deep-const pointer-variant spelling (a const
 # borrow, so nothing is mutated here). The plain `A | B` slots below render
 # the same way, so the annotation changes nothing about the arg.
-def readonly_slot(v: A | B) -> Int32:
+def readonly_slot(v: A | B) -> int32:
     if isinstance(v, A):
         return peek(v)  # tpyc: ok
     return -1
 
 
 # loop variable over a list of the union, at a readonly[] slot
-def loop_var(xs: list[A | B]) -> Int32:
+def loop_var(xs: list[A | B]) -> int32:
     k = 0
     for e in xs:
         if isinstance(e, A):
@@ -227,20 +227,20 @@ def loop_var(xs: list[A | B]) -> Int32:
 
 # constructor-parameter slot
 # Own union slots reject before the union lift, so this slot is borrowed.
-def ctor_slot(v: A | B) -> Int32:
+def ctor_slot(v: A | B) -> int32:
     if isinstance(v, A):
         return Sink(v).k  # tpyc: ok
     return -1
 
 
 # a union with a str member, narrowed to the RECORD member
-def str_member(v: A | str) -> Int32:
+def str_member(v: A | str) -> int32:
     if isinstance(v, A):
         return str_total(v)  # tpyc: ok
     return -2
 
 
-def str_total(u: A | str) -> Int32:
+def str_total(u: A | str) -> int32:
     if isinstance(u, A):
         return u.n
     return -3
@@ -249,33 +249,33 @@ def str_total(u: A | str) -> Int32:
 # A non-mutating union parameter borrows CONST pointees, so every
 # const-bound source below reaches `total`'s slot; `bump`'s mutating slot
 # keeps the mutable ones, which is what the inverse sections pin.
-def total(u: A | B) -> Int32:
+def total(u: A | B) -> int32:
     if isinstance(u, A):
         return u.n
     return -1
 
 
 # free function: a const-bound member-typed name at the deep-const slot
-def const_member(a: A) -> Int32:
+def const_member(a: A) -> int32:
     return total(a)  # tpyc: ok
 
 
 class Reader:
-    base: Int32
+    base: int32
 
-    def __init__(self, base: Int32) -> None:
+    def __init__(self, base: int32) -> None:
         self.base = base
 
     # method body: the method mutates nothing, so its narrowed subject binds
     # `const A&` and its own union param is deep-const too
-    def read(self, v: A | B) -> Int32:
+    def read(self, v: A | B) -> int32:
         if isinstance(v, A):
             return self.base + total(v)  # tpyc: ok
         return -1
 
 
 class Tally:
-    k: Int32
+    k: int32
 
     # constructor parameter, forwarded to a second deep-const slot
     def __init__(self, u: A | B) -> None:
@@ -284,18 +284,18 @@ class Tally:
 
 # constructor CALL arg: the ctor loop threads the callee verdict the free
 # loop threads
-def ctor_call_arg(a: A) -> Int32:
+def ctor_call_arg(a: A) -> int32:
     return Tally(a).k  # tpyc: ok
 
 
 # Own[union] name forward: the source is the STORAGE variant, so the lift is
 # the storage converter rather than the borrow one
-def own_forward(u: Own[A | B]) -> Int32:  # tpyc: warning(/never consumed/)
+def own_forward(u: Own[A | B]) -> int32:  # tpyc: warning(/never consumed/)
     return total(u)  # tpyc: ok
 
 
 # loop variable over list[A | B]: a storage binding as well, un-narrowed
-def loop_const(xs: list[A | B]) -> Int32:
+def loop_const(xs: list[A | B]) -> int32:
     k = 0
     for e in xs:
         k = k + total(e)  # tpyc: ok
@@ -303,20 +303,20 @@ def loop_const(xs: list[A | B]) -> Int32:
 
 
 # generator factory param
-def gen_total(v: A | B) -> Iterator[Int32]:
+def gen_total(v: A | B) -> Iterator[int32]:
     yield total(v)  # tpyc: ok
     yield total(v)
 
 
 # async factory param
-async def async_total(v: A | B) -> Int32:
+async def async_total(v: A | B) -> int32:
     await asyncio.sleep(0)
     return total(v)  # tpyc: ok
 
 
 # storage source at a METHOD slot: the element binding takes the storage
 # converter there too, not just at a free call
-def loop_method(xs: list[A | B], r: Reader) -> Int32:
+def loop_method(xs: list[A | B], r: Reader) -> int32:
     k = 0
     for e in xs:
         k = k + r.read(e)  # tpyc: ok
@@ -325,8 +325,8 @@ def loop_method(xs: list[A | B], r: Reader) -> Int32:
 
 # closure body: the capture keeps the ENCLOSING parameter's const verdict, so
 # the narrowing inside the lambda spells const pointees
-def closure_narrow(u: A | B) -> Int32:
-    def inner() -> Int32:
+def closure_narrow(u: A | B) -> int32:
+    def inner() -> int32:
         if isinstance(u, A):  # tpyc: ok
             return u.n
         return -1
@@ -334,8 +334,8 @@ def closure_narrow(u: A | B) -> Int32:
 
 
 # closure body, forwarding the capture on: already const, so no conversion
-def closure_forward(u: A | B) -> Int32:
-    def inner() -> Int32:
+def closure_forward(u: A | B) -> int32:
+    def inner() -> int32:
         return total(u)  # tpyc: ok
     return inner()
 
@@ -343,13 +343,13 @@ def closure_forward(u: A | B) -> Int32:
 # inverse: a MUTABLE borrow source converts with the type's own as_const(),
 # and the mutating slot before it keeps the mutable pointees -- the caller
 # observes the mutation through the boundary
-def wrap_then_mutate(u: A | B) -> Int32:
+def wrap_then_mutate(u: A | B) -> int32:
     bump(u)  # tpyc: ok
     return total(u)  # tpyc: ok
 
 
 # inverse: both ends non-mutating, so the forward needs no conversion at all
-def forward_union(u: A | B) -> Int32:
+def forward_union(u: A | B) -> int32:
     return total(u)  # tpyc: ok
 
 
@@ -376,110 +376,110 @@ def pick_match(v: A | B) -> A | B:
 # member-typed local at the same slot, which takes the variant-temp row.
 # Inline narrowing is lost: BUGS.md#inline-narrowed-value-union-arg-rejects.
 # str aliases are views, unlike owned members: BUGS.md#value-union-str-view-insert.
-def value_union(v: Int32 | Float64) -> Int32:
-    if isinstance(v, Int32):
+def value_union(v: int32 | float64) -> int32:
+    if isinstance(v, int32):
         return vu_total(v)  # tpyc: ok
     return -1
 
 
 # value union, match arm
-def value_union_match(v: Int32 | Float64) -> Int32:
+def value_union_match(v: int32 | float64) -> int32:
     match v:
-        case Int32():
+        case int32():
             return vu_total(v)  # tpyc: ok
         case _:
             return -1
 
 
-def vu_total(u: Int32 | Float64) -> Int32:
-    if isinstance(u, Int32):
+def vu_total(u: int32 | float64) -> int32:
+    if isinstance(u, int32):
         return u + 1
     return -2
 
 
-def vu_peek(u: readonly[Int32 | Float64]) -> Int32:
-    if isinstance(u, Int32):
+def vu_peek(u: readonly[int32 | float64]) -> int32:
+    if isinstance(u, int32):
         return u
     return -2
 
 
 class VuBox:
-    base: Int32
+    base: int32
 
-    def __init__(self, base: Int32) -> None:
+    def __init__(self, base: int32) -> None:
         self.base = base
 
-    def go(self, u: Int32 | Float64) -> Int32:
-        if isinstance(u, Int32):
+    def go(self, u: int32 | float64) -> int32:
+        if isinstance(u, int32):
             return self.base + u
         return -2
 
 
 class VuSink:
-    k: Int32
+    k: int32
 
-    def __init__(self, u: Int32 | Float64) -> None:
+    def __init__(self, u: int32 | float64) -> None:
         self.k = vu_total(u)
 
 
 # value union at a METHOD slot
-def value_union_method(v: Int32 | Float64, box: VuBox) -> Int32:
-    if isinstance(v, Int32):
+def value_union_method(v: int32 | float64, box: VuBox) -> int32:
+    if isinstance(v, int32):
         return box.go(v)  # tpyc: ok
     return -1
 
 
 # value union at a CTOR slot
-def value_union_ctor(v: Int32 | Float64) -> Int32:
-    if isinstance(v, Int32):
+def value_union_ctor(v: int32 | float64) -> int32:
+    if isinstance(v, int32):
         return VuSink(v).k  # tpyc: ok
     return -1
 
 
 # value union at a comprehension element (a position with no flush slot, so
 # the temp row could never have served it)
-def value_union_comp(v: Int32 | Float64) -> Int32:
-    if isinstance(v, Int32):
+def value_union_comp(v: int32 | float64) -> int32:
+    if isinstance(v, int32):
         xs = [vu_total(v) + i for i in range(2)]  # tpyc: ok
         return xs[0] + xs[1]
     return -1
 
 
 # value union at a readonly[...] slot
-def value_union_readonly(v: Int32 | Float64) -> Int32:
-    if isinstance(v, Int32):
+def value_union_readonly(v: int32 | float64) -> int32:
+    if isinstance(v, int32):
         return vu_peek(v)  # tpyc: ok
     return -1
 
 
-def big_total(u: int | Float64) -> int:
+def big_total(u: int | float64) -> int:
     if isinstance(u, int):
         return u + 1
     return -2
 
 
 # value union with a BigInt member, narrowed to the BigInt
-def value_union_big(v: int | Float64) -> int:
+def value_union_big(v: int | float64) -> int:
     if isinstance(v, int):
         return big_total(v)  # tpyc: ok
     return -1
 
 
 class Pt(ValueType):
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
-def pt_total(u: Pt | Float64) -> Int32:
+def pt_total(u: Pt | float64) -> int32:
     if isinstance(u, Pt):
         return u.x + 1
     return -2
 
 
 # value union with a ValueType-RECORD member, narrowed to the record
-def value_union_record(v: Pt | Float64) -> Int32:
+def value_union_record(v: Pt | float64) -> int32:
     if isinstance(v, Pt):
         return pt_total(v)  # tpyc: ok
     return -1
@@ -487,7 +487,7 @@ def value_union_record(v: Pt | Float64) -> Int32:
 
 # inverse: a union-DECLARED name whose read type sema retyped to a member by
 # assignment is still the variant in C++, so it passes bare (no lift)
-def assign_narrowed() -> Int32:
+def assign_narrowed() -> int32:
     x: A | B = A(50)
     bump(x)  # tpyc: ok
     return peek(x)
@@ -593,9 +593,9 @@ def main() -> None:
     if isinstance(ret2, A):
         print("return-match", ret2.n, s.n)
 
-    # Int32(...) is spelled out because CPython's Int32 stub is an int
+    # int32(...) is spelled out because CPython's int32 stub is an int
     # SUBCLASS: a bare literal would not satisfy isinstance there
-    vv = Int32(180)
+    vv = int32(180)
     print("value-union", value_union(vv), vu_total(vv))
     print("value-union-match", value_union_match(vv), vu_total(vv))
     box = VuBox(1)
@@ -603,7 +603,7 @@ def main() -> None:
     print("value-union-ctor", value_union_ctor(vv), VuSink(vv).k)
     print("value-union-comp", value_union_comp(vv), vu_total(vv))
     print("value-union-readonly", value_union_readonly(vv), vu_peek(vv))
-    # annotated because a bare literal types as Int32: the twin must be the
+    # annotated because a bare literal types as int32: the twin must be the
     # union's exact BigInt member to take the variant-temp row
     bb: int = 190
     print("value-union-big", value_union_big(bb), big_total(bb))

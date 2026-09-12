@@ -9,7 +9,7 @@
 #      `static_assert(__is_invocable<const std::hash<Point>&, ...>)`. The
 #      hash-element dependency edge added to `sort_records_by_inheritance`
 #      now reorders Point ahead of Holder.
-from tpy import Int32, UInt64
+from tpy import int32, uint64
 
 
 class Holder:
@@ -20,13 +20,13 @@ class Holder:
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
-    def __hash__(self) -> UInt64:
-        return UInt64(self.x)
+    def __hash__(self) -> uint64:
+        return uint64(self.x)
 
     def __eq__(self, other: "Point") -> bool:
         return self.x == other.x

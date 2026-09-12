@@ -16,10 +16,10 @@ void test_lazy_for_loop();
 void test_direct_iterable_arg();
 void test_print_lazy_repeat();
 
-// def consume(items: Iterable[Int32]) -> None:
+// def consume(items: Iterable[int32]) -> None:
 template<::tpystd::typing::Iterable<int32_t> T_items>
 void consume(T_items& items) {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for v in items:
     auto& __src_0 = items;

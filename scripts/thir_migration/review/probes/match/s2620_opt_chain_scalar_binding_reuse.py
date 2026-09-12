@@ -1,12 +1,12 @@
 from typing import Optional
-from tpy import Int32
+from tpy import int32
 
 class Box:
-    val: Optional[Int32]
-    def __init__(self, val: Optional[Int32]) -> None:
+    val: Optional[int32]
+    def __init__(self, val: Optional[int32]) -> None:
         self.val = val
 
-def f(o: Optional[Box], oi: Optional[Int32]) -> str:
+def f(o: Optional[Box], oi: Optional[int32]) -> str:
     match oi:
         case 1:
             print("one")

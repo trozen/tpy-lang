@@ -1,13 +1,13 @@
-# A movable BigInt local written into an Int32 field: the narrowing coercion
+# A movable BigInt local written into an int32 field: the narrowing coercion
 # renders a fresh scalar prvalue, so the last-use move must not wrap it.
 # Movability needs the tuple-unpack REBIND -- a plain unpack target binds
 # `const BigInt&` and is never movable to begin with.
-from tpy import Int32
+from tpy import int32
 
 
 class Split:
-    hi: Int32
-    lo: Int32
+    hi: int32
+    lo: int32
 
     def __init__(self, total: int, extra: int) -> None:
         hi, lo = divmod(total, 60)

@@ -9,12 +9,12 @@ void main() {
     // m = MyList()
     MyList m = MyList();
     // # Index access
-    // print(m[Int32(0)])
+    // print(m[int32(0)])
     std::cout << m[0] << "\n";
-    // print(m[Int32(3)])
+    // print(m[int32(3)])
     std::cout << m[3] << "\n";
     // # Slice access with both bounds
-    // sp = m[Int32(1):Int32(4)]
+    // sp = m[int32(1):int32(4)]
     std::span<const int32_t> sp = m.__getitem__(::tpy::BasicSlice{1, 4});
     // for x in sp:
     auto& __obj_0 = sp;
@@ -26,7 +26,7 @@ void main() {
         std::cout << x << "\n";
     }
     // # Slice with omitted start
-    // sp2 = m[:Int32(2)]
+    // sp2 = m[:int32(2)]
     std::span<const int32_t> sp2 = m.__getitem__(::tpy::BasicSlice{std::nullopt, 2});
     // for x in sp2:
     auto& __obj_1 = sp2;
@@ -38,7 +38,7 @@ void main() {
         std::cout << x << "\n";
     }
     // # Slice with omitted stop
-    // sp3 = m[Int32(3):]
+    // sp3 = m[int32(3):]
     std::span<const int32_t> sp3 = m.__getitem__(::tpy::BasicSlice{3, std::nullopt});
     // for x in sp3:
     auto& __obj_2 = sp3;

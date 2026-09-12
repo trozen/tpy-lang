@@ -226,7 +226,7 @@ double degrees(double x) {
     // # is sqrt(2) for even bit_length, exactly 2 for odd). Convergence
     // # drops from O(log n) iterations (when starting at n) to O(log log n).
     // # The `int(1)` LHS forces BigInt arithmetic so the shift can exceed
-    // # Int32 width without overflow-checking.
+    // # int32 width without overflow-checking.
     // x: int = int(1) << ((n.bit_length() + 1) // 2)
     ::tpy::BigInt x = ((::tpy::BigInt(1)) << (::tpy::BigInt((::tpy::div_floor<int32_t>((::tpy::add_check<int32_t>((n).bit_length(), 1)), 2)))));
     // y: int = (x + n // x) // 2

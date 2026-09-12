@@ -10,7 +10,7 @@ Expr& passthru(Expr& e) {
     return e;
 }
 
-// def count(e: Expr) -> Int32:     # only read -> const Expr& e
+// def count(e: Expr) -> int32:     # only read -> const Expr& e
 int32_t count(const Expr& e) {
     // if isinstance(e, int):
     if (std::holds_alternative<::tpy::BigInt>(e.value)) {

@@ -4,41 +4,41 @@
 # snapshots the member by value, a non-escaping (`Fn`) one binds a reference
 # to it. Never a handle on the frame itself.
 from typing import Callable, Iterator
-from tpy import Fn, Int32, Own, ValueType
+from tpy import Fn, int32, Own, ValueType
 
 
 class Pt(ValueType):
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
-def apply(f: Callable[[Int32], Int32], v: Int32) -> Int32:
+def apply(f: Callable[[int32], int32], v: int32) -> int32:
     return f(v)
 
 
-def apply_fn(f: Fn[[Int32], Int32], v: Int32) -> Int32:
+def apply_fn(f: Fn[[int32], int32], v: int32) -> int32:
     return f(v)
 
 
-def push(ys: list[Int32], v: Int32) -> Int32:
+def push(ys: list[int32], v: int32) -> int32:
     ys.append(v)
     return len(ys)
 
 
 class Registry:
-    cb: Callable[[Int32], Int32]
+    cb: Callable[[int32], int32]
 
     def __init__(self) -> None:
         self.cb = lambda x: x
 
-    def register(self, f: Callable[[Int32], Int32]) -> None:
+    def register(self, f: Callable[[int32], int32]) -> None:
         self.cb = f
 
 
 class C:
-    n: Int32
+    n: int32
 
     def __init__(self) -> None:
         self.n = 10
@@ -46,13 +46,13 @@ class C:
     # generator METHOD, single yield (simple-generator peephole): the wrapper
     # lambda holds the receiver as `this`, and the inner capture spells `this`
     # too (self renders `(*this)` in that context).
-    def emit(self, k: Int32) -> Iterator[Int32]:
+    def emit(self, k: int32) -> Iterator[int32]:
         for i in range(k):
             yield apply(lambda x: x + self.n, i)  # tpyc: ok
 
 
 class D:
-    n: Int32
+    n: int32
 
     def __init__(self) -> None:
         self.n = 10
@@ -61,7 +61,7 @@ class D:
     # frame's `__self` reference member, and the lambda copies that HANDLE --
     # so a field written between the two yields is visible to the second
     # lambda, exactly as a sync method's `this` capture behaves.
-    def emit(self) -> Iterator[Int32]:
+    def emit(self) -> Iterator[int32]:
         yield apply(lambda x: x + self.n, 1)  # tpyc: ok
         self.n = 100
         yield apply(lambda x: x + self.n, 2)  # tpyc: ok
@@ -69,7 +69,7 @@ class D:
 
 # free generator, two yields (frame): the captured name is an ordinary frame
 # member (a param), the shape that used to emit `[n]` for a struct member.
-def two_yield(n: Int32) -> Iterator[Int32]:
+def two_yield(n: int32) -> Iterator[int32]:
     yield apply(lambda x: x + n, 1)  # tpyc: ok
     yield apply(lambda x: x + n, 2)  # tpyc: ok
 
@@ -77,7 +77,7 @@ def two_yield(n: Int32) -> Iterator[Int32]:
 # The by-value capture is what makes a lambda safe to hand to a callee that
 # STORES it: `r.cb` outlives the generator frame, and the snapshot it holds
 # still reads 10 after the generator is exhausted and gone.
-def store(n: Int32, r: Registry) -> Iterator[Int32]:
+def store(n: int32, r: Registry) -> Iterator[int32]:
     r.register(lambda x: x + n)  # tpyc: ok
     yield 1
     yield 2
@@ -87,9 +87,9 @@ def store(n: Int32, r: Registry) -> Iterator[Int32]:
 # capture point warns exactly as it does in a sync body -- and, like
 # nested_def/escaping_value_capture_reassigned, the closure runs BEFORE the
 # reassignment so TPy and CPython still agree on the output.
-def cell() -> Iterator[Int32]:
+def cell() -> Iterator[int32]:
     step = 1
-    f: Callable[[Int32], Int32] = lambda x: x + step  # tpyc: warning(/reassigned after the closure is created/)
+    f: Callable[[int32], int32] = lambda x: x + step  # tpyc: warning(/reassigned after the closure is created/)
     yield apply(f, 1)
     step = 100
     yield step
@@ -100,7 +100,7 @@ def cell() -> Iterator[Int32]:
 # capture binds a reference to it -- the mutation through the closure is
 # visible on the caller's list, as it is in the sync twin
 # (nested_def/container_params) and in CPython.
-def ref_capture(xs: list[Int32]) -> Iterator[Int32]:
+def ref_capture(xs: list[int32]) -> Iterator[int32]:
     yield apply_fn(lambda v: push(xs, v), 9)  # tpyc: ok
     yield apply_fn(lambda i: xs[i], 2)  # tpyc: ok
 
@@ -109,7 +109,7 @@ def ref_capture(xs: list[Int32]) -> Iterator[Int32]:
 # PAYLOAD, so the wrapper is peeled before the copyable verdict -- a value-typed
 # payload copies, the `__del__`-carrying one rejects
 # (nested_def/error_frame_lambda_nocopy_snapshot).
-def own_capture(p: Own[Pt]) -> Iterator[Int32]:
+def own_capture(p: Own[Pt]) -> Iterator[int32]:
     yield apply(lambda i: i + p.x, 1)  # tpyc: ok
     yield apply(lambda i: i + p.x, 2)  # tpyc: ok
 

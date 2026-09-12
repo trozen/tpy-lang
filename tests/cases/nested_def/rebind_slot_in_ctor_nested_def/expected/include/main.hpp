@@ -16,10 +16,10 @@ void main();
 
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
 
-    // def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: int32) -> None:
     Point() = default;
     explicit Point(int32_t x);
 
@@ -35,10 +35,10 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 // class Holder:
 struct Holder {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, k: Int32) -> None:
+    // def __init__(self, k: int32) -> None:
     Holder() = default;
     explicit Holder(int32_t k);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
@@ -50,7 +50,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 }
 
 
-// def __init__(self, x: Int32) -> None:
+// def __init__(self, x: int32) -> None:
 inline Point::Point(int32_t x) : x(x) {}
 
 // def bump(self) -> None:
@@ -59,10 +59,10 @@ inline void Point::bump() {
     this->x = ::tpy::add_check<int32_t>(this->x, 1);
 }
 
-// def __init__(self, k: Int32) -> None:
+// def __init__(self, k: int32) -> None:
 inline Holder::Holder(int32_t k) {
     std::optional<Point> __slot_4;
-    // def inner(n: Int32) -> Int32:
+    // def inner(n: int32) -> int32:
     auto inner = [](int32_t n) -> int32_t {
         std::optional<Point> __slot_2;
         // p = Point(n)

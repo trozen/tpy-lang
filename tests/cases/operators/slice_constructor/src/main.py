@@ -1,8 +1,8 @@
 # basic_slice() and slice() constructors for creating slice objects.
-from tpy import Int32, basic_slice
+from tpy import int32, basic_slice
 
 def main() -> None:
-    items: list[Int32] = [10, 20, 30, 40, 50]
+    items: list[int32] = [10, 20, 30, 40, 50]
 
     # basic_slice constructor
     s = basic_slice(1, 4)

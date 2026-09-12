@@ -37,7 +37,7 @@ a copy constructor, or a by-value slot where the scalar form is a pointer, is th
 **Rule.** A "copies X" warning fires only where the emitted C++ actually copies, and every
 actual copy of a reference type has a warning or an explicit `copy()`. Both directions.
 
-**Example.** `s[0] = z` where `s` is a user class with `def __setitem__(self, index: Int32,
+**Example.** `s[0] = z` where `s` is a user class with `def __setitem__(self, index: int32,
 value: Data)`. The emit is `::tpy::__setitem__(s, 0, z)`, a by-reference pass, yet the line warns
 "copies Data into container; use copy()"; the copy, if any, is the callee's own `self.a = value`,
 which warns on its own line. Inverse: `self.u = v` in a constructor with `v: Own[A | B]` warns the
@@ -101,7 +101,7 @@ chained comparison -- is evaluated exactly when CPython evaluates it, and exactl
 of it (a temp, an owned copy, a call, a property read) materializes before its guard has run,
 and no operand is spelled twice in the emit to serve it.
 
-**Example.** `(xs.pop() > 0) or take(xs)` with `take(xs: Own[list[Int32]])`. Wrong: `auto
+**Example.** `(xs.pop() > 0) or take(xs)` with `take(xs: Own[list[int32]])`. Wrong: `auto
 __tmp_1 = xs;` declared above the `||`, so the call sees the list before the pop where CPython
 sees it after, and the copy is paid when the right side never runs. Right: the temp is created
 inside the right operand's own region, after the guard. Earlier hits of the same class: a
@@ -180,7 +180,7 @@ storage: a `list`, `dict`, `set` or `bytearray`; a `String` or owned `bytes` tha
 own buffer; a `BigInt` outside the small-int range; `Box`, `Rc`, `Arc`; an asyncio `Task`'s
 boxed coroutine; a `@dynamic` protocol adapter; a thrown exception.
 Everything else in the mapping is inline or borrowed and must stay that way: fixed-width
-ints, `Char`, `bool`, tuples, records held in fields and containers, `str` and `bytes` at
+ints, `char`, `bool`, tuples, records held in fields and containers, `str` and `bytes` at
 borrowed positions (views), `Span`, `Ptr`. A hidden allocation is one the mapping does not
 call for: a `std::string` built from a view, a container copied to pass or return, a `BigInt`
 temporary for a literal or comparison that fits a fixed width, a temporary container built
@@ -215,13 +215,13 @@ compiles by copying the element every iteration where every other path aliases -
 `silent-copy-vs-alias` defect in a second costume, in a cell that is the norm rather than a
 corner.
 
-**Example.** `def walk(xs: readonly[list[Node]]) -> Iterator[Int32]: for n in xs: yield n.v;
+**Example.** `def walk(xs: readonly[list[Node]]) -> Iterator[int32]: for n in xs: yield n.v;
 yield n.v` -- two yields, so the body is a resumable frame rather than the simple-generator
 peephole. Wrong: the frame field `Node* n` against an advance that yields `const Node*` (g++
 `invalid conversion from 'const Node*' to 'Node*'`); equally wrong, `::tpy::frame_slot<Node> n`,
 which compiles and copies. Right: `const Node* n = nullptr;`. Same cell from the other two roots:
-`def each(self) -> Iterator[Int32]: for p in self.items:` with a const-inferred receiver, and
-`def sizes(*xs: list[Int32])` whose loop over the pack suspends.
+`def each(self) -> Iterator[int32]: for p in self.items:` with a const-inferred receiver, and
+`def sizes(*xs: list[int32])` whose loop over the pack suspends.
 
 **Check.** For an iteration whose source is `readonly`, a `self` field under a const receiver, or
 an unmutated `*args` pack, read the loop var's frame field in the emitted C++: an owning
@@ -282,8 +282,8 @@ tripwire: it fails the day the shape lowers), and queued for a lowering arm in
 **Example.** Three `match` rejections landed in one branch as if they were rules, and CPython runs
 all three: `case (Dog() | Cat()) as y:` over `Dog | Cat | Bird` binds `y` as the whole subject
 and rejects `y.n`; `case A() | None:` over `A | B | None` errors "unsupported alternative in an
-or-pattern over a union subject"; `case Int32():` on `type Tree[T] = T | list[Tree[T]]` at
-`Tree[Int32 | str]` errors "'Int32' is not a member of union". Each is now a filed gap.
+or-pattern over a union subject"; `case int32():` on `type Tree[T] = T | list[Tree[T]]` at
+`Tree[int32 | str]` errors "'int32' is not a member of union". Each is now a filed gap.
 (open: `BUGS.md#or-pattern-as-binding-no-join`, `BUGS.md#or-pattern-none-alt-union`,
 `BUGS.md#recursive-alias-leaf-union-member-unnameable`)
 

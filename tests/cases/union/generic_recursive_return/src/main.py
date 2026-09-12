@@ -2,20 +2,20 @@
 # returned as Own[Tree[T]] (lowers to `Tree<int32_t>` by value / move). A bare
 # `-> Tree[T]` return is `Tree<int32_t>&` and is rejected for a fresh value --
 # see error_generic_recursive_return_dangle.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 type Tree[T] = T | list[Tree[T]]
 
 
-def make_leaf() -> Own[Tree[Int32]]:
-    return Int32(7)
+def make_leaf() -> Own[Tree[int32]]:
+    return int32(7)
 
 
-def make_branch() -> Own[Tree[Int32]]:
-    return [Int32(1), Int32(2), Int32(3)]
+def make_branch() -> Own[Tree[int32]]:
+    return [int32(1), int32(2), int32(3)]
 
 
-def leaf_count(t: Tree[Int32]) -> Int32:
+def leaf_count(t: Tree[int32]) -> int32:
     match t:
         case list() as branches:
             total = 0

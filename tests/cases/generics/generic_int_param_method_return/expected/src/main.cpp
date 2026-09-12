@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // g = Grid[Int32, 4](10)
+    // g = Grid[int32, 4](10)
     Grid<int32_t, 4> g = Grid<int32_t, 4>(10);
     // g2 = g.copy()
     Grid<int32_t, 4> g2 = g.copy();

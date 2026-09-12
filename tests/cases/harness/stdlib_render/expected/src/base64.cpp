@@ -11,36 +11,36 @@ namespace tpystd::base64 {
 ::tpy::Bytes _B32_ALPHA;
 // _B16_ALPHA: bytes = b"0123456789ABCDEF"
 ::tpy::Bytes _B16_ALPHA;
-// _PAD: Int32 = 61  # '='
+// _PAD: int32 = 61  # '='
 int32_t _PAD{};
-// _CHAR_PLUS: Int32 = 43
+// _CHAR_PLUS: int32 = 43
 int32_t _CHAR_PLUS{};
-// _CHAR_SLASH: Int32 = 47
+// _CHAR_SLASH: int32 = 47
 int32_t _CHAR_SLASH{};
-// _CHAR_MINUS: Int32 = 45
+// _CHAR_MINUS: int32 = 45
 int32_t _CHAR_MINUS{};
-// _CHAR_UNDER: Int32 = 95
+// _CHAR_UNDER: int32 = 95
 int32_t _CHAR_UNDER{};
-// _NEWLINE: Int32 = 10  # '\n'
+// _NEWLINE: int32 = 10  # '\n'
 int32_t _NEWLINE{};
-// _MIME_LINE: Int32 = 76  # MIME line length for encodebytes
+// _MIME_LINE: int32 = 76  # MIME line length for encodebytes
 int32_t _MIME_LINE{};
 
 // def _b64_encode(data: bytes, alphabet: bytes) -> bytes:
 ::tpy::Bytes _b64_encode(::tpy::BytesView data, ::tpy::BytesView alphabet) {
-    // n: Int32 = Int32(len(data))
+    // n: int32 = int32(len(data))
     int32_t n = ::tpy::__len__(data);
     // result: bytearray = bytearray()
     ::tpy::ByteArray result = ::tpy::ByteArray();
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i + 3 <= n:
     while (((::tpy::add_check<int32_t>(i, 3)) <= n)) {
-        // b0: Int32 = Int32(data[i])
+        // b0: int32 = int32(data[i])
         int32_t b0 = ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, i));
-        // b1: Int32 = Int32(data[i + 1])
+        // b1: int32 = int32(data[i + 1])
         int32_t b1 = ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(i, 1))));
-        // b2: Int32 = Int32(data[i + 2])
+        // b2: int32 = int32(data[i + 2])
         int32_t b2 = ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(i, 2))));
         // result.append(alphabet[b0 >> 2])
         result.push_back(::tpy::bytes_getitem(alphabet, (::tpy::rshift_check<int32_t>(b0, 2))));
@@ -53,25 +53,25 @@ int32_t _MIME_LINE{};
         // i += 3
         i = ::tpy::add_check<int32_t>(i, 3);
     }
-    // rem: Int32 = n - i
+    // rem: int32 = n - i
     int32_t rem = (::tpy::sub_check<int32_t>(n, i));
     // if rem == 1:
     if ((rem == 1)) {
-        // r0: Int32 = Int32(data[i])
+        // r0: int32 = int32(data[i])
         int32_t r0 = ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, i));
         // result.append(alphabet[r0 >> 2])
         result.push_back(::tpy::bytes_getitem(alphabet, (::tpy::rshift_check<int32_t>(r0, 2))));
         // result.append(alphabet[(r0 & 0x03) << 4])
         result.push_back(::tpy::bytes_getitem(alphabet, (::tpy::lshift_check<int32_t>((static_cast<int32_t>(r0 & 3)), 4))));
-        // result.append(UInt8(_PAD))
+        // result.append(uint8(_PAD))
         result.push_back(::tpy::int_cast_check<uint8_t>(_PAD));
-        // result.append(UInt8(_PAD))
+        // result.append(uint8(_PAD))
         result.push_back(::tpy::int_cast_check<uint8_t>(_PAD));
     // elif rem == 2:
     } else if ((rem == 2)) {
-        // s0: Int32 = Int32(data[i])
+        // s0: int32 = int32(data[i])
         int32_t s0 = ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, i));
-        // s1: Int32 = Int32(data[i + 1])
+        // s1: int32 = int32(data[i + 1])
         int32_t s1 = ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(i, 1))));
         // result.append(alphabet[s0 >> 2])
         result.push_back(::tpy::bytes_getitem(alphabet, (::tpy::rshift_check<int32_t>(s0, 2))));
@@ -79,14 +79,14 @@ int32_t _MIME_LINE{};
         result.push_back(::tpy::bytes_getitem(alphabet, (static_cast<int32_t>((::tpy::lshift_check<int32_t>((static_cast<int32_t>(s0 & 3)), 4)) | (::tpy::rshift_check<int32_t>(s1, 4))))));
         // result.append(alphabet[(s1 & 0x0F) << 2])
         result.push_back(::tpy::bytes_getitem(alphabet, (::tpy::lshift_check<int32_t>((static_cast<int32_t>(s1 & 15)), 2))));
-        // result.append(UInt8(_PAD))
+        // result.append(uint8(_PAD))
         result.push_back(::tpy::int_cast_check<uint8_t>(_PAD));
     }
     // return bytes(result)
     return ::tpy::Bytes(result);
 }
 
-// def _b64_char_to_value(c: Int32, c62: Int32, c63: Int32) -> Int32:
+// def _b64_char_to_value(c: int32, c62: int32, c63: int32) -> int32:
 int32_t _b64_char_to_value(int32_t c, int32_t c62, int32_t c63) {
     // if c >= 65 and c <= 90:
     if (((c >= 65) && (c <= 90))) {
@@ -117,9 +117,9 @@ int32_t _b64_char_to_value(int32_t c, int32_t c62, int32_t c63) {
     throw ::tpy::ValueError("Invalid base64 character");
 }
 
-// def _b64_decode(data: bytes, c62: Int32, c63: Int32) -> bytes:
+// def _b64_decode(data: bytes, c62: int32, c63: int32) -> bytes:
 ::tpy::Bytes _b64_decode(::tpy::BytesView data, int32_t c62, int32_t c63) {
-    // n: Int32 = Int32(len(data))
+    // n: int32 = int32(len(data))
     int32_t n = ::tpy::__len__(data);
     // if n % 4 != 0:
     if (((::tpy::mod_floor<int32_t>(n, 4)) != 0)) {
@@ -128,21 +128,21 @@ int32_t _b64_char_to_value(int32_t c, int32_t c62, int32_t c63) {
     }
     // result: bytearray = bytearray()
     ::tpy::ByteArray result = ::tpy::ByteArray();
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < n:
     while ((i < n)) {
-        // c0: Int32 = Int32(data[i])
+        // c0: int32 = int32(data[i])
         int32_t c0 = ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, i));
-        // c1: Int32 = Int32(data[i + 1])
+        // c1: int32 = int32(data[i + 1])
         int32_t c1 = ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(i, 1))));
-        // c2: Int32 = Int32(data[i + 2])
+        // c2: int32 = int32(data[i + 2])
         int32_t c2 = ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(i, 2))));
-        // c3: Int32 = Int32(data[i + 3])
+        // c3: int32 = int32(data[i + 3])
         int32_t c3 = ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(i, 3))));
-        // d0: Int32 = _b64_char_to_value(c0, c62, c63)
+        // d0: int32 = _b64_char_to_value(c0, c62, c63)
         int32_t d0 = _b64_char_to_value(c0, c62, c63);
-        // d1: Int32 = _b64_char_to_value(c1, c62, c63)
+        // d1: int32 = _b64_char_to_value(c1, c62, c63)
         int32_t d1 = _b64_char_to_value(c1, c62, c63);
         // if c2 == _PAD:
         if ((c2 == _PAD)) {
@@ -151,7 +151,7 @@ int32_t _b64_char_to_value(int32_t c, int32_t c62, int32_t c63) {
                 // raise ValueError("Invalid base64 padding")
                 throw ::tpy::ValueError("Invalid base64 padding");
             }
-            // result.append(UInt8(((d0 << 2) | (d1 >> 4)) & 0xFF))
+            // result.append(uint8(((d0 << 2) | (d1 >> 4)) & 0xFF))
             result.push_back(::tpy::int_cast_check<uint8_t>((static_cast<int32_t>((static_cast<int32_t>((::tpy::lshift_check<int32_t>(d0, 2)) | (::tpy::rshift_check<int32_t>(d1, 4)))) & 255))));
         // elif c3 == _PAD:
         } else if ((c3 == _PAD)) {
@@ -160,23 +160,23 @@ int32_t _b64_char_to_value(int32_t c, int32_t c62, int32_t c63) {
                 // raise ValueError("Invalid base64 padding")
                 throw ::tpy::ValueError("Invalid base64 padding");
             }
-            // e2: Int32 = _b64_char_to_value(c2, c62, c63)
+            // e2: int32 = _b64_char_to_value(c2, c62, c63)
             int32_t e2 = _b64_char_to_value(c2, c62, c63);
-            // result.append(UInt8(((d0 << 2) | (d1 >> 4)) & 0xFF))
+            // result.append(uint8(((d0 << 2) | (d1 >> 4)) & 0xFF))
             result.push_back(::tpy::int_cast_check<uint8_t>((static_cast<int32_t>((static_cast<int32_t>((::tpy::lshift_check<int32_t>(d0, 2)) | (::tpy::rshift_check<int32_t>(d1, 4)))) & 255))));
-            // result.append(UInt8((((d1 & 0x0F) << 4) | (e2 >> 2)) & 0xFF))
+            // result.append(uint8((((d1 & 0x0F) << 4) | (e2 >> 2)) & 0xFF))
             result.push_back(::tpy::int_cast_check<uint8_t>((static_cast<int32_t>((static_cast<int32_t>((::tpy::lshift_check<int32_t>((static_cast<int32_t>(d1 & 15)), 4)) | (::tpy::rshift_check<int32_t>(e2, 2)))) & 255))));
         // else:
         } else {
-            // f2: Int32 = _b64_char_to_value(c2, c62, c63)
+            // f2: int32 = _b64_char_to_value(c2, c62, c63)
             int32_t f2 = _b64_char_to_value(c2, c62, c63);
-            // f3: Int32 = _b64_char_to_value(c3, c62, c63)
+            // f3: int32 = _b64_char_to_value(c3, c62, c63)
             int32_t f3 = _b64_char_to_value(c3, c62, c63);
-            // result.append(UInt8(((d0 << 2) | (d1 >> 4)) & 0xFF))
+            // result.append(uint8(((d0 << 2) | (d1 >> 4)) & 0xFF))
             result.push_back(::tpy::int_cast_check<uint8_t>((static_cast<int32_t>((static_cast<int32_t>((::tpy::lshift_check<int32_t>(d0, 2)) | (::tpy::rshift_check<int32_t>(d1, 4)))) & 255))));
-            // result.append(UInt8((((d1 & 0x0F) << 4) | (f2 >> 2)) & 0xFF))
+            // result.append(uint8((((d1 & 0x0F) << 4) | (f2 >> 2)) & 0xFF))
             result.push_back(::tpy::int_cast_check<uint8_t>((static_cast<int32_t>((static_cast<int32_t>((::tpy::lshift_check<int32_t>((static_cast<int32_t>(d1 & 15)), 4)) | (::tpy::rshift_check<int32_t>(f2, 2)))) & 255))));
-            // result.append(UInt8((((f2 & 0x03) << 6) | f3) & 0xFF))
+            // result.append(uint8((((f2 & 0x03) << 6) | f3) & 0xFF))
             result.push_back(::tpy::int_cast_check<uint8_t>((static_cast<int32_t>((static_cast<int32_t>((::tpy::lshift_check<int32_t>((static_cast<int32_t>(f2 & 3)), 6)) | f3)) & 255))));
         }
         // i += 4
@@ -195,7 +195,7 @@ int32_t _b64_char_to_value(int32_t c, int32_t c62, int32_t c63) {
     }
     // buf: bytearray = bytearray()
     ::tpy::ByteArray buf = ::tpy::ByteArray();
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < 62:
     while ((i < 62)) {
@@ -212,19 +212,19 @@ int32_t _b64_char_to_value(int32_t c, int32_t c62, int32_t c63) {
     return ::tpy::Bytes(buf);
 }
 
-// def _filter_b64_input(data: bytes, c62: Int32, c63: Int32) -> bytes:
+// def _filter_b64_input(data: bytes, c62: int32, c63: int32) -> bytes:
 ::tpy::Bytes _filter_b64_input(::tpy::BytesView data, int32_t c62, int32_t c63) {
     // # CPython's validate=False default silently drops non-alphabet chars
     // # (matching RFC 4648's MIME-mode leniency). Keep padding chars.
     // buf: bytearray = bytearray()
     ::tpy::ByteArray buf = ::tpy::ByteArray();
-    // n: Int32 = Int32(len(data))
+    // n: int32 = int32(len(data))
     int32_t n = ::tpy::__len__(data);
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < n:
     while ((i < n)) {
-        // c: Int32 = Int32(data[i])
+        // c: int32 = int32(data[i])
         int32_t c = ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, i));
         // keep: bool = False
         bool keep = false;
@@ -247,7 +247,7 @@ int32_t _b64_char_to_value(int32_t c, int32_t c62, int32_t c63) {
         }
         // if keep:
         if (keep) {
-            // buf.append(UInt8(c))
+            // buf.append(uint8(c))
             buf.push_back(::tpy::int_cast_check<uint8_t>(c));
         }
         // i += 1
@@ -271,9 +271,9 @@ int32_t _b64_char_to_value(int32_t c, int32_t c62, int32_t c63) {
 // @dispatch
 // def b64decode(data: bytes, altchars: bytes | None = None, validate: bool = False) -> bytes:
 ::tpy::Bytes b64decode(::tpy::BytesView data, std::optional<::tpy::BytesView> altchars, bool validate) {
-    // c62: Int32 = _CHAR_PLUS
+    // c62: int32 = _CHAR_PLUS
     int32_t c62 = _CHAR_PLUS;
-    // c63: Int32 = _CHAR_SLASH
+    // c63: int32 = _CHAR_SLASH
     int32_t c63 = _CHAR_SLASH;
     // if altchars is not None:
     if ((altchars.has_value())) {
@@ -282,9 +282,9 @@ int32_t _b64_char_to_value(int32_t c, int32_t c62, int32_t c63) {
             // raise ValueError("altchars must be 2 bytes")
             throw ::tpy::ValueError("altchars must be 2 bytes");
         }
-        // c62 = Int32(altchars[0])
+        // c62 = int32(altchars[0])
         c62 = ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem((*altchars), 0));
-        // c63 = Int32(altchars[1])
+        // c63 = int32(altchars[1])
         c63 = ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem((*altchars), 1));
     }
     // if validate:
@@ -345,15 +345,15 @@ int32_t _b64_char_to_value(int32_t c, int32_t c62, int32_t c63) {
 
 // def b16encode(data: bytes) -> bytes:
 ::tpy::Bytes b16encode(::tpy::BytesView data) {
-    // n: Int32 = Int32(len(data))
+    // n: int32 = int32(len(data))
     int32_t n = ::tpy::__len__(data);
     // result: bytearray = bytearray()
     ::tpy::ByteArray result = ::tpy::ByteArray();
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < n:
     while ((i < n)) {
-        // b: Int32 = Int32(data[i])
+        // b: int32 = int32(data[i])
         int32_t b = ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, i));
         // result.append(_B16_ALPHA[b >> 4])
         result.push_back(::tpy::bytes_getitem(_B16_ALPHA, (::tpy::rshift_check<int32_t>(b, 4))));
@@ -366,7 +366,7 @@ int32_t _b64_char_to_value(int32_t c, int32_t c62, int32_t c63) {
     return ::tpy::Bytes(result);
 }
 
-// def _b16_char_to_value(c: Int32, casefold: bool) -> Int32:
+// def _b16_char_to_value(c: int32, casefold: bool) -> int32:
 int32_t _b16_char_to_value(int32_t c, bool casefold) {
     // if c >= 48 and c <= 57:
     if (((c >= 48) && (c <= 57))) {
@@ -390,7 +390,7 @@ int32_t _b16_char_to_value(int32_t c, bool casefold) {
 // @dispatch
 // def b16decode(data: bytes, casefold: bool = False) -> bytes:
 ::tpy::Bytes b16decode(::tpy::BytesView data, bool casefold) {
-    // n: Int32 = Int32(len(data))
+    // n: int32 = int32(len(data))
     int32_t n = ::tpy::__len__(data);
     // if n % 2 != 0:
     if (((::tpy::mod_floor<int32_t>(n, 2)) != 0)) {
@@ -399,15 +399,15 @@ int32_t _b16_char_to_value(int32_t c, bool casefold) {
     }
     // result: bytearray = bytearray()
     ::tpy::ByteArray result = ::tpy::ByteArray();
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < n:
     while ((i < n)) {
-        // hi: Int32 = _b16_char_to_value(Int32(data[i]), casefold)
+        // hi: int32 = _b16_char_to_value(int32(data[i]), casefold)
         int32_t hi = _b16_char_to_value(::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, i)), casefold);
-        // lo: Int32 = _b16_char_to_value(Int32(data[i + 1]), casefold)
+        // lo: int32 = _b16_char_to_value(int32(data[i + 1]), casefold)
         int32_t lo = _b16_char_to_value(::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(i, 1)))), casefold);
-        // result.append(UInt8(((hi << 4) | lo) & 0xFF))
+        // result.append(uint8(((hi << 4) | lo) & 0xFF))
         result.push_back(::tpy::int_cast_check<uint8_t>((static_cast<int32_t>((static_cast<int32_t>((::tpy::lshift_check<int32_t>(hi, 4)) | lo)) & 255))));
         // i += 2
         i = ::tpy::add_check<int32_t>(i, 2);
@@ -426,23 +426,23 @@ int32_t _b16_char_to_value(int32_t c, bool casefold) {
 // def b32encode(data: bytes) -> bytes:
 ::tpy::Bytes b32encode(::tpy::BytesView data) {
     // # 5 input bytes (40 bits) -> 8 output chars (5 bits each).
-    // n: Int32 = Int32(len(data))
+    // n: int32 = int32(len(data))
     int32_t n = ::tpy::__len__(data);
     // result: bytearray = bytearray()
     ::tpy::ByteArray result = ::tpy::ByteArray();
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i + 5 <= n:
     while (((::tpy::add_check<int32_t>(i, 5)) <= n)) {
-        // b0: Int32 = Int32(data[i])
+        // b0: int32 = int32(data[i])
         int32_t b0 = ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, i));
-        // b1: Int32 = Int32(data[i + 1])
+        // b1: int32 = int32(data[i + 1])
         int32_t b1 = ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(i, 1))));
-        // b2: Int32 = Int32(data[i + 2])
+        // b2: int32 = int32(data[i + 2])
         int32_t b2 = ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(i, 2))));
-        // b3: Int32 = Int32(data[i + 3])
+        // b3: int32 = int32(data[i + 3])
         int32_t b3 = ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(i, 3))));
-        // b4: Int32 = Int32(data[i + 4])
+        // b4: int32 = int32(data[i + 4])
         int32_t b4 = ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(i, 4))));
         // result.append(_B32_ALPHA[(b0 >> 3) & 0x1F])
         result.push_back(::tpy::bytes_getitem(_B32_ALPHA, (static_cast<int32_t>((::tpy::rshift_check<int32_t>(b0, 3)) & 31))));
@@ -463,34 +463,34 @@ int32_t _b16_char_to_value(int32_t c, bool casefold) {
         // i += 5
         i = ::tpy::add_check<int32_t>(i, 5);
     }
-    // rem: Int32 = n - i
+    // rem: int32 = n - i
     int32_t rem = (::tpy::sub_check<int32_t>(n, i));
     // if rem > 0:
     if ((rem > 0)) {
         // # CPython's b32encode pads input with zero bytes to 5-byte boundary,
         // # emits 8 output chars, then replaces trailing positions with '=' by
         // # rem-based count: 1->6 pads, 2->4, 3->3, 4->1.
-        // t0: Int32 = Int32(data[i])
+        // t0: int32 = int32(data[i])
         int32_t t0 = ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, i));
-        // t1: Int32 = 0
+        // t1: int32 = 0
         int32_t t1 = 0;
-        // t2: Int32 = 0
+        // t2: int32 = 0
         int32_t t2 = 0;
-        // t3: Int32 = 0
+        // t3: int32 = 0
         int32_t t3 = 0;
         // if rem >= 2:
         if ((rem >= 2)) {
-            // t1 = Int32(data[i + 1])
+            // t1 = int32(data[i + 1])
             t1 = ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(i, 1))));
         }
         // if rem >= 3:
         if ((rem >= 3)) {
-            // t2 = Int32(data[i + 2])
+            // t2 = int32(data[i + 2])
             t2 = ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(i, 2))));
         }
         // if rem >= 4:
         if ((rem >= 4)) {
-            // t3 = Int32(data[i + 3])
+            // t3 = int32(data[i + 3])
             t3 = ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(i, 3))));
         }
         // result.append(_B32_ALPHA[(t0 >> 3) & 0x1F])
@@ -499,17 +499,17 @@ int32_t _b16_char_to_value(int32_t c, bool casefold) {
         result.push_back(::tpy::bytes_getitem(_B32_ALPHA, (static_cast<int32_t>((::tpy::lshift_check<int32_t>((static_cast<int32_t>(t0 & 7)), 2)) | (::tpy::rshift_check<int32_t>(t1, 6))))));
         // if rem == 1:
         if ((rem == 1)) {
-            // result.append(UInt8(_PAD))
+            // result.append(uint8(_PAD))
             result.push_back(::tpy::int_cast_check<uint8_t>(_PAD));
-            // result.append(UInt8(_PAD))
+            // result.append(uint8(_PAD))
             result.push_back(::tpy::int_cast_check<uint8_t>(_PAD));
-            // result.append(UInt8(_PAD))
+            // result.append(uint8(_PAD))
             result.push_back(::tpy::int_cast_check<uint8_t>(_PAD));
-            // result.append(UInt8(_PAD))
+            // result.append(uint8(_PAD))
             result.push_back(::tpy::int_cast_check<uint8_t>(_PAD));
-            // result.append(UInt8(_PAD))
+            // result.append(uint8(_PAD))
             result.push_back(::tpy::int_cast_check<uint8_t>(_PAD));
-            // result.append(UInt8(_PAD))
+            // result.append(uint8(_PAD))
             result.push_back(::tpy::int_cast_check<uint8_t>(_PAD));
             // return bytes(result)
             return ::tpy::Bytes(result);
@@ -520,13 +520,13 @@ int32_t _b16_char_to_value(int32_t c, bool casefold) {
         result.push_back(::tpy::bytes_getitem(_B32_ALPHA, (static_cast<int32_t>((::tpy::lshift_check<int32_t>((static_cast<int32_t>(t1 & 1)), 4)) | (::tpy::rshift_check<int32_t>(t2, 4))))));
         // if rem == 2:
         if ((rem == 2)) {
-            // result.append(UInt8(_PAD))
+            // result.append(uint8(_PAD))
             result.push_back(::tpy::int_cast_check<uint8_t>(_PAD));
-            // result.append(UInt8(_PAD))
+            // result.append(uint8(_PAD))
             result.push_back(::tpy::int_cast_check<uint8_t>(_PAD));
-            // result.append(UInt8(_PAD))
+            // result.append(uint8(_PAD))
             result.push_back(::tpy::int_cast_check<uint8_t>(_PAD));
-            // result.append(UInt8(_PAD))
+            // result.append(uint8(_PAD))
             result.push_back(::tpy::int_cast_check<uint8_t>(_PAD));
             // return bytes(result)
             return ::tpy::Bytes(result);
@@ -535,11 +535,11 @@ int32_t _b16_char_to_value(int32_t c, bool casefold) {
         result.push_back(::tpy::bytes_getitem(_B32_ALPHA, (static_cast<int32_t>((::tpy::lshift_check<int32_t>((static_cast<int32_t>(t2 & 15)), 1)) | (::tpy::rshift_check<int32_t>(t3, 7))))));
         // if rem == 3:
         if ((rem == 3)) {
-            // result.append(UInt8(_PAD))
+            // result.append(uint8(_PAD))
             result.push_back(::tpy::int_cast_check<uint8_t>(_PAD));
-            // result.append(UInt8(_PAD))
+            // result.append(uint8(_PAD))
             result.push_back(::tpy::int_cast_check<uint8_t>(_PAD));
-            // result.append(UInt8(_PAD))
+            // result.append(uint8(_PAD))
             result.push_back(::tpy::int_cast_check<uint8_t>(_PAD));
             // return bytes(result)
             return ::tpy::Bytes(result);
@@ -548,14 +548,14 @@ int32_t _b16_char_to_value(int32_t c, bool casefold) {
         result.push_back(::tpy::bytes_getitem(_B32_ALPHA, (static_cast<int32_t>((::tpy::rshift_check<int32_t>(t3, 2)) & 31))));
         // result.append(_B32_ALPHA[(t3 & 0x03) << 3])
         result.push_back(::tpy::bytes_getitem(_B32_ALPHA, (::tpy::lshift_check<int32_t>((static_cast<int32_t>(t3 & 3)), 3))));
-        // result.append(UInt8(_PAD))
+        // result.append(uint8(_PAD))
         result.push_back(::tpy::int_cast_check<uint8_t>(_PAD));
     }
     // return bytes(result)
     return ::tpy::Bytes(result);
 }
 
-// def _b32_char_to_value(c: Int32) -> Int32:
+// def _b32_char_to_value(c: int32) -> int32:
 int32_t _b32_char_to_value(int32_t c) {
     // if c >= 65 and c <= 90:
     if (((c >= 65) && (c <= 90))) {
@@ -573,11 +573,11 @@ int32_t _b32_char_to_value(int32_t c) {
 
 // def _b32_preprocess(data: bytes, casefold: bool, map01: bytes | None) -> bytes:
 ::tpy::Bytes _b32_preprocess(::tpy::BytesView data, bool casefold, std::optional<::tpy::BytesView> map01) {
-    // n: Int32 = Int32(len(data))
+    // n: int32 = int32(len(data))
     int32_t n = ::tpy::__len__(data);
     // buf: bytearray = bytearray()
     ::tpy::ByteArray buf = ::tpy::ByteArray();
-    // map_target: Int32 = 0
+    // map_target: int32 = 0
     int32_t map_target = 0;
     // if map01 is not None:
     if ((map01.has_value())) {
@@ -588,14 +588,14 @@ int32_t _b32_char_to_value(int32_t c) {
             // raise ValueError("map01 must be a single byte")
             throw ::tpy::ValueError("map01 must be a single byte");
         }
-        // map_target = Int32(map01[0])
+        // map_target = int32(map01[0])
         map_target = ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem((*map01), 0));
     }
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < n:
     while ((i < n)) {
-        // c: Int32 = Int32(data[i])
+        // c: int32 = int32(data[i])
         int32_t c = ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, i));
         // if casefold and c >= 97 and c <= 122:
         if (((casefold && (c >= 97)) && (c <= 122))) {
@@ -614,7 +614,7 @@ int32_t _b32_char_to_value(int32_t c) {
                 c = map_target;
             }
         }
-        // buf.append(UInt8(c))
+        // buf.append(uint8(c))
         buf.push_back(::tpy::int_cast_check<uint8_t>(c));
         // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
@@ -644,7 +644,7 @@ int32_t _b32_char_to_value(int32_t c) {
 
 // def _b32decode_impl(data: bytes) -> bytes:
 ::tpy::Bytes _b32decode_impl(::tpy::BytesView data) {
-    // n: Int32 = Int32(len(data))
+    // n: int32 = int32(len(data))
     int32_t n = ::tpy::__len__(data);
     // if n % 8 != 0:
     if (((::tpy::mod_floor<int32_t>(n, 8)) != 0)) {
@@ -653,16 +653,16 @@ int32_t _b32_char_to_value(int32_t c) {
     }
     // result: bytearray = bytearray()
     ::tpy::ByteArray result = ::tpy::ByteArray();
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < n:
     while ((i < n)) {
         // # Count pads in this 8-char block (only trailing are valid).
-        // pad: Int32 = 0
+        // pad: int32 = 0
         int32_t pad = 0;
-        // j: Int32 = 7
+        // j: int32 = 7
         int32_t j = 7;
-        // while j >= 0 and Int32(data[i + j]) == _PAD:
+        // while j >= 0 and int32(data[i + j]) == _PAD:
         while (((j >= 0) && (::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(i, j)))) == _PAD))) {
             // pad += 1
             pad = ::tpy::add_check<int32_t>(pad, 1);
@@ -680,18 +680,18 @@ int32_t _b32_char_to_value(int32_t c) {
             throw ::tpy::ValueError("Invalid base32 padding");
         }
         // # Decode non-pad chars.
-        // vals: list[Int32] = [0, 0, 0, 0, 0, 0, 0, 0]
+        // vals: list[int32] = [0, 0, 0, 0, 0, 0, 0, 0]
         std::vector<int32_t> vals = {0, 0, 0, 0, 0, 0, 0, 0};
-        // k: Int32 = 0
+        // k: int32 = 0
         int32_t k = 0;
         // while k < 8 - pad:
         while ((k < (::tpy::sub_check<int32_t>(8, pad)))) {
-            // vals[k] = _b32_char_to_value(Int32(data[i + k]))
+            // vals[k] = _b32_char_to_value(int32(data[i + k]))
             ::tpy::__setitem__(vals, k, _b32_char_to_value(::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(i, k))))));
             // k += 1
             k = ::tpy::add_check<int32_t>(k, 1);
         }
-        // result.append(UInt8(((vals[0] << 3) | (vals[1] >> 2)) & 0xFF))
+        // result.append(uint8(((vals[0] << 3) | (vals[1] >> 2)) & 0xFF))
         result.push_back(::tpy::int_cast_check<uint8_t>((static_cast<int32_t>((static_cast<int32_t>((::tpy::lshift_check<int32_t>(::tpy::__getitem__(vals, 0), 3)) | (::tpy::rshift_check<int32_t>(::tpy::__getitem__(vals, 1), 2)))) & 255))));
         // if pad == 6:
         if ((pad == 6)) {
@@ -700,7 +700,7 @@ int32_t _b32_char_to_value(int32_t c) {
             // continue
             continue;
         }
-        // result.append(UInt8((((vals[1] & 0x03) << 6) | (vals[2] << 1) | (vals[3] >> 4)) & 0xFF))
+        // result.append(uint8((((vals[1] & 0x03) << 6) | (vals[2] << 1) | (vals[3] >> 4)) & 0xFF))
         result.push_back(::tpy::int_cast_check<uint8_t>((static_cast<int32_t>((static_cast<int32_t>((static_cast<int32_t>((::tpy::lshift_check<int32_t>((static_cast<int32_t>(::tpy::__getitem__(vals, 1) & 3)), 6)) | (::tpy::lshift_check<int32_t>(::tpy::__getitem__(vals, 2), 1)))) | (::tpy::rshift_check<int32_t>(::tpy::__getitem__(vals, 3), 4)))) & 255))));
         // if pad == 4:
         if ((pad == 4)) {
@@ -709,7 +709,7 @@ int32_t _b32_char_to_value(int32_t c) {
             // continue
             continue;
         }
-        // result.append(UInt8((((vals[3] & 0x0F) << 4) | (vals[4] >> 1)) & 0xFF))
+        // result.append(uint8((((vals[3] & 0x0F) << 4) | (vals[4] >> 1)) & 0xFF))
         result.push_back(::tpy::int_cast_check<uint8_t>((static_cast<int32_t>((static_cast<int32_t>((::tpy::lshift_check<int32_t>((static_cast<int32_t>(::tpy::__getitem__(vals, 3) & 15)), 4)) | (::tpy::rshift_check<int32_t>(::tpy::__getitem__(vals, 4), 1)))) & 255))));
         // if pad == 3:
         if ((pad == 3)) {
@@ -718,7 +718,7 @@ int32_t _b32_char_to_value(int32_t c) {
             // continue
             continue;
         }
-        // result.append(UInt8((((vals[4] & 0x01) << 7) | (vals[5] << 2) | (vals[6] >> 3)) & 0xFF))
+        // result.append(uint8((((vals[4] & 0x01) << 7) | (vals[5] << 2) | (vals[6] >> 3)) & 0xFF))
         result.push_back(::tpy::int_cast_check<uint8_t>((static_cast<int32_t>((static_cast<int32_t>((static_cast<int32_t>((::tpy::lshift_check<int32_t>((static_cast<int32_t>(::tpy::__getitem__(vals, 4) & 1)), 7)) | (::tpy::lshift_check<int32_t>(::tpy::__getitem__(vals, 5), 2)))) | (::tpy::rshift_check<int32_t>(::tpy::__getitem__(vals, 6), 3)))) & 255))));
         // if pad == 1:
         if ((pad == 1)) {
@@ -727,7 +727,7 @@ int32_t _b32_char_to_value(int32_t c) {
             // continue
             continue;
         }
-        // result.append(UInt8((((vals[6] & 0x07) << 5) | vals[7]) & 0xFF))
+        // result.append(uint8((((vals[6] & 0x07) << 5) | vals[7]) & 0xFF))
         result.push_back(::tpy::int_cast_check<uint8_t>((static_cast<int32_t>((static_cast<int32_t>((::tpy::lshift_check<int32_t>((static_cast<int32_t>(::tpy::__getitem__(vals, 6) & 7)), 5)) | ::tpy::__getitem__(vals, 7))) & 255))));
         // i += 8
         i = ::tpy::add_check<int32_t>(i, 8);
@@ -742,15 +742,15 @@ int32_t _b32_char_to_value(int32_t c) {
     // # a trailing newline. For empty input, returns b'' (no newline).
     // encoded: bytes = _b64_encode(data, _B64_STD)
     ::tpy::Bytes encoded = _b64_encode(data, _B64_STD);
-    // n: Int32 = Int32(len(encoded))
+    // n: int32 = int32(len(encoded))
     int32_t n = ::tpy::__len__(encoded);
     // result: bytearray = bytearray()
     ::tpy::ByteArray result = ::tpy::ByteArray();
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < n:
     while ((i < n)) {
-        // j: Int32 = 0
+        // j: int32 = 0
         int32_t j = 0;
         // while j < _MIME_LINE and i < n:
         while (((j < _MIME_LINE) && (i < n))) {
@@ -761,7 +761,7 @@ int32_t _b32_char_to_value(int32_t c) {
             // j += 1
             j = ::tpy::add_check<int32_t>(j, 1);
         }
-        // result.append(UInt8(_NEWLINE))
+        // result.append(uint8(_NEWLINE))
         result.push_back(::tpy::int_cast_check<uint8_t>(_NEWLINE));
     }
     // return bytes(result)
@@ -788,19 +788,19 @@ void __tpy_init() {
     _B32_ALPHA = ::tpy::bytes_literal_owned("ABCDEFGHIJKLMNOPQRSTUVWXYZ234567", 32);
     // _B16_ALPHA: bytes = b"0123456789ABCDEF"
     _B16_ALPHA = ::tpy::bytes_literal_owned("0123456789ABCDEF", 16);
-    // _PAD: Int32 = 61  # '='
+    // _PAD: int32 = 61  # '='
     _PAD = 61;
-    // _CHAR_PLUS: Int32 = 43
+    // _CHAR_PLUS: int32 = 43
     _CHAR_PLUS = 43;
-    // _CHAR_SLASH: Int32 = 47
+    // _CHAR_SLASH: int32 = 47
     _CHAR_SLASH = 47;
-    // _CHAR_MINUS: Int32 = 45
+    // _CHAR_MINUS: int32 = 45
     _CHAR_MINUS = 45;
-    // _CHAR_UNDER: Int32 = 95
+    // _CHAR_UNDER: int32 = 95
     _CHAR_UNDER = 95;
-    // _NEWLINE: Int32 = 10  # '\n'
+    // _NEWLINE: int32 = 10  # '\n'
     _NEWLINE = 10;
-    // _MIME_LINE: Int32 = 76  # MIME line length for encodebytes
+    // _MIME_LINE: int32 = 76  # MIME line length for encodebytes
     _MIME_LINE = 76;
 }
 

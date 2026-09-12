@@ -3,7 +3,7 @@
 # accept both in-memory buffers and the print-target shapes.
 import io
 from tpy import (
-    Int32,
+    int32,
     Writable, Readable, BinaryWritable, BinaryReadable,
     Seekable, Closable,
 )
@@ -28,9 +28,9 @@ def consume_bytes(fp: BinaryReadable) -> bytes:
     return fp.read()
 
 
-def rewind_and_close(fp: Seekable) -> Int32:
+def rewind_and_close(fp: Seekable) -> int32:
     pos_before = fp.tell()
-    fp.seek(Int32(0))  # Defaults declared in the protocol method propagate.
+    fp.seek(int32(0))  # Defaults declared in the protocol method propagate.
     return pos_before
 
 

@@ -39,7 +39,7 @@ void main();
 // # Direct inheritor
 // class MyCounter(Counter):
 struct MyCounter : Counter {
-    // count: Int32
+    // count: int32
     int32_t count;
 
     // def __init__(self) -> None:
@@ -48,7 +48,7 @@ struct MyCounter : Counter {
     // def increment(self) -> None:
     void increment() override;
 
-    // def value(self) -> Int32:
+    // def value(self) -> int32:
     int32_t value() override;
     static constexpr std::string_view __tpy_class_name__ = "__main__.MyCounter";
 };
@@ -61,7 +61,7 @@ inline std::ostream& operator<<(std::ostream& os, const MyCounter& obj) {
 // # Structural conformance (no inheritance)
 // class Tally:
 struct Tally {
-    // count: Int32
+    // count: int32
     int32_t count;
 
     // def __init__(self) -> None:
@@ -70,7 +70,7 @@ struct Tally {
     // def increment(self) -> None:
     void increment();
 
-    // def value(self) -> Int32:
+    // def value(self) -> int32:
     int32_t value() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Tally";
 };
@@ -107,11 +107,11 @@ inline MyCounter::MyCounter() : count(0) {}
 
 // def increment(self) -> None:
 inline void MyCounter::increment() {
-    // self.count = self.count + Int32(1)
+    // self.count = self.count + int32(1)
     this->count = (::tpy::add_check<int32_t>(this->count, 1));
 }
 
-// def value(self) -> Int32:
+// def value(self) -> int32:
 inline int32_t MyCounter::value() {
     // return self.count
     return this->count;
@@ -122,11 +122,11 @@ inline Tally::Tally() : count(0) {}
 
 // def increment(self) -> None:
 inline void Tally::increment() {
-    // self.count = self.count + Int32(1)
+    // self.count = self.count + int32(1)
     this->count = (::tpy::add_check<int32_t>(this->count, 1));
 }
 
-// def value(self) -> Int32:
+// def value(self) -> int32:
 inline int32_t Tally::value() const {
     // return self.count
     return this->count;

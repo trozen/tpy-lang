@@ -3,18 +3,18 @@
 # than hitting `.`-on-pointer. Same re-address root as the global
 # await / with-manager cases.
 import asyncio
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class AIter:
-    n: Int32
-    limit: Int32
+    n: int32
+    limit: int32
 
-    def __init__(self, limit: Int32) -> None:
+    def __init__(self, limit: int32) -> None:
         self.n = 0
         self.limit = limit
 
-    async def __anext__(self) -> Int32:
+    async def __anext__(self) -> int32:
         if self.n >= self.limit:
             raise StopAsyncIteration
         self.n += 1
@@ -22,9 +22,9 @@ class AIter:
 
 
 class Source:
-    limit: Int32
+    limit: int32
 
-    def __init__(self, limit: Int32) -> None:
+    def __init__(self, limit: int32) -> None:
         self.limit = limit
 
     def __aiter__(self) -> Own[AIter]:

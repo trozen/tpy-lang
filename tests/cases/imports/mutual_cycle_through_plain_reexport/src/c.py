@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 
-def cee() -> Int32:
-    return Int32(99)
+def cee() -> int32:
+    return int32(99)

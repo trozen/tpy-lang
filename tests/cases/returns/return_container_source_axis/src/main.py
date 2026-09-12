@@ -6,33 +6,33 @@
 # The `Box` leg pins the "returned by move" half as a move: `Box` is @nocopy,
 # so the same reassigned-local return with a noncopyable payload is a C++
 # compile error if the slot copies. The bytearray leg cannot carry that check
-# itself (its elements are UInt8), so it rides the list sibling.
-from tpy import Array, Int32, Own
+# itself (its elements are uint8), so it rides the list sibling.
+from tpy import Array, int32, Own
 from tplib.box import Box
 
 
-def fresh_array() -> Own[Array[Int32, 3]]:
-    a: Array[Int32, 3] = [1, 2, 3]
+def fresh_array() -> Own[Array[int32, 3]]:
+    a: Array[int32, 3] = [1, 2, 3]
     a[0] = 7
     return a                      # tpyc: ok -- the bare owned Array NAME
 
 
-def grow_bytes(n: Int32) -> Own[bytearray]:
+def grow_bytes(n: int32) -> Own[bytearray]:
     buf = bytearray(b"ab")
     if n > 2:
         buf = bytearray(b"cde")   # reassigned -> a rebind-slot pointer local
     return buf                    # tpyc: ok -- deref+move out of the slot
 
 
-def grow_list(n: Int32) -> Own[list[Int32]]:
+def grow_list(n: int32) -> Own[list[int32]]:
     xs = [1, 2]
     if n > 2:
         xs = [3, 4, 5]
     return xs                     # the list flavour that already routed
 
 
-def grow_boxes(n: Int32) -> Own[list[Box[Int32]]]:
-    bs: list[Box[Int32]] = [Box(1)]
+def grow_boxes(n: int32) -> Own[list[Box[int32]]]:
+    bs: list[Box[int32]] = [Box(1)]
     if n > 2:
         bs = [Box(2), Box(3)]     # the same rebind slot, @nocopy payload
     return bs                     # tpyc: ok -- a copy here would not compile

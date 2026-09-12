@@ -2,11 +2,11 @@
 # one executor. The accepted @nocopy conn moves out of the await tuple (a
 # silent copy would be a compile error), forcing the value-vs-reference test.
 import asyncio
-from tpy import Int32
+from tpy import int32
 from socket import socket, AF_INET, SOCK_STREAM
 
 
-async def echo_client(port: Int32) -> None:
+async def echo_client(port: int32) -> None:
     loop = asyncio.get_running_loop()
     s = socket(AF_INET, SOCK_STREAM)
     s.setblocking(False)

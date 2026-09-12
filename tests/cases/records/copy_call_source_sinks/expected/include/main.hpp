@@ -26,10 +26,10 @@ void main();
 
 // class Payload:
 struct Payload {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Payload() = default;
     explicit Payload(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Payload";
@@ -42,10 +42,10 @@ inline std::ostream& operator<<(std::ostream& os, const Payload& obj) {
 
 // class Dog:
 struct Dog {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Dog() = default;
     explicit Dog(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
@@ -58,10 +58,10 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 
 // class Cat:
 struct Cat {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Cat() = default;
     explicit Cat(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cat";
@@ -76,7 +76,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 struct Holder {
     // p: Payload
     Payload p;
-    // items: list[Int32]
+    // items: list[int32]
     std::vector<int32_t> items;
 
     // def __init__(self) -> None:
@@ -85,7 +85,7 @@ struct Holder {
     // def brec(self) -> Payload:
     Payload& brec();
 
-    // def bctr(self) -> list[Int32]:
+    // def bctr(self) -> list[int32]:
     std::vector<int32_t>& bctr();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
@@ -99,7 +99,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 struct Sink {
     // q: Payload
     Payload q;
-    // box: list[Int32]
+    // box: list[int32]
     std::vector<int32_t> box;
 
     // def __init__(self, h: Holder) -> None:
@@ -129,13 +129,13 @@ inline std::ostream& operator<<(std::ostream& os, const OptSink& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Payload::Payload(int32_t v) : v(v) {}
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Dog::Dog(int32_t n) : n(n) {}
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Cat::Cat(int32_t n) : n(n) {}
 
 // def __init__(self) -> None:
@@ -147,7 +147,7 @@ inline Payload& Holder::brec() {
     return this->p;
 }
 
-// def bctr(self) -> list[Int32]:
+// def bctr(self) -> list[int32]:
 inline std::vector<int32_t>& Holder::bctr() {
     // return self.items
     return this->items;

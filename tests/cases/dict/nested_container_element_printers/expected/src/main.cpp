@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def show(a: dict[str, set[Int32]], b: dict[str, dict[str, Int32]]) -> None:
+// def show(a: dict[str, set[int32]], b: dict[str, dict[str, int32]]) -> None:
 void show(const ::tpy::ordered_map<std::string, ::tpy::ordered_set<int32_t>>& a, const ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>& b) {
     // print(a["s"])
     std::cout << ::tpy::SetPrinter(::tpy::__getitem__(a, "s")) << "\n";

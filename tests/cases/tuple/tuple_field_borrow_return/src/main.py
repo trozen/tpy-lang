@@ -2,26 +2,26 @@
 # field, directly or through a local alias) lifts element addresses into
 # that storage: the caller's mutation through the returned tuple reaches
 # the field, like CPython aliasing.
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    val: Int32
-    def __init__(self, v: Int32) -> None:
+    val: int32
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 
 class Holder:
-    pair: tuple[Int32, Box]
+    pair: tuple[int32, Box]
     def __init__(self, b: Box) -> None:
         self.pair = (1, b)
 
 
-def ret_field(h: Holder) -> tuple[Int32, Box]:
+def ret_field(h: Holder) -> tuple[int32, Box]:
     return h.pair
 
 
-def ret_alias(h: Holder) -> tuple[Int32, Box]:
+def ret_alias(h: Holder) -> tuple[int32, Box]:
     t = h.pair
     return t
 

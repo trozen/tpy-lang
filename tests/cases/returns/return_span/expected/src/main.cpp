@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // # Returning Span should return by value (std::span is a view type)
-// def get_span(arr: Array[Int32, 4]) -> Span[Int32]:
+// def get_span(arr: Array[int32, 4]) -> Span[int32]:
 std::span<int32_t> get_span(std::array<int32_t, 4>& arr) {
     // return arr  # tpyc: ok
     return ::tpy::as_mut_span(arr);
@@ -13,9 +13,9 @@ std::span<int32_t> get_span(std::array<int32_t, 4>& arr) {
 
 // def main():
 void main() {
-    // nums: Array[Int32, 4] = [1, 2, 3, 4]
+    // nums: Array[int32, 4] = [1, 2, 3, 4]
     std::array<int32_t, 4> nums = {1, 2, 3, 4};
-    // s: Span[Int32] = get_span(nums)
+    // s: Span[int32] = get_span(nums)
     std::span<int32_t> s = get_span(nums);
     // print(s[0])
     std::cout << ::tpy::__getitem__(s, 0) << "\n";

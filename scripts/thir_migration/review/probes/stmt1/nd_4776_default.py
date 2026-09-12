@@ -1,6 +1,6 @@
-from tpy import Int32
+from tpy import int32
 def main() -> None:
-    def f(x: Int32 = 1) -> Int32:
+    def f(x: int32 = 1) -> int32:
         return x
     print(f(1))
 main()

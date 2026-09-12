@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // @readonly
-// def add_one(x: Int32) -> Int32:
+// def add_one(x: int32) -> int32:
 int32_t add_one(int32_t x) {
     // return Ops.plus_one(x)  # tpyc: ok
     return Ops::plus_one(x);

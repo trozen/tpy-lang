@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def probe(flag: bool) -> Int32:
+// def probe(flag: bool) -> int32:
 int32_t probe(bool flag) {
     std::optional<Reg> __slot_1;
     // with Reg(11) as view:
@@ -45,7 +45,7 @@ int32_t probe(bool flag) {
     return view->n;
 }
 
-// def rebound_needs_no_hoist() -> Int32:
+// def rebound_needs_no_hoist() -> int32:
 int32_t rebound_needs_no_hoist() {
     std::optional<Reg> __slot_1;
     // with Reg(33) as v:

@@ -1,5 +1,5 @@
 """Test that inference upgrades IntLiteralType to concrete int type."""
-from tpy import Int32
+from tpy import int32
 
 
 class Same[T]:
@@ -11,13 +11,13 @@ class Same[T]:
         self.b = b
 
 
-# Test order: literal first, Int32 second -> should infer Same[Int32]
-x: Int32 = 10
+# Test order: literal first, int32 second -> should infer Same[int32]
+x: int32 = 10
 same1 = Same(1, x)
 print(same1.a)
 print(same1.b)
 
-# Test order: Int32 first, literal second -> should also infer Same[Int32]
+# Test order: int32 first, literal second -> should also infer Same[int32]
 same2 = Same(x, 2)
 print(same2.a)
 print(same2.b)

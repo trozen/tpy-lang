@@ -66,10 +66,10 @@ void main();
 
 // class Adder:
 struct Adder {
-    // base: Int32
+    // base: int32
     int32_t base;
 
-    // def __init__(self, base: Int32) -> None:
+    // def __init__(self, base: int32) -> None:
     Adder() = default;
     explicit Adder(int32_t base);
 
@@ -84,7 +84,7 @@ inline std::ostream& operator<<(std::ostream& os, const Adder& obj) {
 
 // class CM:
 struct CM {
-    // n: Int32
+    // n: int32
     int32_t n;
 
     // def __init__(self) -> None:
@@ -103,9 +103,9 @@ inline std::ostream& operator<<(std::ostream& os, const CM& obj) {
 
 // class CM2:
 struct CM2 {
-    // hits: Int32
+    // hits: int32
     int32_t hits;
-    // seen: Int32
+    // seen: int32
     int32_t seen;
 
     // def __init__(self) -> None:
@@ -124,10 +124,10 @@ inline std::ostream& operator<<(std::ostream& os, const CM2& obj) {
 
 // class Counter:
 struct Counter {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Counter() = default;
     explicit Counter(int32_t n);
 
@@ -142,10 +142,10 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 // class Counts:
 struct Counts {
-    // start: Int32
+    // start: int32
     int32_t start;
 
-    // def __init__(self, start: Int32) -> None:
+    // def __init__(self, start: int32) -> None:
     Counts() = default;
     explicit Counts(int32_t start);
 
@@ -390,7 +390,7 @@ struct __coro_counted {
         return os << "<coroutine counted>";
     }
 };
-// async def counted[T](it: Iterable[T], skip: Int32 = 7) -> Int32:
+// async def counted[T](it: Iterable[T], skip: int32 = 7) -> int32:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 ::tpystd::tpy::Poll<int32_t> __coro_counted<T, T_it>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
@@ -405,7 +405,7 @@ template <typename T, ::tpystd::typing::Iterable<T> T_it>
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // c: Int32 = 0
+        // c: int32 = 0
         c = 0;
         // for _x in it:
         auto& __src_0 = it;
@@ -428,7 +428,7 @@ template <typename T, ::tpystd::typing::Iterable<T> T_it>
 }
 
 
-// async def counted[T](it: Iterable[T], skip: Int32 = 7) -> Int32:
+// async def counted[T](it: Iterable[T], skip: int32 = 7) -> int32:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 __coro_counted<T, T_it> counted(T_it&& it, int32_t skip) {
     return __coro_counted<T, T_it>(std::forward<T_it>(it), skip);
@@ -815,7 +815,7 @@ struct __coro_cross_module_override {
 };
 
 
-// def __init__(self, base: Int32) -> None:
+// def __init__(self, base: int32) -> None:
 inline Adder::Adder(int32_t base) : base(base) {}
 
 // def __init__(self) -> None:
@@ -824,10 +824,10 @@ inline CM::CM() : n(0) {}
 // def __init__(self) -> None:
 inline CM2::CM2() : hits(0), seen(0) {}
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Counter::Counter(int32_t n) : n(n) {}
 
-// def __init__(self, start: Int32) -> None:
+// def __init__(self, start: int32) -> None:
 inline Counts::Counts(int32_t start) : start(start) {}
 
 // def __aiter__(self) -> Own[Counter]:

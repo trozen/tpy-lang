@@ -3,17 +3,17 @@
 # `std::tuple<...>&&` ABI and stays a plain const& borrow with no spurious
 # never-consumed warning. Guards the exclusion; the Own element being received
 # as a borrow rather than honored is a known per-element-ownership gap.
-from tpy import Own, Int32
+from tpy import Own, int32
 
 
 class A:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
-def read_mixed(p: tuple[Own[A], A]) -> Int32:  # tpyc: ok
+def read_mixed(p: tuple[Own[A], A]) -> int32:  # tpyc: ok
     return p[0].n + p[1].n
 
 

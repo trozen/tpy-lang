@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 
 
-def safe_add(x: Int32 | None) -> Int32:
+def safe_add(x: int32 | None) -> int32:
     if x is None:
         return 0
     return x + 1

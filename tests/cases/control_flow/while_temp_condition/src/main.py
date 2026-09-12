@@ -1,12 +1,12 @@
 # Temp-producing while conditions (union variant, container literal, record
 # ctor rvalue) re-evaluate per iteration; guarded loops fail cleanly on regress.
-from tpy import Int32, Float64
+from tpy import int32, float64
 
 
-# Discriminates on Float64 (== float under CPython) so an int arg narrows
+# Discriminates on float64 (== float under CPython) so an int arg narrows
 # identically on both runtimes.
-def take_vu(v: Int32 | Float64) -> Int32:
-    if isinstance(v, Float64):
+def take_vu(v: int32 | float64) -> int32:
+    if isinstance(v, float64):
         return -1
     return v
 
@@ -22,7 +22,7 @@ def head(xs: list[int]) -> int:
     return xs[0]
 
 
-def countdown(total: Int32) -> Int32:
+def countdown(total: int32) -> int32:
     # Variant temp reads loop-mutated state: stale snapshot never terminates.
     it = 0
     while take_vu(total) > 0:
@@ -76,17 +76,17 @@ def else_break_continue(start: int, stop_at: int) -> int:
 
 
 class Pack:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
 
-def weigh(p: Pack) -> Int32:
+def weigh(p: Pack) -> int32:
     return p.n
 
 
-def ctor_rvalue_cond(start: Int32) -> Int32:
+def ctor_rvalue_cond(start: int32) -> int32:
     # Record-ctor rvalue arg temp reads a loop-mutated var each iteration.
     n = start
     it = 0
@@ -109,7 +109,7 @@ def nested_loops() -> int:
     return hits
 
 
-def walrus_cond(stop: Int32) -> Int32:
+def walrus_cond(stop: int32) -> int32:
     # Named walrus pre-decl stays before the loop (visible after it);
     # inverse guard for the named/anonymous flush split.
     src = [3, 2, 1, 0]

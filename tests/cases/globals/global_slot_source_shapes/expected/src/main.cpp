@@ -6,7 +6,7 @@ namespace tpyapp::main {
 // h: Holder = Holder()
 Holder* h{};
 // # A container field and a record field: each global aliases the field.
-// ys: list[Int32] = h.xs  # tpyc: ok
+// ys: list[int32] = h.xs  # tpyc: ok
 std::vector<int32_t>* ys{};
 // p: Point = h.inner  # tpyc: ok
 Point* p{};
@@ -19,7 +19,7 @@ Base* b{};
 // # A value-variant slot from a record rvalue and from a list literal.
 // u: Point | Line = Point(5)  # tpyc: ok
 ::tpy::Union<Line, Point>* u{};
-// v: list[Int32] | Int32 = [6, 7]  # tpyc: ok
+// v: list[int32] | int32 = [6, 7]  # tpyc: ok
 ::tpy::Union<int32_t, std::vector<int32_t>>* v{};
 // # A first write allocates a static slot; the later Optional-field write must
 // # point at the OWNER's storage rather than reseat through that slot.
@@ -35,7 +35,7 @@ void __tpy_init() {
     static Holder __global_slot_1 = Holder();
     h = &__global_slot_1;
     // # A container field and a record field: each global aliases the field.
-    // ys: list[Int32] = h.xs  # tpyc: ok
+    // ys: list[int32] = h.xs  # tpyc: ok
     ys = &(h->xs);
     // p: Point = h.inner  # tpyc: ok
     p = &(h->inner);
@@ -50,7 +50,7 @@ void __tpy_init() {
     // u: Point | Line = Point(5)  # tpyc: ok
     static ::tpy::Union<Line, Point> __global_slot_3 = Point(5);
     u = &__global_slot_3;
-    // v: list[Int32] | Int32 = [6, 7]  # tpyc: ok
+    // v: list[int32] | int32 = [6, 7]  # tpyc: ok
     static ::tpy::Union<int32_t, std::vector<int32_t>> __global_slot_4 = std::vector<int32_t>{6, 7};
     v = &__global_slot_4;
     // # A first write allocates a static slot; the later Optional-field write must

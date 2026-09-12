@@ -18,13 +18,13 @@ std::string stub(std::string_view val);
 void main();
 
 // @dispatch
-// def stub[T, U](fn: Fn[[T], U]) -> Int32:
+// def stub[T, U](fn: Fn[[T], U]) -> int32:
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
       { __fn(__a0) } -> std::convertible_to<U>;
   }
 int32_t stub(__F0&& fn) {
-    // return Int32(0)
+    // return int32(0)
     return 0;
 }
 

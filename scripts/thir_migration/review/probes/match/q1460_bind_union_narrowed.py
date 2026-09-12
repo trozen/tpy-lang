@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 
-def f(n: Int32, u: Int32 | str) -> None:
-    if isinstance(u, Int32):
+def f(n: int32, u: int32 | str) -> None:
+    if isinstance(u, int32):
         match n:
             case _ as u:
                 print(u)

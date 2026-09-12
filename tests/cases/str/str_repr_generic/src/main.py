@@ -1,11 +1,11 @@
 # Test __str__/__repr__ on generic records with Stringable bound
-from tpy import Int32, Stringable
+from tpy import int32, Stringable
 
 class Pair:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32) -> None:
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 

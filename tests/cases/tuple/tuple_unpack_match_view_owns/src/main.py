@@ -4,7 +4,7 @@
 # outlive their arm-local source and must own (std::string) -- a view would
 # dangle. Covers the owned-promotion at the match predecl site (not just if/else);
 # a shared `t` name would hoist the source and make a view safe.
-from tpy import Int32
+from tpy import int32
 
 
 def make(tag: str) -> tuple[str, str]:

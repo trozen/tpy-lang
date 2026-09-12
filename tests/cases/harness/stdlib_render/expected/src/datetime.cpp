@@ -120,8 +120,8 @@ void _check_zone_key(std::string_view key) {
 ::tpy::BigInt _local_epoch_s(const ::tpy::BigInt& u) {
     // # local(u) in CPython's _mktime: the wall-clock epoch second the local
     // # zone shows at UTC epoch second u. Callers pass values derived from
-    // # in-range datetimes (|u| < ~3e11), so the Int64 narrowing cannot panic.
-    // return u + int(hinnant_date.local_utc_offset_seconds(Int64(u)))
+    // # in-range datetimes (|u| < ~3e11), so the int64 narrowing cannot panic.
+    // return u + int(hinnant_date.local_utc_offset_seconds(int64(u)))
     return ((u) + (::tpy::BigInt(static_cast<int64_t>(::tpy::stdlib::datetime::local_utc_offset_seconds((u).to_fixed_check<int64_t>())))));
 }
 
@@ -461,7 +461,7 @@ std::optional<std::string> datetime::tzname() const {
     // if k == 2:
     if ((k == 2)) {
         // return hinnant_date.zone_wall_abbrev(
-        // self._tz_name_id, Int64(self._epoch_us() // 1000000),
+        // self._tz_name_id, int64(self._epoch_us() // 1000000),
         // self.fold)
         return ::tpy::stdlib::datetime::zone_wall_abbrev(this->_tz_name_id, (((this->_epoch_us()) / (::tpy::BigInt(1000000)))).to_fixed_check<int64_t>(), this->fold());
     }
@@ -555,9 +555,9 @@ std::optional<std::string> datetime::tzname() const {
     // # fixed offset + libc-style abbreviation ("CET").
     // u_s = utc_us // 1000000
     ::tpy::BigInt u_s = ((utc_us) / (::tpy::BigInt(1000000)));
-    // off = int(hinnant_date.local_utc_offset_seconds(Int64(u_s)))
+    // off = int(hinnant_date.local_utc_offset_seconds(int64(u_s)))
     ::tpy::BigInt off = ::tpy::BigInt(static_cast<int64_t>(::tpy::stdlib::datetime::local_utc_offset_seconds((u_s).to_fixed_check<int64_t>())));
-    // name = hinnant_date.local_zone_abbrev(Int64(u_s))
+    // name = hinnant_date.local_zone_abbrev(int64(u_s))
     std::string name = ::tpy::stdlib::datetime::local_zone_abbrev((u_s).to_fixed_check<int64_t>());
     // return datetime._from_epoch_us(
     // utc_us, False, timezone(timedelta(seconds=off), name))
@@ -633,7 +633,7 @@ std::optional<std::string> datetime::tzname() const {
     // tstr = date_string[sep_loc + 1:]
     std::string_view tstr = ::tpy::str_slice(date_string, ::tpy::BasicSlice{((sep_loc) + (::tpy::BigInt(1))).to_fixed_check<int32_t>(), std::nullopt});
     // # BigInt annotations: the unpack below yields BigInt; a bare 0
-    // # would infer Int32 and fail the assignment.
+    // # would infer int32 and fail the assignment.
     // hh: int = 0
     ::tpy::BigInt hh = ::tpy::BigInt(0);
     // mm: int = 0
@@ -689,7 +689,7 @@ std::optional<std::string> datetime::tzname() const {
     // epoch_s = us // 1000000
     ::tpy::BigInt epoch_s = ((us) / (::tpy::BigInt(1000000)));
     // # Beyond time_t: CPython raises OverflowError. The check must run
-    // # before the Int64 narrowing at the native call below, which would
+    // # before the int64 narrowing at the native call below, which would
     // # otherwise panic uncatchably. (glibc additionally fails with
     // # OSError in a narrower band; not emulated -- see DATETIME_DESIGN.)
     // if epoch_s < -_TIME_T_MAX - 1 or epoch_s > _TIME_T_MAX:
@@ -729,13 +729,13 @@ std::optional<std::string> datetime::tzname() const {
             // zid = int(tz._zid)
             zid = ::tpy::BigInt(static_cast<int64_t>(__tz._zid));
             // off = int(hinnant_date.zone_utc_offset_seconds(
-            // tz._zid, Int64(epoch_s))) * 1000000
+            // tz._zid, int64(epoch_s))) * 1000000
             off = ((::tpy::BigInt(static_cast<int64_t>(::tpy::stdlib::datetime::zone_utc_offset_seconds(__tz._zid, (epoch_s).to_fixed_check<int64_t>())))) * (::tpy::BigInt(1000000)));
         }
     // elif use_local:
     } else if (use_local) {
         // off = int(hinnant_date.local_utc_offset_seconds(
-        // Int64(epoch_s))) * 1000000
+        // int64(epoch_s))) * 1000000
         off = ((::tpy::BigInt(static_cast<int64_t>(::tpy::stdlib::datetime::local_utc_offset_seconds((epoch_s).to_fixed_check<int64_t>())))) * (::tpy::BigInt(1000000)));
     }
     // if off != 0:
@@ -765,7 +765,7 @@ std::optional<std::string> datetime::tzname() const {
     // if zid != 0:
     if ((zid != 0)) {
         // if int(hinnant_date.zone_wall_offset_seconds(
-        // Int32(zid), Int64(wall_s), Int32(0))) * 1000000 != off:
+        // int32(zid), int64(wall_s), int32(0))) * 1000000 != off:
         if ((((::tpy::BigInt(static_cast<int64_t>(::tpy::stdlib::datetime::zone_wall_offset_seconds((zid).to_fixed_check<int32_t>(), (wall_s).to_fixed_check<int64_t>(), 0)))) * (::tpy::BigInt(1000000))) != off)) {
             // fold = 1
             fold = 1;

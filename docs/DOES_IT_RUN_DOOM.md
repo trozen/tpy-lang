@@ -27,7 +27,7 @@ Features needed to translate DOOM's C code to TurboPython.
 
 | #    | Feature                           | Effort | Status |
 |------|-----------------------------------|--------|--------|
-| 2.1  | Unsigned integers (`UInt32`, `UInt8`) | S-M | TODO |
+| 2.1  | Unsigned integers (`uint32`, `uint8`) | S-M | TODO |
 | 2.2  | Pointer arithmetic (`ptr + n`, `ptr[n]`) | M | TODO |
 | 2.3  | Type casting (`cast[T](x)`)       | S      | TODO   |
 | 2.4  | Function pointers / `Callable`    | M      | TODO   |
@@ -111,21 +111,21 @@ instead of generating a body.
 # tpy: include("SDL2/SDL.h")
 # tpy: link("SDL2")
 from tpy.extern import native
-from tpy import Int32, Ptr
+from tpy import int32, Ptr
 
 # Bare @native(binding="C") -- uses the Python function name as the C symbol
 @native(binding="C")
-def SDL_Init(flags: Int32) -> Int32: ...
+def SDL_Init(flags: int32) -> int32: ...
 
 @native(binding="C")
-def SDL_Delay(ms: Int32) -> None: ...
+def SDL_Delay(ms: int32) -> None: ...
 
 # With explicit C name -- for providing a Pythonic API
 @native("SDL_GetTicks", binding="C")
-def get_ticks() -> Int32: ...
+def get_ticks() -> int32: ...
 
 @native("SDL_CreateWindow", binding="C")
-def create_window(title: str, x: Int32, y: Int32, w: Int32, h: Int32, flags: Int32) -> Ptr[SDLWindow]: ...
+def create_window(title: str, x: int32, y: int32, w: int32, h: int32, flags: int32) -> Ptr[SDLWindow]: ...
 ```
 
 - `@native(binding="C")` = C import (`extern "C"`, no name mangling)
@@ -149,7 +149,7 @@ def DG_Init() -> None:
     # ... actual TPy implementation ...
 
 # Declare an external C global (defined in doomgeneric.c)
-DG_ScreenBuffer: Ptr[Int32] = native_global("DG_ScreenBuffer", binding="C")
+DG_ScreenBuffer: Ptr[int32] = native_global("DG_ScreenBuffer", binding="C")
 ```
 
 ### SDL2 Integration
@@ -162,46 +162,46 @@ bindings using `@native(binding="C")`. It's pure TurboPython -- just function de
 # tpy: include("SDL2/SDL.h")
 # tpy: link("SDL2")
 from tpy.extern import native
-from tpy import Int32, Ptr
+from tpy import int32, Ptr
 
-INIT_VIDEO: Int32 = Int32(0x00000020)
-QUIT: Int32 = Int32(0x100)
-KEYDOWN: Int32 = Int32(0x300)
-KEYUP: Int32 = Int32(0x301)
+INIT_VIDEO: int32 = int32(0x00000020)
+QUIT: int32 = int32(0x100)
+KEYDOWN: int32 = int32(0x300)
+KEYUP: int32 = int32(0x301)
 # ...
 
 @native(binding="C")
-def SDL_Init(flags: Int32) -> Int32: ...
+def SDL_Init(flags: int32) -> int32: ...
 
 @native(binding="C")
 def SDL_Quit() -> None: ...
 
 @native(binding="C")
-def SDL_CreateWindow(title: str, x: Int32, y: Int32, w: Int32, h: Int32, flags: Int32) -> Ptr[SDLWindow]: ...
+def SDL_CreateWindow(title: str, x: int32, y: int32, w: int32, h: int32, flags: int32) -> Ptr[SDLWindow]: ...
 
 @native(binding="C")
-def SDL_CreateRenderer(window: Ptr[SDLWindow], index: Int32, flags: Int32) -> Ptr[SDLRenderer]: ...
+def SDL_CreateRenderer(window: Ptr[SDLWindow], index: int32, flags: int32) -> Ptr[SDLRenderer]: ...
 
 @native(binding="C")
-def SDL_CreateTexture(renderer: Ptr[SDLRenderer], fmt: Int32, access: Int32, w: Int32, h: Int32) -> Ptr[SDLTexture]: ...
+def SDL_CreateTexture(renderer: Ptr[SDLRenderer], fmt: int32, access: int32, w: int32, h: int32) -> Ptr[SDLTexture]: ...
 
 @native(binding="C")
-def SDL_UpdateTexture(texture: Ptr[SDLTexture], rect: Ptr[SDLRect], pixels: Ptr[Int32], pitch: Int32) -> Int32: ...
+def SDL_UpdateTexture(texture: Ptr[SDLTexture], rect: Ptr[SDLRect], pixels: Ptr[int32], pitch: int32) -> int32: ...
 
 @native(binding="C")
-def SDL_RenderCopy(renderer: Ptr[SDLRenderer], texture: Ptr[SDLTexture], src: Ptr[SDLRect], dst: Ptr[SDLRect]) -> Int32: ...
+def SDL_RenderCopy(renderer: Ptr[SDLRenderer], texture: Ptr[SDLTexture], src: Ptr[SDLRect], dst: Ptr[SDLRect]) -> int32: ...
 
 @native(binding="C")
 def SDL_RenderPresent(renderer: Ptr[SDLRenderer]) -> None: ...
 
 @native(binding="C")
-def SDL_PollEvent(event: Ptr[SDLEvent]) -> Int32: ...
+def SDL_PollEvent(event: Ptr[SDLEvent]) -> int32: ...
 
 @native("SDL_GetTicks", binding="C")
-def get_ticks() -> Int32: ...
+def get_ticks() -> int32: ...
 
 @native("SDL_Delay", binding="C")
-def delay(ms: Int32) -> None: ...
+def delay(ms: int32) -> None: ...
 ```
 
 Anyone can write bindings for any C library using this pattern -- no compiler changes
@@ -213,7 +213,7 @@ needed beyond `@native(binding="C")`.
 # doomgeneric_tpy.py
 # tpy: include("doomgeneric.h")
 from tpy.extern import export, native_global
-from tpy import Int32, Ptr, Array
+from tpy import int32, Ptr, Array
 from tpy_sdl2 import (
     SDL_Init, SDL_CreateWindow, SDL_CreateRenderer, SDL_CreateTexture,
     SDL_UpdateTexture, SDL_RenderCopy, SDL_RenderPresent, SDL_PollEvent,
@@ -221,12 +221,12 @@ from tpy_sdl2 import (
 )
 
 # External C global (defined in doomgeneric.c)
-DG_ScreenBuffer: Ptr[Int32] = native_global("DG_ScreenBuffer", binding="C")
+DG_ScreenBuffer: Ptr[int32] = native_global("DG_ScreenBuffer", binding="C")
 
 # Keyboard event queue (same pattern as all doomgeneric ports)
-key_queue: Array[Int32, 16]
-key_queue_read: Int32 = Int32(0)
-key_queue_write: Int32 = Int32(0)
+key_queue: Array[int32, 16]
+key_queue_read: int32 = int32(0)
+key_queue_write: int32 = int32(0)
 
 @export(binding="C")
 def DG_Init() -> None:
@@ -236,24 +236,24 @@ def DG_Init() -> None:
 @export(binding="C")
 def DG_DrawFrame() -> None:
     # pump SDL events, enqueue keys
-    SDL_UpdateTexture(texture, null, DG_ScreenBuffer, Int32(640 * 4))
+    SDL_UpdateTexture(texture, null, DG_ScreenBuffer, int32(640 * 4))
     SDL_RenderCopy(renderer, texture, null, null)
     SDL_RenderPresent(renderer)
 
 @export(binding="C")
-def DG_SleepMs(ms: Int32) -> None:
+def DG_SleepMs(ms: int32) -> None:
     delay(ms)
 
 @export(binding="C")
-def DG_GetTicksMs() -> Int32:
+def DG_GetTicksMs() -> int32:
     return get_ticks()
 
 @export(binding="C")
-def DG_GetKey(pressed: Ptr[Int32], key: Ptr[Int32]) -> Int32:
+def DG_GetKey(pressed: Ptr[int32], key: Ptr[int32]) -> int32:
     if key_queue_read == key_queue_write:
-        return Int32(0)
+        return int32(0)
     # dequeue and unpack ...
-    return Int32(1)
+    return int32(1)
 
 @export(binding="C")
 def DG_SetWindowTitle(title: str) -> None:
@@ -293,7 +293,7 @@ DOOM uses unsigned types pervasively:
 - `uint8_t` — palette indices, byte buffers
 - `unsigned int` — general counters
 
-**Suggested types:** `UInt32`, `UInt8`, possibly `UInt16`.
+**Suggested types:** `uint32`, `uint8`, possibly `uint16`.
 
 Maps to C++ `uint32_t`, `uint8_t`, `uint16_t`. Needs: arithmetic, bitwise ops,
 comparison, coercion rules with signed types.
@@ -417,51 +417,51 @@ Modules ordered from easiest to hardest, based on C features used.
 
 ```python
 # doomkeys.py
-from tpy import Int32
+from tpy import int32
 
-KEY_RIGHTARROW: Int32 = Int32(0xae)
-KEY_LEFTARROW: Int32 = Int32(0xac)
-KEY_UPARROW: Int32 = Int32(0xad)
-KEY_DOWNARROW: Int32 = Int32(0xaf)
-KEY_FIRE: Int32 = Int32(0xa3)
-KEY_USE: Int32 = Int32(0xa2)
-KEY_ENTER: Int32 = Int32(13)
-KEY_ESCAPE: Int32 = Int32(27)
+KEY_RIGHTARROW: int32 = int32(0xae)
+KEY_LEFTARROW: int32 = int32(0xac)
+KEY_UPARROW: int32 = int32(0xad)
+KEY_DOWNARROW: int32 = int32(0xaf)
+KEY_FIRE: int32 = int32(0xa3)
+KEY_USE: int32 = int32(0xa2)
+KEY_ENTER: int32 = int32(13)
+KEY_ESCAPE: int32 = int32(27)
 # ...
 ```
 
-**`tables.c`** (~2K lines) — Precomputed trig lookup tables. Arrays of `Int32`
+**`tables.c`** (~2K lines) — Precomputed trig lookup tables. Arrays of `int32`
 (fixed-point). No logic, just data.
 
 ```python
 # tables.py
-from tpy import Int32, Array
+from tpy import int32, Array
 
-FINEANGLES: Int32 = Int32(8192)
-finetangent: Array[Int32, 4096] = [Int32(0x00000000), Int32(0x000000c9), ...]
-finesine: Array[Int32, 10240] = [Int32(0x00000000), Int32(0x000000c9), ...]
-finecosine_offset: Int32 = Int32(2048)  # finecosine = &finesine[FINEANGLES/4]
+FINEANGLES: int32 = int32(8192)
+finetangent: Array[int32, 4096] = [int32(0x00000000), int32(0x000000c9), ...]
+finesine: Array[int32, 10240] = [int32(0x00000000), int32(0x000000c9), ...]
+finecosine_offset: int32 = int32(2048)  # finecosine = &finesine[FINEANGLES/4]
 ```
 
-**`m_fixed.c`** (~100 lines) — Fixed-point math. 5 functions using `Int32`
+**`m_fixed.c`** (~100 lines) — Fixed-point math. 5 functions using `int32`
 arithmetic and bitwise shifts:
 
 ```python
 # m_fixed.py
-from tpy import Int32
+from tpy import int32
 
-FRACBITS: Int32 = Int32(16)
-FRACUNIT: Int32 = Int32(1 << 16)
+FRACBITS: int32 = int32(16)
+FRACUNIT: int32 = int32(1 << 16)
 
-def fixed_mul(a: Int32, b: Int32) -> Int32:
+def fixed_mul(a: int32, b: int32) -> int32:
     # return (int)((long long)a * b >> FRACBITS)
     ...
 
-def fixed_div(a: Int32, b: Int32) -> Int32:
+def fixed_div(a: int32, b: int32) -> int32:
     ...
 ```
 
-**`m_bbox.c`** (~50 lines) — Bounding box operations. 4 functions, pure `Int32`
+**`m_bbox.c`** (~50 lines) — Bounding box operations. 4 functions, pure `int32`
 comparison and assignment.
 
 ### Medium Targets
@@ -495,7 +495,7 @@ everything.
 
 | C Feature | TPy Equivalent | Notes |
 |-----------|---------------|-------|
-| `int32_t` arithmetic | `Int32` | Working |
+| `int32_t` arithmetic | `int32` | Working |
 | Bitwise ops | Same syntax | Working |
 | Structs | Records/classes | Working |
 | Fixed-size arrays | `Array[T, N]` | Working |
@@ -505,7 +505,7 @@ everything.
 | `if`/`else` | Same | Working |
 | Functions | Same | Working |
 | `void` return | `-> None` | Working |
-| `#define` constants | Module-level `Int32` | Working |
+| `#define` constants | Module-level `int32` | Working |
 | `static` file-scope vars | Module-level vars | Working |
 | `#include` | `from module import ...` | Working |
 | Multi-file compilation | Module system | Working |
@@ -514,7 +514,7 @@ everything.
 
 | C Feature | Suggested TPy Feature | Effort |
 |-----------|----------------------|--------|
-| `uint32_t`, `uint8_t` | `UInt32`, `UInt8` types | S-M |
+| `uint32_t`, `uint8_t` | `uint32`, `uint8` types | S-M |
 | Pointer arithmetic | `Ptr[T] + n`, `ptr[n]` | M |
 | Type casting | `cast[T](expr)` | S |
 | Function pointers | `Callable` / fn pointer type | M |
@@ -536,7 +536,7 @@ everything.
 | `goto` | Restructure with loops and flags (~5 uses) |
 | Comma operator | Split into separate statements |
 | Complex macros | Inline functions |
-| `void*` generic pointers | `Ptr[UInt8]` with explicit casting |
+| `void*` generic pointers | `Ptr[uint8]` with explicit casting |
 | `setjmp`/`longjmp` | Not used in doomgeneric |
 
 ---

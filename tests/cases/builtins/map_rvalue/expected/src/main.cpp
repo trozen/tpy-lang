@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def make_nums() -> Own[list[Int32]]:
+// def make_nums() -> Own[list[int32]]:
 std::vector<int32_t> make_nums() {
     // return [10, 20, 30]
     return {10, 20, 30};
 }
 
-// def double(x: Int32) -> Int32:
+// def double(x: int32) -> int32:
 int32_t double_(int32_t x) {
     // return x * 2
     return (::tpy::mul_check<int32_t>(x, 2));

@@ -1,10 +1,10 @@
 # Async dunders and a coro method whose bare names all collide with main.py's.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
 class Gate:
-    async def __aenter__(self) -> Int32:
+    async def __aenter__(self) -> int32:
         await asyncio.sleep(0)
         return 5
 
@@ -13,15 +13,15 @@ class Gate:
 
 
 class Ticker:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def __aiter__(self) -> "Ticker":
         return self
 
-    async def __anext__(self) -> Int32:
+    async def __anext__(self) -> int32:
         if self.n <= 0:
             raise StopAsyncIteration()
         self.n -= 1
@@ -30,6 +30,6 @@ class Ticker:
 
 
 class Svc:
-    async def fetch(self) -> Int32:
+    async def fetch(self) -> int32:
         await asyncio.sleep(0)
         return 3

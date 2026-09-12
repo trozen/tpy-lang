@@ -2,7 +2,7 @@
 # Explicit int annotations exercise BigInt without changing the default integer type.
 import asyncio
 from typing import Iterator
-from tpy import Comparable, Int32, ReturnException, error_return
+from tpy import Comparable, int32, ReturnException, error_return
 
 
 def compare(a: int, b: int) -> bool:
@@ -27,7 +27,7 @@ class Number:
 
 
 class Counter:
-    calls: Int32
+    calls: int32
 
     def __init__(self) -> None:
         self.calls = 0

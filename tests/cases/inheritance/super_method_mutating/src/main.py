@@ -1,11 +1,11 @@
 # A method whose only mutation is via super().method() must NOT be auto-inferred
 # as @readonly: the propagated transitive mutation through the super target has
 # to mark the caller's self as mutated. Covers single- and multi-base.
-from tpy import Int32
+from tpy import int32
 
 
 class Base:
-    x: Int32
+    x: int32
 
     def __init__(self) -> None:
         self.x = 0
@@ -13,7 +13,7 @@ class Base:
     def bump(self) -> None:
         self.x = self.x + 1
 
-    def get(self) -> Int32:
+    def get(self) -> int32:
         return self.x
 
 
@@ -24,12 +24,12 @@ class Child(Base):
     def call_super_bump(self) -> None:
         super().bump()
 
-    def call_super_get(self) -> Int32:
+    def call_super_get(self) -> int32:
         return super().get()
 
 
 class Other:
-    y: Int32
+    y: int32
 
     def __init__(self) -> None:
         self.y = 0

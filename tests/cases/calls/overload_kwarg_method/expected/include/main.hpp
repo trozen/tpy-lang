@@ -15,19 +15,19 @@ void main();
 
 // class Box:
 struct Box {
-    // base: Int32
+    // base: int32
     int32_t base;
 
-    // def __init__(self, base: Int32) -> None:
+    // def __init__(self, base: int32) -> None:
     Box() = default;
     explicit Box(int32_t base);
 
     // @dispatch
-    // def apply(self, x: Int32, *, tag: str = "") -> str:
+    // def apply(self, x: int32, *, tag: str = "") -> str:
     std::string apply(int32_t x, std::string_view tag = "");
 
     // @dispatch
-    // def apply(self, x: Int32, *, tag: Int32 = 0) -> Int32:
+    // def apply(self, x: int32, *, tag: int32 = 0) -> int32:
     int32_t apply(int32_t x, int32_t tag = 0);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
@@ -38,18 +38,18 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 }
 
 
-// def __init__(self, base: Int32) -> None:
+// def __init__(self, base: int32) -> None:
 inline Box::Box(int32_t base) : base(base) {}
 
 // @dispatch
-// def apply(self, x: Int32, *, tag: str = "") -> str:
+// def apply(self, x: int32, *, tag: str = "") -> str:
 inline std::string Box::apply(int32_t x, std::string_view tag) {
     // return tag + ":" + str(self.base + x)
     return (::tpy::str_concat((::tpy::str_concat(tag, ":")), ::tpy::fixed_to_str<int32_t>((::tpy::add_check<int32_t>(this->base, x)))));
 }
 
 // @dispatch
-// def apply(self, x: Int32, *, tag: Int32 = 0) -> Int32:
+// def apply(self, x: int32, *, tag: int32 = 0) -> int32:
 inline int32_t Box::apply(int32_t x, int32_t tag) {
     // return self.base + x + tag
     return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(this->base, x)), tag));

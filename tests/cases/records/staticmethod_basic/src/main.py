@@ -1,21 +1,21 @@
 """Test @staticmethod decorator on class methods."""
-from tpy import Int32
+from tpy import int32
 
 class Counter:
-    value: Int32
+    value: int32
 
-    def __init__(self, start: Int32):
+    def __init__(self, start: int32):
         self.value = start
 
     @staticmethod
-    def zero() -> Int32:
+    def zero() -> int32:
         return 0
 
     @staticmethod
-    def add(a: Int32, b: Int32) -> Int32:
+    def add(a: int32, b: int32) -> int32:
         return a + b
 
-    def get(self) -> Int32:
+    def get(self) -> int32:
         return self.value
 
 # Call static method via class name

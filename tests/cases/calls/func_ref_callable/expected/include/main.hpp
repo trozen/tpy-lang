@@ -19,13 +19,13 @@ void main();
 
 // class Handler:
 struct Handler {
-    // callback: Callable[[Int32], None]
+    // callback: Callable[[int32], None]
     std::function<void(int32_t)> callback;
 
-    // def __init__(self, cb: Callable[[Int32], None]) -> None:
+    // def __init__(self, cb: Callable[[int32], None]) -> None:
     explicit Handler(std::function<void(int32_t)> cb);
 
-    // def run(self, x: Int32) -> None:
+    // def run(self, x: int32) -> None:
     void run(int32_t x) const;
 
     // def __str__(self) -> str:
@@ -39,10 +39,10 @@ inline std::ostream& operator<<(std::ostream& os, const Handler& obj) {
 }
 
 
-// def __init__(self, cb: Callable[[Int32], None]) -> None:
+// def __init__(self, cb: Callable[[int32], None]) -> None:
 inline Handler::Handler(std::function<void(int32_t)> cb) : callback(cb) {}
 
-// def run(self, x: Int32) -> None:
+// def run(self, x: int32) -> None:
 inline void Handler::run(int32_t x) const {
     // self.callback(x)
     (*this).callback(x);

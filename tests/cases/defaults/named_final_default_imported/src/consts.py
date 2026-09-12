@@ -1,5 +1,5 @@
 from typing import Final
-from tpy import UInt32
+from tpy import uint32
 
-NOFLAG: Final[UInt32] = UInt32(0)
-CASELESS: Final[UInt32] = UInt32(8)
+NOFLAG: Final[uint32] = uint32(0)
+CASELESS: Final[uint32] = uint32(8)

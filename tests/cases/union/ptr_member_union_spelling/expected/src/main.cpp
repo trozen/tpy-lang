@@ -8,7 +8,7 @@ namespace tpyapp::main {
 // # type, so the union takes the value-union parameter convention (a const ref
 // # to the whole union) over a pointer alternative pack, which is what makes it
 // # compare through the pointee. No call site can build the argument yet.
-// def takes(u: PtrPet) -> Int32:  # tpyc: ok
+// def takes(u: PtrPet) -> int32:  # tpyc: ok
 int32_t takes(const PtrPet& u) {
     // return 1
     return 1;

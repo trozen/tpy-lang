@@ -1,13 +1,13 @@
 # @dataclass __post_init__ runs after the synthesized __init__ sets the fields,
 # so it can derive a field from the others.
 from dataclasses import dataclass
-from tpy import Int32
+from tpy import int32
 
 @dataclass
 class Rect:
-    w: Int32
-    h: Int32
-    area: Int32 = 0
+    w: int32
+    h: int32
+    area: int32 = 0
 
     def __post_init__(self) -> None:
         self.area = self.w * self.h

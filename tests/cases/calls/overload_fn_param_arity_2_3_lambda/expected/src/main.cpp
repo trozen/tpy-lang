@@ -6,9 +6,9 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // xs: list[Int32] = [1, 2, 3, 4]
+    // xs: list[int32] = [1, 2, 3, 4]
     std::vector<int32_t> xs = {1, 2, 3, 4};
-    // print(f(lambda a, b: a + b, xs, Int32(0)))  # 3-arg form
+    // print(f(lambda a, b: a + b, xs, int32(0)))  # 3-arg form
     std::cout << f<int32_t, int32_t>([](int32_t a, int32_t b) -> int32_t { return (::tpy::add_check<int32_t>(a, b)); }, xs, 0) << "\n";
     // print(f(lambda a, b: a + b, xs))            # 2-arg form: was the BUGS.md failure
     std::cout << f<int32_t>([](int32_t a, int32_t b) -> int32_t { return (::tpy::add_check<int32_t>(a, b)); }, xs) << "\n";

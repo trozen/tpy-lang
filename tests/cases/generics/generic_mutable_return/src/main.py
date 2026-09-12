@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 
 class Box[T]:
     value: T
@@ -12,8 +12,8 @@ class Box[T]:
 
 def main() -> None:
     # Box containing a list (object type)
-    items: list[Int32] = [1, 2, 3]
-    box: Box[list[Int32]] = Box[list[Int32]](items)
+    items: list[int32] = [1, 2, 3]
+    box: Box[list[int32]] = Box[list[int32]](items)
 
     # This should work: get() returns T& for object types, allowing mutation
     box.get().append(4)

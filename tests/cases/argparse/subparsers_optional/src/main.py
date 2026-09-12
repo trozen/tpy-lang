@@ -1,10 +1,10 @@
 # Subparsers with required=False: subcommand may be absent. cmd
 # becomes Optional[str] and every per-sub field is Optional[T].
-from tpy import Int32
+from tpy import int32
 from argparse import ArgumentParser
 
 
-def main() -> Int32:
+def main() -> int32:
     parser = ArgumentParser(prog="prog")
     sub = parser.add_subparsers(dest="cmd")
     a = sub.add_parser("a")

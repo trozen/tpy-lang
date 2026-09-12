@@ -3,7 +3,7 @@
 
 namespace tpyapp::main {
 
-// built: Int32 = 0
+// built: int32 = 0
 int32_t built{};
 
 // def source() -> Own[Widget]:
@@ -28,7 +28,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // built: Int32 = 0
+    // built: int32 = 0
     built = 0;
     // main()
     main();

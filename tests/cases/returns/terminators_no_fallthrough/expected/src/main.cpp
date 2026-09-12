@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def spin(n: Int32) -> Int32:
+// def spin(n: int32) -> int32:
 int32_t spin(int32_t n) {
     // while True:
     while (true) {
@@ -18,7 +18,7 @@ int32_t spin(int32_t n) {
     }
 }
 
-// def nested_break_ok(n: Int32) -> Int32:
+// def nested_break_ok(n: int32) -> int32:
 int32_t nested_break_ok(int32_t n) {
     // while True:
     while (true) {
@@ -35,7 +35,7 @@ int32_t nested_break_ok(int32_t n) {
     }
 }
 
-// def find_or_die(xs: list[Int32], v: Int32) -> Int32:
+// def find_or_die(xs: list[int32], v: int32) -> int32:
 int32_t find_or_die(const std::vector<int32_t>& xs, int32_t v) {
     // for i in range(len(xs)):
     int32_t __stop_0 = ::tpy::__len__(xs);
@@ -50,7 +50,7 @@ int32_t find_or_die(const std::vector<int32_t>& xs, int32_t v) {
     ::tpy::raise_assertion_error("not found");
 }
 
-// def finally_returns(n: Int32) -> Int32:
+// def finally_returns(n: int32) -> int32:
 int32_t finally_returns(int32_t n) {
     // try:
     {

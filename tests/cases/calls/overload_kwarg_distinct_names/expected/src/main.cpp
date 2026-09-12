@@ -5,14 +5,14 @@ namespace tpyapp::main {
 
 
 // @dispatch
-// def report(a: Int32, b: Int32 = 0, *, mode: str = "x") -> str:
+// def report(a: int32, b: int32 = 0, *, mode: str = "x") -> str:
 std::string report(int32_t a, int32_t b, std::string_view mode) {
     // return mode + ":" + str(a + b)
     return (::tpy::str_concat((::tpy::str_concat(mode, ":")), ::tpy::fixed_to_str<int32_t>((::tpy::add_check<int32_t>(a, b)))));
 }
 
 // @dispatch
-// def report(a: Int32, b: Int32 = 0, *, count: Int32 = 1) -> Int32:
+// def report(a: int32, b: int32 = 0, *, count: int32 = 1) -> int32:
 int32_t report(int32_t a, int32_t b, int32_t count) {
     // return (a + b) * count
     return (::tpy::mul_check<int32_t>((::tpy::add_check<int32_t>(a, b)), count));
@@ -21,22 +21,22 @@ int32_t report(int32_t a, int32_t b, int32_t count) {
 // def main() -> None:
 void main() {
     // # Distinct-kwarg-name dispatch: only one overload accepts each kwarg.
-    // s: str = report(Int32(3), mode="tag")              # "tag:3"
+    // s: str = report(int32(3), mode="tag")              # "tag:3"
     std::string s = report(3, 0, std::string_view("tag"));
     // print(s)
     std::cout << s << "\n";
-    // n: Int32 = report(Int32(3), count=Int32(4))        # 12
+    // n: int32 = report(int32(3), count=int32(4))        # 12
     int32_t n = report(3, 0, 4);
     // print(n)
     std::cout << n << "\n";
     // # Defaulted-gap path: middle `b` defaulted, kwarg supplied after.
     // # Expansion fills the b slot with the param type so neither overload
     // # gets a scoring edge from the gap.
-    // s2: str = report(Int32(2), Int32(5), mode="sum")    # "sum:7"
+    // s2: str = report(int32(2), int32(5), mode="sum")    # "sum:7"
     std::string s2 = report(2, 5, std::string_view("sum"));
     // print(s2)
     std::cout << s2 << "\n";
-    // n2: Int32 = report(Int32(2), Int32(5), count=Int32(3))  # 21
+    // n2: int32 = report(int32(2), int32(5), count=int32(3))  # 21
     int32_t n2 = report(2, 5, 3);
     // print(n2)
     std::cout << n2 << "\n";

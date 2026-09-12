@@ -2,10 +2,10 @@
 # the frame's return slot cannot hold. The call site is never reached; the
 # signature alone is the rejected shape.
 import asyncio
-from tpy import Int32, StrView
+from tpy import int32, StrView
 
 
-async def f(s: StrView) -> tuple[StrView, Int32]:  # tpyc: error(/res\.return_type/)
+async def f(s: StrView) -> tuple[StrView, int32]:  # tpyc: error(/res\.return_type/)
     await asyncio.sleep(0)
     # The returned tuple carries a view element.
     return (s, 1)

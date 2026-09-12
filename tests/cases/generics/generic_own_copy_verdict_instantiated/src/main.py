@@ -8,20 +8,20 @@ import asyncio
 from typing import Iterator
 
 from gencontainer import cross_slot
-from tpy import Copyable, Int32, Own, ValueType, copy, error_return, readonly, ReturnException
+from tpy import Copyable, int32, Own, ValueType, copy, error_return, readonly, ReturnException
 
 
 class Cell:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
 class Tag:
-    t: Int32
+    t: int32
 
-    def __init__(self, t: Int32) -> None:
+    def __init__(self, t: int32) -> None:
         self.t = t
 
 
@@ -32,13 +32,13 @@ class Missing(Exception, ReturnException):
 # free function, container-element slot. `diag.txt` is the subject of every
 # section: nothing for the value instantiation, `copies X into <sink>` for the
 # reference one, on the BODY line rather than at the call that decided it.
-def free_slot[T](v: T) -> Int32:
+def free_slot[T](v: T) -> int32:
     xs: list[T] = []
     xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
     return len(xs)
 
 
-def free_slot_twin(v: Cell) -> Int32:
+def free_slot_twin(v: Cell) -> int32:
     xs: list[Cell] = []
     xs.append(v)  # tpyc: warning(/copies Cell into owned storage/)
     return len(xs)
@@ -76,34 +76,34 @@ class HolderTwin:
 
 # two distinct reference instantiations of ONE body: still ONE line, because
 # the contract is the declaration's and not any call's
-def two_instantiations[T](v: T) -> Int32:
+def two_instantiations[T](v: T) -> int32:
     xs: list[T] = []
     xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
     return len(xs)
 
 
 # generator body
-def gen_slot[T](v: T) -> Iterator[Int32]:
+def gen_slot[T](v: T) -> Iterator[int32]:
     xs: list[T] = []
     xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
     yield len(xs)
 
 
 # async body
-async def async_slot[T](v: T) -> Int32:
+async def async_slot[T](v: T) -> int32:
     xs: list[T] = []
     xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
     return len(xs)
 
 
-async def async_driver(c: Cell) -> Int32:
+async def async_driver(c: Cell) -> int32:
     ref = await async_slot(c)
     val = await async_slot(4)
     return ref + val
 
 
 # closure body
-def closure_slot[T](v: T) -> Int32:
+def closure_slot[T](v: T) -> int32:
     xs: list[T] = []
 
     def inner() -> None:
@@ -114,7 +114,7 @@ def closure_slot[T](v: T) -> Int32:
 
 
 class Guard:
-    def __enter__(self) -> Int32:
+    def __enter__(self) -> int32:
         return 1
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
@@ -122,7 +122,7 @@ class Guard:
 
 
 # context-manager body
-def with_slot[T](v: T) -> Int32:
+def with_slot[T](v: T) -> int32:
     xs: list[T] = []
     with Guard() as g:
         xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
@@ -130,7 +130,7 @@ def with_slot[T](v: T) -> Int32:
 
 
 # try / finally body
-def try_slot[T](v: T) -> Int32:
+def try_slot[T](v: T) -> int32:
     xs: list[T] = []
     try:
         xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
@@ -140,7 +140,7 @@ def try_slot[T](v: T) -> Int32:
 
 
 # match arm
-def match_slot[T](v: T, tag: Int32) -> Int32:
+def match_slot[T](v: T, tag: int32) -> int32:
     xs: list[T] = []
     match tag:
         case 1:
@@ -152,20 +152,20 @@ def match_slot[T](v: T, tag: Int32) -> Int32:
 
 # @error_return body
 @error_return(Missing)
-def er_slot[T](v: T) -> Int32:
+def er_slot[T](v: T) -> int32:
     xs: list[T] = []
     xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
     return len(xs)
 
 
 # transitive forward: only `outer` knows U, only `inner` carries the obligation
-def inner_fwd[T](v: T) -> Int32:
+def inner_fwd[T](v: T) -> int32:
     xs: list[T] = []
     xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
     return len(xs)
 
 
-def outer_fwd[U](v: U) -> Int32:
+def outer_fwd[U](v: U) -> int32:
     return inner_fwd(v)  # tpyc: ok
 
 
@@ -201,7 +201,7 @@ class OptHolder[T]:
 # SILENCER 1: `T: ValueType` -- a reference-type copy cannot happen there, so
 # there is nothing to declare. (A `T | None` field under the same bound would
 # say the same thing, but its member write is a lowering reject.)
-def value_bound[T: ValueType](v: T) -> Int32:
+def value_bound[T: ValueType](v: T) -> int32:
     xs: list[T] = []
     xs.append(v)  # tpyc: ok
     return len(xs)
@@ -213,7 +213,7 @@ def value_bound[T: ValueType](v: T) -> Int32:
 # lowers at an owning slot: a `T | None` field write rejects at
 # `assign.field_write_shape` and a `tuple[.., T]` one at
 # `ctor.mil_field.tuple.name`, so the case pins the shape that does.)
-def value_bound_readonly[T: ValueType](v: readonly[T]) -> Int32:
+def value_bound_readonly[T: ValueType](v: readonly[T]) -> int32:
     xs: list[T] = []
     xs.append(v)  # tpyc: ok
     return len(xs)
@@ -229,20 +229,20 @@ class GBox[T]:
         self.item = v  # tpyc: warning(/may copy T into field/)
 
 
-def boxed_bound[T: ValueType](v: GBox[T]) -> Int32:
+def boxed_bound[T: ValueType](v: GBox[T]) -> int32:
     xs: list[GBox[T]] = []
     xs.append(v)  # tpyc: warning(/may copy GBox\[T\] into owned storage/)
     return len(xs)
 
 
-def boxed_bound_twin(v: GBox[Int32]) -> Int32:
-    xs: list[GBox[Int32]] = []
-    xs.append(v)  # tpyc: warning(/copies GBox\[Int32\] into owned storage/)
+def boxed_bound_twin(v: GBox[int32]) -> int32:
+    xs: list[GBox[int32]] = []
+    xs.append(v)  # tpyc: warning(/copies GBox\[int32\] into owned storage/)
     return len(xs)
 
 
 # The same question at DEPTH -- `GBox[T] | None` must still hedge and
-# `tuple[T, Int32] | None` must stay silent -- is pinned in
+# `tuple[T, int32] | None` must stay silent -- is pinned in
 # tpyc/test_compiler.py instead: every owning sink for a nested payload is a
 # lowering reject today (`method.arg_shape` at `.append`,
 # `call.generic_arg_slot` at an `Own[T]` argument, `return.slot_type` /
@@ -262,7 +262,7 @@ class Shadowed[T: Copyable]:
     def __init__(self, v: T) -> None:
         self.item = v  # tpyc: warning(/may copy T into field/)
 
-    def keep[T: ValueType](self, v: T) -> Int32:
+    def keep[T: ValueType](self, v: T) -> int32:
         xs: list[T] = []
         xs.append(v)  # tpyc: ok
         return len(xs)
@@ -271,28 +271,28 @@ class Shadowed[T: Copyable]:
 # container-conversion ELEMENTS, tuple-nested: `tuple[str, T]` is a value type
 # whose T is not, so the copy question has to be asked recursively -- the
 # whole-shape `is_value_type()` would call this silent.
-def elems_ctor[T](pairs: list[tuple[str, T]]) -> Int32:
+def elems_ctor[T](pairs: list[tuple[str, T]]) -> int32:
     d = dict(pairs)  # tpyc: warning(/may copy tuple\[str, T\] elements/)
     return len(d)
 
 
-def elems_ctor_twin(pairs: list[tuple[str, Cell]]) -> Int32:
+def elems_ctor_twin(pairs: list[tuple[str, Cell]]) -> int32:
     d = dict(pairs)  # tpyc: warning(/copies tuple\[str, Cell\] elements/)
     return len(d)
 
 
 # the same element sink at the other three spellings
-def elems_list[T](xs: list[T]) -> Int32:
+def elems_list[T](xs: list[T]) -> int32:
     ys = list(xs)  # tpyc: warning(/may copy T elements/)
     return len(ys)
 
 
-def elems_iadd[T](xs: list[T], ys: list[T]) -> Int32:
+def elems_iadd[T](xs: list[T], ys: list[T]) -> int32:
     xs += ys  # tpyc: warning(/may copy T elements/)
     return len(xs)
 
 
-def elems_update[T](a: dict[str, T], b: dict[str, T]) -> Int32:
+def elems_update[T](a: dict[str, T], b: dict[str, T]) -> int32:
     a.update(b)  # tpyc: warning(/may copy T elements/)
     return len(a)
 
@@ -302,18 +302,18 @@ def elems_update[T](a: dict[str, T], b: dict[str, T]) -> Int32:
 # pre-existing lowering reject queued in scripts/thir_migration/review, and a
 # set comprehension there is refused earlier still (`Ref[T]` is not hashable).
 # The concrete side is pinned so the position is not silently uncovered.
-def comp_slot_twin(v: Cell) -> Int32:
+def comp_slot_twin(v: Cell) -> int32:
     xs: list[Cell] = [v for _ in range(2)]  # tpyc: warning(/copies Cell into owned storage/)
     return len(xs)
 
 
 # subscript assign: the container dest, distinct from the field one
-def subscript_slot[T](xs: list[T], v: T) -> Int32:
+def subscript_slot[T](xs: list[T], v: T) -> int32:
     xs[0] = v  # tpyc: warning(/may copy T into container/)
     return len(xs)
 
 
-def subscript_slot_twin(xs: list[Cell], v: Cell) -> Int32:
+def subscript_slot_twin(xs: list[Cell], v: Cell) -> int32:
     xs[0] = v  # tpyc: warning(/copies Cell into container/)
     return len(xs)
 
@@ -321,7 +321,7 @@ def subscript_slot_twin(xs: list[Cell], v: Cell) -> Int32:
 # instantiated ONLY at a value type: the contract is the body's, so the line
 # stands -- this is the accepted divergence from the monomorphic twin, which
 # would report nothing at all here
-def value_only[T](v: T) -> Int32:
+def value_only[T](v: T) -> int32:
     xs: list[T] = []
     xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
     return len(xs)
@@ -329,7 +329,7 @@ def value_only[T](v: T) -> Int32:
 
 # never instantiated: the point of a DECLARATION-time contract -- a library
 # generic warns its author with no call site anywhere
-def never_used[T](v: T) -> Int32:
+def never_used[T](v: T) -> int32:
     xs: list[T] = []
     xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
     return len(xs)
@@ -337,14 +337,14 @@ def never_used[T](v: T) -> Int32:
 
 # `T: Copyable` does NOT silence: copyable is TPy's default, so the bound only
 # rules out a non-copyable payload -- it does not say a copy was intended
-def bounded_copyable[T: Copyable](v: T) -> Int32:
+def bounded_copyable[T: Copyable](v: T) -> int32:
     xs: list[T] = []
     xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
     return len(xs)
 
 
 # SILENCER 2: `copy()` at the slot is the author saying the copy is intended
-def hatched[T](v: T) -> Int32:
+def hatched[T](v: T) -> int32:
     xs: list[T] = []
     xs.append(copy(v))  # tpyc: ok
     return len(xs)

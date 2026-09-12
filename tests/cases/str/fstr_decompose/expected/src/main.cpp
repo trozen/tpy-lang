@@ -5,14 +5,14 @@ namespace tpyapp::main {
 
 
 // # Free function: log() inspects first param for _logger field
-// def log_from_module(mod: Module, val: Int32) -> None:
+// def log_from_module(mod: Module, val: int32) -> None:
 void log_from_module(Module& mod, int32_t val) {
     // log(f"free_mod={val}")
     ::mylog::log_dispatch(mod._logger, "free_mod={}", std::tuple<int32_t>(val));
 }
 
 // # Free function: log() inspects first param for get_logger() method
-// def log_from_service(svc: Service, val: Int32) -> None:
+// def log_from_service(svc: Service, val: int32) -> None:
 void log_from_service(Service& svc, int32_t val) {
     // log(f"free_svc={val}")
     ::mylog::log_dispatch(svc.get_logger(), "free_svc={}", std::tuple<int32_t>(val));
@@ -25,7 +25,7 @@ void main() {
     // # Method @inline: mixed types
     // s = "hello"
     std::string_view s = "hello";
-    // i: Int32 = 42
+    // i: int32 = 42
     int32_t i = 42;
     // m.log_inline(f"s={s} i={i}")
     ::mylog::log_dispatch(m._logger, "s={} i={}", ::tpy::tuple_value_to_borrow<std::tuple<::mylog::DeferredStr*, int32_t>>(std::tuple<::mylog::DeferredStr, int32_t>{::mylog::defer_str(s), i}));

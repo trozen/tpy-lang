@@ -4,17 +4,17 @@
 namespace tpyapp::main {
 
 // # ArrayList methods (append, len, subscript)
-// al = ArrayList[Int32, 8]()
+// al = ArrayList[int32, 8]()
 ::tpystd::tplib::array_list::ArrayList<int32_t, 8>* al{};
 // # Array methods (subscript, len)
-// arr: Array[Int32, 3] = [100, 200, 300]
+// arr: Array[int32, 3] = [100, 200, 300]
 std::array<int32_t, 3>* arr{};
 // # list methods
-// nums: list[Int32] = [1, 2, 3]
+// nums: list[int32] = [1, 2, 3]
 std::vector<int32_t>* nums{};
 
 // # Span methods (via function parameter)
-// def span_ops(sp: Span[Int32]) -> None:
+// def span_ops(sp: Span[int32]) -> None:
 void span_ops(std::span<int32_t> sp) {
     // print(len(sp))
     std::cout << ::tpy::__len__(sp) << "\n";
@@ -32,7 +32,7 @@ void __tpy_init() {
     // from tplib import ArrayList
     ::tpystd::tplib::__tpy_init();
     // # ArrayList methods (append, len, subscript)
-    // al = ArrayList[Int32, 8]()
+    // al = ArrayList[int32, 8]()
     static ::tpystd::tplib::array_list::ArrayList<int32_t, 8> __global_slot_1 = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
     al = &__global_slot_1;
     // al.append(10)
@@ -48,7 +48,7 @@ void __tpy_init() {
     // print(al[2])
     std::cout << (*al)[2] << "\n";
     // # Array methods (subscript, len)
-    // arr: Array[Int32, 3] = [100, 200, 300]
+    // arr: Array[int32, 3] = [100, 200, 300]
     static std::array<int32_t, 3> __global_slot_2 = {100, 200, 300};
     arr = &__global_slot_2;
     // print(len(arr))
@@ -64,7 +64,7 @@ void __tpy_init() {
     // span_ops(arr)
     span_ops(::tpy::as_mut_span((*arr)));
     // # list methods
-    // nums: list[Int32] = [1, 2, 3]
+    // nums: list[int32] = [1, 2, 3]
     static std::vector<int32_t> __global_slot_3 = {1, 2, 3};
     nums = &__global_slot_3;
     // nums.append(4)

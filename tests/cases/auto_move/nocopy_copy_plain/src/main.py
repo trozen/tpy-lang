@@ -1,12 +1,12 @@
 # __copy__ on a plain copyable class overrides default copy behavior
 from __future__ import annotations
-from tpy import Int32, Own, copy
+from tpy import int32, Own, copy
 
 
 class Counter:
-    count: Int32
+    count: int32
 
-    def __init__(self, count: Int32):
+    def __init__(self, count: int32):
         self.count = count
 
     def __copy__(self) -> Own[Counter]:

@@ -1,16 +1,16 @@
 # Final[T] declaration, negative literals, usage in expressions and function args
 from typing import Final
-from tpy import Int32, Char
+from tpy import int32, char
 
-MAX_SIZE: Final[Int32] = 100
-NEG_VAL: Final[Int32] = -42
+MAX_SIZE: Final[int32] = 100
+NEG_VAL: Final[int32] = -42
 PI: Final[float] = 3.14159
 DEBUG: Final[bool] = True
 DISABLED: Final[bool] = False
 NAME: Final[str] = "hello"
-LETTER: Final[Char] = "A"
+LETTER: Final[char] = "A"
 
-def twice(x: Int32) -> Int32:
+def twice(x: int32) -> int32:
     return x + x
 
 def main() -> None:
@@ -23,7 +23,7 @@ def main() -> None:
     print(LETTER)
     # Use Final in expressions and as function argument
     print(twice(MAX_SIZE))
-    y: Int32 = MAX_SIZE + NEG_VAL
+    y: int32 = MAX_SIZE + NEG_VAL
     print(y)
 
 main()

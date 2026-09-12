@@ -18,7 +18,7 @@
   "reason": "\"match.guard_type\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "Composed tag stmt.match:match.guard_type, raise at match.py:1191 on `case 1 if s:` (str guard) / `case 2 if xs:` (list guard) on an Int32 subject; AST EMITS via gen_truthy_expr. _lower_truthy returned a non-bool result_type for one of them.",
+  "evidence": "Composed tag stmt.match:match.guard_type, raise at match.py:1191 on `case 1 if s:` (str guard) / `case 2 if xs:` (list guard) on an int32 subject; AST EMITS via gen_truthy_expr. _lower_truthy returned a non-bool result_type for one of them.",
   "probe": "scripts/thir_migration/review/probes/match/p1191_guard_str.py",
   "plain_raise": false,
   "known_shape": null
@@ -66,7 +66,7 @@
   "reason": "\"stmt.match\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "`case x as y:` (capture under as) on an Int32 subject: _match_arm_parts None, raise at match.py:1427, AST EMITS (its _binding_pairs emits both names).",
+  "evidence": "`case x as y:` (capture under as) on an int32 subject: _match_arm_parts None, raise at match.py:1427, AST EMITS (its _binding_pairs emits both names).",
   "probe": "scripts/thir_migration/review/probes/match/p1427_capture_as.py",
   "plain_raise": false,
   "known_shape": null
@@ -90,7 +90,7 @@
   "reason": "\"stmt.match\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "`case 1 | _:` on an Int32 switch: the wildcard alternative fails _match_label_ok, raise at match.py:1440, AST EMITS (routes the arm to default:).",
+  "evidence": "`case 1 | _:` on an int32 switch: the wildcard alternative fails _match_label_ok, raise at match.py:1440, AST EMITS (routes the arm to default:).",
   "probe": "scripts/thir_migration/review/probes/match/p1440_or_wild_alt.py",
   "plain_raise": false,
   "known_shape": null
@@ -102,7 +102,7 @@
   "reason": "\"stmt.match\"",
   "bin": "DEAD",
   "confidence": "medium",
-  "evidence": "Non-or label not label-ok needs a value pattern on a non-enum subject or a mistyped/wrong-enum literal; sema refuses all of these: _validate_value_pattern (sema/match.py:1721-1743, 'value pattern (dotted name) not valid for subject type') and the literal type checks ('bool literal pattern not valid for subject type Int32', 'int literal pattern not valid for subject type K') -- probes p1446_value_on_int, q1446_bool_on_int, q1446_int_on_enum all FRONTEND_REFUSES. Medium: not every literal-kind/subject-kind pair was probed (float on Int32, None on a non-Optional scalar).",
+  "evidence": "Non-or label not label-ok needs a value pattern on a non-enum subject or a mistyped/wrong-enum literal; sema refuses all of these: _validate_value_pattern (sema/match.py:1721-1743, 'value pattern (dotted name) not valid for subject type') and the literal type checks ('bool literal pattern not valid for subject type int32', 'int literal pattern not valid for subject type K') -- probes p1446_value_on_int, q1446_bool_on_int, q1446_int_on_enum all FRONTEND_REFUSES. Medium: not every literal-kind/subject-kind pair was probed (float on int32, None on a non-Optional scalar).",
   "probe": null,
   "plain_raise": false,
   "known_shape": null
@@ -126,7 +126,7 @@
   "reason": "\"stmt.match\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "Whole-subject capture rebinding a narrowed value-union name (`if isinstance(u, Int32): match n: case _ as u`) or a storage-tuple local (`t = (Cat(1), 2)` then `case _ as t`): raise at match.py:1460, AST EMITS. (A narrowed Optional[Int32] name is NOT in lc.narrow.narrowed and routes -- p1460.)",
+  "evidence": "Whole-subject capture rebinding a narrowed value-union name (`if isinstance(u, int32): match n: case _ as u`) or a storage-tuple local (`t = (Cat(1), 2)` then `case _ as t`): raise at match.py:1460, AST EMITS. (A narrowed Optional[int32] name is NOT in lc.narrow.narrowed and routes -- p1460.)",
   "probe": "scripts/thir_migration/review/probes/match/q1460_bind_union_narrowed.py",
   "plain_raise": false,
   "known_shape": null
@@ -474,7 +474,7 @@
   "reason": "\"stmt.match\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "Field subject `match h.ol:` (Optional[list[Int32]]) with `case None:` then `case x as y:`: raise at match.py:2240, AST EMITS.",
+  "evidence": "Field subject `match h.ol:` (Optional[list[int32]]) with `case None:` then `case x as y:`: raise at match.py:2240, AST EMITS.",
   "probe": "scripts/thir_migration/review/probes/match/r2240_field_opt_list_capture_as.py",
   "plain_raise": false,
   "known_shape": null
@@ -486,7 +486,7 @@
   "reason": "\"stmt.match\"",
   "bin": "DEAD",
   "confidence": "medium",
-  "evidence": "A class pattern on a non-record pointer-repr inner is refused by sema/match.py:1494 ('class pattern not valid for Optional inner type list[Int32]', q2246). Medium: non-record pointer-repr inners other than list/dict/set were not enumerated.",
+  "evidence": "A class pattern on a non-record pointer-repr inner is refused by sema/match.py:1494 ('class pattern not valid for Optional inner type list[int32]', q2246). Medium: non-record pointer-repr inners other than list/dict/set were not enumerated.",
   "probe": null,
   "plain_raise": false,
   "known_shape": null
@@ -498,7 +498,7 @@
   "reason": "\"stmt.match\"",
   "bin": "DEAD",
   "confidence": "medium",
-  "evidence": "Remaining pattern kinds on a non-record pointer-repr inner: literal (sema 'int literal pattern not valid for subject type list[Int32]', q2248), value pattern (sema/match.py:1743, non-enum subject), or-pattern (`_ | _` is a CPython SyntaxError; class/literal alternatives refused as above).",
+  "evidence": "Remaining pattern kinds on a non-record pointer-repr inner: literal (sema 'int literal pattern not valid for subject type list[int32]', q2248), value pattern (sema/match.py:1743, non-enum subject), or-pattern (`_ | _` is a CPython SyntaxError; class/literal alternatives refused as above).",
   "probe": null,
   "plain_raise": false,
   "known_shape": null
@@ -510,7 +510,7 @@
   "reason": "\"stmt.match\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "Field subject Optional[list[Int32]] with a predeclared capture name (`l: list[Int32] = []` then `case l:`): raise at match.py:2255, AST EMITS.",
+  "evidence": "Field subject Optional[list[int32]] with a predeclared capture name (`l: list[int32] = []` then `case l:`): raise at match.py:2255, AST EMITS.",
   "probe": "scripts/thir_migration/review/probes/match/r2255_field_opt_list_predeclared.py",
   "plain_raise": false,
   "known_shape": null
@@ -690,7 +690,7 @@
   "reason": "\"stmt.match\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "`case x as y:` on an Optional[Int32] chain: raise at match.py:2587, AST EMITS.",
+  "evidence": "`case x as y:` on an Optional[int32] chain: raise at match.py:2587, AST EMITS.",
   "probe": "scripts/thir_migration/review/probes/match/s2587_opt_chain_capture_as.py",
   "plain_raise": false,
   "known_shape": null
@@ -774,7 +774,7 @@
   "reason": "\"stmt.match\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "`case 1 | 2 as x:` on an Optional[Int32] chain: raise at match.py:2628; AST EMITS (and, per the site comment, DROPS the binding -- an AST defect the reject fences).",
+  "evidence": "`case 1 | 2 as x:` on an Optional[int32] chain: raise at match.py:2628; AST EMITS (and, per the site comment, DROPS the binding -- an AST defect the reject fences).",
   "probe": "scripts/thir_migration/review/probes/match/p2628_opt_chain_or_as.py",
   "plain_raise": false,
   "known_shape": null

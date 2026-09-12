@@ -1,5 +1,5 @@
 # error: primitive type pattern that is not a union member
-from tpy import Int32
+from tpy import int32
 
 
 class Cat:
@@ -8,7 +8,7 @@ class Cat:
         self.name = name
 
 
-def check(x: Int32 | Cat) -> str:
+def check(x: int32 | Cat) -> str:
     match x:
         case str():  # tpyc: error(/not a member/)
             return "string"

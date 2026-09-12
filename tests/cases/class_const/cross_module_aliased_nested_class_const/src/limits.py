@@ -1,8 +1,8 @@
 from typing import Final
-from tpy import Int32
+from tpy import int32
 
 
 class Limits:
     class Inner:
-        MAX: Final[Int32] = 99
+        MAX: Final[int32] = 99
         TAG: Final[str] = "inner-aliased"

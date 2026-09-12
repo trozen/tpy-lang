@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 
 class Container[T]:
     value: T
@@ -9,4 +9,4 @@ class Container[T]:
 
 # Missing type arguments for generic parent
 class IntContainer(Container):  # tpyc: error(/requires type arguments/)
-    extra: Int32
+    extra: int32

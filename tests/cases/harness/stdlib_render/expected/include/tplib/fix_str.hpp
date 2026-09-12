@@ -20,20 +20,20 @@ inline constexpr std::string_view __name__ = "tplib.fix_str";
 
 // class FixStrIter:
 struct FixStrIter {
-    // _data: Ptr[readonly[Char]]
+    // _data: Ptr[readonly[char]]
     const char* _data;
-    // _size: Int32
+    // _size: int32
     int32_t _size;
-    // _index: Int32
+    // _index: int32
     int32_t _index;
 
-    // def __init__(self, data: Ptr[readonly[Char]], size: Int32) -> None:
+    // def __init__(self, data: Ptr[readonly[char]], size: int32) -> None:
     FixStrIter() = default;
     explicit FixStrIter(const char* data, int32_t size);
 
     auto& __iter__() { return *this; }
 
-    // def __next__(self) -> Char:
+    // def __next__(self) -> char:
     std::expected<char, ::tpy::StopIteration> __next__();
     static constexpr std::string_view __tpy_class_name__ = "tplib.fix_str.FixStrIter";
 };
@@ -46,9 +46,9 @@ inline std::ostream& operator<<(std::ostream& os, const FixStrIter& obj) {
 // class FixStr[N: int]:
 template<std::size_t N>
 struct FixStr {
-    // _storage: UninitArrayStorage[Char, N]
+    // _storage: UninitArrayStorage[char, N]
     ::tpy::UninitArrayStorage<char, N> _storage;
-    // _size: Int32
+    // _size: int32
     int32_t _size;
     bool __tpy_owned_ = true;
 
@@ -62,7 +62,7 @@ struct FixStr {
     }
     FixStr(FixStr&& other) noexcept : _storage(), _size() {
         // # The storage can't move itself (it has no liveness); the owner does.
-        // self._storage.relocate_from(other._storage, UInt32.trunc(other._size))
+        // self._storage.relocate_from(other._storage, uint32.trunc(other._size))
         this->_storage.relocate_from(other._storage, static_cast<uint32_t>(other._size));
         // self._size = other._size
         this->_size = other._size;
@@ -82,7 +82,7 @@ struct FixStr {
         // for i in range(self._size):
         int32_t __stop_0 = this->_size;
         for (int32_t i = 0; i < __stop_0; ++i) {
-            // self._storage.drop(UInt32(i))
+            // self._storage.drop(uint32(i))
             this->_storage.drop(static_cast<uint32_t>(i));
         }
     }
@@ -94,54 +94,54 @@ struct FixStr {
         // for i in range(self._size):
         int32_t __stop_0 = this->_size;
         for (int32_t i = 0; i < __stop_0; ++i) {
-            // result.append(self._storage.load(UInt32(i)))
+            // result.append(self._storage.load(uint32(i)))
             result.append(this->_storage.load(static_cast<uint32_t>(i)));
         }
         // return result
         return result;
     }
 
-    // def append(self, c: Char) -> None:
+    // def append(self, c: char) -> None:
     void append(char c) {
-        // self._storage.init(UInt32(self._size), c)
+        // self._storage.init(uint32(self._size), c)
         char __tmp_1 = c;
         this->_storage.init(::tpy::int_cast_check<uint32_t>(this->_size), std::move(__tmp_1));
         // self._size += 1
         this->_size = ::tpy::add_check<int32_t>(this->_size, 1);
     }
 
-    // def pop(self) -> Char:
+    // def pop(self) -> char:
     char pop() {
         // self._size -= 1
         this->_size = ::tpy::sub_check<int32_t>(this->_size, 1);
-        // return self._storage.take(UInt32(self._size))
+        // return self._storage.take(uint32(self._size))
         return this->_storage.take(::tpy::int_cast_check<uint32_t>(this->_size));
     }
 
-    // def __len__(self) -> Int32:
+    // def __len__(self) -> int32:
     int32_t __len__() const {
         // return self._size
         return this->_size;
     }
 
-    // def __getitem__(self, index: Int32) -> Char:
+    // def __getitem__(self, index: int32) -> char:
     char __getitem__(int32_t index) const {
-        // return self._storage.load(UInt32(index))
+        // return self._storage.load(uint32(index))
         return this->_storage.load(::tpy::int_cast_check<uint32_t>(index));
     }
 
-    // def __setitem__(self, index: Int32, value: Char) -> None:
+    // def __setitem__(self, index: int32, value: char) -> None:
     void __setitem__(int32_t index, char value) {
-        // self._storage.drop(UInt32(index))
+        // self._storage.drop(uint32(index))
         this->_storage.drop(::tpy::int_cast_check<uint32_t>(index));
-        // self._storage.init(UInt32(index), value)
+        // self._storage.init(uint32(index), value)
         char __tmp_2 = value;
         this->_storage.init(::tpy::int_cast_check<uint32_t>(index), std::move(__tmp_2));
     }
 
     // def __str__(self) -> StrView:
     std::string_view __str__() const {
-        // return unsafe_str_view(self._storage.ptr(), UInt32(self._size))
+        // return unsafe_str_view(self._storage.ptr(), uint32(self._size))
         return std::string_view(this->_storage.ptr(), ::tpy::int_cast_check<uint32_t>(this->_size));
     }
 
@@ -156,7 +156,7 @@ struct FixStr {
         // for i in range(self._size):
         int32_t __stop_0 = this->_size;
         for (int32_t i = 0; i < __stop_0; ++i) {
-            // self._storage.drop(UInt32(i))
+            // self._storage.drop(uint32(i))
             this->_storage.drop(static_cast<uint32_t>(i));
         }
         // self._size = 0
@@ -182,14 +182,14 @@ inline std::ostream& operator<<(std::ostream& os, const FixStr<N>& obj) {
 }
 
 
-// def __init__(self, data: Ptr[readonly[Char]], size: Int32) -> None:
+// def __init__(self, data: Ptr[readonly[char]], size: int32) -> None:
 inline FixStrIter::FixStrIter(const char* data, int32_t size) : _data(data), _size(size), _index(0) {}
 
-// def __next__(self) -> Char:
+// def __next__(self) -> char:
 inline std::expected<char, ::tpy::StopIteration> FixStrIter::__next__() {
     // if self._index < self._size:
     if ((this->_index < this->_size)) {
-        // val = unsafe_load(self._data, UInt32(self._index))
+        // val = unsafe_load(self._data, uint32(self._index))
         char val = this->_data[::tpy::int_cast_check<uint32_t>(this->_index)];
         // self._index += 1
         this->_index = ::tpy::add_check<int32_t>(this->_index, 1);

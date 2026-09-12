@@ -20,7 +20,7 @@ struct Rec {
     // self.v = v
     int64_t v;
 
-    // def __init__(self, v: Int64) -> None:
+    // def __init__(self, v: int64) -> None:
     Rec() = default;
     explicit Rec(int64_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Rec";
@@ -40,7 +40,7 @@ struct Holder {
     // def __init__(self, r: Own[Rec | None] = None) -> None:
     explicit Holder(std::optional<Rec>&& r = std::nullopt);
 
-    // def value(self) -> Int64:
+    // def value(self) -> int64:
     int64_t value() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
@@ -51,14 +51,14 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 }
 
 
-// def __init__(self, v: Int64) -> None:
+// def __init__(self, v: int64) -> None:
 inline Rec::Rec(int64_t v) : v(v) {}
 
 // # A ctor is a member, so this Own default keeps its C++ spelling.
 // def __init__(self, r: Own[Rec | None] = None) -> None:
 inline Holder::Holder(std::optional<Rec>&& r) : slot(std::move(r)) {}
 
-// def value(self) -> Int64:
+// def value(self) -> int64:
 inline int64_t Holder::value() const {
     // if self.slot is None:
     if ((!this->slot.has_value())) {

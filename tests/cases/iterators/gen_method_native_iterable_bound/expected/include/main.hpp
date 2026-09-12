@@ -16,7 +16,7 @@ struct __gen_Wrap_summary;
 
 void main();
 
-// class Wrap[T: NativeIterable[Int32]]:
+// class Wrap[T: NativeIterable[int32]]:
 template<::tpy::NativeIterable<int32_t> T>
 struct Wrap {
     // items: T
@@ -63,14 +63,14 @@ struct __gen_Wrap_summary : public ::tpy::next_iter_mixin<__gen_Wrap_summary<T>,
     }
 };
 
-// def summary(self) -> Iterator[Int32]:
+// def summary(self) -> Iterator[int32]:
 template <::tpy::NativeIterable<int32_t> T>
 std::expected<int32_t, ::tpy::StopIteration> __gen_Wrap_summary<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // total: Int32 = 0
+        // total: int32 = 0
         total = 0;
-        // count: Int32 = 0
+        // count: int32 = 0
         count = 0;
         // for x in self.items:
         auto& __obj_0 = __self.items;

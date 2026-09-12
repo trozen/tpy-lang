@@ -13,7 +13,7 @@ inline constexpr std::string_view __name__ = "limits";
 
 // class Limits:
 struct Limits {
-    // MAX_RETRIES: Final[Int32] = 7
+    // MAX_RETRIES: Final[int32] = 7
     static constexpr int32_t MAX_RETRIES = 7;
     // GREETING: Final[str] = "hello"
     static constexpr std::string_view GREETING = "hello";

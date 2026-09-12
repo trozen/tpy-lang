@@ -19,7 +19,7 @@ See docs/CHANNEL_DESIGN.md.
 """
 from __future__ import annotations
 from typing import Iterator
-from tpy import Own, Int32, UInt32, nocopy, Send
+from tpy import Own, int32, uint32, nocopy, Send
 from tpy.mem import UninitHeapStorage
 from tpy.sync import Mutex, Condvar
 from tplib.arc import Arc
@@ -37,13 +37,13 @@ class _Buf[T: Send]:
     serialized by the enclosing `Mutex`, so the raw `UninitHeapStorage`
     slots are only ever touched under the lock."""
     _buf: UninitHeapStorage[T]
-    _cap: UInt32
-    _head: UInt32
-    _count: UInt32
+    _cap: uint32
+    _head: uint32
+    _count: uint32
     _closed: bool
-    _senders: UInt32
+    _senders: uint32
 
-    def __init__(self, capacity: UInt32) -> None:
+    def __init__(self, capacity: uint32) -> None:
         self._buf = UninitHeapStorage[T](capacity)
         self._cap = capacity
         self._head = 0
@@ -54,7 +54,7 @@ class _Buf[T: Send]:
     def __del__(self) -> None:
         # UninitHeapStorage is uninitialized storage and won't drop live
         # slots itself -- drain the buffered elements or they leak.
-        i: UInt32 = 0
+        i: uint32 = 0
         while i < self._count:
             self._buf.take((self._head + i) % self._cap)
             i += 1
@@ -86,7 +86,7 @@ class _Chan[T: Send]:
     _not_full: Condvar
     _not_empty: Condvar
 
-    def __init__(self, capacity: UInt32) -> None:
+    def __init__(self, capacity: uint32) -> None:
         self._buf = Mutex.new(_Buf[T](capacity))
         self._not_full = Condvar()
         self._not_empty = Condvar()
@@ -177,9 +177,9 @@ class Receiver[T: Send]:
                 return
 
 
-def channel[T: Send](capacity: Int32) -> tuple[Own[Sender[T]], Own[Receiver[T]]]:
+def channel[T: Send](capacity: int32) -> tuple[Own[Sender[T]], Own[Receiver[T]]]:
     if capacity < 1:
         raise ValueError("channel capacity must be >= 1")
-    chan = Arc.new(_Chan[T](UInt32(capacity)))
+    chan = Arc.new(_Chan[T](uint32(capacity)))
     chan_for_recv = chan.clone()
     return (Sender[T](chan), Receiver[T](chan_for_recv))

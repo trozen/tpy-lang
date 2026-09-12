@@ -1,13 +1,13 @@
-from tpy import Int32
+from tpy import int32
 class A:
-    a: Int32
-    def __init__(self, a: Int32) -> None:
+    a: int32
+    def __init__(self, a: int32) -> None:
         self.a = a
 class B:
-    b: Int32
-    def __init__(self, b: Int32) -> None:
+    b: int32
+    def __init__(self, b: int32) -> None:
         self.b = b
-def f(p: A, q: B) -> Int32:
+def f(p: A, q: B) -> int32:
     v: A | B = p
     if isinstance(v, A):
         v = q

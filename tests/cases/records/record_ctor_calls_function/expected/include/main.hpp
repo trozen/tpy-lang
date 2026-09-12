@@ -16,12 +16,12 @@ void main();
 
 // class Pair:
 struct Pair {
-    // a: Int32
+    // a: int32
     int32_t a;
-    // b: Int32
+    // b: int32
     int32_t b;
 
-    // def __init__(self, x: Int32):
+    // def __init__(self, x: int32):
     Pair() = default;
     explicit Pair(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
@@ -33,7 +33,7 @@ inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
 }
 
 
-// def __init__(self, x: Int32):
+// def __init__(self, x: int32):
 inline Pair::Pair(int32_t x) : a(x), b(twice(x)) {}
 void __tpy_init();
 } // namespace tpyapp::main

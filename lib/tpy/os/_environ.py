@@ -2,7 +2,7 @@
 # A leaf module (imports only os._native) so both os/__init__ and os/path can
 # read `environ` without an os <-> os.path cycle. Internal: import via `os`.
 from typing import Iterator
-from tpy import Int32, Own
+from tpy import int32, Own
 from ._native import (
     environ_keys, env_get, setenv as _setenv, unsetenv as _unsetenv,
 )
@@ -40,7 +40,7 @@ class _Environ:
     def __contains__(self, key: str) -> bool:
         return key in self._data
 
-    def __len__(self) -> Int32:
+    def __len__(self) -> int32:
         return len(self._data)
 
     def __iter__(self) -> Iterator[str]:

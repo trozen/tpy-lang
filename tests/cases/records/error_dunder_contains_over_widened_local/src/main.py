@@ -1,6 +1,6 @@
 # A user-record `__contains__` whose needle is a COMPOSITE over a local that
 # widens later in the body: same disposition, so the needle slot rejects.
-from tpy import Int32
+from tpy import int32
 
 
 def gi() -> int:
@@ -8,12 +8,12 @@ def gi() -> int:
 
 
 class Bag:
-    xs: list[Int32]
+    xs: list[int32]
 
     def __init__(self) -> None:
         self.xs = [1, 2, 3, 4]
 
-    def __contains__(self, k: Int32) -> bool:
+    def __contains__(self, k: int32) -> bool:
         return k == 1
 
 

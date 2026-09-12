@@ -2,7 +2,7 @@
 # inline row is last-use gated, and a live source would need a hoisted temp.
 # Concretely, `Holder(tag)` passes `tag`, which is read again afterward;
 # TPy rejects that call today.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Holder:
@@ -12,7 +12,7 @@ class Holder:
         self.tags = tags
 
 
-def build_live(flag: bool) -> Int32:
+def build_live(flag: bool) -> int32:
     acc: list[str] = ["a"]
     tag: list[str] | None = None
     if flag:

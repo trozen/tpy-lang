@@ -4,18 +4,18 @@
 namespace tpyapp::main {
 
 // # Single element repeat - list
-// zeros: list[Int32] = [0] * 5
+// zeros: list[int32] = [0] * 5
 std::vector<int32_t>* zeros{};
 // # Single element repeat - list (via constructor)
-// filled: list[Int32] = [42] * 10
+// filled: list[int32] = [42] * 10
 std::vector<int32_t>* filled{};
 // # Zero count repeat - produces empty list
-// empty: list[Int32] = [99] * 0
+// empty: list[int32] = [99] * 0
 std::vector<int32_t>* empty{};
 // # Variable count
-// n: Int32 = 3
+// n: int32 = 3
 int32_t n{};
-// dynamic: list[Int32] = [7] * n
+// dynamic: list[int32] = [7] * n
 std::vector<int32_t>* dynamic{};
 
 void __tpy_init() {
@@ -24,7 +24,7 @@ void __tpy_init() {
     initialized = true;
 
     // # Single element repeat - list
-    // zeros: list[Int32] = [0] * 5
+    // zeros: list[int32] = [0] * 5
     static std::vector<int32_t> __global_slot_1 = ::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(5, {0}));
     zeros = &__global_slot_1;
     // print(len(zeros))
@@ -34,7 +34,7 @@ void __tpy_init() {
     // print(zeros[4])
     std::cout << ::tpy::__getitem__((*zeros), 4) << "\n";
     // # Single element repeat - list (via constructor)
-    // filled: list[Int32] = [42] * 10
+    // filled: list[int32] = [42] * 10
     static std::vector<int32_t> __global_slot_2 = ::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(10, {42}));
     filled = &__global_slot_2;
     // print(len(filled))
@@ -44,15 +44,15 @@ void __tpy_init() {
     // print(filled[9])
     std::cout << ::tpy::__getitem__((*filled), 9) << "\n";
     // # Zero count repeat - produces empty list
-    // empty: list[Int32] = [99] * 0
+    // empty: list[int32] = [99] * 0
     static std::vector<int32_t> __global_slot_3 = ::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(0, {99}));
     empty = &__global_slot_3;
     // print(len(empty))
     std::cout << ::tpy::__len__((*empty)) << "\n";
     // # Variable count
-    // n: Int32 = 3
+    // n: int32 = 3
     n = 3;
-    // dynamic: list[Int32] = [7] * n
+    // dynamic: list[int32] = [7] * n
     static std::vector<int32_t> __global_slot_4 = ::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(n, {7}));
     dynamic = &__global_slot_4;
     // print(len(dynamic))

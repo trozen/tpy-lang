@@ -16,7 +16,7 @@ void main();
 
 // class Holder:
 struct Holder {
-    // last: Poll[Int32]
+    // last: Poll[int32]
     ::tpystd::tpy::Poll<int32_t> last;
 
     // def __init__(self) -> None:

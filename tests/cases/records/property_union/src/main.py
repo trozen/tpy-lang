@@ -1,14 +1,14 @@
 # Property returning union of non-value types with isinstance narrowing
-from tpy import Int32
+from tpy import int32
 
 class Circle:
-    radius: Int32
-    def __init__(self, r: Int32) -> None:
+    radius: int32
+    def __init__(self, r: int32) -> None:
         self.radius = r
 
 class Square:
-    side: Int32
-    def __init__(self, s: Int32) -> None:
+    side: int32
+    def __init__(self, s: int32) -> None:
         self.side = s
 
 class Canvas:

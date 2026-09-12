@@ -3,20 +3,20 @@
 # for symmetry with @staticmethod rather than changing the signature.
 from typing import Final
 
-from tpy import Int32, readonly
+from tpy import int32, readonly
 
 
 class Limits:
-    BASE: Final[Int32] = 4
+    BASE: Final[int32] = 4
 
     @readonly
     @classmethod
-    def base(cls) -> Int32:
+    def base(cls) -> int32:
         return cls.BASE
 
     @readonly
     @classmethod
-    def doubled(cls) -> Int32:
+    def doubled(cls) -> int32:
         return cls.base() * 2
 
 

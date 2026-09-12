@@ -1,5 +1,5 @@
-from tpy import Int32, StrView
-def f(k: Int32) -> Int32:
+from tpy import int32, StrView
+def f(k: int32) -> int32:
     v: StrView | None = None
     if k > 0:
         v = 'abc'

@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // global_list: list[int] = []
 std::vector<::tpy::BigInt>* global_list{};
 // # Global with list() constructor
-// global_list2: list[Int32] = list()
+// global_list2: list[int32] = list()
 std::vector<int32_t>* global_list2{};
 
 // def test_empty_list() -> int:
@@ -24,13 +24,13 @@ std::vector<int32_t>* global_list2{};
     return ::tpy::BigInt(::tpy::__len__(items));
 }
 
-// def test_empty_list_int32() -> Int32:
+// def test_empty_list_int32() -> int32:
 int32_t test_empty_list_int32() {
-    // nums: list[Int32] = []
+    // nums: list[int32] = []
     std::vector<int32_t> nums = std::vector<int32_t>{};
-    // nums.append(Int32(10))
+    // nums.append(int32(10))
     nums.push_back(10);
-    // nums.append(Int32(20))
+    // nums.append(int32(20))
     nums.push_back(20);
     // return nums[0] + nums[1]
     return (::tpy::add_check<int32_t>(::tpy::__getitem__(nums, 0), ::tpy::__getitem__(nums, 1)));
@@ -48,11 +48,11 @@ int32_t test_empty_list_int32() {
     return ::tpy::BigInt(::tpy::__len__(items));
 }
 
-// def test_list_constructor_int32() -> Int32:
+// def test_list_constructor_int32() -> int32:
 int32_t test_list_constructor_int32() {
-    // nums: list[Int32] = list()
+    // nums: list[int32] = list()
     std::vector<int32_t> nums = std::vector<int32_t>();
-    // nums.append(Int32(100))
+    // nums.append(int32(100))
     nums.push_back(100);
     // return nums[0]
     return ::tpy::__getitem__(nums, 0);
@@ -68,7 +68,7 @@ void __tpy_init() {
     static std::vector<::tpy::BigInt> __global_slot_1 = std::vector<::tpy::BigInt>{};
     global_list = &__global_slot_1;
     // # Global with list() constructor
-    // global_list2: list[Int32] = list()
+    // global_list2: list[int32] = list()
     static std::vector<int32_t> __global_slot_2 = std::vector<int32_t>();
     global_list2 = &__global_slot_2;
     // print(test_empty_list())
@@ -83,7 +83,7 @@ void __tpy_init() {
     global_list->push_back(100);
     // print(len(global_list))
     std::cout << ::tpy::__len__((*global_list)) << "\n";
-    // global_list2.append(Int32(50))
+    // global_list2.append(int32(50))
     global_list2->push_back(50);
     // print(len(global_list2))
     std::cout << ::tpy::__len__((*global_list2)) << "\n";

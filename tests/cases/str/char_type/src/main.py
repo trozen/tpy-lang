@@ -1,13 +1,13 @@
-from tpy import Int32, Char
+from tpy import int32, char
 
-# Test Char type comprehensively
+# Test char type comprehensively
 
 def test_char_literals() -> None:
-    """Test single-character string literals as Char."""
-    a: Char = "A"
-    b: Char = "B"
-    space: Char = " "
-    newline: Char = "\n"
+    """Test single-character string literals as char."""
+    a: char = "A"
+    b: char = "B"
+    space: char = " "
+    newline: char = "\n"
 
     print(a)
     print(b)
@@ -15,22 +15,22 @@ def test_char_literals() -> None:
     print("x")
 
 def test_char_from_string_index() -> None:
-    """Test getting Char from string indexing."""
+    """Test getting char from string indexing."""
     text: str = "Hello"
 
-    c0: Char = text[0]
-    c1: Char = text[1]
-    c4: Char = text[4]
+    c0: char = text[0]
+    c1: char = text[1]
+    c4: char = text[4]
 
     print(c0)
     print(c1)
     print(c4)
 
 def test_char_comparison() -> None:
-    """Test Char comparison operators."""
-    a: Char = "a"
-    b: Char = "b"
-    a2: Char = "a"
+    """Test char comparison operators."""
+    a: char = "a"
+    b: char = "b"
+    a2: char = "a"
 
     # Equality
     if a == a2:
@@ -59,10 +59,10 @@ def test_char_comparison() -> None:
         print("b >= a: yes")
 
 def test_char_in_string() -> None:
-    """Test Char used with 'in' operator on string."""
+    """Test char used with 'in' operator on string."""
     text: str = "hello world"
-    target: Char = "o"
-    missing: Char = "z"
+    target: char = "o"
+    missing: char = "z"
 
     if target in text:
         print("o in text: yes")
@@ -72,7 +72,7 @@ def test_char_in_string() -> None:
     else:
         print("z in text: no")
 
-def is_vowel(c: Char) -> bool:
+def is_vowel(c: char) -> bool:
     """Check if character is a vowel."""
     if c == "a":
         return True
@@ -86,10 +86,10 @@ def is_vowel(c: Char) -> bool:
         return True
     return False
 
-def count_vowels(text: str) -> Int32:
+def count_vowels(text: str) -> int32:
     """Count vowels in a string."""
-    count: Int32 = 0
-    i: Int32 = 0
+    count: int32 = 0
+    i: int32 = 0
     while i < len(text):
         if is_vowel(text[i]):
             count += 1
@@ -97,7 +97,7 @@ def count_vowels(text: str) -> Int32:
     return count
 
 def test_char_function_param() -> None:
-    """Test Char as function parameter."""
+    """Test char as function parameter."""
     if is_vowel("a"):
         print("a is vowel")
     if is_vowel("b"):
@@ -112,7 +112,7 @@ def test_char_function_param() -> None:
         print("x is not vowel")
 
 def test_char_iteration() -> None:
-    """Test Char from for-each iteration."""
+    """Test char from for-each iteration."""
     text: str = "abc"
     for c in text:
         print(c)
@@ -125,9 +125,9 @@ def test_vowel_counting() -> None:
     print(count_vowels("xyz"))
 
 def test_chr_function() -> None:
-    """Test chr() returning Char."""
-    c65: Char = chr(65)
-    c97: Char = chr(97)
+    """Test chr() returning char."""
+    c65: char = chr(65)
+    c97: char = chr(97)
 
     print(c65)
     print(c97)

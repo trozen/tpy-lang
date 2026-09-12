@@ -1,5 +1,5 @@
 # Test string concatenation with +, += operators
-from tpy import Int32, String
+from tpy import int32, String
 
 def test_str_concat() -> None:
     a: str = "hello"
@@ -41,13 +41,13 @@ def test_reassign_concat() -> None:
     a = a + "b"
     print(a)  # ab
     # with str() conversion
-    n: Int32 = 42
+    n: int32 = 42
     a = a + str(n)
     print(a)  # ab42
 
 def test_loop_concat() -> None:
     s: String = String("")
-    i: Int32 = 0
+    i: int32 = 0
     while i < 5:
         s += str(i)
         i += 1

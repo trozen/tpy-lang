@@ -1,14 +1,14 @@
 # The adjacent shape the field-write rows must keep rejecting: an
 # OPTIONAL bytearray field written from a converting construction. Its bare
 # sibling routes; the Optional slot needs a lift no source row here spells.
-from tpy import Int32
+from tpy import int32
 
 
 class Buf:
-    n: Int32
+    n: int32
     ba: bytearray | None
 
-    def __init__(self, k: Int32) -> None:
+    def __init__(self, k: int32) -> None:
         self.n = k
         if k < 0:
             raise ValueError("neg")

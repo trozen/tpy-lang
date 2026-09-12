@@ -55,17 +55,17 @@ void main();
 
 // class Rect:
 struct Rect {
-    // _w: Int32
+    // _w: int32
     int32_t _w;
-    // _h: Int32
+    // _h: int32
     int32_t _h;
 
-    // def __init__(self, w: Int32, h: Int32) -> None:
+    // def __init__(self, w: int32, h: int32) -> None:
     Rect() = default;
     explicit Rect(int32_t w, int32_t h);
 
     // @readonly
-    // def area(self) -> Int32:
+    // def area(self) -> int32:
     int32_t area() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Rect";
 };
@@ -77,18 +77,18 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
 
 // class Box:
 struct Box {
-    // _side: Int32
+    // _side: int32
     int32_t _side;
 
-    // def __init__(self, side: Int32) -> None:
+    // def __init__(self, side: int32) -> None:
     Box() = default;
     explicit Box(int32_t side);
 
     // @readonly
-    // def measure(self) -> Int32:
+    // def measure(self) -> int32:
     int32_t measure() const;
 
-    // def resize(self, v: Int32) -> None:
+    // def resize(self, v: int32) -> None:
     void resize(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
@@ -118,40 +118,40 @@ struct tpy::RefAdapter<tpyapp::main::Shape, T> : tpyapp::main::Shape {
 namespace tpyapp::main {
 
 
-// def __init__(self, w: Int32, h: Int32) -> None:
+// def __init__(self, w: int32, h: int32) -> None:
 inline Rect::Rect(int32_t w, int32_t h) : _w(w), _h(h) {}
 
 // @readonly
-// def area(self) -> Int32:
+// def area(self) -> int32:
 inline int32_t Rect::area() const {
     // return self._w * self._h
     return (::tpy::mul_check<int32_t>(this->_w, this->_h));
 }
 
-// def __init__(self, side: Int32) -> None:
+// def __init__(self, side: int32) -> None:
 inline Box::Box(int32_t side) : _side(side) {}
 
 // @readonly
-// def measure(self) -> Int32:
+// def measure(self) -> int32:
 inline int32_t Box::measure() const {
     // return self._side
     return this->_side;
 }
 
-// def resize(self, v: Int32) -> None:
+// def resize(self, v: int32) -> None:
 inline void Box::resize(int32_t v) {
     // self._side = v
     this->_side = v;
 }
 // # Non-mutated static protocol param -> const T_p&
-// def get_measure(p: Measurable) -> Int32:
+// def get_measure(p: Measurable) -> int32:
 template<Measurable T_p>
 int32_t get_measure(const T_p& p) {
     // return p.measure()
     return p.measure();
 }
 // # Mutated static protocol param -> T_p& (resize modifies p)
-// def double_resize(p: Resizable) -> Int32:
+// def double_resize(p: Resizable) -> int32:
 template<Resizable T_p>
 int32_t double_resize(T_p& p) {
     // p.resize(p.measure() * 2)

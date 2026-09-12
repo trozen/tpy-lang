@@ -2,13 +2,13 @@ from tpy import error_return, ReturnException
 class E(Exception, ReturnException):
     pass
 from typing import overload
-from tpy import Int32
+from tpy import int32
 @overload
-def f(a: Int32) -> Int32: ...
+def f(a: int32) -> int32: ...
 @overload
-def f(a: Int32, b: Int32) -> Int32: ...
+def f(a: int32, b: int32) -> int32: ...
 @error_return(E)
-def f(a: Int32, b: Int32 = 0) -> Int32:
+def f(a: int32, b: int32 = 0) -> int32:
     return a + b
 def main() -> None:
     try:

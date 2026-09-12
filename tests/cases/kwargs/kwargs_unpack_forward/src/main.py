@@ -1,10 +1,10 @@
 # **kwargs forwarding: wrapper(**kw) -> inner(**kw)
 from typing import TypedDict, Unpack
-from tpy import Int32
+from tpy import int32
 
 class Options(TypedDict):
     host: str
-    port: Int32
+    port: int32
 
 def connect(**kwargs: Unpack[Options]) -> None:
     print(kwargs["host"])
@@ -15,6 +15,6 @@ def wrapper(**kwargs: Unpack[Options]) -> None:
     connect(**kwargs)
 
 def main() -> None:
-    wrapper(host="example.com", port=Int32(443))
+    wrapper(host="example.com", port=int32(443))
 
 main()

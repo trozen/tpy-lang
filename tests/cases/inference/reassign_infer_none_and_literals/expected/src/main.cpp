@@ -46,7 +46,7 @@ void __tpy_init() {
     std::cout << ::tpy::print_optional_val(n) << "\n";
     // z = 0
     z = 0;
-    // z = Int32(666)
+    // z = int32(666)
     z = 666;
     // print(z)
     std::cout << z << "\n";

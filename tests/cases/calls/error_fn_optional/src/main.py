@@ -1,5 +1,5 @@
 # Error: Fn cannot be nested inside another type
-from tpy import Fn, Int32
+from tpy import Fn, int32
 
-def apply(f: Fn[[Int32], Int32] | None, x: Int32) -> Int32:  # tpyc: error(/Fn type cannot be nested/)
+def apply(f: Fn[[int32], int32] | None, x: int32) -> int32:  # tpyc: error(/Fn type cannot be nested/)
     return x

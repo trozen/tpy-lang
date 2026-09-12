@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 
 def main() -> None:
-    n: Int32 = 1
+    n: int32 = 1
     s = "x"
     xs = [1, 2]
     match n:

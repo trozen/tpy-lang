@@ -2,14 +2,14 @@
 # then consumed by move into a sink. @nocopy Inner forces the move (a silent
 # copy would fail to compile); sink mutates and returns, so the value crossing
 # the decl+move boundary is observed.
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 
 
 @nocopy
 class Inner:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
     def bump(self) -> None:
@@ -17,16 +17,16 @@ class Inner:
 
 
 class Builder:
-    seed: Int32
+    seed: int32
 
-    def __init__(self, seed: Int32) -> None:
+    def __init__(self, seed: int32) -> None:
         self.seed = seed
 
     def build(self) -> Own[Inner]:
         return Inner(self.seed)
 
 
-def sink(x: Own[Inner]) -> Int32:
+def sink(x: Own[Inner]) -> int32:
     x.bump()
     return x.v
 

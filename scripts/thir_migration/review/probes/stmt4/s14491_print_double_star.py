@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 def f() -> None:
     kw: dict[str, str] = {'sep': ','}
     print(1, 2, **kw)

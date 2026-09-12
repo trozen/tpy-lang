@@ -3,12 +3,12 @@
 # Sender.close() (force-close) and the explicit recv()/ChannelClosed path that
 # the generator __iter__ otherwise swallows. Single-threaded (no blocking), so
 # deterministic.
-from tpy import Int32
+from tpy import int32
 from tplib.channel import channel, ChannelClosed
 
 
 def main() -> None:
-    tx, rx = channel[Int32](4)
+    tx, rx = channel[int32](4)
     tx.send(10)
     tx.send(20)
     tx.close()

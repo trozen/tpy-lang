@@ -19,28 +19,28 @@ void test_generic();
 struct Builder {
     // name: str
     std::string name;
-    // value: Int32
+    // value: int32
     int32_t value;
 
-    // def __init__(self, name: str, value: Int32) -> None:
+    // def __init__(self, name: str, value: int32) -> None:
     Builder() = default;
     explicit Builder(std::string_view name, int32_t value);
 
     // def set_name(self, name: str) -> Self:
     Builder& set_name(std::string_view name);
 
-    // def set_value(self, value: Int32) -> Self:
+    // def set_value(self, value: int32) -> Self:
     Builder& set_value(int32_t value);
 
-    // def with_offset(self, other: Self) -> Int32:
+    // def with_offset(self, other: Self) -> int32:
     int32_t with_offset(const Builder& other) const;
 
     // @auto_readonly
-    // def find_match(self, target: Int32) -> Optional[Self]:
+    // def find_match(self, target: int32) -> Optional[Self]:
     Builder* find_match(int32_t target);
 
     // @auto_readonly
-    // def find_match(self, target: Int32) -> Optional[Self]:
+    // def find_match(self, target: int32) -> Optional[Self]:
     const Builder* find_match(int32_t target) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Builder";
 };
@@ -86,7 +86,7 @@ inline std::ostream& operator<<(std::ostream& os, const Stack<T>& obj) {
 }
 
 
-// def __init__(self, name: str, value: Int32) -> None:
+// def __init__(self, name: str, value: int32) -> None:
 inline Builder::Builder(std::string_view name, int32_t value) : name(name), value(value) {}
 
 // def set_name(self, name: str) -> Self:
@@ -97,7 +97,7 @@ inline Builder& Builder::set_name(std::string_view name) {
     return (*this);
 }
 
-// def set_value(self, value: Int32) -> Self:
+// def set_value(self, value: int32) -> Self:
 inline Builder& Builder::set_value(int32_t value) {
     // self.value = value
     this->value = value;
@@ -105,14 +105,14 @@ inline Builder& Builder::set_value(int32_t value) {
     return (*this);
 }
 
-// def with_offset(self, other: Self) -> Int32:
+// def with_offset(self, other: Self) -> int32:
 inline int32_t Builder::with_offset(const Builder& other) const {
     // return self.value + other.value
     return (::tpy::add_check<int32_t>(this->value, other.value));
 }
 
 // @auto_readonly
-// def find_match(self, target: Int32) -> Optional[Self]:
+// def find_match(self, target: int32) -> Optional[Self]:
 inline Builder* Builder::find_match(int32_t target) {
     // if self.value == target:
     if ((this->value == target)) {
@@ -124,7 +124,7 @@ inline Builder* Builder::find_match(int32_t target) {
 }
 
 // @auto_readonly
-// def find_match(self, target: Int32) -> Optional[Self]:
+// def find_match(self, target: int32) -> Optional[Self]:
 inline const Builder* Builder::find_match(int32_t target) const {
     // if self.value == target:
     if ((this->value == target)) {

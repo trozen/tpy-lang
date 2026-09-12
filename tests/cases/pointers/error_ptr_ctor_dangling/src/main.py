@@ -1,5 +1,5 @@
-from tpy import Ptr, Int32, take_ptr
+from tpy import Ptr, int32, take_ptr
 
-def bad_direct() -> Ptr[Int32]:
-    x: Int32 = Int32(1)
+def bad_direct() -> Ptr[int32]:
+    x: int32 = int32(1)
     return take_ptr(x)  # tpyc: error(/returned pointer would dangle/)

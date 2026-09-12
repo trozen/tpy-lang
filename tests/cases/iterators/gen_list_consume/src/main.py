@@ -1,9 +1,9 @@
 # Generator consumed by list() builtin
-from tpy import Int32
+from tpy import int32
 from typing import Iterator
 
-def squares(n: Int32) -> Iterator[Int32]:
-    i: Int32 = 0
+def squares(n: int32) -> Iterator[int32]:
+    i: int32 = 0
     while i < n:
         yield i * i
         i += 1

@@ -2,10 +2,10 @@
 # the branch-decl hoist predeclares it before the switch. `pick` adds a
 # hoisted CAPTURE (one arm assigns the name, the other binds the subject
 # to it), so the binding renders as an assignment against the predecl.
-from tpy import Int32
+from tpy import int32
 
 
-def route(n: Int32) -> Int32:
+def route(n: int32) -> int32:
     match n:
         case 0:
             label = 10
@@ -14,7 +14,7 @@ def route(n: Int32) -> Int32:
     return label
 
 
-def pick(n: Int32) -> Int32:
+def pick(n: int32) -> int32:
     match n:
         case 0:
             seen = 100

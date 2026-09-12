@@ -1,12 +1,12 @@
 # Optional subject: a bare class pattern covers the whole value side, so a
 # later value-only arm is unreachable (the None arm would still be fine).
-from tpy import Int32
+from tpy import int32
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 

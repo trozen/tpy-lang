@@ -4,13 +4,13 @@
 namespace tpyapp::helpers {
 
 
-// def double(n: Int32) -> Int32:
+// def double(n: int32) -> int32:
 int32_t double_(int32_t n) {
     // return n + n
     return (::tpy::add_check<int32_t>(n, n));
 }
 
-// def triple(n: Int32) -> Int32:
+// def triple(n: int32) -> int32:
 int32_t triple(int32_t n) {
     // return n * 3
     return (::tpy::mul_check<int32_t>(n, 3));

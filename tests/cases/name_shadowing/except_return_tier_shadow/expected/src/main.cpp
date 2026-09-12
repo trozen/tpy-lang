@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // @error_return(NotFound)
-// def inner(key: str) -> Int32:
+// def inner(key: str) -> int32:
 std::expected<int32_t, NotFound> inner(std::string_view key) {
     // if key == "x":
     if ((key == "x")) {
@@ -16,7 +16,7 @@ std::expected<int32_t, NotFound> inner(std::string_view key) {
     return ::tpy::make_unexpected(NotFound(7));
 }
 
-// def outer(key: str) -> Int32:
+// def outer(key: str) -> int32:
 int32_t outer(std::string_view key) {
     // try:
     int32_t got;

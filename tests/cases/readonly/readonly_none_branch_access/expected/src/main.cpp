@@ -43,13 +43,13 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // observe_field(True, Box(Int32(42)))
+    // observe_field(True, Box(int32(42)))
     Box __tmp_1 = Box(42);
     observe_field(true, __tmp_1);
-    // observe_field(False, Box(Int32(0)))
+    // observe_field(False, Box(int32(0)))
     Box __tmp_2 = Box(0);
     observe_field(false, __tmp_2);
-    // observe_method(True, Box(Int32(99)))
+    // observe_method(True, Box(int32(99)))
     Box __tmp_3 = Box(99);
     observe_method(true, __tmp_3);
 }

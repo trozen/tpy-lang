@@ -19,10 +19,10 @@ void main();
 
 // class Config:
 struct Config {
-    // value: Int32
+    // value: int32
     int32_t value;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Config() = default;
     explicit Config(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Config";
@@ -35,10 +35,10 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
 
 // class Pt(ValueType):
 struct Pt {
-    // x: Int32
+    // x: int32
     int32_t x;
 
-    // def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: int32) -> None:
     Pt() = default;
     explicit Pt(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pt";
@@ -56,10 +56,10 @@ namespace tpyapp::main {
 
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Config::Config(int32_t v) : value(v) {}
 
-// def __init__(self, x: Int32) -> None:
+// def __init__(self, x: int32) -> None:
 inline Pt::Pt(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

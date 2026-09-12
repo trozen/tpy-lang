@@ -20,19 +20,19 @@ int32_t first_or_fallback(T_it& it, int32_t fallback);
 
 // class Counter:
 struct Counter {
-    // current: Int32
+    // current: int32
     int32_t current;
-    // limit: Int32
+    // limit: int32
     int32_t limit;
 
-    // def __init__(self, start: Int32, limit: Int32) -> None:
+    // def __init__(self, start: int32, limit: int32) -> None:
     Counter() = default;
     explicit Counter(int32_t start, int32_t limit);
 
     // def __iter__(self) -> Counter:
     Counter& __iter__();
 
-    // def __next__(self) -> Int32:
+    // def __next__(self) -> int32:
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
@@ -43,7 +43,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 }
 
 
-// def __init__(self, start: Int32, limit: Int32) -> None:
+// def __init__(self, start: int32, limit: int32) -> None:
 inline Counter::Counter(int32_t start, int32_t limit) : current(start), limit(limit) {}
 
 // def __iter__(self) -> Counter:
@@ -52,7 +52,7 @@ inline Counter& Counter::__iter__() {
     return (*this);
 }
 
-// def __next__(self) -> Int32:
+// def __next__(self) -> int32:
 inline std::expected<int32_t, ::tpy::StopIteration> Counter::__next__() {
     // if self.current < self.limit:
     if ((this->current < this->limit)) {
@@ -66,10 +66,10 @@ inline std::expected<int32_t, ::tpy::StopIteration> Counter::__next__() {
     // raise StopIteration
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }
-// def sum_iter(it: Iterator[Int32]) -> Int32:
+// def sum_iter(it: Iterator[int32]) -> int32:
 template<::tpystd::typing::Iterator<int32_t> T_it>
 int32_t sum_iter(T_it& it) {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for x in it:
     auto& __src_0 = it;
@@ -84,10 +84,10 @@ int32_t sum_iter(T_it& it) {
     // return total
     return total;
 }
-// def count_iter(it: Iterator[Int32]) -> Int32:
+// def count_iter(it: Iterator[int32]) -> int32:
 template<::tpystd::typing::Iterator<int32_t> T_it>
 int32_t count_iter(T_it& it) {
-    // n: Int32 = 0
+    // n: int32 = 0
     int32_t n = 0;
     // for x in it:
     auto& __src_0 = it;
@@ -102,7 +102,7 @@ int32_t count_iter(T_it& it) {
     // return n
     return n;
 }
-// def first_or_fallback(it: Iterator[Int32], fallback: Int32) -> Int32:
+// def first_or_fallback(it: Iterator[int32], fallback: int32) -> int32:
 template<::tpystd::typing::Iterator<int32_t> T_it>
 int32_t first_or_fallback(T_it& it, int32_t fallback) {
     // for x in it:

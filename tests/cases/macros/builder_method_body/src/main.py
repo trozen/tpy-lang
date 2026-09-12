@@ -4,11 +4,11 @@
 # 5.5, the method body fell through to codegen unanalyzed and failed
 # with "Could not infer type" -- only the trivial framework-default
 # __init__ survived via a codegen fast path.
-from tpy import Int32
+from tpy import int32
 from _method_builder import Counter
 
 
-def main() -> Int32:
+def main() -> int32:
     c = Counter()
     c.add(10)
     c.add(20)

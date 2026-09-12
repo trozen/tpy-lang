@@ -1,13 +1,13 @@
 # Returning a record ctor rvalue whose arg is a Ptr[T] field read
 # (`return Handle(h.p)`). Mutating through the returned handle's pointer and
 # reading the original proves the pointer aliases the same node, not a copy.
-from tpy import Int32, Ptr, Own
+from tpy import int32, Ptr, Own
 
 
 class Node:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 

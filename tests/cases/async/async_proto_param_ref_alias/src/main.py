@@ -3,18 +3,18 @@
 # element over a protocol-typed iterable must alias rather than copy across the
 # suspension -- the mutation has to reach the caller's container.
 import asyncio
-from tpy import Int32
+from tpy import int32
 from typing import Iterable
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
-async def bump(items: Iterable[Point]) -> Int32:
+async def bump(items: Iterable[Point]) -> int32:
     total = 0
     for p in items:
         p.x += 100

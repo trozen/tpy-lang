@@ -6,43 +6,43 @@
 
 from typing import Optional, Protocol
 
-from tpy import Int32, dynamic
+from tpy import int32, dynamic
 
 
 class Counter:
-    hits: Int32
+    hits: int32
 
     def __init__(self) -> None:
         self.hits = 0
 
-    def bump(self) -> Int32:
+    def bump(self) -> int32:
         self.hits += 1
         return self.hits
 
 
 @dynamic
 class Pet(Protocol):
-    def bump(self) -> Int32: ...
+    def bump(self) -> int32: ...
 
 
 class Dog(Pet):
-    hits: Int32
+    hits: int32
 
     def __init__(self) -> None:
         self.hits = 0
 
-    def bump(self) -> Int32:
+    def bump(self) -> int32:
         self.hits += 1
         return self.hits
 
 
 class Cat(Pet):
-    hits: Int32
+    hits: int32
 
     def __init__(self) -> None:
         self.hits = 0
 
-    def bump(self) -> Int32:
+    def bump(self) -> int32:
         self.hits += 2
         return self.hits
 
@@ -71,7 +71,7 @@ def guarded_call_subject(flag: bool) -> str:
             return "other"
 
 
-def switch_call_subject(c: Counter) -> Int32:
+def switch_call_subject(c: Counter) -> int32:
     # A method-call subject on the primitive switch; the receiver mutates, so
     # a stale copy of the subject would show up in the caller's next read.
     match c.bump():
@@ -81,7 +81,7 @@ def switch_call_subject(c: Counter) -> Int32:
             return 20
 
 
-def str_switch_call_subject() -> Int32:
+def str_switch_call_subject() -> int32:
     # Five unguarded literals route to the discriminator switch, and the
     # trailing or-group is its catch-all rather than an "f" bucket. The
     # warning is WRONG: the or-group IS a catch-all, but exhaustiveness does
@@ -103,10 +103,10 @@ def str_switch_call_subject() -> Int32:
     return -1
 
 
-def or_wildcard_switch(n: Int32) -> str:
+def or_wildcard_switch(n: int32) -> str:
     # The wildcard alternative subsumes the literal beside it, so the group
     # dispatches as the switch default.
-    match n:  # tpyc: warning(/non-exhaustive match on 'Int32'/)
+    match n:  # tpyc: warning(/non-exhaustive match on 'int32'/)
         case 1 | _:
             return "any"
     return "unreached"
@@ -121,7 +121,7 @@ def or_wildcard_chain(s: str) -> str:
     return "unreached"
 
 
-def as_capture(n: Int32) -> Int32:
+def as_capture(n: int32) -> int32:
     # Both names bind the whole subject.
     match n:
         case x as y:
@@ -129,7 +129,7 @@ def as_capture(n: Int32) -> Int32:
     return -1
 
 
-def optional_inner_as_capture(n: Optional[Int32]) -> Int32:
+def optional_inner_as_capture(n: Optional[int32]) -> int32:
     # The Optional tier partitions None off and hands the SCALAR payload to
     # the inner switch, so the double bind renders there rather than on the
     # Optional arm emit (which binds once and still rejects it,
@@ -141,7 +141,7 @@ def optional_inner_as_capture(n: Optional[Int32]) -> Int32:
             return a + b
 
 
-def str_switch_as_capture(s: str) -> Int32:
+def str_switch_as_capture(s: str) -> int32:
     # `case x as y` on the discriminator switch's TRAILING arm: five
     # unguarded literals take the switch tier, and both names of the arm
     # after it bind the whole subject. `str` is a value type, so a copy is
@@ -164,7 +164,7 @@ def str_switch_as_capture(s: str) -> Int32:
             return len(rest) + len(also)
 
 
-def poly_as_capture(p: Pet) -> Int32:
+def poly_as_capture(p: Pet) -> int32:
     # `case x as y` on the polymorphic chain: both names alias the SAME
     # object, so every mutation through either is visible to the caller --
     # and the arm's writes are the parameter's only mutation, so they are

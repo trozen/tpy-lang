@@ -1,12 +1,12 @@
 """
 Generic T inferred as a compound (tuple/list/dict/set): literal-typed elements
 in a later arg coerce to the matching slot type of the already-determined T.
-Mirrors the scalar `heappush(xs: list[Int32], 3)` coercion one structural
+Mirrors the scalar `heappush(xs: list[int32], 3)` coercion one structural
 layer deeper. Covers int and float literals; the nested-list-of-tuple case
 also guards against compound-walk regressions in `resolve_int_literals`.
 """
 from heapq import heappush
-from tpy import Int32, Float64
+from tpy import int32, float64
 
 
 def push_t[T](xs: list[T], item: T) -> None:
@@ -30,32 +30,32 @@ def pair_any[T](a: T, b: T) -> None:
 
 
 def main() -> None:
-    # Tuple-shaped T: bare literal `3` coerces to Int32 in the second-arg
+    # Tuple-shaped T: bare literal `3` coerces to int32 in the second-arg
     # tuple even though T was determined by the first arg.
-    pq: list[tuple[Int32, str]] = []
+    pq: list[tuple[int32, str]] = []
     heappush(pq, (3, "third"))  # tpyc: ok
     heappush(pq, (1, "first"))  # tpyc: ok
     push_t(pq, (2, "second"))   # tpyc: ok
     print(len(pq))
 
-    # Float-literal slot: same path, FloatLiteralType -> Float64.
-    weighted: list[tuple[Float64, str]] = []
+    # Float-literal slot: same path, FloatLiteralType -> float64.
+    weighted: list[tuple[float64, str]] = []
     push_t(weighted, (1.5, "a"))  # tpyc: ok
     push_t(weighted, (2.5, "b"))  # tpyc: ok
     print(len(weighted))
 
     # Nested tuple-of-tuple slot.
-    nested: list[tuple[tuple[Int32, Int32], str]] = []
+    nested: list[tuple[tuple[int32, int32], str]] = []
     push_t(nested, ((1, 2), "x"))  # tpyc: ok
     print(len(nested))
 
     # Dict K + V both fixed-int from separate args; literals coerce in place.
-    counts: dict[Int32, Int32] = {}
+    counts: dict[int32, int32] = {}
     put_dict(counts, 7, 42)  # tpyc: ok
     print(counts[7])
 
     # set[T] inference with bare literal element.
-    seen: set[Int32] = set()
+    seen: set[int32] = set()
     add_to_set(seen, 11)  # tpyc: ok
     add_to_set(seen, 22)  # tpyc: ok
     print(len(seen))

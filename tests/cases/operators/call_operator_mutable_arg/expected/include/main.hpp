@@ -16,10 +16,10 @@ void main();
 
 // class Node:
 struct Node {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32):
+    // def __init__(self, v: int32):
     Node() = default;
     explicit Node(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Node";
@@ -36,7 +36,7 @@ struct Bumper {
     // def __init__(self):
     Bumper();
 
-    // def __call__(self, x: Node) -> Int32:
+    // def __call__(self, x: Node) -> int32:
     int32_t __call__(Node& x) const;
 
     int32_t operator()(Node& x) const {
@@ -51,7 +51,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bumper& obj) {
 }
 
 
-// def __init__(self, v: Int32):
+// def __init__(self, v: int32):
 inline Node::Node(int32_t v) : v(v) {}
 
 // def __init__(self):
@@ -59,7 +59,7 @@ inline Bumper::Bumper() {
     // pass
 }
 
-// def __call__(self, x: Node) -> Int32:
+// def __call__(self, x: Node) -> int32:
 inline int32_t Bumper::__call__(Node& x) const {
     // x.v += 1
     x.v = ::tpy::add_check<int32_t>(x.v, 1);

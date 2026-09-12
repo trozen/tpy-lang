@@ -3,11 +3,11 @@
 # Concretely, `[[1, 2] if c else None]` as a list-literal element is
 # rejected by TPy today.
 from typing import Optional
-from tpy import Int32
+from tpy import int32
 
 
 def build(c: bool) -> None:
-    xs: list[Optional[list[Int32]]] = [[1, 2] if c else None]  # tpyc: error(/expr.container_literal/)
+    xs: list[Optional[list[int32]]] = [[1, 2] if c else None]  # tpyc: error(/expr.container_literal/)
     print(len(xs))
 
 

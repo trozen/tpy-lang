@@ -43,14 +43,14 @@ inline std::ostream& operator<<(std::ostream& os, const Label& obj) {
     return os;
 }
 
-// class Combined(Box[Int32], Label):
+// class Combined(Box[int32], Label):
 struct Combined : Box<int32_t>, Label {
 
-    // def __init__(self, n: Int32, s: str) -> None:
+    // def __init__(self, n: int32, s: str) -> None:
     Combined() = default;
     explicit Combined(int32_t n, std::string_view s);
 
-    // def n_plus(self, delta: Int32) -> Int32:
+    // def n_plus(self, delta: int32) -> int32:
     int32_t n_plus(int32_t delta) const;
 
     // def combined(self) -> str:
@@ -64,17 +64,17 @@ inline std::ostream& operator<<(std::ostream& os, const Combined& obj) {
 }
 
 
-// def __init__(self, n: Int32, s: str) -> None:
+// def __init__(self, n: int32, s: str) -> None:
 inline Combined::Combined(int32_t n, std::string_view s) {
-    // Box.value = n  # Box[Int32].value inferred from MRO: Int32
+    // Box.value = n  # Box[int32].value inferred from MRO: int32
     this->Box<int32_t>::value = n;
     // Label.value = s
     this->Label::value = s;
 }
 
-// def n_plus(self, delta: Int32) -> Int32:
+// def n_plus(self, delta: int32) -> int32:
 inline int32_t Combined::n_plus(int32_t delta) const {
-    // v = Box.value  # tpyc: type(Int32)
+    // v = Box.value  # tpyc: type(int32)
     int32_t v = this->Box<int32_t>::value;
     // return v + delta
     return (::tpy::add_check<int32_t>(v, delta));

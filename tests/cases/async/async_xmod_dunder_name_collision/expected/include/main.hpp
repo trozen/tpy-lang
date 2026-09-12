@@ -42,7 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const Gate& obj) {
 
 // class Ticker:
 struct Ticker {
-    // total: Int32
+    // total: int32
     int32_t total;
 
     // def __init__(self) -> None:

@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 
 class Shape:
     name: str
@@ -6,7 +6,7 @@ class Shape:
     def __init__(self, name: str) -> None:
         self.name = name
 
-    def area(self) -> Int32:
+    def area(self) -> int32:
         return 0
 
     def describe(self) -> str:
@@ -14,26 +14,26 @@ class Shape:
 
 
 class Square(Shape):
-    side: Int32
+    side: int32
 
-    def __init__(self, side: Int32) -> None:
+    def __init__(self, side: int32) -> None:
         self.name = "Square"
         self.side = side
 
-    def area(self) -> Int32:
+    def area(self) -> int32:
         return self.side * self.side
 
 
 class Rectangle(Shape):
-    width: Int32
-    height: Int32
+    width: int32
+    height: int32
 
-    def __init__(self, width: Int32, height: Int32) -> None:
+    def __init__(self, width: int32, height: int32) -> None:
         self.name = "Rectangle"
         self.width = width
         self.height = height
 
-    def area(self) -> Int32:
+    def area(self) -> int32:
         return self.width * self.height
 
 

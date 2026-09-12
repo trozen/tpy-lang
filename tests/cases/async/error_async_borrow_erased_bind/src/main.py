@@ -4,7 +4,7 @@
 # rejected with the Own fix-hint.
 import asyncio
 from typing import Iterable
-from tpy import Int32
+from tpy import int32
 
 
 class C:
@@ -14,7 +14,7 @@ class C:
         self.v = 1
 
 
-async def pick(c: C, xs: Iterable[Int32]) -> C:
+async def pick(c: C, xs: Iterable[int32]) -> C:
     await asyncio.sleep(0)
     return c
 

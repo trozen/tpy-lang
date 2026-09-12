@@ -3,10 +3,10 @@
 
 namespace tpyapp::main {
 
-// # Test min/max with Int32
-// a: Int32 = 10
+// # Test min/max with int32
+// a: int32 = 10
 int32_t a{};
-// b: Int32 = 20
+// b: int32 = 20
 int32_t b{};
 // # Test min/max with BigInt (default int)
 // x = 100
@@ -24,7 +24,7 @@ double f1{};
 // f2: float = 2.71
 double f2{};
 // # Test 3-argument min/max
-// c: Int32 = 5
+// c: int32 = 5
 int32_t c{};
 // z = 200
 int32_t z{};
@@ -36,10 +36,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Test min/max with Int32
-    // a: Int32 = 10
+    // # Test min/max with int32
+    // a: int32 = 10
     a = 10;
-    // b: Int32 = 20
+    // b: int32 = 20
     b = 20;
     // print(min(a, b))
     std::cout << ::std::min(a, b) << "\n";
@@ -77,7 +77,7 @@ void __tpy_init() {
     // print(max(f1, f2))
     std::cout << ::tpy::print_float(::std::fmax(f1, f2)) << "\n";
     // # Test 3-argument min/max
-    // c: Int32 = 5
+    // c: int32 = 5
     c = 5;
     // print(min(a, b, c))
     std::cout << ::tpy::min3(a, b, c) << "\n";

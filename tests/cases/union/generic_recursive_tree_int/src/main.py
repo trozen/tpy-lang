@@ -2,12 +2,12 @@
 # generic traversal (leaf_count[T], case _ for the T leaf), a concrete-leaf
 # extraction (sum_leaves on Tree[int], case int() binds the leaf value),
 # construction of a nested value, printing, and equality on the wrapper.
-from tpy import Int32
+from tpy import int32
 
 type Tree[T] = T | list[Tree[T]]
 
 
-def leaf_count[T](t: Tree[T]) -> Int32:  # tpyc: ok
+def leaf_count[T](t: Tree[T]) -> int32:  # tpyc: ok
     match t:
         case list() as branches:
             total = 0
@@ -18,7 +18,7 @@ def leaf_count[T](t: Tree[T]) -> Int32:  # tpyc: ok
             return 1
 
 
-def sum_leaves(t: Tree[int]) -> Int32:
+def sum_leaves(t: Tree[int]) -> int32:
     match t:
         case list() as branches:
             total = 0

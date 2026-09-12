@@ -18,10 +18,10 @@ void main();
 // @nocopy
 // class Handle:
 struct Handle {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Handle() = default;
     explicit Handle(int32_t v);
     // non-copyable (@nocopy)
@@ -38,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Handle::Handle(int32_t v) : v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

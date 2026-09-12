@@ -16,7 +16,7 @@ void main();
 
 // class C:
 struct C {
-    // LIMIT: Final[Int32] = 10
+    // LIMIT: Final[int32] = 10
     static constexpr int32_t LIMIT = 10;
 
     // def __init__(self) -> None:

@@ -1,13 +1,13 @@
-from tpy import Int32, ValueType
+from tpy import int32, ValueType
 class A(ValueType):
-    n: Int32
-    def __init__(self, n: Int32) -> None:
+    n: int32
+    def __init__(self, n: int32) -> None:
         self.n = n
 class B(ValueType):
-    m: Int32
-    def __init__(self, m: Int32) -> None:
+    m: int32
+    def __init__(self, m: int32) -> None:
         self.m = m
-def f(u: A | B | None) -> Int32:
+def f(u: A | B | None) -> int32:
     assert u is not None
     if isinstance(u, A):
         return u.n

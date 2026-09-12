@@ -1,10 +1,10 @@
 # Function with multiple Fn parameters (each gets its own template param).
-from tpy import Fn, Int32
+from tpy import Fn, int32
 
-def apply_both(f: Fn[[Int32], Int32], g: Fn[[Int32], Int32], x: Int32) -> Int32:
+def apply_both(f: Fn[[int32], int32], g: Fn[[int32], int32], x: int32) -> int32:
     return g(f(x))
 
-def do_both(a: Fn[[Int32], None], b: Fn[[Int32], None], x: Int32) -> None:
+def do_both(a: Fn[[int32], None], b: Fn[[int32], None], x: int32) -> None:
     a(x)
     b(x)
 

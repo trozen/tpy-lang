@@ -1,10 +1,10 @@
 # Auto-move suppresses copy warnings for field/subscript assigns at last use.
 # Warnings must still fire when the variable is NOT at its last use.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Inner:
-    value: Int32
+    value: int32
 
 
 class Holder:

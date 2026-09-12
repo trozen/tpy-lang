@@ -1,5 +1,5 @@
 # Error: nested enums are not allowed inside generic classes
-from tpy import Int32
+from tpy import int32
 from enum import Enum, auto
 
 class Container[T]:

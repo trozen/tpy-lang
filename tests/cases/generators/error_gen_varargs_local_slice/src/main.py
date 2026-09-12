@@ -3,10 +3,10 @@
 # not lowered -- the reject must stay while the param rides.
 from typing import Iterator
 
-from tpy import Int32
+from tpy import int32
 
 
-def gen(*xs: Int32) -> Iterator[Int32]:  # tpyc: error(/not yet supported/)
+def gen(*xs: int32) -> Iterator[int32]:  # tpyc: error(/not yet supported/)
     tail = xs[1:3]
     yield len(tail)
     yield -1

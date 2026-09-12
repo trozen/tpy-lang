@@ -6,9 +6,9 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // d: dict[str, Int32] = {"a": 1, "b": 2}
+    // d: dict[str, int32] = {"a": 1, "b": 2}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
-    // d2: dict[str, Int32] = {"b": 20, "c": 30}
+    // d2: dict[str, int32] = {"b": 20, "c": 30}
     ::tpy::ordered_map<std::string, int32_t> d2 = ::tpy::ordered_map<std::string, int32_t>({{"b", 20}, {"c", 30}});
     // d.update(d2)
     ::tpy::dict_update(d, d2);
@@ -24,7 +24,7 @@ void main() {
     // print(len(d))              # 3
     std::cout << ::tpy::__len__(d) << "\n";
     // # Literal argument -- type inferred from receiver
-    // d3: dict[str, Int32] = {"x": 10}
+    // d3: dict[str, int32] = {"x": 10}
     ::tpy::ordered_map<std::string, int32_t> d3 = ::tpy::ordered_map<std::string, int32_t>({{"x", 10}});
     // d3.update({"x": 99, "y": 20})
     ::tpy::dict_update(d3, ::tpy::ordered_map<std::string, int32_t>({{"x", 99}, {"y", 20}}));

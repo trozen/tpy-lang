@@ -1,1 +1,1 @@
-main.py:7: warning: non-exhaustive match on 'Int32'; no unconditional catch-all arm (add 'case _: pass' to suppress)
+main.py:7: warning: non-exhaustive match on 'int32'; no unconditional catch-all arm (add 'case _: pass' to suppress)

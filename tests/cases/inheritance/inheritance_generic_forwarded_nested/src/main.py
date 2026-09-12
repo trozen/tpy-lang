@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 
 class Container[T]:
     value: T
@@ -11,18 +11,18 @@ class Container[T]:
 
 
 class Child[T](Container[list[T]]):
-    extra: Int32
+    extra: int32
 
-    def __init__(self, value: list[T], extra: Int32) -> None:
+    def __init__(self, value: list[T], extra: int32) -> None:
         self.value = value
         self.extra = extra
 
-    def get_extra(self) -> Int32:
+    def get_extra(self) -> int32:
         return self.extra
 
 
 items: list[str] = ["hello", "world"]
-c: Child[str] = Child[str](items, Int32(42))
+c: Child[str] = Child[str](items, int32(42))
 val: list[str] = c.get_value()
 print(val[0])
 print(val[1])

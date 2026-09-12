@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def gen_values() -> Iterator[Int32]:
+// def gen_values() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_values::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -27,14 +27,14 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_values::__next__() {
 }
 
 
-// def gen_values() -> Iterator[Int32]:
+// def gen_values() -> Iterator[int32]:
 __gen_gen_values gen_values() {
     return __gen_gen_values();
 }
 
 // def main() -> None:
 void main() {
-    // a: list[Int32] = [1, 2, 3, 4, 5]
+    // a: list[int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> a = {1, 2, 3, 4, 5};
     // # Replace same length
     // a[1:3] = [10, 20]
@@ -78,7 +78,7 @@ void main() {
         std::cout << x << "\n";
     }
     // # Negative indices
-    // b: list[Int32] = [1, 2, 3, 4, 5]
+    // b: list[int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> b = {1, 2, 3, 4, 5};
     // b[-2:] = [100, 200]
     ::tpy::list_set_slice(b, ::tpy::BasicSlice{-2, std::nullopt}, std::vector<int32_t>{100, 200});
@@ -92,7 +92,7 @@ void main() {
         std::cout << x << "\n";
     }
     // # Full slice replace
-    // c: list[Int32] = [1, 2, 3]
+    // c: list[int32] = [1, 2, 3]
     std::vector<int32_t> c = {1, 2, 3};
     // c[:] = [10, 20]
     ::tpy::list_set_slice(c, ::tpy::BasicSlice{std::nullopt, std::nullopt}, std::vector<int32_t>{10, 20});
@@ -106,7 +106,7 @@ void main() {
         std::cout << x << "\n";
     }
     // # Generator as RHS
-    // d: list[Int32] = [1, 2, 3, 4, 5]
+    // d: list[int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> d = {1, 2, 3, 4, 5};
     // d[1:3] = gen_values()
     ::tpy::list_set_slice(d, ::tpy::BasicSlice{1, 3}, gen_values());

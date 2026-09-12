@@ -3,16 +3,16 @@
 # type -- no RefType normalization -- so the reject must peel to the
 # boundary inner).
 # tpy: ext_module
-from tpy import Int64, nocopy
+from tpy import int64, nocopy
 from tpy.extern import export
 
 
 @export
 @nocopy
 class Res:
-    n: Int64
+    n: int64
 
-    def __init__(self, n: Int64):
+    def __init__(self, n: int64):
         self.n = n
 
     @property

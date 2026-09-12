@@ -53,19 +53,19 @@ template<typename T>
 struct _Buf {
     // _buf: UninitHeapStorage[T]
     ::tpy::UninitHeapStorage<T> _buf;
-    // _cap: UInt32
+    // _cap: uint32
     uint32_t _cap;
-    // _head: UInt32
+    // _head: uint32
     uint32_t _head;
-    // _count: UInt32
+    // _count: uint32
     uint32_t _count;
     // _closed: bool
     bool _closed;
-    // _senders: UInt32
+    // _senders: uint32
     uint32_t _senders;
     bool __tpy_owned_ = true;
 
-    // def __init__(self, capacity: UInt32) -> None:
+    // def __init__(self, capacity: uint32) -> None:
     explicit _Buf(uint32_t capacity) : _buf(::tpy::UninitHeapStorage<T>(capacity)), _cap(capacity), _head(0), _count(0), _closed(false), _senders(1) {}
     // non-copyable (@nocopy)
     _Buf(const _Buf&) = delete;
@@ -86,7 +86,7 @@ struct _Buf {
         if (!this->__tpy_owned_) return;
         // # UninitHeapStorage is uninitialized storage and won't drop live
         // # slots itself -- drain the buffered elements or they leak.
-        // i: UInt32 = 0
+        // i: uint32 = 0
         uint32_t i = 0;
         // while i < self._count:
         while ((i < this->_count)) {
@@ -148,7 +148,7 @@ struct _Chan {
     // _not_empty: Condvar
     ::tpystd::tpy::sync::Condvar _not_empty;
 
-    // def __init__(self, capacity: UInt32) -> None:
+    // def __init__(self, capacity: uint32) -> None:
     _Chan() = default;
     explicit _Chan(uint32_t capacity) : _buf(::tpystd::tpy::sync::Mutex<_Buf<T>>::new_(_Buf<T>(capacity))), _not_full(::tpystd::tpy::sync::Condvar()), _not_empty(::tpystd::tpy::sync::Condvar()) {}
     // non-copyable (@nocopy)
@@ -515,7 +515,7 @@ inline __gen_Receiver___iter__<T> Receiver<T>::__iter__() {
     return __gen_Receiver___iter__<T>(*this);
 }
 
-// def channel[T: Send](capacity: Int32) -> tuple[Own[Sender[T]], Own[Receiver[T]]]:
+// def channel[T: Send](capacity: int32) -> tuple[Own[Sender[T]], Own[Receiver[T]]]:
 template<typename T>
 std::tuple<Sender<T>, Receiver<T>> channel(int32_t capacity) {
     // if capacity < 1:
@@ -523,7 +523,7 @@ std::tuple<Sender<T>, Receiver<T>> channel(int32_t capacity) {
         // raise ValueError("channel capacity must be >= 1")
         throw ::tpy::ValueError("channel capacity must be >= 1");
     }
-    // chan = Arc.new(_Chan[T](UInt32(capacity)))
+    // chan = Arc.new(_Chan[T](uint32(capacity)))
     ::tpystd::tplib::arc::Arc<_Chan<T>> chan = Arc<_Chan<T>>::template new_<_Chan<T>>(_Chan<T>(static_cast<uint32_t>(capacity)));
     // chan_for_recv = chan.clone()
     ::tpystd::tplib::arc::Arc<_Chan<T>> chan_for_recv = chan.clone();

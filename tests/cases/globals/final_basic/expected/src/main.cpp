@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def twice(x: Int32) -> Int32:
+// def twice(x: int32) -> int32:
 int32_t twice(int32_t x) {
     // return x + x
     return (::tpy::add_check<int32_t>(x, x));
@@ -29,7 +29,7 @@ void main() {
     // # Use Final in expressions and as function argument
     // print(twice(MAX_SIZE))
     std::cout << twice(MAX_SIZE) << "\n";
-    // y: Int32 = MAX_SIZE + NEG_VAL
+    // y: int32 = MAX_SIZE + NEG_VAL
     int32_t y = (::tpy::add_check<int32_t>(MAX_SIZE, NEG_VAL));
     // print(y)
     std::cout << y << "\n";

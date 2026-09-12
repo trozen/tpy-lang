@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 
 _B: bytes = b"BBBB"
 
 
-def b_first() -> Int32:
-    return Int32(_B[0])
+def b_first() -> int32:
+    return int32(_B[0])

@@ -1,13 +1,13 @@
 # __copy__ escape hatch: class with nocopy field remains copyable via user-defined copy
 from __future__ import annotations
-from tpy import Int32, Own, nocopy, copy
+from tpy import int32, Own, nocopy, copy
 
 
 @nocopy
 class Handle:
-    fd: Int32
+    fd: int32
 
-    def __init__(self, fd: Int32):
+    def __init__(self, fd: int32):
         self.fd = fd
 
 
@@ -21,7 +21,7 @@ class Container:
         return Container(Handle(self.handle.fd))
 
 
-def consume(c: Own[Container]) -> Int32:
+def consume(c: Own[Container]) -> int32:
     return c.handle.fd
 
 

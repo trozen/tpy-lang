@@ -16,10 +16,10 @@ inline constexpr std::string_view __name__ = "__main__";
 // @export
 // class Inner:
 struct Inner {
-    // x: Int64
+    // x: int64
     int64_t x;
 
-    // def __init__(self, x: Int64):
+    // def __init__(self, x: int64):
     Inner() = default;
     explicit Inner(int64_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Inner";
@@ -53,11 +53,11 @@ struct Base {
     Inner& get_c();
 
     // @property
-    // def c(self) -> Int64:
+    // def c(self) -> int64:
     int64_t c() const;
 
     // @c.setter
-    // def c(self, value: Int64) -> None:
+    // def c(self, value: int64) -> None:
     void set_c(int64_t value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
@@ -87,7 +87,7 @@ inline std::ostream& operator<<(std::ostream& os, const Sub& obj) {
 }
 
 
-// def __init__(self, x: Int64):
+// def __init__(self, x: int64):
 inline Inner::Inner(int64_t x) : x(x) {}
 
 // def __init__(self):
@@ -112,14 +112,14 @@ inline Inner& Base::get_c() {
 }
 
 // @property
-// def c(self) -> Int64:
+// def c(self) -> int64:
 inline int64_t Base::c() const {
     // return self._c.x
     return this->_c.x;
 }
 
 // @c.setter
-// def c(self, value: Int64) -> None:
+// def c(self, value: int64) -> None:
 inline void Base::set_c(int64_t value) {
     // self._c = Inner(value)
     this->_c = Inner(value);

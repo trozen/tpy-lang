@@ -19,17 +19,17 @@ void main();
 
 // class Acc:
 struct Acc {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32):
+    // def __init__(self, n: int32):
     Acc() = default;
     explicit Acc(int32_t n);
 
     // def __add__(self, o: "Acc") -> "Acc":
     const Acc& __add__(const Acc& o) const;
 
-    // def __radd__(self, other: Int32) -> "Acc":
+    // def __radd__(self, other: int32) -> "Acc":
     const Acc& __radd__(int32_t other) const;
 
     // def __neg__(self) -> "Acc":
@@ -55,7 +55,7 @@ inline std::ostream& operator<<(std::ostream& os, const Acc& obj) {
 }
 
 
-// def __init__(self, n: Int32):
+// def __init__(self, n: int32):
 inline Acc::Acc(int32_t n) : n(n) {}
 
 // def __add__(self, o: "Acc") -> "Acc":
@@ -64,7 +64,7 @@ inline const Acc& Acc::__add__(const Acc& o) const {
     return (((this->n >= o.n)) ? ((*this)) : (o));
 }
 
-// def __radd__(self, other: Int32) -> "Acc":
+// def __radd__(self, other: int32) -> "Acc":
 inline const Acc& Acc::__radd__(int32_t other) const {
     // return self
     return (*this);

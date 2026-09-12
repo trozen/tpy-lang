@@ -3,18 +3,18 @@
 # Concretely, `a.maybe == b.maybe` after both are narrowed non-None; TPy
 # rejects comparing the two narrowed optional-tuple fields directly.
 from dataclasses import dataclass
-from tpy import Int32
+from tpy import int32
 
 
 @dataclass
 class Point:
-    x: Int32 = 0
+    x: int32 = 0
 
 
 class N:
-    maybe: tuple[Point, Int32] | None
+    maybe: tuple[Point, int32] | None
 
-    def __init__(self, p: tuple[Point, Int32]) -> None:
+    def __init__(self, p: tuple[Point, int32]) -> None:
         self.maybe = p
 
 

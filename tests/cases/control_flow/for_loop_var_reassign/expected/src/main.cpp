@@ -22,9 +22,9 @@ void original() {
     std::cout << "done" << "\n";
 }
 
-// def steps32(base: Int32, step: Int32) -> None:
+// def steps32(base: int32, step: int32) -> None:
 void steps32(int32_t base, int32_t step) {
-    // # Int32: all five emission arms keep a private induction value.
+    // # int32: all five emission arms keep a private induction value.
     // count = 0
     int32_t count = 0;
     // total = 0
@@ -46,8 +46,8 @@ void steps32(int32_t base, int32_t step) {
             break;
         }
     }
-    // print("Int32 +1", count, total)
-    std::cout << "Int32 +1" << " " << count << " " << total << "\n";
+    // print("int32 +1", count, total)
+    std::cout << "int32 +1" << " " << count << " " << total << "\n";
     // count = 0
     count = 0;
     // total = 0
@@ -69,8 +69,8 @@ void steps32(int32_t base, int32_t step) {
             break;
         }
     }
-    // print("Int32 -1", count, total)
-    std::cout << "Int32 -1" << " " << count << " " << total << "\n";
+    // print("int32 -1", count, total)
+    std::cout << "int32 -1" << " " << count << " " << total << "\n";
     // count = 0
     count = 0;
     // total = 0
@@ -93,8 +93,8 @@ void steps32(int32_t base, int32_t step) {
             break;
         }
     }
-    // print("Int32 +2", count, total)
-    std::cout << "Int32 +2" << " " << count << " " << total << "\n";
+    // print("int32 +2", count, total)
+    std::cout << "int32 +2" << " " << count << " " << total << "\n";
     // count = 0
     count = 0;
     // total = 0
@@ -117,8 +117,8 @@ void steps32(int32_t base, int32_t step) {
             break;
         }
     }
-    // print("Int32 -2", count, total)
-    std::cout << "Int32 -2" << " " << count << " " << total << "\n";
+    // print("int32 -2", count, total)
+    std::cout << "int32 -2" << " " << count << " " << total << "\n";
     // count = 0
     count = 0;
     // total = 0
@@ -143,16 +143,16 @@ void steps32(int32_t base, int32_t step) {
             break;
         }
     }
-    // print("Int32 variable", count, total)
-    std::cout << "Int32 variable" << " " << count << " " << total << "\n";
+    // print("int32 variable", count, total)
+    std::cout << "int32 variable" << " " << count << " " << total << "\n";
 }
 
-// def steps64(base: Int64, step: Int64) -> None:
+// def steps64(base: int64, step: int64) -> None:
 void steps64(int64_t base, int64_t step) {
-    // # Int64: typed bounds force the wider counter instead of default Int32.
+    // # int64: typed bounds force the wider counter instead of default int32.
     // count = 0
     int32_t count = 0;
-    // total: Int64 = 0
+    // total: int64 = 0
     int64_t total = 0;
     // for a in range(base, base + 5):  # tpyc: ok
     int64_t __start_0 = base;
@@ -171,8 +171,8 @@ void steps64(int64_t base, int64_t step) {
             break;
         }
     }
-    // print("Int64 +1", count, total)
-    std::cout << "Int64 +1" << " " << count << " " << total << "\n";
+    // print("int64 +1", count, total)
+    std::cout << "int64 +1" << " " << count << " " << total << "\n";
     // count = 0
     count = 0;
     // total = 0
@@ -194,8 +194,8 @@ void steps64(int64_t base, int64_t step) {
             break;
         }
     }
-    // print("Int64 -1", count, total)
-    std::cout << "Int64 -1" << " " << count << " " << total << "\n";
+    // print("int64 -1", count, total)
+    std::cout << "int64 -1" << " " << count << " " << total << "\n";
     // count = 0
     count = 0;
     // total = 0
@@ -218,8 +218,8 @@ void steps64(int64_t base, int64_t step) {
             break;
         }
     }
-    // print("Int64 +2", count, total)
-    std::cout << "Int64 +2" << " " << count << " " << total << "\n";
+    // print("int64 +2", count, total)
+    std::cout << "int64 +2" << " " << count << " " << total << "\n";
     // count = 0
     count = 0;
     // total = 0
@@ -242,8 +242,8 @@ void steps64(int64_t base, int64_t step) {
             break;
         }
     }
-    // print("Int64 -2", count, total)
-    std::cout << "Int64 -2" << " " << count << " " << total << "\n";
+    // print("int64 -2", count, total)
+    std::cout << "int64 -2" << " " << count << " " << total << "\n";
     // count = 0
     count = 0;
     // total = 0
@@ -268,8 +268,8 @@ void steps64(int64_t base, int64_t step) {
             break;
         }
     }
-    // print("Int64 variable", count, total)
-    std::cout << "Int64 variable" << " " << count << " " << total << "\n";
+    // print("int64 variable", count, total)
+    std::cout << "int64 variable" << " " << count << " " << total << "\n";
 }
 
 // def steps_big(base: int, step: int) -> None:
@@ -396,7 +396,7 @@ void steps_big(const ::tpy::BigInt& base, const ::tpy::BigInt& step) {
     std::cout << "BigInt variable" << " " << count << " " << total << "\n";
 }
 
-// def binding_forms(subject: Int32) -> None:
+// def binding_forms(subject: int32) -> None:
 void binding_forms(int32_t subject) {
     // count = 0
     int32_t count = 0;
@@ -599,7 +599,7 @@ void closure_forms() {
     // for b in range(3):
     for (int32_t b = 0; b < 3; ++b) {
         // # Local assignment is rejected: BUGS.md#nested-local-shadow-requires-nonlocal.
-        // def local(b: Int32) -> Int32:  # tpyc: ok
+        // def local(b: int32) -> int32:  # tpyc: ok
         auto local = [](int32_t b) -> int32_t {
             // return b
             return b;
@@ -769,7 +769,7 @@ void control_edges() {
     std::cout << "postloop target" << " " << count << " " << fresh << "\n";
 }
 
-// def parameter_target(target: Int32) -> Int32:
+// def parameter_target(target: int32) -> int32:
 int32_t parameter_target(int32_t target) {
     // # Parameter storage is already hoisted before entering the range.
     // for target in range(3):
@@ -964,7 +964,7 @@ void match_body(const ::tpy::BigInt& subject) {
     }
 }
 
-// def concrete_count(values: list[Int32]) -> int:
+// def concrete_count(values: list[int32]) -> int:
 ::tpy::BigInt concrete_count(std::vector<int32_t>& values) {
     // count = 0
     int32_t count = 0;
@@ -984,7 +984,7 @@ void match_body(const ::tpy::BigInt& subject) {
 }
 
 // @noalloc
-// def readonly32(stop: Int32) -> Int32:
+// def readonly32(stop: int32) -> int32:
 int32_t readonly32(int32_t stop) {
     // # No-write inverse: keep the direct, allocation-free fixed-int counter.
     // total = 0

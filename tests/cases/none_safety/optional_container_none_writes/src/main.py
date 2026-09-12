@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 
 
-def write_none(items: list[Int32 | None]) -> Int32:
+def write_none(items: list[int32 | None]) -> int32:
     items[0] = None
     items.append(None)
     items.insert(0, None)
@@ -10,6 +10,6 @@ def write_none(items: list[Int32 | None]) -> Int32:
     return 0
 
 
-vals: list[Int32 | None] = list()
+vals: list[int32 | None] = list()
 vals.append(7)
 print(write_none(vals))

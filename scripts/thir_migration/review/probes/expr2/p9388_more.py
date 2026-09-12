@@ -1,7 +1,7 @@
-from tpy import Int32, Own
+from tpy import int32, Own
 class Node:
-    v: Int32
-    def __init__(self, v: Int32) -> None:
+    v: int32
+    def __init__(self, v: int32) -> None:
         self.v = v
     def clone(self) -> Own[Node]:
         return Node(self.v)
@@ -11,9 +11,9 @@ class Tree:
     root: Node
     def __init__(self) -> None:
         self.root = Node(1)
-    def pair(self) -> tuple[Node, Int32]:
+    def pair(self) -> tuple[Node, int32]:
         return (self.root, 1)
-    def both(self) -> tuple[Int32, Int32]:
+    def both(self) -> tuple[int32, int32]:
         return (1, 2)
 def b1() -> None:
     n = Node(1)

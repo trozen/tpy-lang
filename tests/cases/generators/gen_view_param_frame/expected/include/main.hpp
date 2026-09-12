@@ -84,10 +84,10 @@ void main();
 
 // class P:
 struct P {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     P() = default;
     explicit P(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.P";
@@ -101,10 +101,10 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 // # generator METHOD: the view rides beside the `self` capture.
 // class Scaler:
 struct Scaler {
-    // factor: Int32
+    // factor: int32
     int32_t factor;
 
-    // def __init__(self, factor: Int32) -> None:
+    // def __init__(self, factor: int32) -> None:
     Scaler() = default;
     explicit Scaler(int32_t factor);
 
@@ -138,10 +138,10 @@ inline std::ostream& operator<<(std::ostream& os, const Tagger& obj) {
 // # async METHOD flavour of the same capture.
 // class Adder:
 struct Adder {
-    // step: Int32
+    // step: int32
     int32_t step;
 
-    // def __init__(self, step: Int32) -> None:
+    // def __init__(self, step: int32) -> None:
     Adder() = default;
     explicit Adder(int32_t step);
 
@@ -156,10 +156,10 @@ inline std::ostream& operator<<(std::ostream& os, const Adder& obj) {
 
 // class Summer:
 struct Summer {
-    // base: Int32
+    // base: int32
     int32_t base;
 
-    // def __init__(self, base: Int32) -> None:
+    // def __init__(self, base: int32) -> None:
     Summer() = default;
     explicit Summer(int32_t base);
 
@@ -994,24 +994,24 @@ inline __gen_Outer_run_recv Outer::run_recv(std::vector<int32_t>& xs) const {
 }
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline P::P(int32_t n) : n(n) {}
 
-// def __init__(self, factor: Int32) -> None:
+// def __init__(self, factor: int32) -> None:
 inline Scaler::Scaler(int32_t factor) : factor(factor) {}
 
 // def __init__(self, name: str) -> None:
 inline Tagger::Tagger(std::string_view name) : name(name) {}
 
-// def __init__(self, step: Int32) -> None:
+// def __init__(self, step: int32) -> None:
 inline Adder::Adder(int32_t step) : step(step) {}
 
-// def __init__(self, base: Int32) -> None:
+// def __init__(self, base: int32) -> None:
 inline Summer::Summer(int32_t base) : base(base) {}
 
 // def __init__(self, prefix: str) -> None:
 inline Outer::Outer(std::string_view prefix) : prefix(prefix) {}
-// def count_view(it: Iterator[str]) -> Int32:
+// def count_view(it: Iterator[str]) -> int32:
 template<::tpystd::typing::Iterator<std::string> T_it>
 int32_t count_view(T_it& it) {
     // n = 0
@@ -1029,7 +1029,7 @@ int32_t count_view(T_it& it) {
     // return n
     return n;
 }
-// def total(it: Iterator[Int32]) -> Int32:
+// def total(it: Iterator[int32]) -> int32:
 template<::tpystd::typing::Iterator<int32_t> T_it>
 int32_t total(T_it& it) {
     // n = 0

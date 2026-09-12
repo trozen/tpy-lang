@@ -10,14 +10,14 @@ namespace tpyapp::geo::hexcodec {
 ::tpy::Bytes _HEX;
 // # A module-global built by a top-level statement (not a literal): only ever
 // # populated by __tpy_init running, so it double-guards that init actually ran.
-// _OFFSETS: list[Int32] = [1, 2, 3]
+// _OFFSETS: list[int32] = [1, 2, 3]
 std::vector<int32_t>* _OFFSETS{};
 
-// def hex_byte(c: Int32) -> bytes:
+// def hex_byte(c: int32) -> bytes:
 ::tpy::Bytes hex_byte(int32_t c) {
     // out = bytearray()
     ::tpy::ByteArray out = ::tpy::ByteArray();
-    // out.append(UInt8(37))
+    // out.append(uint8(37))
     out.push_back(37);
     // out.append(_HEX[c >> 4])
     out.push_back(::tpy::bytes_getitem(_HEX, (::tpy::rshift_check<int32_t>(c, 4))));
@@ -27,9 +27,9 @@ std::vector<int32_t>* _OFFSETS{};
     return ::tpy::bytes_from_str(::tpy::bytes_decode(out));
 }
 
-// def offset_sum() -> Int32:
+// def offset_sum() -> int32:
 int32_t offset_sum() {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for o in _OFFSETS:
     auto& __obj_0 = (*_OFFSETS);
@@ -56,7 +56,7 @@ void __tpy_init() {
     _HEX = ::tpy::bytes_literal_owned("0123456789ABCDEF", 16);
     // # A module-global built by a top-level statement (not a literal): only ever
     // # populated by __tpy_init running, so it double-guards that init actually ran.
-    // _OFFSETS: list[Int32] = [1, 2, 3]
+    // _OFFSETS: list[int32] = [1, 2, 3]
     static std::vector<int32_t> __global_slot_1 = {1, 2, 3};
     _OFFSETS = &__global_slot_1;
 }

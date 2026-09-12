@@ -19,12 +19,12 @@ template<typename T, std::size_t N>
 struct StorageIter {
     // _storage: Ptr[UninitArrayStorage[T, N]]
     ::tpy::UninitArrayStorage<T, N>* _storage;
-    // _size: Int32
+    // _size: int32
     int32_t _size;
-    // _index: Int32
+    // _index: int32
     int32_t _index;
 
-    // def __init__(self, storage: Ptr[UninitArrayStorage[T, N]], size: Int32) -> None:
+    // def __init__(self, storage: Ptr[UninitArrayStorage[T, N]], size: int32) -> None:
     StorageIter() = default;
     explicit StorageIter(::tpy::UninitArrayStorage<T, N>* storage, int32_t size) : _storage(storage), _size(size), _index(0) {}
 
@@ -34,7 +34,7 @@ struct StorageIter {
     std::expected<T, ::tpy::StopIteration> __next__() {
         // if self._index < self._size:
         if ((this->_index < this->_size)) {
-            // val = self._storage.load(UInt32(self._index))
+            // val = self._storage.load(uint32(self._index))
             ::tpy::val_or_cref_t<T> val = ::tpy::deref_check(this->_storage).load(::tpy::int_cast_check<uint32_t>(this->_index));
             // self._index += 1
             this->_index = ::tpy::add_check<int32_t>(this->_index, 1);
@@ -58,7 +58,7 @@ template<typename T, std::size_t N>
 struct SimpleList {
     // _storage: UninitArrayStorage[T, N]
     ::tpy::UninitArrayStorage<T, N> _storage;
-    // _size: Int32
+    // _size: int32
     int32_t _size;
     bool __tpy_owned_ = true;
 
@@ -84,14 +84,14 @@ struct SimpleList {
         // for i in range(self._size):
         int32_t __stop_0 = this->_size;
         for (int32_t i = 0; i < __stop_0; ++i) {
-            // self._storage.drop(UInt32(i))
+            // self._storage.drop(uint32(i))
             this->_storage.drop(static_cast<uint32_t>(i));
         }
     }
 
     // def add(self, value: Own[T]) -> None:
     void add(::tpy::own_param_t<T> value) {
-        // self._storage.init(UInt32(self._size), value)
+        // self._storage.init(uint32(self._size), value)
         this->_storage.init(::tpy::int_cast_check<uint32_t>(this->_size), std::move(value));
         // self._size += 1
         this->_size = ::tpy::add_check<int32_t>(this->_size, 1);

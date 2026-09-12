@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def sums(pairs: list[tuple[Int32, Int32]]) -> Iterator[Int32]:
+// def sums(pairs: list[tuple[int32, int32]]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_sums::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -42,12 +42,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_sums::__next__() {
 }
 
 
-// def sums(pairs: list[tuple[Int32, Int32]]) -> Iterator[Int32]:
+// def sums(pairs: list[tuple[int32, int32]]) -> Iterator[int32]:
 __gen_sums sums(std::vector<std::tuple<int32_t, int32_t>>& pairs) {
     return __gen_sums(pairs);
 }
 
-// def firsts(pairs: list[tuple[Int32, Int32]]) -> Iterator[Int32]:
+// def firsts(pairs: list[tuple[int32, int32]]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_firsts::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -79,12 +79,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_firsts::__next__() {
 }
 
 
-// def firsts(pairs: list[tuple[Int32, Int32]]) -> Iterator[Int32]:
+// def firsts(pairs: list[tuple[int32, int32]]) -> Iterator[int32]:
 __gen_firsts firsts(std::vector<std::tuple<int32_t, int32_t>>& pairs) {
     return __gen_firsts(pairs);
 }
 
-// def multi(p1: list[tuple[Int32, Int32]], p2: list[tuple[Int32, Int32]]) -> Iterator[Int32]:
+// def multi(p1: list[tuple[int32, int32]], p2: list[tuple[int32, int32]]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_multi::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -137,7 +137,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_multi::__next__() {
 }
 
 
-// def multi(p1: list[tuple[Int32, Int32]], p2: list[tuple[Int32, Int32]]) -> Iterator[Int32]:
+// def multi(p1: list[tuple[int32, int32]], p2: list[tuple[int32, int32]]) -> Iterator[int32]:
 __gen_multi multi(std::vector<std::tuple<int32_t, int32_t>>& p1, std::vector<std::tuple<int32_t, int32_t>>& p2) {
     return __gen_multi(p1, p2);
 }

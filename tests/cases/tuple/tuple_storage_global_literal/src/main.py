@@ -7,20 +7,20 @@
 # (BUGS.md#global-tuple-ref-storage-form).
 # Cell is @nocopy so a silent copy into the global slot is a build error, and
 # main() mutates through the slot before reading, so the write is observed.
-from tpy import Int32, nocopy
+from tpy import int32, nocopy
 
 
 @nocopy
 class Cell:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 
 # The subject: both elements are fresh, so the literal is spelled in storage
 # form already; the declared tuple type is what puts the slot in pointer repr.
-g: tuple[Int32, Cell] = (1, Cell(2))  # tpyc: ok
+g: tuple[int32, Cell] = (1, Cell(2))  # tpyc: ok
 
 
 def main() -> None:

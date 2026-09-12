@@ -70,13 +70,13 @@ void main() {
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
-// async def run(self, count: Int32) -> None:
+// async def run(self, count: int32) -> None:
 ::tpystd::tpy::Poll<::std::monostate> __coro_Dispatcher_run::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // tasks: list[asyncio.Task[None]] = []
         tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<std::monostate>>{});
-        // i: Int32 = 0
+        // i: int32 = 0
         i = 0;
         // while i < count:
         while ((i < count)) {

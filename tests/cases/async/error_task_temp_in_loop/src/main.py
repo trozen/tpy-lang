@@ -6,18 +6,18 @@
 import asyncio
 
 from asyncio import Task
-from tpy import Int32
+from tpy import int32
 
 
-async def add_step(step: Int32, s: list[Int32]) -> Int32:
+async def add_step(step: int32, s: list[int32]) -> int32:
     s[0] += step
     await asyncio.sleep(0.0)
     s[1] += step
     return s[0] + s[1]
 
 
-async def gather_loop() -> Int32:
-    tasks: list[Task[Int32]] = []
+async def gather_loop() -> int32:
+    tasks: list[Task[int32]] = []
     for i in range(2):
         # `[1, 2]` is the temporary and the Task is the handle that outlives
         # the iteration; the same line outside a loop stays admitted.

@@ -1,14 +1,14 @@
 # Auto-move at last use: lvalue passed to Own[T] param is auto-moved
 # when the variable is not used after the call.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 
-def consume(p: Own[Point]) -> Int32:
+def consume(p: Own[Point]) -> int32:
     return p.x + p.y
 
 

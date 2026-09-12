@@ -13,7 +13,7 @@ inline constexpr std::string_view __name__ = "__main__";
 template<typename T>
 ::tpy::val_or_ref_t<T> echo_with_delta(::tpy::param_val_or_ref_t<T> x, int64_t delta);
 
-// def echo_with_delta[T](x: T, delta: Int64) -> T:
+// def echo_with_delta[T](x: T, delta: int64) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> echo_with_delta(::tpy::param_val_or_ref_t<T> x, int64_t delta) {
     // return x

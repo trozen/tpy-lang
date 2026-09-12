@@ -2,10 +2,10 @@
 # value-Optional LOCALS and PARAMS. Storage is std::optional<T> after
 # narrowing too, so the same read sites (aug-assign LHS read, BigInt print,
 # subscript-LHS receiver) need the same unwrap.
-from tpy import Int32
+from tpy import int32
 
 
-def step(x: int | None, y: Int32 | None, lst: list[int] | None) -> None:
+def step(x: int | None, y: int32 | None, lst: list[int] | None) -> None:
     if x is None:
         return
     if y is None:
@@ -23,7 +23,7 @@ def step(x: int | None, y: Int32 | None, lst: list[int] | None) -> None:
 
 def local_path() -> None:
     a: int | None = 10
-    b: Int32 | None = 3
+    b: int32 | None = 3
     if a is None:
         return
     if b is None:

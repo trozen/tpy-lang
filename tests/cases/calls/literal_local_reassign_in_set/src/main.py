@@ -3,15 +3,15 @@
 # Regression guard for the out-of-set reassignment check landed in the same
 # patch.
 from typing import Literal, overload
-from tpy import Int32
+from tpy import int32
 
 
 @overload
-def pick(v: Literal["r", "w"]) -> Int32: ...
+def pick(v: Literal["r", "w"]) -> int32: ...
 @overload
-def pick(v: str) -> Int32: ...
-def pick(v: str) -> Int32:
-    return Int32(99)
+def pick(v: str) -> int32: ...
+def pick(v: str) -> int32:
+    return int32(99)
 
 
 def main() -> None:

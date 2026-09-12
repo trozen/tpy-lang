@@ -12,9 +12,9 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // thing = ThingT(Int32(42))
+    // thing = ThingT(int32(42))
     ::thing_t thing = ::thing_t{42};
-    // sec = SectorT(Int32(100), unsafe_cast[None](take_ptr(thing)))
+    // sec = SectorT(int32(100), unsafe_cast[None](take_ptr(thing)))
     ::sector_t sec = ::sector_t{100, reinterpret_cast<void*>(&thing)};
     // p: Ptr[ThingT] = get_thing(take_ptr(sec))
     ::thing_t* p = get_thing(&sec);

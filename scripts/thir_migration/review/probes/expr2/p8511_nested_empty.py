@@ -1,5 +1,5 @@
-from tpy import Int32
+from tpy import int32
 def main() -> None:
-    xs: list[list[Int32]] = [[], [1]]
+    xs: list[list[int32]] = [[], [1]]
     print(len(xs))
 main()

@@ -78,8 +78,8 @@ _BUILTIN_DEC_NAMES = frozenset({"builtin_type", "builtin_decorator", "builtin_fu
 # in the TypeResolver via `_FIXED_INT_MAP`; here we only need name
 # membership. Kept in sync with typesys.ALL_FIXED_INTS.
 _FIXED_INT_NAMES: frozenset[str] = frozenset({
-    "Int8", "Int16", "Int32", "Int64",
-    "UInt8", "UInt16", "UInt32", "UInt64",
+    "int8", "int16", "int32", "int64",
+    "uint8", "uint16", "uint32", "uint64",
 })
 
 # Operator-to-string mappings for AST binary, comparison, and unary operators
@@ -1210,11 +1210,11 @@ class Parser:
             raise ParseError("**kwargs must have Unpack[TypedDict] annotation", error_node)
         return self._parse_type_ref(annotation.slice, type_param_scope)
 
-    # Valid integer mixin types for IntEnum: class P(int, Enum) or class P(Int8, Enum)
+    # Valid integer mixin types for IntEnum: class P(int, Enum) or class P(int8, Enum)
     _INT_MIXIN_TYPES: dict[str, str] = {
         "int": "int",
-        "Int8": "Int8", "Int16": "Int16", "Int32": "Int32", "Int64": "Int64",
-        "UInt8": "UInt8", "UInt16": "UInt16", "UInt32": "UInt32", "UInt64": "UInt64",
+        "int8": "int8", "int16": "int16", "int32": "int32", "int64": "int64",
+        "uint8": "uint8", "uint16": "uint16", "uint32": "uint32", "uint64": "uint64",
     }
 
     def _resolve_int_mixin(self, base: ast.expr) -> str | None:
@@ -1518,10 +1518,10 @@ class Parser:
                 if len(node.bases) != 1:
                     raise ParseError(
                         "IntEnum must be the only base class", node)
-                # IntEnum without mixin defaults to Int32 (not BigInt)
-                return self._parse_enum(node, is_int_enum=True, underlying_type_name="Int32")
+                # IntEnum without mixin defaults to int32 (not BigInt)
+                return self._parse_enum(node, is_int_enum=True, underlying_type_name="int32")
 
-            # Check for mixin pattern: class P(int, Enum) or class P(Int8, Enum)
+            # Check for mixin pattern: class P(int, Enum) or class P(int8, Enum)
             has_enum = any(self._is_enum_base(base) for base in node.bases)
             if has_enum:
                 if len(node.bases) == 2:
@@ -1534,7 +1534,7 @@ class Parser:
                                 base_name = base.id if isinstance(base, ast.Name) else ast.unparse(base)
                                 raise ParseError(
                                     f"Invalid enum mixin type '{base_name}'; "
-                                    f"expected int, Int8..Int64, or UInt8..UInt64",
+                                    f"expected int, int8..int64, or uint8..uint64",
                                     node)
                     if mixin_type is not None:
                         return self._parse_enum(
@@ -1773,7 +1773,7 @@ class Parser:
                         self._loc(item),
                     ))
             elif isinstance(item, ast.Assign):
-                # Field with inferred type: name = Int32(0)
+                # Field with inferred type: name = int32(0)
                 if len(item.targets) != 1 or not isinstance(item.targets[0], ast.Name):
                     raise ParseError("Invalid field declaration", item)
                 field_name = item.targets[0].id
@@ -3343,7 +3343,7 @@ class Parser:
         param_list_node, return_node = slices
         if not isinstance(param_list_node, ast.List):
             raise ParseError(
-                f"{kind} parameter types must be a list: {kind}[[Int32, str], bool]",
+                f"{kind} parameter types must be a list: {kind}[[int32, str], bool]",
                 node,
             )
         params = tuple(
@@ -3462,7 +3462,7 @@ class Parser:
                 func.kwarg_type, resolve_scope, is_type_arg=True)
 
     def _parse_type_args_from_subscript(self, node: ast.Subscript) -> 'tuple[TpyType | TypeRefNode | None, ...]':
-        """Extract type arguments from a subscript for generic function calls like first[Int32](x).
+        """Extract type arguments from a subscript for generic function calls like first[int32](x).
 
         Raises ParseError if any element is structurally not a valid
         type (e.g. integer literal at a type-args site).  Name-resolution
@@ -4172,17 +4172,17 @@ class Parser:
                 self._resolve_call_import(mcall, node)
                 return mcall
             elif isinstance(node.func, ast.Subscript):
-                # Could be generic type instantiation (Stack[Int32]()) or generic function call (First[Int32](x))
+                # Could be generic type instantiation (Stack[int32]()) or generic function call (First[int32](x))
                 # Parse both call_type and type_args - sema decides which applies based on whether
                 # the name is a record or a function
                 if isinstance(node.func.value, ast.Name):
                     name = node.func.value.id
                     # Try to extract type_args for potential generic function call
-                    # (for type instantiations like Array[Int32, 8], non-type args are valid
+                    # (for type instantiations like Array[int32, 8], non-type args are valid
                     # so parse error is stored and sema decides whether to report it)
                     type_args, type_args_parse_error = self._try_parse_type_args(node.func)
                     # Try to parse as a type annotation ref (for type
-                    # instantiation like ArrayList[Int32]()). Sema
+                    # instantiation like ArrayList[int32]()). Sema
                     # decides whether to use call_type or type_args
                     # based on whether the name resolves to a type or a
                     # function. Emits TypeRefNode; sema resolves in the
@@ -4446,16 +4446,16 @@ class Parser:
         if isinstance(expr, TpyUnaryOp) and expr.op == "-":
             if isinstance(expr.operand, (TpyIntLiteral, TpyFloatLiteral)):
                 return
-        # Int32(5) etc. -- a fixed-int constructor wrapping a literal
+        # int32(5) etc. -- a fixed-int constructor wrapping a literal
         if isinstance(expr, TpyCall) and expr.func_name in _FIXED_INT_NAMES:
             if not expr.args:
-                return  # Int32() -> 0
+                return  # int32() -> 0
             if len(expr.args) == 1:
                 self._validate_const_default(expr.args[0], node)
                 return
         raise ParseError(
             f"Default parameter value must be a constant expression "
-            f"(literal, None, fixed-int constructor like Int32(5), "
+            f"(literal, None, fixed-int constructor like int32(5), "
             f"an enum member like Color.RED, or a Final[T] module constant)", node)
 
     # A `cls` bound inside one of these belongs to that inner scope, not to
@@ -4596,7 +4596,7 @@ class Parser:
             inner = self._get_default_value(node.operand)
             return f"-{inner}"
         elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
-            # Int32(x) just becomes x in C++
+            # int32(x) just becomes x in C++
             if node.func.id in _FIXED_INT_NAMES:
                 if not node.args:
                     return "0"

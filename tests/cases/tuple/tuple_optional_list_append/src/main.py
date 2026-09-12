@@ -2,12 +2,12 @@
 # pointer-form -> storage-form. Per-element ownership at the boundary
 # requires last-use / fresh / copy() sources -- list ownership is the
 # same shape as Own[tuple] params.
-from tpy import Int32, copy
+from tpy import int32, copy
 
 
 class P:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 

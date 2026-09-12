@@ -27,7 +27,7 @@ void main();
 
 // class State:
 struct State {
-    // done: Int32
+    // done: int32
     int32_t done;
 
     // def __init__(self) -> None:

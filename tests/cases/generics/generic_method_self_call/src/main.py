@@ -1,5 +1,5 @@
 # Generic method called via self inside the class
-from tpy import Int32
+from tpy import int32
 
 class Processor[T]:
     val: T
@@ -10,11 +10,11 @@ class Processor[T]:
     def wrap[U](self, x: U) -> U:
         return x
 
-    def process(self) -> Int32:
-        return self.wrap(Int32(99))
+    def process(self) -> int32:
+        return self.wrap(int32(99))
 
 def main() -> None:
-    p = Processor[Int32](Int32(1))
+    p = Processor[int32](int32(1))
     print(p.process())
     print(p.wrap("hello"))
 

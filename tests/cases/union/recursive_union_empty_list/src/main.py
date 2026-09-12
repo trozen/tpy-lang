@@ -3,9 +3,9 @@
 # independent of json. The list is a reference type, so we mutate it after
 # the binding (through a narrowing match) and observe the change, forcing
 # the value-vs-reference distinction.
-from tpy import Int32
+from tpy import int32
 
-type V = Int32 | list[V]
+type V = int32 | list[V]
 
 
 def main() -> None:

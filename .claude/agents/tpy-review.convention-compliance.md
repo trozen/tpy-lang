@@ -37,7 +37,7 @@ You may NOT run `uv run pytest` or `tests/update_snapshots.py`.
 - No Unicode arrows (`->` not the arrow glyph), em dashes (`--` not the em dash), smart quotes, or other non-ASCII in `tpyc/` Python sources and comments. Applies to generated-code string literals in codegen too.
 
 **Don't spell types the compiler can infer**
-- Test snippets / stdlib / examples: prefer `1`, `"hi"`, `{1, 2}`, `n = len(xs)` over `Int32(1)`, `StrView("hi")`, `Int32(len(xs))`.
+- Test snippets / stdlib / examples: prefer `1`, `"hi"`, `{1, 2}`, `n = len(xs)` over `int32(1)`, `StrView("hi")`, `int32(len(xs))`.
 - Field assigns / aug-assigns, widening comparisons, and generic-fn type params inferred from return context should NOT be spelled out.
 - Explicit form is fine ONLY when inference would be wrong (e.g. `n: BigInt = len(xs)` for arbitrary-precision arithmetic) or there's no inference context. Don't flag those.
 

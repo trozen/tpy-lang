@@ -19,7 +19,7 @@ void main();
 struct Config {
     // host: str
     std::optional<std::string> host = std::nullopt;
-    // port: Int32
+    // port: int32
     std::optional<int32_t> port = std::nullopt;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.Config";

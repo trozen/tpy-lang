@@ -2,13 +2,13 @@
 # (union/reference_union_borrow_eq) without CONFORMING to anything, so a dict
 # key, a set element, `in` and `sorted` keep rejecting
 # (BUGS.md#value-union-no-equatable-conformance owns those).
-from tpy import Int32
+from tpy import int32
 
 
 class Dog:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def __eq__(self, other: "Dog") -> bool:
@@ -16,9 +16,9 @@ class Dog:
 
 
 class Cat:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def __eq__(self, other: "Cat") -> bool:
@@ -28,8 +28,8 @@ class Cat:
 type Pet = Dog | Cat
 
 
-def by_pet() -> Int32:
-    d: dict[Pet, Int32] = {}  # tpyc: error(/cannot be used as a dict key/)
+def by_pet() -> int32:
+    d: dict[Pet, int32] = {}  # tpyc: error(/cannot be used as a dict key/)
     return len(d)
 
 

@@ -6,11 +6,11 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // xs: list[Int32] = [1, 2, 3]
+    // xs: list[int32] = [1, 2, 3]
     std::vector<int32_t> xs = {1, 2, 3};
     // # 2-arg call: only the Fn-bearing overload is viable. U comes from
-    // # the lambda body (`x + Int32(1)` -> Int32). Regime B handles this.
-    // print(apply(lambda x: x + Int32(1), xs))   # 0 (overload returns 0)
+    // # the lambda body (`x + int32(1)` -> int32). Regime B handles this.
+    // print(apply(lambda x: x + int32(1), xs))   # 0 (overload returns 0)
     std::cout << apply<int32_t, int32_t>([](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 1)); }, xs) << "\n";
 }
 

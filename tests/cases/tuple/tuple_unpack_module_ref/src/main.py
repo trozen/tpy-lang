@@ -3,13 +3,13 @@
 # forms are exercised, plus a subscript source -- each followed by mutation
 # through the unpacked alias and an observation on the original, so a silent
 # copy (the old global-unpack T*->T bug) would diverge from CPython here.
-from tpy import Int32
+from tpy import int32
 
 
 class Counter:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def bump(self) -> None:

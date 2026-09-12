@@ -21,9 +21,9 @@ void main();
 struct Buf {
     // data: bytearray
     ::tpy::ByteArray data;
-    // tags: list[Int32]
+    // tags: list[int32]
     std::vector<int32_t> tags;
-    // boxes: list[Box[Int32]]
+    // boxes: list[Box[int32]]
     std::vector<::tpystd::tplib::box::Box<int32_t>> boxes;
 
     // def __init__(self) -> None:
@@ -34,13 +34,13 @@ struct Buf {
     Buf(Buf&&) = default;
     Buf& operator=(Buf&&) = default;
 
-    // def reset(self, n: Int32) -> None:
+    // def reset(self, n: int32) -> None:
     void reset(int32_t n);
 
-    // def retag(self, n: Int32) -> None:
+    // def retag(self, n: int32) -> None:
     void retag(int32_t n);
 
-    // def rebox(self, n: Int32) -> None:
+    // def rebox(self, n: int32) -> None:
     void rebox(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Buf";
 };
@@ -54,7 +54,7 @@ inline std::ostream& operator<<(std::ostream& os, const Buf& obj) {
 // def __init__(self) -> None:
 inline Buf::Buf() : data(::tpy::ByteArray()), tags(std::vector<int32_t>{}), boxes(std::vector<::tpystd::tplib::box::Box<int32_t>>{}) {}
 
-// def reset(self, n: Int32) -> None:
+// def reset(self, n: int32) -> None:
 inline void Buf::reset(int32_t n) {
     // fresh = bytearray(n)
     ::tpy::ByteArray fresh = ::tpy::bytearray_from_size(n);
@@ -62,17 +62,17 @@ inline void Buf::reset(int32_t n) {
     this->data = std::move(fresh);
 }
 
-// def retag(self, n: Int32) -> None:
+// def retag(self, n: int32) -> None:
 inline void Buf::retag(int32_t n) {
-    // fresh: list[Int32] = [n]
+    // fresh: list[int32] = [n]
     std::vector<int32_t> fresh = {n};
     // self.tags = fresh  # tpyc: ok -- the same row, container leg
     this->tags = std::move(fresh);
 }
 
-// def rebox(self, n: Int32) -> None:
+// def rebox(self, n: int32) -> None:
 inline void Buf::rebox(int32_t n) {
-    // fresh: list[Box[Int32]] = [Box(n)]
+    // fresh: list[Box[int32]] = [Box(n)]
     int32_t __tmp_1 = n;
     std::vector<::tpystd::tplib::box::Box<int32_t>> fresh = ::tpy::make_vector<::tpystd::tplib::box::Box<int32_t>>(::tpystd::tplib::box::Box<int32_t>(std::move(__tmp_1)));
     // self.boxes = fresh  # tpyc: ok -- a copy here would not compile

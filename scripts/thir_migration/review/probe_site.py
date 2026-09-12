@@ -8,7 +8,7 @@ from tpyc.thir.testutil import _compile, _entry
 from tpyc.codegen_cpp.context import CodeGenOptions
 from tpyc.thir import fallback as fb
 
-ap = argparse.ArgumentParser(); ap.add_argument("file"); ap.add_argument("--default-int", default="Int32")
+ap = argparse.ArgumentParser(); ap.add_argument("file"); ap.add_argument("--default-int", default="int32")
 ap.add_argument("--tb", action="store_true")
 a = ap.parse_args()
 src = open(a.file).read()

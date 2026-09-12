@@ -20,7 +20,7 @@ template<typename T>
     // return items[0]
     return ::tpy::__getitem__(items, 0);
 }
-// def length[T](items: list[T]) -> Int32:
+// def length[T](items: list[T]) -> int32:
 template<typename T>
 int32_t length(const std::vector<T>& items) {
     // return len(items)

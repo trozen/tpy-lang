@@ -21,7 +21,7 @@ from __future__ import annotations
 import time as _time
 from typing import Final
 from dataclasses import dataclass
-from tpy import Int8, Int16, Int32, Int64, String, ValueType, dispatch
+from tpy import int8, int16, int32, int64, String, ValueType, dispatch
 from _bindings import hinnant_date, tz_intern
 from _datetime_cal import (
     _MAXORDINAL, _days_in_month, _is_leap, _ymd2ord, _ord2ymd,
@@ -53,9 +53,9 @@ def _divide_and_round(a: int, b: int) -> int:
 class timedelta(ValueType):
     # Normalized: 0 <= seconds < 86400, 0 <= microseconds < 10**6,
     # -999999999 <= days <= 999999999. Fields carry CPython's attribute names.
-    days: Int32
-    seconds: Int32
-    microseconds: Int32
+    days: int32
+    seconds: int32
+    microseconds: int32
 
     def __init__(self, days: int = 0, seconds: int = 0, microseconds: int = 0,
                  milliseconds: int = 0, minutes: int = 0, hours: int = 0,
@@ -79,9 +79,9 @@ class timedelta(ValueType):
         self.microseconds = us
 
     def _to_microseconds(self) -> int:
-        # Widen the Int32 fields to BigInt before combining: the max total
-        # (~8.6e19 us) exceeds Int64, and an Int32 intermediate overflows even
-        # for an hour (3600 * 10**6 > Int32 max).
+        # Widen the int32 fields to BigInt before combining: the max total
+        # (~8.6e19 us) exceeds int64, and an int32 intermediate overflows even
+        # for an hour (3600 * 10**6 > int32 max).
         return (int(self.days) * 86400 + int(self.seconds)) * 1000000 + int(self.microseconds)
 
     def total_seconds(self) -> float:
@@ -216,15 +216,15 @@ class timezone(ValueType):
     # unnamed, so timezone(off) and timezone(off, "") stay distinct --
     # CPython stores None vs ""). Field layout mirrors datetime's inline
     # tz block so ingestion/reconstruction are raw field copies.
-    _off_us: Int64
-    _name_id: Int32
+    _off_us: int64
+    _name_id: int32
 
     def __init__(self, offset: timedelta, name: str | None = None) -> None:
         us = offset._to_microseconds()
         if us <= -86400000000 or us >= 86400000000:
             raise ValueError("offset must be a timedelta strictly between "
                              "-timedelta(hours=24) and timedelta(hours=24).")
-        # The range check bounds us under 2**37, so the Int64 store is safe.
+        # The range check bounds us under 2**37, so the int64 store is safe.
         self._off_us = us
         self._name_id = 0 if name is None else tz_intern.intern_name(name)
 
@@ -306,7 +306,7 @@ class ZoneInfo(ValueType):
     # key, which matches CPython's per-key instance cache (no_cache /
     # from_file / available_timezones are unsupported -- see the roadmap).
     # Offsets are per-instant: utcoffset/dst/tzname need the datetime.
-    _zid: Int32
+    _zid: int32
 
     def __init__(self, key: str) -> None:
         _check_zone_key(key)
@@ -323,19 +323,19 @@ class ZoneInfo(ValueType):
         if dt is None:
             return None
         return timedelta(seconds=int(hinnant_date.zone_wall_offset_seconds(
-            self._zid, Int64(dt._epoch_us() // 1000000), dt.fold)))
+            self._zid, int64(dt._epoch_us() // 1000000), dt.fold)))
 
     def tzname(self, dt: "datetime | None") -> str | None:
         if dt is None:
             return None
         return hinnant_date.zone_wall_abbrev(
-            self._zid, Int64(dt._epoch_us() // 1000000), dt.fold)
+            self._zid, int64(dt._epoch_us() // 1000000), dt.fold)
 
     def dst(self, dt: "datetime | None") -> timedelta | None:
         if dt is None:
             return None
         return timedelta(seconds=int(hinnant_date.zone_wall_dst_seconds(
-            self._zid, Int64(dt._epoch_us() // 1000000), dt.fold)))
+            self._zid, int64(dt._epoch_us() // 1000000), dt.fold)))
 
     def fromutc(self, dt: "datetime") -> "datetime":
         # dt's wall fields are read as UTC; the result carries this zone
@@ -365,12 +365,12 @@ class ZoneInfo(ValueType):
 @dataclass(frozen=True, order=True)
 class date(ValueType):
     # Packed to 4B: narrow private storage (validated ranges fit exactly),
-    # public attrs are Int32-widening properties so user arithmetic never
+    # public attrs are int32-widening properties so user arithmetic never
     # touches the narrow types. Storage stays in significance order --
     # order=True tuple comparison over it is the chronological order.
-    _y: Int16
-    _mo: Int8
-    _d: Int8
+    _y: int16
+    _mo: int8
+    _d: int8
 
     def __init__(self, year: int, month: int, day: int) -> None:
         _check_date_fields(year, month, day)
@@ -379,16 +379,16 @@ class date(ValueType):
         self._d = day
 
     @property
-    def year(self) -> Int32:
-        return Int32(self._y)
+    def year(self) -> int32:
+        return int32(self._y)
 
     @property
-    def month(self) -> Int32:
-        return Int32(self._mo)
+    def month(self) -> int32:
+        return int32(self._mo)
 
     @property
-    def day(self) -> Int32:
-        return Int32(self._d)
+    def day(self) -> int32:
+        return int32(self._d)
 
     @staticmethod
     def today() -> "date":
@@ -463,11 +463,11 @@ class time(ValueType):
     # Naive only (no tzinfo/fold; aware time is out of scope -- see the
     # roadmap). Packed to 8B: narrow private storage in significance order
     # (order=True tuple comparison stays chronological), public attrs are
-    # Int32-widening properties.
-    _hh: Int8
-    _mm: Int8
-    _ss: Int8
-    _us: Int32
+    # int32-widening properties.
+    _hh: int8
+    _mm: int8
+    _ss: int8
+    _us: int32
 
     def __init__(self, hour: int = 0, minute: int = 0, second: int = 0,
                  microsecond: int = 0) -> None:
@@ -478,19 +478,19 @@ class time(ValueType):
         self._us = microsecond
 
     @property
-    def hour(self) -> Int32:
-        return Int32(self._hh)
+    def hour(self) -> int32:
+        return int32(self._hh)
 
     @property
-    def minute(self) -> Int32:
-        return Int32(self._mm)
+    def minute(self) -> int32:
+        return int32(self._mm)
 
     @property
-    def second(self) -> Int32:
-        return Int32(self._ss)
+    def second(self) -> int32:
+        return int32(self._ss)
 
     @property
-    def microsecond(self) -> Int32:
+    def microsecond(self) -> int32:
         return self._us
 
     @staticmethod
@@ -553,8 +553,8 @@ _TIME_T_MAX: int = 9223372036854775807  # 64-bit time_t, matching CPython's boun
 def _local_epoch_s(u: int) -> int:
     # local(u) in CPython's _mktime: the wall-clock epoch second the local
     # zone shows at UTC epoch second u. Callers pass values derived from
-    # in-range datetimes (|u| < ~3e11), so the Int64 narrowing cannot panic.
-    return u + int(hinnant_date.local_utc_offset_seconds(Int64(u)))
+    # in-range datetimes (|u| < ~3e11), so the int64 narrowing cannot panic.
+    return u + int(hinnant_date.local_utc_offset_seconds(int64(u)))
 
 
 def _local_mktime_s(t: int, fold: int) -> int:
@@ -606,7 +606,7 @@ class datetime(ValueType):
     # Awareness is a RUNTIME property; mixing naive and aware in ordering/
     # subtraction raises TypeError exactly like CPython.
     # Packed to 24B, trivially copyable: narrow private storage behind
-    # Int32-widening properties, and the tz inline as a kind-tagged triple
+    # int32-widening properties, and the tz inline as a kind-tagged triple
     # (_tzf packs kind 0=naive/1=fixed/2=zoneinfo in the low bits + the
     # PEP 495 fold in bit 2; _tz_off_us holds the fixed offset, unused for
     # zoneinfo whose offset is per-instant; _tz_name_id holds the interned
@@ -615,16 +615,16 @@ class datetime(ValueType):
     # paths directly. Field order is packing order (widest first); nothing
     # here relies on declaration order (all comparisons/hash/repr are
     # hand-written).
-    _tz_off_us: Int64
-    _us: Int32
-    _tz_name_id: Int32
-    _y: Int16
-    _mo: Int8
-    _d: Int8
-    _hh: Int8
-    _mm: Int8
-    _ss: Int8
-    _tzf: Int8
+    _tz_off_us: int64
+    _us: int32
+    _tz_name_id: int32
+    _y: int16
+    _mo: int8
+    _d: int8
+    _hh: int8
+    _mm: int8
+    _ss: int8
+    _tzf: int8
 
     def __init__(self, year: int, month: int, day: int, hour: int = 0,
                  minute: int = 0, second: int = 0, microsecond: int = 0,
@@ -662,35 +662,35 @@ class datetime(ValueType):
         return int(self._tzf) & 3
 
     @property
-    def fold(self) -> Int32:
-        return Int32(int(self._tzf) >> 2)
+    def fold(self) -> int32:
+        return int32(int(self._tzf) >> 2)
 
     @property
-    def year(self) -> Int32:
-        return Int32(self._y)
+    def year(self) -> int32:
+        return int32(self._y)
 
     @property
-    def month(self) -> Int32:
-        return Int32(self._mo)
+    def month(self) -> int32:
+        return int32(self._mo)
 
     @property
-    def day(self) -> Int32:
-        return Int32(self._d)
+    def day(self) -> int32:
+        return int32(self._d)
 
     @property
-    def hour(self) -> Int32:
-        return Int32(self._hh)
+    def hour(self) -> int32:
+        return int32(self._hh)
 
     @property
-    def minute(self) -> Int32:
-        return Int32(self._mm)
+    def minute(self) -> int32:
+        return int32(self._mm)
 
     @property
-    def second(self) -> Int32:
-        return Int32(self._ss)
+    def second(self) -> int32:
+        return int32(self._ss)
 
     @property
-    def microsecond(self) -> Int32:
+    def microsecond(self) -> int32:
         return self._us
 
     def date(self) -> date:
@@ -729,8 +729,8 @@ class datetime(ValueType):
         if self._tz_kind() == 1:
             return int(self._tz_off_us)
         return int(hinnant_date.zone_wall_offset_seconds(
-            self._tz_name_id, Int64(self._epoch_us() // 1000000),
-            Int32(fold))) * 1000000
+            self._tz_name_id, int64(self._epoch_us() // 1000000),
+            int32(fold))) * 1000000
 
     def _utc_us(self) -> int:
         # UTC microseconds since the epoch; equals wall clock when naive, so
@@ -752,7 +752,7 @@ class datetime(ValueType):
             return None
         if k == 2:
             return hinnant_date.zone_wall_abbrev(
-                self._tz_name_id, Int64(self._epoch_us() // 1000000),
+                self._tz_name_id, int64(self._epoch_us() // 1000000),
                 self.fold)
         if self._tz_name_id != 0:
             return tz_intern.name_at(self._tz_name_id)
@@ -764,7 +764,7 @@ class datetime(ValueType):
         if self._tz_kind() != 2:
             return None
         return timedelta(seconds=int(hinnant_date.zone_wall_dst_seconds(
-            self._tz_name_id, Int64(self._epoch_us() // 1000000),
+            self._tz_name_id, int64(self._epoch_us() // 1000000),
             self.fold)))
 
     def replace(self, year: int | None = None, month: int | None = None,
@@ -819,8 +819,8 @@ class datetime(ValueType):
         # astimezone(None): attach the system zone at this instant as a
         # fixed offset + libc-style abbreviation ("CET").
         u_s = utc_us // 1000000
-        off = int(hinnant_date.local_utc_offset_seconds(Int64(u_s)))
-        name = hinnant_date.local_zone_abbrev(Int64(u_s))
+        off = int(hinnant_date.local_utc_offset_seconds(int64(u_s)))
+        name = hinnant_date.local_zone_abbrev(int64(u_s))
         return datetime._from_epoch_us(
             utc_us, False, timezone(timedelta(seconds=off), name))
 
@@ -850,7 +850,7 @@ class datetime(ValueType):
             raise ValueError(f"Invalid isoformat string: '{date_string}'")
         tstr = date_string[sep_loc + 1:]
         # BigInt annotations: the unpack below yields BigInt; a bare 0
-        # would infer Int32 and fail the assignment.
+        # would infer int32 and fail the assignment.
         hh: int = 0
         mm: int = 0
         ss: int = 0
@@ -884,7 +884,7 @@ class datetime(ValueType):
         # (negative) timestamps correct.
         epoch_s = us // 1000000
         # Beyond time_t: CPython raises OverflowError. The check must run
-        # before the Int64 narrowing at the native call below, which would
+        # before the int64 narrowing at the native call below, which would
         # otherwise panic uncatchably. (glibc additionally fails with
         # OSError in a narrower band; not emulated -- see DATETIME_DESIGN.)
         if epoch_s < -_TIME_T_MAX - 1 or epoch_s > _TIME_T_MAX:
@@ -905,10 +905,10 @@ class datetime(ValueType):
             else:
                 zid = int(tz._zid)
                 off = int(hinnant_date.zone_utc_offset_seconds(
-                    tz._zid, Int64(epoch_s))) * 1000000
+                    tz._zid, int64(epoch_s))) * 1000000
         elif use_local:
             off = int(hinnant_date.local_utc_offset_seconds(
-                Int64(epoch_s))) * 1000000
+                int64(epoch_s))) * 1000000
         if off != 0:
             us = us + off
             days, rem = divmod(us, 86400000000)
@@ -923,7 +923,7 @@ class datetime(ValueType):
         wall_s = us // 1000000
         if zid != 0:
             if int(hinnant_date.zone_wall_offset_seconds(
-                    Int32(zid), Int64(wall_s), Int32(0))) * 1000000 != off:
+                    int32(zid), int64(wall_s), int32(0))) * 1000000 != off:
                 fold = 1
         elif tz is None and use_local:
             if _local_mktime_s(wall_s, 0) != epoch_s:

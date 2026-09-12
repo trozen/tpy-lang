@@ -4,12 +4,12 @@
 # tpy: ext_module
 # tpy: include("native_types.hpp")
 from enum import Enum
-from tpy import Int8
+from tpy import int8
 from tpy.extern import native, export
 
 
 @native("ns::color_t")
 @export
-class Color(Int8, Enum):  # tpyc: error(/@native enum cannot be exposed/)
+class Color(int8, Enum):  # tpyc: error(/@native enum cannot be exposed/)
     RED = 1
     GREEN = 2

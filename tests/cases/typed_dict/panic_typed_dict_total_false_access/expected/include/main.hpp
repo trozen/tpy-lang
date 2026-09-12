@@ -17,7 +17,7 @@ void main();
 struct Info {
     // name: str
     std::optional<std::string> name = std::nullopt;
-    // age: Int32
+    // age: int32
     std::optional<int32_t> age = std::nullopt;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.Info";

@@ -1,5 +1,5 @@
 # ord() with single-char string literal is constant-folded to an int.
-from tpy import Int32
+from tpy import int32
 
 def main() -> None:
     # Constant-folded cases
@@ -13,7 +13,7 @@ def main() -> None:
     print(ord(s))
 
     # Verify values match expected ASCII codes
-    a: Int32 = ord("z")
+    a: int32 = ord("z")
     print(a)
 
 main()

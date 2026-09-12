@@ -1,1 +1,1 @@
-main.py:13: error: Type mismatch in reassignment to 'n': expected Int32, got str
+main.py:13: error: Type mismatch in reassignment to 'n': expected int32, got str

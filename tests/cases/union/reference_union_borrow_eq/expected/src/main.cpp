@@ -99,11 +99,11 @@ bool held_eq(::tpy::Union<const Locked*, const Sealed*> a, ::tpy::Union<const Lo
 // def mixed_eq(xs: list[Mixed]) -> None:  # borrowed value members
 void mixed_eq(const std::vector<Mixed>& xs) {
     // a = xs[0]
-    ::tpy::Union<const Dog*, const int32_t*, const double*> a = ::tpy::to_const_ptr_variant(::tpy::__getitem__(xs, 0));
+    ::tpy::Union<const Dog*, const double*, const int32_t*> a = ::tpy::to_const_ptr_variant(::tpy::__getitem__(xs, 0));
     // b = xs[1]
-    ::tpy::Union<const Dog*, const int32_t*, const double*> b = ::tpy::to_const_ptr_variant(::tpy::__getitem__(xs, 1));
+    ::tpy::Union<const Dog*, const double*, const int32_t*> b = ::tpy::to_const_ptr_variant(::tpy::__getitem__(xs, 1));
     // c = xs[2]
-    ::tpy::Union<const Dog*, const int32_t*, const double*> c = ::tpy::to_const_ptr_variant(::tpy::__getitem__(xs, 2));
+    ::tpy::Union<const Dog*, const double*, const int32_t*> c = ::tpy::to_const_ptr_variant(::tpy::__getitem__(xs, 2));
     // print("value members", a == b, a == c)  # tpyc: ok
     std::cout << "value members" << " " << ::tpy::print_bool((a == b)) << " " << ::tpy::print_bool((a == c)) << "\n";
 }
@@ -123,7 +123,7 @@ bool elem_eq(const std::vector<Pet>& xs) {
 // # an operand here -- iterating `list[Pet]` binds the storage element, which
 // # is a different C++ type from the borrowed parameter
 // # (BUGS.md#ref-union-loop-var-vs-borrow-compare).
-// def count_eq(a: Pet, b: Pet) -> Int32:  # comprehension
+// def count_eq(a: Pet, b: Pet) -> int32:  # comprehension
 int32_t count_eq(::tpy::Union<const Cat*, const Dog*> a, ::tpy::Union<const Cat*, const Dog*> b) {
     // flags = [a == b for _ in [1, 2]]  # tpyc: ok
     std::vector<bool> flags = ({
@@ -249,7 +249,7 @@ std::expected<bool, Boom> in_error_return(::tpy::Union<const Cat*, const Dog*> a
 
 // def in_match(a: Pet, b: Pet) -> bool:  # match arm
 bool in_match(::tpy::Union<const Cat*, const Dog*> a, ::tpy::Union<const Cat*, const Dog*> b) {
-    // tag: Int32 = 1
+    // tag: int32 = 1
     int32_t tag = 1;
     // match tag:
     auto& __match_subject_1 = tag;

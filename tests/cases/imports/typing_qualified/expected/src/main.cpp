@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def maybe_add(x: typing.Optional[Int32], y: Int32) -> Int32:
+// def maybe_add(x: typing.Optional[int32], y: int32) -> int32:
 int32_t maybe_add(std::optional<int32_t> x, int32_t y) {
     // if x is not None:
     if ((x.has_value())) {
@@ -17,11 +17,11 @@ int32_t maybe_add(std::optional<int32_t> x, int32_t y) {
 
 // def main():
 void main() {
-    // print(maybe_add(Int32(3), Int32(4)))
+    // print(maybe_add(int32(3), int32(4)))
     std::cout << maybe_add(3, 4) << "\n";
-    // print(maybe_add(None, Int32(10)))
+    // print(maybe_add(None, int32(10)))
     std::cout << maybe_add(std::nullopt, 10) << "\n";
-    // show(Wrapper(Int32(42)))
+    // show(Wrapper(int32(42)))
     auto __tmp_1 = Wrapper(42);
     show(__tmp_1);
 }

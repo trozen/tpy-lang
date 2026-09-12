@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def run() -> Int32:
+// def run() -> int32:
 int32_t run() {
     std::optional<Reg> __slot_1;
     // with Reg(100) as g:

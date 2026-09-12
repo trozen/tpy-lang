@@ -112,8 +112,8 @@ def test_dump_includes_async_bodies():
     # entry, so only a collector reading codegen's caches shows an
     # `async def` at all.
     out = _dump(
-        "import asyncio\nfrom tpy import Int32\n\n"
-        "async def f(n: Int32) -> Int32:\n"
+        "import asyncio\nfrom tpy import int32\n\n"
+        "async def f(n: int32) -> int32:\n"
         "    await asyncio.sleep(0)\n"
         "    return n\n\n"
         "def main() -> None:\n    pass\nmain()\n")
@@ -123,10 +123,10 @@ def test_dump_includes_async_bodies():
 
 def test_dump_includes_constructors():
     out = _dump(
-        "from tpy import Int32\n\n"
+        "from tpy import int32\n\n"
         "class R:\n"
-        "    n: Int32\n"
-        "    def __init__(self, n: Int32) -> None:\n        self.n = n\n\n"
+        "    n: int32\n"
+        "    def __init__(self, n: int32) -> None:\n        self.n = n\n\n"
         "def main() -> None:\n    pass\nmain()\n")
     assert "ctor R.__init__:" in out
     assert "mil n = %n" in out
@@ -135,8 +135,8 @@ def test_dump_includes_constructors():
 def test_resumable_keys_are_stable_across_runs():
     # Rendered keys must not be raw id()s -- otherwise the dump differs
     # run to run and cannot be diffed.
-    src = ("import asyncio\nfrom tpy import Int32\n\n"
-           "async def f(n: Int32) -> Int32:\n"
+    src = ("import asyncio\nfrom tpy import int32\n\n"
+           "async def f(n: int32) -> int32:\n"
            "    await asyncio.sleep(0)\n"
            "    return n\n\n"
            "def main() -> None:\n    pass\nmain()\n")
@@ -149,33 +149,33 @@ def test_resumable_keys_are_stable_across_runs():
 # otherwise render as empty text (how the except-binding bug hid).
 _CONSTRUCTS = [
     ("except_binding",
-     "def f(n: Int32) -> Int32:\n"
+     "def f(n: int32) -> int32:\n"
      "    try:\n        return 1 // n\n"
      "    except ZeroDivisionError as e:\n        print(e)\n        return 0\n",
      "except "),
     ("for_else",
-     "def f(xs: list[Int32]) -> Int32:\n"
+     "def f(xs: list[int32]) -> int32:\n"
      "    for x in xs:\n        if x > 2:\n            return x\n"
      "    else:\n        return -1\n    return 0\n",
      "else:"),
     ("raise_stmt",
-     "def f(n: Int32) -> Int32:\n"
+     "def f(n: int32) -> int32:\n"
      "    if n < 0:\n        raise ValueError('neg')\n    return n\n",
      "raise "),
     ("membership",
-     "def f(xs: list[Int32], n: Int32) -> bool:\n    return n in xs\n",
+     "def f(xs: list[int32], n: int32) -> bool:\n    return n in xs\n",
      "in["),
     ("str_membership",
      "def f(s: str) -> bool:\n    return 'a' in s\n",
      "str_in("),
     ("slice_assign",
-     "def f(xs: list[Int32]) -> None:\n    xs[0:2] = [7, 8]\n",
+     "def f(xs: list[int32]) -> None:\n    xs[0:2] = [7, 8]\n",
      "] = "),
     ("setitem",
-     "def f(d: dict[Int32, Int32]) -> None:\n    d[1] = 2\n",
+     "def f(d: dict[int32, int32]) -> None:\n    d[1] = 2\n",
      " = "),
     ("inplace_container",
-     "def f(xs: list[Int32], ys: list[Int32]) -> None:\n    xs += ys\n",
+     "def f(xs: list[int32], ys: list[int32]) -> None:\n    xs += ys\n",
      "inplace["),
 ]
 
@@ -183,7 +183,7 @@ _CONSTRUCTS = [
 @pytest.mark.parametrize("name,body,expect",
                          _CONSTRUCTS, ids=[c[0] for c in _CONSTRUCTS])
 def test_construct_renders(name, body, expect):
-    out = _dump("from tpy import Int32\n\n" + body
+    out = _dump("from tpy import int32\n\n" + body
                 + "\ndef main() -> None:\n    pass\nmain()\n")
     assert expect in out, f"{name} did not render: {out}"
 
@@ -192,8 +192,8 @@ def test_except_binding_is_rendered():
     # Regression: the arm read `.name` where the field is `.binding`, so the
     # `as e` half rendered as nothing at all.
     out = _dump(
-        "from tpy import Int32\n\n"
-        "def f(n: Int32) -> Int32:\n"
+        "from tpy import int32\n\n"
+        "def f(n: int32) -> int32:\n"
         "    try:\n        return 1 // n\n"
         "    except ZeroDivisionError as e:\n        print(e)\n        return 0\n\n"
         "def main() -> None:\n    pass\nmain()\n")
@@ -207,9 +207,9 @@ def test_bodyless_binding_says_it_has_no_body():
         "# tpy: include(\"<math.h>\")\n"
         "# tpy: link(\"m\")\n"
         "from tpy.extern import native\n"
-        "from tpy import Float64\n\n"
+        "from tpy import float64\n\n"
         "@native(binding=\"C\")\n"
-        "def sqrt(x: Float64) -> Float64: ...\n\n"
+        "def sqrt(x: float64) -> float64: ...\n\n"
         "def main() -> None:\n    print(sqrt(4.0))\nmain()\n")
     assert "fn sqrt: <no body to lower>" in out, out
     assert "rejected" not in out, out
@@ -220,20 +220,20 @@ def test_bodyless_binding_says_it_has_no_body():
 # dict of Box rebound to another dict; if lowering ever admits it this test
 # goes vacuous, which the first assertion catches.
 _REJECTING_MODULE = (
-    "from tpy import Int32\n"
+    "from tpy import int32\n"
     "from tplib import Box\n\n\n"
     "class Point:\n"
-    "    x: Int32\n\n"
-    "    def __init__(self, x: Int32) -> None:\n"
+    "    x: int32\n\n"
+    "    def __init__(self, x: int32) -> None:\n"
     "        self.x = x\n\n\n"
-    "def lowers(n: Int32) -> Int32:\n"
+    "def lowers(n: int32) -> int32:\n"
     "    return n + 1\n\n\n"
     "def rejects() -> None:\n"
     "    d = {1: Box(Point(1))}\n"
     "    other = {2: Box(Point(2))}\n"
     "    d = other\n"
     "    print(len(d))\n\n\n"
-    "def after() -> Int32:\n"
+    "def after() -> int32:\n"
     "    return 2\n\n\n"
     "def main() -> None:\n    print(lowers(1))\nmain()\n")
 
@@ -243,7 +243,7 @@ def test_rejected_body_names_its_reason():
     assert "fn rejects: <rejected: " in out, out
     # The bodies BEFORE the reject are the point of dumping a rejecting
     # module at all: a reject used to abort the module and print nothing.
-    assert "fn lowers(n: Int32) -> Int32:" in out, out
+    assert "fn lowers(n: int32) -> int32:" in out, out
 
 
 def test_bodies_after_a_reject_are_not_called_rejected():

@@ -10,7 +10,7 @@ void main() {
     Holder h1 = Holder(std::nullopt);
     // print(h1.value is None)
     std::cout << ::tpy::print_bool((!h1.value.has_value())) << "\n";
-    // h2 = Holder(Int32(42))
+    // h2 = Holder(int32(42))
     Holder h2 = Holder(42);
     // print(h2.value)
     std::cout << ::tpy::print_optional_val(h2.value) << "\n";

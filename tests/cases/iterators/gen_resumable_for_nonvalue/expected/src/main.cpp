@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def doubled(items: list[Node]) -> Iterator[Int32]:
+// def doubled(items: list[Node]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_doubled::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -38,7 +38,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_doubled::__next__() {
 }
 
 
-// def doubled(items: list[Node]) -> Iterator[Int32]:
+// def doubled(items: list[Node]) -> Iterator[int32]:
 __gen_doubled doubled(std::vector<Node>& items) {
     return __gen_doubled(items);
 }

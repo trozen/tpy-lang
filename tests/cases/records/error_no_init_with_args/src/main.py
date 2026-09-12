@@ -1,9 +1,9 @@
 # Records without __init__ reject positional constructor arguments.
-from tpy import Int32
+from tpy import int32
 
 class Foo:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 def main() -> None:
     f = Foo(1, 2)  # tpyc: error(/has no __init__/)

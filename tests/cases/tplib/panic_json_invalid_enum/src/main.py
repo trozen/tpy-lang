@@ -1,5 +1,5 @@
 # Test panic on invalid enum value in JSON.
-from tpy import Int32, try_parse
+from tpy import int32, try_parse
 from enum import Enum
 from tplib.json.model import model
 

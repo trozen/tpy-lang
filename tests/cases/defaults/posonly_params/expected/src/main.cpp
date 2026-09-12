@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def f(a: Int32, /, b: Int32 = 5) -> Int32:
+// def f(a: int32, /, b: int32 = 5) -> int32:
 int32_t f(int32_t a, int32_t b) {
     // return a * 100 + b
     return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(a, 100)), b));
 }
 
-// def g(a: Int32, b: Int32, /, c: Int32 = 7) -> Int32:
+// def g(a: int32, b: int32, /, c: int32 = 7) -> int32:
 int32_t g(int32_t a, int32_t b, int32_t c) {
     // return a + b + c
     return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(a, b)), c));

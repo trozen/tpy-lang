@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def make(n: Int32) -> Own[Payload]:
+// async def make(n: int32) -> Own[Payload]:
 ::tpystd::tpy::Poll<Payload> __coro_make::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
@@ -20,18 +20,18 @@ namespace tpyapp::main {
 }
 
 
-// async def make(n: Int32) -> Own[Payload]:
+// async def make(n: int32) -> Own[Payload]:
 __coro_make make(int32_t n) {
     return __coro_make(n);
 }
 
-// def take(p: Own[Payload]) -> Int32:
+// def take(p: Own[Payload]) -> int32:
 int32_t take(Payload&& p) {
     // return p.n
     return p.n;
 }
 
-// async def into_container() -> Int32:
+// async def into_container() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_into_container::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -60,12 +60,12 @@ int32_t take(Payload&& p) {
 }
 
 
-// async def into_container() -> Int32:
+// async def into_container() -> int32:
 __coro_into_container into_container() {
     return __coro_into_container();
 }
 
-// async def into_call_arg() -> Int32:
+// async def into_call_arg() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_into_call_arg::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -90,12 +90,12 @@ __coro_into_container into_container() {
 }
 
 
-// async def into_call_arg() -> Int32:
+// async def into_call_arg() -> int32:
 __coro_into_call_arg into_call_arg() {
     return __coro_into_call_arg();
 }
 
-// async def into_field() -> Int32:
+// async def into_field() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_into_field::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -122,12 +122,12 @@ __coro_into_call_arg into_call_arg() {
 }
 
 
-// async def into_field() -> Int32:
+// async def into_field() -> int32:
 __coro_into_field into_field() {
     return __coro_into_field();
 }
 
-// async def in_a_loop() -> Int32:
+// async def in_a_loop() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_in_a_loop::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -169,7 +169,7 @@ __coro_into_field into_field() {
 }
 
 
-// async def in_a_loop() -> Int32:
+// async def in_a_loop() -> int32:
 __coro_in_a_loop in_a_loop() {
     return __coro_in_a_loop();
 }

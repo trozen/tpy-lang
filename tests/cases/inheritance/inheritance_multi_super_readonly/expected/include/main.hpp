@@ -17,14 +17,14 @@ void main();
 
 // class Counter:
 struct Counter {
-    // n: Int32
+    // n: int32
     int32_t n;
 
     // def __init__(self) -> None:
     Counter();
 
     // @readonly
-    // def get_n(self) -> Int32:
+    // def get_n(self) -> int32:
     int32_t get_n() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
@@ -71,7 +71,7 @@ inline std::ostream& operator<<(std::ostream& os, const Both& obj) {
 inline Counter::Counter() : n(0) {}
 
 // @readonly
-// def get_n(self) -> Int32:
+// def get_n(self) -> int32:
 inline int32_t Counter::get_n() const {
     // return self.n
     return this->n;

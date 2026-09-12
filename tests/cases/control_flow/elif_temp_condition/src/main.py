@@ -1,11 +1,11 @@
 # elif with a temp-producing condition (list literal passed by mutable ref).
 # The temp declaration must be scoped correctly -- not between } and else.
-from tpy import Int32
+from tpy import int32
 
-def has_items(items: list[Int32]) -> bool:
+def has_items(items: list[int32]) -> bool:
     return len(items) > 0
 
-def test(x: Int32) -> Int32:
+def test(x: int32) -> int32:
     if x < 0:
         return -1
     elif has_items([10, 20]):

@@ -1,15 +1,15 @@
 # Same-name fields with the leading-underscore "private" idiom: the
 # mechanism is identical to public fields; each subobject legitimately
 # owns its own state, addressed via BaseN._field.
-from tpy import Int32
+from tpy import int32
 
 
 class RateLimiter:
-    _count: Int32
+    _count: int32
 
 
 class CacheStats:
-    _count: Int32
+    _count: int32
 
 
 class Service(RateLimiter, CacheStats):

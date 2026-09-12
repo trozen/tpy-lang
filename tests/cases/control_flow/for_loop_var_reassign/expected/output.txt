@@ -5,26 +5,26 @@ module 3
 3
 4
 done
-Int32 +1 5 10
-Int32 -1 5 15
-Int32 +2 5 20
-Int32 -2 5 30
-Int32 variable 5 20
-Int32 +1 5 10
-Int32 -1 5 15
-Int32 +2 5 20
-Int32 -2 5 30
-Int32 variable 5 -20
-Int64 +1 5 10
-Int64 -1 5 15
-Int64 +2 5 20
-Int64 -2 5 30
-Int64 variable 5 20
-Int64 +1 5 10
-Int64 -1 5 15
-Int64 +2 5 20
-Int64 -2 5 30
-Int64 variable 5 -20
+int32 +1 5 10
+int32 -1 5 15
+int32 +2 5 20
+int32 -2 5 30
+int32 variable 5 20
+int32 +1 5 10
+int32 -1 5 15
+int32 +2 5 20
+int32 -2 5 30
+int32 variable 5 -20
+int64 +1 5 10
+int64 -1 5 15
+int64 +2 5 20
+int64 -2 5 30
+int64 variable 5 20
+int64 +1 5 10
+int64 -1 5 15
+int64 +2 5 20
+int64 -2 5 30
+int64 variable 5 -20
 BigInt +1 5 10
 BigInt -1 5 15
 BigInt +2 5 20

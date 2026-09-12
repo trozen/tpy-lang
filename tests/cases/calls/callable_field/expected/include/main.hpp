@@ -15,13 +15,13 @@ void main();
 
 // class Handler:
 struct Handler {
-    // on_event: Callable[[Int32], None]
+    // on_event: Callable[[int32], None]
     std::function<void(int32_t)> on_event;
 
-    // def __init__(self, cb: Callable[[Int32], None]) -> None:
+    // def __init__(self, cb: Callable[[int32], None]) -> None:
     explicit Handler(std::function<void(int32_t)> cb);
 
-    // def trigger(self, value: Int32) -> None:
+    // def trigger(self, value: int32) -> None:
     void trigger(int32_t value) const;
 
     // def __str__(self) -> str:
@@ -35,10 +35,10 @@ inline std::ostream& operator<<(std::ostream& os, const Handler& obj) {
 }
 
 
-// def __init__(self, cb: Callable[[Int32], None]) -> None:
+// def __init__(self, cb: Callable[[int32], None]) -> None:
 inline Handler::Handler(std::function<void(int32_t)> cb) : on_event(cb) {}
 
-// def trigger(self, value: Int32) -> None:
+// def trigger(self, value: int32) -> None:
 inline void Handler::trigger(int32_t value) const {
     // self.on_event(value)
     (*this).on_event(value);

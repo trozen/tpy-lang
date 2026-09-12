@@ -46,11 +46,11 @@ std::string _resolve_system_ca_file() {
     return "";
 }
 
-// def _errstr(rc: Int32) -> str:
+// def _errstr(rc: int32) -> str:
 std::string _errstr(int32_t rc) {
-    // buf = UninitHeapStorage[UInt8](UInt32(160))
+    // buf = UninitHeapStorage[uint8](uint32(160))
     ::tpy::UninitHeapStorage<uint8_t> buf = ::tpy::UninitHeapStorage<uint8_t>(160);
-    // mbedtls.tls_strerror(rc, buf.ptr(), UInt64(160))
+    // mbedtls.tls_strerror(rc, buf.ptr(), uint64(160))
     ::tpy_tls_strerror(rc, buf.ptr(), 160);
     // return unsafe_str_from_cstr(unsafe_cast(buf.ptr()))
     return std::string(reinterpret_cast<const char*>(reinterpret_cast<const uint8_t*>(buf.ptr())));
@@ -64,7 +64,7 @@ void _fail(::tpy_tls_session* s, std::string_view msg) {
     throw SSLError(msg);
 }
 
-// def _raise_io_error(rc: Int32) -> None:
+// def _raise_io_error(rc: int32) -> None:
 void _raise_io_error(int32_t rc) {
     // c = mbedtls.tls_classify(rc)
     int32_t c = ::tpy_tls_classify(rc);
@@ -97,35 +97,35 @@ SSLContext create_default_context() {
     return ctx;
 }
 
-// def _bundled_ca_count() -> Int32:
+// def _bundled_ca_count() -> int32:
 int32_t _bundled_ca_count() {
     // return mbedtls.tls_bundled_ca_count()
     return ::tpy_tls_bundled_ca_count();
 }
 
 
-// def read_into(self, size: Int32) -> bytes:
+// def read_into(self, size: int32) -> bytes:
 ::tpy::Bytes _SslSession::read_into(int32_t size) const {
-    // if size <= Int32(0):
+    // if size <= int32(0):
     if ((size <= 0)) {
         // return b""
         return ::tpy::Bytes{};
     }
-    // buf = UninitHeapStorage[UInt8](UInt32.trunc(size))
+    // buf = UninitHeapStorage[uint8](uint32.trunc(size))
     ::tpy::UninitHeapStorage<uint8_t> buf = ::tpy::UninitHeapStorage<uint8_t>(static_cast<uint32_t>(size));
-    // rc = mbedtls.tls_read(self._s, buf.ptr(), UInt64(size))
+    // rc = mbedtls.tls_read(self._s, buf.ptr(), uint64(size))
     int32_t rc = ::tpy_tls_read(this->_s, buf.ptr(), ::tpy::int_cast_check<uint64_t>(size));
     // if mbedtls.tls_classify(rc) == 3:  # peer close_notify -> EOF
     if ((::tpy_tls_classify(rc) == 3)) {
         // return b""
         return ::tpy::Bytes{};
     }
-    // if rc < Int32(0):
+    // if rc < int32(0):
     if ((rc < 0)) {
         // _raise_io_error(rc)
         _raise_io_error(rc);
     }
-    // return unsafe_bytes_from_buf(buf.ptr(), UInt64(rc))
+    // return unsafe_bytes_from_buf(buf.ptr(), uint64(rc))
     return ::tpy::bytes_from_buf(buf.ptr(), ::tpy::int_cast_check<uint64_t>(rc));
 }
 
@@ -182,7 +182,7 @@ SSLSocket SSLContext::wrap_socket(::tpystd::socket::socket&& sock, std::string_v
         // host = server_hostname
         std::string_view host = server_hostname;
         // if mbedtls.tls_set_hostname(s, unsafe_cast(unsafe_ptr(host)),
-        // UInt64(len(host))) != 0:
+        // uint64(len(host))) != 0:
         if ((::tpy_tls_set_hostname(s, reinterpret_cast<const uint8_t*>(host.data()), ::tpy::int_cast_check<uint64_t>(::tpy::__len__(host))) != 0)) {
             // _fail(s, "could not set TLS hostname")
             _fail(s, "could not set TLS hostname");
@@ -201,12 +201,12 @@ SSLSocket SSLContext::wrap_socket(::tpystd::socket::socket&& sock, std::string_v
 
 // def _config_client(self, s: Ptr[mbedtls.Session]) -> None:
 void SSLContext::_config_client(::tpy_tls_session* s) const {
-    // verify = Int32(1) if self.verify_mode == CERT_REQUIRED else Int32(0)
+    // verify = int32(1) if self.verify_mode == CERT_REQUIRED else int32(0)
     int32_t verify = (((this->verify_mode == CERT_REQUIRED)) ? (1) : (0));
     // ca = self._cafile  # "" -> no trust store loaded (len 0; shim skips it)
     std::string_view ca = this->_cafile;
     // rc = mbedtls.tls_config_client(
-    // s, unsafe_cast(unsafe_ptr(ca)), UInt64(len(ca)), verify)
+    // s, unsafe_cast(unsafe_ptr(ca)), uint64(len(ca)), verify)
     int32_t rc = ::tpy_tls_config_client(s, reinterpret_cast<const uint8_t*>(ca.data()), ::tpy::int_cast_check<uint64_t>(::tpy::__len__(ca)), verify);
     // if rc != 0:
     if ((rc != 0)) {
@@ -230,7 +230,7 @@ void SSLContext::_config_client(::tpy_tls_session* s) const {
         // sp = self._system_cafile
         std::string_view sp = this->_system_cafile;
         // mbedtls.tls_add_ca_file(s, unsafe_cast(unsafe_ptr(sp)),
-        // UInt64(len(sp)))
+        // uint64(len(sp)))
         ::tpy_tls_add_ca_file(s, reinterpret_cast<const uint8_t*>(sp.data()), ::tpy::int_cast_check<uint64_t>(::tpy::__len__(sp)));
     }
     // # Best-effort, matching CPython/OpenSSL: an unreadable or
@@ -270,24 +270,24 @@ bool SSLSocket::do_handshake() {
 
 // def sendall(self, data: bytes) -> None:
 void SSLSocket::sendall(::tpy::BytesView data) {
-    // total: UInt64 = UInt64(len(data))
+    // total: uint64 = uint64(len(data))
     uint64_t total = ::tpy::int_cast_check<uint64_t>(::tpy::__len__(data));
-    // sent: UInt64 = 0
+    // sent: uint64 = 0
     uint64_t sent = 0;
-    // data_ptr: Ptr[readonly[UInt8]] = unsafe_ptr(data)
+    // data_ptr: Ptr[readonly[uint8]] = unsafe_ptr(data)
     const uint8_t* data_ptr = data.data();
     // while sent < total:
     while ((sent < total)) {
         // rc = mbedtls.tls_write(self._session.get().raw(),
-        // unsafe_ptr_add(data_ptr, Int64.trunc(sent)),
+        // unsafe_ptr_add(data_ptr, int64.trunc(sent)),
         // total - sent)
         int32_t rc = ::tpy_tls_write(this->_session.get().raw(), (data_ptr + static_cast<int64_t>(sent)), (::tpy::sub_check<uint64_t>(total, sent)));
-        // if rc < Int32(0):
+        // if rc < int32(0):
         if ((rc < 0)) {
             // _raise_io_error(rc)
             _raise_io_error(rc);
         }
-        // sent = sent + UInt64(rc)
+        // sent = sent + uint64(rc)
         sent = (::tpy::add_check<uint64_t>(sent, ::tpy::int_cast_check<uint64_t>(rc)));
     }
 }

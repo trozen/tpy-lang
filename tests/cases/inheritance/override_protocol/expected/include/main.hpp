@@ -21,15 +21,15 @@ void main();
 
 // class Box(Measurable):
 struct Box {
-    // volume: Int32
+    // volume: int32
     int32_t volume;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Box() = default;
     explicit Box(int32_t v);
 
     // @override
-    // def measure(self) -> Int32:  # tpyc: ok
+    // def measure(self) -> int32:  # tpyc: ok
     int32_t measure() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
@@ -40,11 +40,11 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Box::Box(int32_t v) : volume(v) {}
 
 // @override
-// def measure(self) -> Int32:  # tpyc: ok
+// def measure(self) -> int32:  # tpyc: ok
 inline int32_t Box::measure() const {
     // return self.volume
     return this->volume;

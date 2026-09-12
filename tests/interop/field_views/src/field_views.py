@@ -11,18 +11,18 @@
 # derived-typed field returned as the base -- stays on the copy path, but a
 # runtime witness is blocked by the derived-typed-field emit-order bug in
 # BUGS.md; the classifier's exact-match gate is comp-pinned instead.)
-from tpy import Int32, readonly
+from tpy import int32, readonly
 from tpy.extern import export
 
 
 @export
 class Cell:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
-    def __next__(self) -> Int32:
+    def __next__(self) -> int32:
         if self.n <= 0:
             raise StopIteration
         self.n -= 1
@@ -34,7 +34,7 @@ class Pack:
     first: Cell
     second: Cell
 
-    def __init__(self, a: Int32, b: Int32):
+    def __init__(self, a: int32, b: int32):
         self.first = Cell(a)
         self.second = Cell(b)
 

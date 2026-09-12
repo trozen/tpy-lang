@@ -15,7 +15,7 @@ from socket import (
     socket, AF_INET, SOCK_STREAM, SOL_SOCKET, SO_REUSEADDR,
     create_server,
 )
-from tpy import Int32
+from tpy import int32
 
 
 def main() -> None:
@@ -25,7 +25,7 @@ def main() -> None:
     )
     # TODO: changing this to int breaks c++ compilation
     parser.add_argument(
-        "--port", type=Int32, default=8765, help="bind port",
+        "--port", type=int32, default=8765, help="bind port",
     )
     args = parser.parse_args()
 

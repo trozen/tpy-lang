@@ -1,13 +1,13 @@
 # A STORAGE-form tuple name (the alias local off another record's field) copies
 # bare into a tuple field -- no borrow-to-storage lift, unlike a borrow-tuple
 # parameter.
-from tpy import Int32
+from tpy import int32
 
 
 class Elem:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 

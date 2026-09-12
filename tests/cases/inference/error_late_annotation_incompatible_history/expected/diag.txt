@@ -1,1 +1,1 @@
-main.py:3: error: Assignment to 'x' is incompatible with later annotation 'Int32' at line 4: Type mismatch: expected Int32, got str
+main.py:3: error: Assignment to 'x' is incompatible with later annotation 'int32' at line 4: Type mismatch: expected int32, got str

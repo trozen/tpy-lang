@@ -1,12 +1,12 @@
 import asyncio
-from tpy import Int32
+from tpy import int32
 
-async def add_one(x: Int32) -> Int32:
-    return x + Int32(1)
+async def add_one(x: int32) -> int32:
+    return x + int32(1)
 
-async def caller() -> Int32:
+async def caller() -> int32:
     # Two awaits in one expression -- requires the await-lift pass.
-    return await add_one(Int32(5)) + await add_one(Int32(10))
+    return await add_one(int32(5)) + await add_one(int32(10))
 
 async def main_coro() -> None:
     val = await caller()

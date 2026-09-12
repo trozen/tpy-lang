@@ -22,24 +22,24 @@ from .testutil import (_assert_rejects_at, _compile, _entry,
 from ..codegen_cpp.context import CodeGenError, CodeGenOptions
 
 # A guarded class pattern over a union subject: the plain-function fold.
-BODY_SRC = '''from tpy import Int32
+BODY_SRC = '''from tpy import int32
 
 
 class Rec:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
 class Other:
-    m: Int32
+    m: int32
 
-    def __init__(self, m: Int32) -> None:
+    def __init__(self, m: int32) -> None:
         self.m = m
 
 
-def pick(v: Rec | Other) -> Int32:
+def pick(v: Rec | Other) -> int32:
     match v:
         case Rec(n=1) if v.n > 0:
             return 1
@@ -56,13 +56,13 @@ main()
 
 # A record-valued conditional of two LVALUE arms in the member-init list --
 # the `?:` is an lvalue there, not the prvalue the member-init row renders.
-CTOR_SRC = '''from tpy import Int32
+CTOR_SRC = '''from tpy import int32
 
 
 class A:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
@@ -83,20 +83,20 @@ main()
 '''
 
 # A module-scope union local needing a rebind slot: the top-level fold.
-TOP_LEVEL_SRC = '''from tpy import Int32
+TOP_LEVEL_SRC = '''from tpy import int32
 
 
 class P:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
 class Q:
-    y: Int32
+    y: int32
 
-    def __init__(self, y: Int32) -> None:
+    def __init__(self, y: int32) -> None:
         self.y = y
 
 
@@ -108,14 +108,14 @@ for i in range(2):
 
 # A walrus in a generator's yield value: the resumable-frame fold.
 RESUMABLE_SRC = '''from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
-def make_pair(i: Int32) -> tuple[Int32, Int32]:
+def make_pair(i: int32) -> tuple[int32, int32]:
     return (i, i * 2)
 
 
-def pairs() -> Iterator[Int32]:
+def pairs() -> Iterator[int32]:
     yield -1
     i = 1
     t = make_pair(0)
@@ -136,17 +136,17 @@ main()
 # An Optional yield slot in a lambda-peephole generator: the simple-generator
 # fold, which is a separate lowering entry from the resumable frame above.
 SIMPLE_GEN_SRC = '''from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
 class P:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
-def opts(n: Int32) -> Iterator[P | None]:
+def opts(n: int32) -> Iterator[P | None]:
     i = 0
     while i < n:
         yield P(i)
@@ -164,9 +164,9 @@ main()
 
 # A union-element tuple constant, in each of the two non-body positions.
 FINAL_GLOBAL_SRC = '''from typing import Final
-from tpy import Int32
+from tpy import int32
 
-A: Final[tuple[Int32, Int32 | float]] = (1, 2)
+A: Final[tuple[int32, int32 | float]] = (1, 2)
 
 
 def main() -> None:
@@ -178,24 +178,24 @@ main()
 
 # BODY_SRC's guarded class pattern as an IMPORTED module, so the rejecting
 # body sits in a file the caller does not name.
-IMPORTED_SRC = '''from tpy import Int32
+IMPORTED_SRC = '''from tpy import int32
 
 
 class Rec:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
 class Other:
-    m: Int32
+    m: int32
 
-    def __init__(self, m: Int32) -> None:
+    def __init__(self, m: int32) -> None:
         self.m = m
 
 
-def pick(v: Rec | Other) -> Int32:
+def pick(v: Rec | Other) -> int32:
     match v:
         case Rec(n=1) if v.n > 0:
             return 1
@@ -214,11 +214,11 @@ main()
 '''
 
 CLASS_CONST_SRC = '''from typing import Final
-from tpy import Int32
+from tpy import int32
 
 
 class C:
-    A: Final[tuple[Int32, Int32 | float]] = (1, 2)
+    A: Final[tuple[int32, int32 | float]] = (1, 2)
 
 
 def main() -> None:
@@ -343,8 +343,8 @@ def test_internal_error_is_not_dressed_as_unsupported(monkeypatch) -> None:
         raise RuntimeError("lowering bug")
 
     monkeypatch.setattr(thir_statements, "_lower_stmt_dispatch", boom)
-    src = ("from tpy import Int32\n\n\n"
-           "def add(a: Int32, b: Int32) -> Int32:\n"
+    src = ("from tpy import int32\n\n\n"
+           "def add(a: int32, b: int32) -> int32:\n"
            "    return a + b\n\n\n"
            "add(1, 2)\n")
     compiler, modules = _compile(src)

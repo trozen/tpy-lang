@@ -11,12 +11,12 @@ bool b0{};
 bool b1{};
 // b2: bool = bool(False)
 bool b2{};
-// # From Int32
-// b3: bool = bool(Int32(0))
+// # From int32
+// b3: bool = bool(int32(0))
 bool b3{};
-// b4: bool = bool(Int32(1))
+// b4: bool = bool(int32(1))
 bool b4{};
-// b5: bool = bool(Int32(-5))
+// b5: bool = bool(int32(-5))
 bool b5{};
 // # From int (BigInt)
 // b6: bool = bool(0)
@@ -45,16 +45,16 @@ void __tpy_init() {
     b2 = false;
     // print(b2)  # False
     std::cout << ::tpy::print_bool(b2) << "\n";
-    // # From Int32
-    // b3: bool = bool(Int32(0))
+    // # From int32
+    // b3: bool = bool(int32(0))
     b3 = (0 != 0);
     // print(b3)  # False
     std::cout << ::tpy::print_bool(b3) << "\n";
-    // b4: bool = bool(Int32(1))
+    // b4: bool = bool(int32(1))
     b4 = (1 != 0);
     // print(b4)  # True
     std::cout << ::tpy::print_bool(b4) << "\n";
-    // b5: bool = bool(Int32(-5))
+    // b5: bool = bool(int32(-5))
     b5 = (-5 != 0);
     // print(b5)  # True
     std::cout << ::tpy::print_bool(b5) << "\n";

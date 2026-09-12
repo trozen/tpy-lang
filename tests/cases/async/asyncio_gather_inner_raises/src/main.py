@@ -16,22 +16,22 @@
 #     CancelledError instead of completing normally. "good finished"
 #     must NOT print.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
-async def good() -> Int32:
+async def good() -> int32:
     await asyncio.sleep(0.001)
     print("good finished")
-    return Int32(99)
+    return int32(99)
 
 
-async def bad() -> Int32:
+async def bad() -> int32:
     print("bad raising")
     raise ValueError("bad")
 
 
 async def main_coro() -> None:
-    tasks: list[asyncio.Task[Int32]] = []
+    tasks: list[asyncio.Task[int32]] = []
     tasks.append(asyncio.create_task(bad()))
     tasks.append(asyncio.create_task(good()))
     try:

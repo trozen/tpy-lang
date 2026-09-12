@@ -1,5 +1,5 @@
 # Contextual inference still fails when no context is available.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 def make_empty[T]() -> Own[list[T]]:
     return []

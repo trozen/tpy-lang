@@ -4,16 +4,16 @@
 # `Class&` (not `const Class&`). Exercises the non-const __self
 # branch in AsyncCoroCodegen._classify_params.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
 class Counter:
-    count: Int32
+    count: int32
 
     def __init__(self) -> None:
         self.count = 0
 
-    async def bump(self, by: Int32) -> Int32:
+    async def bump(self, by: int32) -> int32:
         self.count += by
         return self.count
 

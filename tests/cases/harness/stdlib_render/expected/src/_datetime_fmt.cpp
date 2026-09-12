@@ -4,8 +4,8 @@
 namespace tpystd::_datetime_fmt {
 
 
-// def _strftime(fmt: str, y: Int32, mo: Int32, d: Int32, hh: Int32, mm: Int32,
-// ss: Int32, us: Int32, has_tz: bool, off_us: int,
+// def _strftime(fmt: str, y: int32, mo: int32, d: int32, hh: int32, mm: int32,
+// ss: int32, us: int32, has_tz: bool, off_us: int,
 // zone: str) -> str:
 std::string _strftime(std::string_view fmt, int32_t y, int32_t mo, int32_t d, int32_t hh, int32_t mm, int32_t ss, int32_t us, bool has_tz, const ::tpy::BigInt& off_us, std::string_view zone) {
     // # The shared pure-TPy directive engine. Divergence-relevant facts, all
@@ -15,11 +15,11 @@ std::string _strftime(std::string_view fmt, int32_t y, int32_t mo, int32_t d, in
     // # '%' is kept; %z/%Z render empty for naive values.
     // o = _ymd2ord(int(y), int(mo), int(d))
     ::tpy::BigInt o = ::tpystd::_datetime_cal::_ymd2ord(::tpy::BigInt(static_cast<int64_t>(y)), ::tpy::BigInt(static_cast<int64_t>(mo)), ::tpy::BigInt(static_cast<int64_t>(d)));
-    // wd = Int32((o + 6) % 7)          # Mon=0
+    // wd = int32((o + 6) % 7)          # Mon=0
     int32_t wd = (((((o) + (::tpy::BigInt(6)))) % (::tpy::BigInt(7)))).to_fixed_check<int32_t>();
-    // wd_sun0 = Int32(o % 7)           # Sun=0
+    // wd_sun0 = int32(o % 7)           # Sun=0
     int32_t wd_sun0 = (((o) % (::tpy::BigInt(7)))).to_fixed_check<int32_t>();
-    // yday0 = Int32(o - _days_before_year(int(y)) - 1)
+    // yday0 = int32(o - _days_before_year(int(y)) - 1)
     int32_t yday0 = (((((o) - (::tpystd::_datetime_cal::_days_before_year(::tpy::BigInt(static_cast<int64_t>(y)))))) - (::tpy::BigInt(1)))).to_fixed_check<int32_t>();
     // out = ""
     std::string out = "";
@@ -145,7 +145,7 @@ std::string _strftime(std::string_view fmt, int32_t y, int32_t mo, int32_t d, in
             const ::tpy::BigInt& iso_y2 = std::get<0>(__tup_2);
             const ::tpy::BigInt& iso_w2 = std::get<1>(__tup_2);
             const ::tpy::BigInt& iso_d2 = std::get<2>(__tup_2);
-            // out = out + f"{Int32(iso_w2):02d}"
+            // out = out + f"{int32(iso_w2):02d}"
             out += std::format("{:02d}", (iso_w2).to_fixed_check<int32_t>());
         // elif c == "w":
         } else if ((c == 'w')) {
@@ -195,7 +195,7 @@ std::string _strftime(std::string_view fmt, int32_t y, int32_t mo, int32_t d, in
     return out;
 }
 
-// def _format_time(hh: Int32, mm: Int32, ss: Int32, us: Int32,
+// def _format_time(hh: int32, mm: int32, ss: int32, us: int32,
 // timespec: str = "auto") -> str:
 std::string _format_time(int32_t hh, int32_t mm, int32_t ss, int32_t us, std::string_view timespec) {
     // # 'milliseconds' truncates (never rounds) -- CPython floors the us field.
@@ -249,9 +249,9 @@ std::string _offset_str(const ::tpy::BigInt& off_us, std::string_view sep) {
     // # and the synthesized tz name alike).
     // sign = "+" if off_us >= 0 else "-"
     std::string_view sign = (((off_us >= 0)) ? ("+") : ("-"));
-    // # A valid offset is < 24h in microseconds, so Int64 holds it (BigInt
+    // # A valid offset is < 24h in microseconds, so int64 holds it (BigInt
     // # values do not support format specs).
-    // a = Int64(off_us if off_us >= 0 else -off_us)
+    // a = int64(off_us if off_us >= 0 else -off_us)
     int64_t a = ((((off_us >= 0)) ? (off_us) : (-(off_us)))).to_fixed_check<int64_t>();
     // total_s, us = divmod(a, 1000000)
     auto __tup_1 = ::tpy::divmod_fixed<int64_t>(a, 1000000);

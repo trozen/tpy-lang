@@ -2,11 +2,11 @@
 # epoll reactor. The reader/writer are @nocopy, moved out of the await tuple
 # (a silent copy would be a compile error), forcing the value-vs-reference test.
 import asyncio
-from tpy import Int32
+from tpy import int32
 from socket import socket, AF_INET, SOCK_STREAM
 
 
-async def client_role(port: Int32) -> None:
+async def client_role(port: int32) -> None:
     reader, writer = await asyncio.open_connection("127.0.0.1", port)
     writer.write(b"ping\n")
     writer.write(b"more")

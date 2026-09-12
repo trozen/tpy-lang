@@ -5,24 +5,24 @@
 # arrival arrays reassemble by input index regardless of where the
 # exceptions land.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
-async def good(n: Int32) -> Int32:
+async def good(n: int32) -> int32:
     await asyncio.sleep(0.001)
     return n
 
 
-async def bad(tag: Int32) -> Int32:
+async def bad(tag: int32) -> int32:
     await asyncio.sleep(0.001)
     raise ValueError(f"boom-{tag}")
 
 
 async def main_coro() -> None:
-    tasks: list[asyncio.Task[Int32]] = []
-    tasks.append(asyncio.create_task(bad(Int32(0))))     # exc at index 0
-    tasks.append(asyncio.create_task(good(Int32(99))))   # ok at index 1
-    tasks.append(asyncio.create_task(bad(Int32(2))))     # exc at last index
+    tasks: list[asyncio.Task[int32]] = []
+    tasks.append(asyncio.create_task(bad(int32(0))))     # exc at index 0
+    tasks.append(asyncio.create_task(good(int32(99))))   # ok at index 1
+    tasks.append(asyncio.create_task(bad(int32(2))))     # exc at last index
     results = await asyncio.gather_list_settled(tasks)
     for r in results:
         if r.exception is not None:

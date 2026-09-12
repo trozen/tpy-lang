@@ -1,13 +1,13 @@
 # Auto-move at return site: return local as Own[T] without copy()
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 
-def make_point(x: Int32, y: Int32) -> Own[Point]:
+def make_point(x: int32, y: int32) -> Own[Point]:
     p = Point()
     p.x = x
     p.y = y

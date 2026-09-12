@@ -1,14 +1,14 @@
-from tpy import Int32
+from tpy import int32
 
 class Numbers:
-    data: list[Int32]
+    data: list[int32]
 
-    def __init__(self, items: list[Int32]) -> None:
+    def __init__(self, items: list[int32]) -> None:
         self.data = items
 
-    def sum(self) -> Int32:
-        total: Int32 = 0
-        i: Int32 = 0
+    def sum(self) -> int32:
+        total: int32 = 0
+        i: int32 = 0
         while i < len(self.data):
             total += self.data[i]
             i += 1
@@ -20,7 +20,7 @@ def main() -> None:
     print(n1.sum())  # 15
 
     # Constructor with variable
-    items: list[Int32] = [10, 20, 30]
+    items: list[int32] = [10, 20, 30]
     n2: Numbers = Numbers(items)
     print(n2.sum())  # 60
 

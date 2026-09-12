@@ -4,20 +4,20 @@
 # implementation's own default is well-typed.
 from typing import overload
 
-from tpy import Int32
+from tpy import int32
 
 
 @overload
-def width(x: Int32, s: str = 5) -> Int32:  # tpyc: error(/expected str, got IntLiteral/)
+def width(x: int32, s: str = 5) -> int32:  # tpyc: error(/expected str, got IntLiteral/)
     ...
 
 
 @overload
-def width(x: Int32) -> Int32:
+def width(x: int32) -> int32:
     ...
 
 
-def width(x: Int32, s: str = "a") -> Int32:
+def width(x: int32, s: str = "a") -> int32:
     return x + len(s)
 
 

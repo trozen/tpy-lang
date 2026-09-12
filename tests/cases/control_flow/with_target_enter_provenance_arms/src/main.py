@@ -10,13 +10,13 @@
 #
 # Both managers lend their own storage, so both must be kept alive for the
 # mutating reads after the block; a copy or an early drop shows a wrong total.
-from tpy import Int32
+from tpy import int32
 
 
 class Item:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
 
@@ -27,7 +27,7 @@ class ViaNestedDef:
         self.inner = Item(3)
 
     def __enter__(self) -> Item:
-        def tag() -> Int32:
+        def tag() -> int32:
             return 7
 
         picked = self.inner
@@ -53,7 +53,7 @@ class ViaTwoReturns:
         pass
 
 
-def read_nested(flag: bool) -> Int32:
+def read_nested(flag: bool) -> int32:
     if flag:
         with ViaNestedDef() as c:
             pass
@@ -64,7 +64,7 @@ def read_nested(flag: bool) -> Int32:
     return c.n
 
 
-def read_two_returns(flag: bool) -> Int32:
+def read_two_returns(flag: bool) -> int32:
     if flag:
         with ViaTwoReturns() as d:
             pass

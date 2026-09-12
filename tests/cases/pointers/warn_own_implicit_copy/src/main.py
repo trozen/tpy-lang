@@ -1,12 +1,12 @@
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 
-def take_point(p: Own[Point]) -> Int32:
+def take_point(p: Own[Point]) -> int32:
     return 42
 
 
@@ -18,7 +18,7 @@ def main():
     p: Point = Point()
     p.x = 10
     # Passing Point to Own[Point] would be implicit copy -- p is used after
-    result: Int32 = take_point(p)  # tpyc: warning(/copies.*into owned storage/)
+    result: int32 = take_point(p)  # tpyc: warning(/copies.*into owned storage/)
     use_point(p)
     print(result)
 

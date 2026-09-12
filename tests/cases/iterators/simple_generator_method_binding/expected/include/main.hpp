@@ -41,9 +41,9 @@ void main();
 struct Source {
 
 
-    // def gen(self, n: Int32) -> Iterator[Int32]:
+    // def gen(self, n: int32) -> Iterator[int32]:
     auto gen(int32_t n) const {
-        // i: Int32 = 0
+        // i: int32 = 0
         int32_t i = 0;
         return ::tpy::make_generator<int32_t>(
             [this, n, i]() mutable -> std::optional<int32_t> {

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def bump_positive(n: Int32) -> Int32:
+// def bump_positive(n: int32) -> int32:
 int32_t bump_positive(int32_t n) {
     // assert n > 0, "n must be positive"
     if (!((n > 0))) ::tpy::raise_assertion_error("n must be positive");

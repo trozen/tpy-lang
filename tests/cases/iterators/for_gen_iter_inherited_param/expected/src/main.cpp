@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def drain_sum(src: Source) -> Int32:
+// def drain_sum(src: Source) -> int32:
 int32_t drain_sum(Source& src) {
-    // acc: Int32 = 0
+    // acc: int32 = 0
     int32_t acc = 0;
     // for v in src:
     auto& __src_0 = src;

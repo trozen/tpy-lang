@@ -1,13 +1,13 @@
 # A record-returning method reached through a Ptr deref is admitted only in
 # RECEIVER position; the same call binding a local stays out.
-from tpy import Int32, Ptr, copy, take_ptr
+from tpy import int32, Ptr, copy, take_ptr
 
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32) -> None:
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 

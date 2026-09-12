@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 
 class Box[T]:
     value: T
@@ -24,12 +24,12 @@ class Container[T]:
 
 
 def main() -> None:
-    # Test Container[Int32] which internally uses Box[Int32]
-    c: Container[Int32] = Container[Int32](42)
+    # Test Container[int32] which internally uses Box[int32]
+    c: Container[int32] = Container[int32](42)
     print(c.get_value())
 
     # Get the inner box
-    box: Box[Int32] = c.get_inner()
+    box: Box[int32] = c.get_inner()
     print(box.get())
 
     # Local variable with type parameter (tests the second fix)

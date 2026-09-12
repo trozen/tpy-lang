@@ -16,17 +16,17 @@ void main();
 
 // class Circle:
 struct Circle {
-    // r: Float64
+    // r: float64
     double r;
 
-    // def __init__(self, r: Float64) -> None:
+    // def __init__(self, r: float64) -> None:
     Circle() = default;
     explicit Circle(double r);
 
-    // def area(self) -> Float64:
+    // def area(self) -> float64:
     double area() const;
 
-    // def scaled(self, k: Int32) -> Float64:
+    // def scaled(self, k: int32) -> float64:
     double scaled(int32_t k) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Circle";
 };
@@ -38,16 +38,16 @@ inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
 
 // class Rect:
 struct Rect {
-    // w: Float64
+    // w: float64
     double w;
-    // h: Float64
+    // h: float64
     double h;
 
-    // def __init__(self, w: Float64, h: Float64) -> None:
+    // def __init__(self, w: float64, h: float64) -> None:
     Rect() = default;
     explicit Rect(double w, double h);
 
-    // def area(self) -> Float64:
+    // def area(self) -> float64:
     double area() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Rect";
 };
@@ -58,25 +58,25 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
 }
 
 
-// def __init__(self, r: Float64) -> None:
+// def __init__(self, r: float64) -> None:
 inline Circle::Circle(double r) : r(r) {}
 
-// def area(self) -> Float64:
+// def area(self) -> float64:
 inline double Circle::area() const {
     // return 3.14 * self.r * self.r
     return ((((3.14) * (this->r))) * (this->r));
 }
 
-// def scaled(self, k: Int32) -> Float64:
+// def scaled(self, k: int32) -> float64:
 inline double Circle::scaled(int32_t k) const {
     // return self.area() * k
     return ((this->area()) * static_cast<double>(k));
 }
 
-// def __init__(self, w: Float64, h: Float64) -> None:
+// def __init__(self, w: float64, h: float64) -> None:
 inline Rect::Rect(double w, double h) : w(w), h(h) {}
 
-// def area(self) -> Float64:
+// def area(self) -> float64:
 inline double Rect::area() const {
     // return self.w * self.h
     return ((this->w) * (this->h));

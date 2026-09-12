@@ -21,7 +21,7 @@ template<typename T>
     // return args[0]
     return ::tpy::__getitem__(args, 0);
 }
-// def count[T](*args: T) -> Int32:
+// def count[T](*args: T) -> int32:
 template<typename T>
 int32_t count(::tpy::varargs<const T> args) {
     // return len(args)

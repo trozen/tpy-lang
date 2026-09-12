@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def make() -> Own["Container"]:
 Container make() {
-    // return Container(Int32(42))
+    // return Container(int32(42))
     return Container(42);
 }
 

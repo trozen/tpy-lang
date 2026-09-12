@@ -1,10 +1,10 @@
 # A finally that mutates a returned reference-type local must be visible in
 # the returned object (CPython aliasing); value types keep the eager capture.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Box:
-    n: Int32
+    n: int32
 
     def __init__(self) -> None:
         self.n = 10
@@ -18,7 +18,7 @@ def ret_record() -> Own[Box]:
         b.n += 1
 
 
-def ret_list() -> Own[list[Int32]]:
+def ret_list() -> Own[list[int32]]:
     xs = [1]
     try:
         return xs
@@ -37,7 +37,7 @@ def ret_optional(flag: bool) -> Own[Box] | None:
             b.n += 1
 
 
-def ret_value_int() -> Int32:
+def ret_value_int() -> int32:
     n = 10
     try:
         return n

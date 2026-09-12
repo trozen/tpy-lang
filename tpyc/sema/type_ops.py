@@ -809,7 +809,7 @@ class TypeOperations:
 
         Returns:
             Mapping from type parameter names to concrete types or integers.
-            For example: {"T": Int32, "N": 8} for Matrix[Int32, 8].
+            For example: {"T": int32, "N": 8} for Matrix[int32, 8].
         """
         if isinstance(record_type, NominalType):
             record_info = self.ctx.registry.get_record_for_type(record_type)
@@ -1079,7 +1079,7 @@ class TypeOperations:
             return True
 
         # For concrete parameters in generic inference, allow the same
-        # argument coercions used by normal call checking (e.g. Int32 -> Int64).
+        # argument coercions used by normal call checking (e.g. int32 -> int64).
         arg_unwrapped = unwrap_readonly(arg_type)
         return resolve_coercion(arg_unwrapped, param_type, CoercionContext.ARG) is not None
 
@@ -1161,7 +1161,7 @@ class TypeOperations:
         (Span, Optional, etc.).
 
         Also handles protocol-to-protocol inference: when arg_type is a protocol
-        (e.g. Iterator[Int32]) matching a different protocol (e.g. Iterable[T]),
+        (e.g. Iterator[int32]) matching a different protocol (e.g. Iterable[T]),
         looks up the arg protocol's method signatures and matches them.
         """
         protocol_info = self.ctx.registry.scan_by_short_name(protocol_name)
@@ -1191,8 +1191,8 @@ class TypeOperations:
 
         def _substitute(t: TpyType) -> TpyType:
             # Propagate the record's class type params into nested
-            # positions: e.g. for Future[Int32].poll's return type
-            # `Poll[T]`, we want `Poll[Int32]`. Recursing here matters
+            # positions: e.g. for Future[int32].poll's return type
+            # `Poll[T]`, we want `Poll[int32]`. Recursing here matters
             # for any generic record whose protocol-conforming method
             # returns or accepts a compound type wrapping the class T.
             t = unwrap_ref_type(t)
@@ -1225,10 +1225,10 @@ class TypeOperations:
         """Infer the target protocol's type args from an arg protocol's methods.
 
         Returns the target protocol's params resolved positionally (aligned to
-        target_protocol.type_params; None per unpinned param). E.g. Iterator[Int32]
+        target_protocol.type_params; None per unpinned param). E.g. Iterator[int32]
         matching Iterable[T]: looks up Iterator's __iter__ method (returns Self =
-        Iterator[Int32]), matches against Iterable's __iter__ (returns Iterator[T])
-        to infer T = Int32.
+        Iterator[int32]), matches against Iterable's __iter__ (returns Iterator[T])
+        to infer T = int32.
         """
         # Build substitution for arg protocol: resolve Self and type params
         arg_subst: dict[str, TpyType] = {"Self": arg_type}
@@ -1297,7 +1297,7 @@ class TypeOperations:
         # both qnames are known and differ, they are distinct types even though
         # the short name matches. (Compared here rather than via
         # same_nominal_symbol_loose, which also checks type_args -- those are
-        # exactly what inference is solving for, e.g. Box[T] vs Box[Int32].)
+        # exactly what inference is solving for, e.g. Box[T] vs Box[int32].)
         if (arg_type._module_qname is not None and param_type._module_qname is not None
                 and arg_type._module_qname != param_type._module_qname):
             return False
@@ -1374,7 +1374,7 @@ class TypeOperations:
     ) -> dict[str, TpyType] | None:
         """Infer type parameters from function arguments.
 
-        Returns dict of inferred type params (e.g., {"T": Int32}) on success, None on failure.
+        Returns dict of inferred type params (e.g., {"T": int32}) on success, None on failure.
         If expected_return_type is provided, unresolved params are matched against the return type.
         If explicit_type_args is provided, pre-populates inferred with those (positional).
         """
@@ -1546,7 +1546,7 @@ class TypeOperations:
     ) -> dict[str, TpyType] | None:
         """Infer type parameters from constructor arguments for user-defined generic record.
 
-        Returns dict of inferred type params (e.g., {"T": Int32}) on success, None on failure.
+        Returns dict of inferred type params (e.g., {"T": int32}) on success, None on failure.
         If expected_type is provided, unresolved params are matched against the record type pattern.
         If explicit_type_args is provided, pre-populates inferred with those (positional, None = skip).
         """
@@ -1903,7 +1903,7 @@ class TypeOperations:
     ) -> dict[str, TpyType] | None:
         """Try to match constructor params against arg types and infer type parameters.
 
-        Returns dict of inferred type params (e.g., {"T": Int32}) on success, None on failure.
+        Returns dict of inferred type params (e.g., {"T": int32}) on success, None on failure.
         Supports protocol params like "NativeIterable[T]" which infer T from element type.
 
         Unlike match_type_with_inference, Ptr[TypeParam] params accept Ptr[readonly[X]] args,
@@ -2044,7 +2044,7 @@ class TypeOperations:
         (`get_method_overloads_with_parents`, which does not substitute type
         args) to its MRO-bound owner and signature.
 
-        The bound owner (e.g. `Box[Int32]` for a `Box[T]` method inherited by a
+        The bound owner (e.g. `Box[int32]` for a `Box[T]` method inherited by a
         concrete subclass) supplies the concrete args codegen needs to name the
         base's templated coro struct, and substituting the signature gives the
         await/with/for bind variable the concrete element type instead of the

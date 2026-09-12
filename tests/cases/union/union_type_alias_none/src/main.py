@@ -1,18 +1,18 @@
 # Type alias with None member (optional union)
-from tpy import Int32
+from tpy import int32
 
 
 class Circle:
-    radius: Int32
+    radius: int32
 
-    def __init__(self, radius: Int32) -> None:
+    def __init__(self, radius: int32) -> None:
         self.radius = radius
 
 
 class Rect:
-    width: Int32
+    width: int32
 
-    def __init__(self, width: Int32) -> None:
+    def __init__(self, width: int32) -> None:
         self.width = width
 
 
@@ -29,7 +29,7 @@ def describe(s: MaybeShape) -> str:
 
 
 def main() -> None:
-    a: MaybeShape = Circle(Int32(1))
+    a: MaybeShape = Circle(int32(1))
     b: MaybeShape = None
     print(describe(a))
     print(describe(b))

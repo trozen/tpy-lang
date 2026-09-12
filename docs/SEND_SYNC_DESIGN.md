@@ -54,7 +54,7 @@ The table consolidates what's in `runtime/cpp/include/tpy/type_traits.hpp`, `tpy
 
 | Type form | Send | Sync | Notes |
 |-----------|------|------|-------|
-| Owning value types (`int`, `Int32`, `bool`, `float`, `Char`, ...) | Yes | Yes | Copied at every boundary; no aliasing |
+| Owning value types (`int`, `int32`, `bool`, `float`, `char`, ...) | Yes | Yes | Copied at every boundary; no aliasing |
 | Dual-form value types (`str`, `bytes`) | Yes | Yes | Immutable. TPy storage form is owned (`std::string`, `::tpy::Bytes`); param form is a borrow view (`std::string_view`, `::tpy::BytesView`). Send-ness applies to the storage form -- transferring `str` ownership moves the underlying buffer. Frame slots that store the borrow form follow the OQ3 storage-form rules. |
 | `bytearray` | Yes | No | Mutable buffer (`::tpy::ByteArray`) -- same Sync rule as `list[T]`. A reference type, so neither trait defaults on; the registry carries an explicit `is_send=True`, `is_sync=False` and the runtime spells the Send row beside the type (the `std::vector` partial specialization does not match a derived class). |
 | Pure non-owning views (`tpy.StrView`, `tpy.BytesView`) | No | Yes | Pure view types; always borrow originating-thread storage. Sema explicitly overrides `is_send=False, is_sync=True` on their TypeDefs in `type_def_registry.py`. |
@@ -130,7 +130,7 @@ Each is expanded below with semantics and the alternatives that were rejected.
 
 **Problem:** `readonly` is a borrow-side restriction, not a deep freeze. A `readonly[list[int]]` parameter is reachable through other non-readonly aliases. From the perspective of "is it safe for two threads to hold this *handle*", yes -- but only if the underlying object is in fact Sync. Today `list[int]` is not Sync, so the lift is unsound.
 
-**Decision:** `readonly[T]` is Sync iff `T` is Sync. The "freeze" property does not extend across the readonly boundary because the object may be aliased elsewhere. Phase 2 tightens `ReadonlyType.is_sync()` to `wrapped.is_sync()` and adds a test pinning `readonly[list[Int32]]` as **not** Sync.
+**Decision:** `readonly[T]` is Sync iff `T` is Sync. The "freeze" property does not extend across the readonly boundary because the object may be aliased elsewhere. Phase 2 tightens `ReadonlyType.is_sync()` to `wrapped.is_sync()` and adds a test pinning `readonly[list[int32]]` as **not** Sync.
 
 **Alternative considered (rejected):** keep the lift, but require `readonly[T]` only be Sync-uplifted in contexts where the compiler can prove no mutable alias exists (escape analysis). Too expensive to deliver now; defer.
 
@@ -151,7 +151,7 @@ class CompletionHandler:
 **Semantics:**
 
 - For **erased types** (`Callable[...]` and `@dynamic` protocols): `Send[T]` is a sema-only assertion on the concrete impl. The Send check resolves to FrameType.is_send (OQ3) when the concrete impl is a lambda or closure -- structural slot walk. **No new C++ templates required** -- the C++ representation of `Send[Callable[...]]` is `std::function<...>` (same as bare `Callable[...]`); the C++ representation of `Send[Pet]` is `tpy::Adapter<Pet, T>` / `tpy::RefAdapter<Pet, T>` (same as bare `Pet`). Sema enforces Send-ness at boundary points (construction site, channel send, spawn) before the value is erased. The existing `tpy::Send<T>` / `tpy::Sync<T>` C++ concepts (Phase 1, `type_traits.hpp`) remain available for hand-written C++ to constrain on. Note: `Adapter[P]` is **not** a TPy-level surface -- the user writes `Send[Callable[...]]` and `Send[P]` directly; `Adapter` is a C++ codegen detail (see OQ5).
-- For **non-erased types**: `Send[T]` is a static assertion -- "this slot only accepts conformers that are Send." `Send[Int32]` is just `Int32` (assertion holds trivially); `Send[Ptr[Buf]]` is a compile error.
+- For **non-erased types**: `Send[T]` is a static assertion -- "this slot only accepts conformers that are Send." `Send[int32]` is just `int32` (assertion holds trivially); `Send[Ptr[Buf]]` is a compile error.
 - Stackable: `Send[Sync[T]]` is well-defined and canonicalized.
 - Reuses the existing `Send` Protocol name -- consistent with Rust (`Send` is both the trait and the marker in `dyn Trait + Send`) and Python typing (`Callable` is both a base class and a subscriptable type). The two readings agree: both answer "is this Send?" from different sides.
 
@@ -202,7 +202,7 @@ See [[language-design-versatile-pythonic]] for the design preference that drove 
 **Position rules:**
 
 - `Send[T]` / `Sync[T]` are valid in every position a non-wrapped type is valid: params, locals, returns, fields, type-args, generic bounds.
-- For non-erased `T` the wrapper is a **static assertion** (`Send[Int32]` == `Int32`; `Send[Ptr[Buf]]` is a compile error).
+- For non-erased `T` the wrapper is a **static assertion** (`Send[int32]` == `int32`; `Send[Ptr[Buf]]` is a compile error).
 - For erased `T` (`Callable`, `@dynamic` protocol like `Pet`) the wrapper is a **sema-side Send/Sync assertion** on the concrete impl that gets erased -- see OQ2 / OQ5. No runtime representation change; the C++ type is the same as bare `T`.
 - Canonicalization happens once at resolve time; sema and codegen see canonical forms only. The type-printer emits canonical forms back to the user. Generic substitution re-canonicalizes (a `Send[T]` wrapper erases when the substituted concrete type is statically Send).
 
@@ -248,7 +248,7 @@ This collapses OQ2 and OQ3 into the same machinery: OQ2's `Send[T]` wrapper and 
 | `String` params (`std::string` -- owned string, from `lib/tpy/tpy/_core/_types.py:1511`) | `String` by value | -- |
 | Hoisted non-value locals across await/yield | `tpy::frame_slot<T>` | `gen_async.py:664`, `gen_generators.py:702` |
 | Borrowed async awaitables | raw pointer | `gen_async.py:679` |
-| Value-type params (`Int32`, `bool`, `float`, `Char`, ...) | `T` by value | -- |
+| Value-type params (`int32`, `bool`, `float`, `char`, ...) | `T` by value | -- |
 | Simple-generator lambda captures of non-value params | reference | `gen_generators.py:614` |
 
 The Send rule walks whatever slot shape is actually emitted:
@@ -266,7 +266,7 @@ Consequence: most async/generator/closure functions today take borrow-form param
 
 ```python
 @unsafe_send
-async def fetch(host: str, buf: list[int]) -> Int32:
+async def fetch(host: str, buf: list[int]) -> int32:
     # Author asserts: this frame is safe to migrate. E.g., the originating
     # thread blocks until completion, or `buf` lives in shared/atomic storage.
     ...
@@ -302,7 +302,7 @@ Author asserts conformance; compiler verifies the structural rule (all fields Se
 ```python
 class Trade(Send):
     symbol: str
-    qty: Int32
+    qty: int32
     price: float
 # OK -- all fields Send, claim verified
 
@@ -332,8 +332,8 @@ Force the answer to false regardless of fields. Applies to **records** (forces s
 ```python
 @nosend
 class ArenaBuffer:
-    data: list[Int32]    # structurally Send, but the arena it lives in isn't
-    capacity: Int32
+    data: list[int32]    # structurally Send, but the arena it lives in isn't
+    capacity: int32
 ```
 
 **Mutual exclusion is per target.** The Send/Sync answer is a property of a specific *type definition*: a record's `Send`-ness is its own property; an async/generator/lambda definition's FrameType is its own property. The opt-in / unsafe / opt-out forms conflict only when applied to the *same* target:
@@ -426,7 +426,7 @@ The marker layer is unobservable until something *uses* it. The planned sites, i
 
 **`@dynamic` protocols** (`docs/DYNAMIC_PROTOCOL_DESIGN.md`): see OQ5.
 
-**Generic record monomorphization**: Send/Sync answers are per concrete instantiation, computed at instantiation time. `list[Int32]` is Send; `list[Ptr[Buf]]` is not. Auto-derive handles this through TypeParamRef forward-conformance during the record-level check, then field walks with substituted args at use sites -- `NominalType.is_send()` / `is_sync()` walks `record.fields` and `record.parents` under `type_params -> type_args` substitution on every query for generic records (a re-entrancy guard handles self-referential generics like `class Tree[T]: children: list[Tree[T]]` via greatest-fixed-point semantics).
+**Generic record monomorphization**: Send/Sync answers are per concrete instantiation, computed at instantiation time. `list[int32]` is Send; `list[Ptr[Buf]]` is not. Auto-derive handles this through TypeParamRef forward-conformance during the record-level check, then field walks with substituted args at use sites -- `NominalType.is_send()` / `is_sync()` walks `record.fields` and `record.parents` under `type_params -> type_args` substitution on every query for generic records (a re-entrancy guard handles self-referential generics like `class Tree[T]: children: list[Tree[T]]` via greatest-fixed-point semantics).
 
 ## Roadmap (detail)
 

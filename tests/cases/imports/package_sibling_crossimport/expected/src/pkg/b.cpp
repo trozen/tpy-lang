@@ -42,9 +42,9 @@ std::optional<::tpyapp::pkg::b::K> EnumUtil<::tpyapp::pkg::b::K>::try_parse(std:
 namespace tpyapp::pkg::b {
 
 
-// def g(n: Int32) -> Int32:
+// def g(n: int32) -> int32:
 int32_t g(int32_t n) {
-    // return n + Int32(1)
+    // return n + int32(1)
     return (::tpy::add_check<int32_t>(n, 1));
 }
 

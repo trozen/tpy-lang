@@ -67,7 +67,7 @@ struct SocketError : ::tpy::OSError {
 
     // # Single (errno, strerror) __init__: user classes cannot mirror the
     // # base's message-only overload (no user-class ctor overloads; BUGS.md).
-    // def __init__(self, err: Int32, strerror: str) -> None:
+    // def __init__(self, err: int32, strerror: str) -> None:
     SocketError() = default;
     explicit SocketError(int32_t err, std::string_view strerror);
 
@@ -85,7 +85,7 @@ inline std::ostream& operator<<(std::ostream& os, const SocketError& obj) {
 // class gaierror(OSError):
 struct gaierror : ::tpy::OSError {
 
-    // def __init__(self, err: Int32, strerror: str) -> None:
+    // def __init__(self, err: int32, strerror: str) -> None:
     gaierror() = default;
     explicit gaierror(int32_t err, std::string_view strerror);
 
@@ -105,7 +105,7 @@ inline std::ostream& operator<<(std::ostream& os, const gaierror& obj) {
 struct socket {
     // # Field default silences a sema "not initialized before ctor body"
     // # warning (the if/else below sets fd on every path, sema can't prove it).
-    // fd: Int32 = Int32(-1)
+    // fd: int32 = int32(-1)
     int32_t fd = -1;
     // # Socket mode, mirroring CPython's three states: -1.0 = blocking (None
     // # timeout), 0.0 = non-blocking, > 0 = timeout mode. recv/send read this to
@@ -115,8 +115,8 @@ struct socket {
     double _timeout = -1.0;
     bool __tpy_owned_ = true;
 
-    // def __init__(self, family: Int32, type_: Int32, proto: Int32 = Int32(0),
-    // fileno: Int32 = Int32(-1)) -> None:
+    // def __init__(self, family: int32, type_: int32, proto: int32 = int32(0),
+    // fileno: int32 = int32(-1)) -> None:
     explicit socket(int32_t family, int32_t type_, int32_t proto = 0, int32_t fileno = -1);
     // non-copyable (@nocopy)
     socket(const socket&) = delete;
@@ -127,13 +127,13 @@ struct socket {
     // def __del__(self) -> None:
     ~socket();
 
-    // def fileno(self) -> Int32:
+    // def fileno(self) -> int32:
     int32_t fileno() const;
 
     // def close(self) -> None:
     void close();
 
-    // def shutdown(self, how: Int32) -> None:
+    // def shutdown(self, how: int32) -> None:
     void shutdown(int32_t how) const;
 
     // def _raise_io(self) -> None:
@@ -151,14 +151,14 @@ struct socket {
     // def gettimeout(self) -> float | None:
     std::optional<double> gettimeout() const;
 
-    // def bind(self, address: tuple[str, Int32]) -> None:
+    // def bind(self, address: tuple[str, int32]) -> None:
     void bind(const std::tuple<std::string, int32_t>& address) const;
 
-    // def connect(self, address: tuple[str, Int32]) -> None:
+    // def connect(self, address: tuple[str, int32]) -> None:
     void connect(const std::tuple<std::string, int32_t>& address) const;
 
     // # Literal 128 = SOMAXCONN; named-Final-as-default rejected by sema.
-    // def listen(self, backlog: Int32 = Int32(128)) -> None:
+    // def listen(self, backlog: int32 = int32(128)) -> None:
     void listen(int32_t backlog = 128) const;
 
     // # Returns the raw accepted fd + peer address as value types (no Own
@@ -168,45 +168,45 @@ struct socket {
     // # Peer resolution (`_ipv4_to_str` -> `inet_ntop`) can raise while `new_fd`
     // # is still naked (not yet owned by a `socket`), so close it on failure to
     // # avoid leaking the accepted descriptor.
-    // def _accept_fd(self) -> tuple[Int32, tuple[str, Int32]]:
+    // def _accept_fd(self) -> tuple[int32, tuple[str, int32]]:
     std::tuple<int32_t, std::tuple<std::string, int32_t>> _accept_fd() const;
 
-    // def accept(self) -> tuple[Own[socket], tuple[str, Int32]]:
+    // def accept(self) -> tuple[Own[socket], tuple[str, int32]]:
     std::tuple<socket, std::tuple<std::string, int32_t>> accept() const;
 
-    // def _accept_nonblocking(self) -> tuple[Own[socket], tuple[str, Int32]]:
+    // def _accept_nonblocking(self) -> tuple[Own[socket], tuple[str, int32]]:
     std::tuple<socket, std::tuple<std::string, int32_t>> _accept_nonblocking() const;
 
-    // def send(self, data: bytes) -> Int32:
+    // def send(self, data: bytes) -> int32:
     int32_t send(::tpy::BytesView data) const;
 
     // # Send the suffix `data[offset:]` without materializing it -- the async
     // # `_SockSendAll` advances `offset` across parks, so slicing a fresh
     // # `bytes` per park would be O(n^2) (CPython tracks a memoryview offset).
     // # Underscore-private: not part of CPython's socket surface.
-    // def _send_from(self, data: bytes, offset: UInt64) -> Int32:
+    // def _send_from(self, data: bytes, offset: uint64) -> int32:
     int32_t _send_from(::tpy::BytesView data, uint64_t offset) const;
 
     // def sendall(self, data: bytes) -> None:
     void sendall(::tpy::BytesView data) const;
 
-    // def recv(self, bufsize: Int32) -> bytes:
+    // def recv(self, bufsize: int32) -> bytes:
     ::tpy::Bytes recv(int32_t bufsize) const;
 
-    // def setsockopt_int(self, level: Int32, optname: Int32, value: Int32) -> None:
+    // def setsockopt_int(self, level: int32, optname: int32, value: int32) -> None:
     void setsockopt_int(int32_t level, int32_t optname, int32_t value) const;
 
-    // def getsockopt_int(self, level: Int32, optname: Int32) -> Int32:
+    // def getsockopt_int(self, level: int32, optname: int32) -> int32:
     int32_t getsockopt_int(int32_t level, int32_t optname) const;
 
-    // def getsockname(self) -> tuple[str, Int32]:
+    // def getsockname(self) -> tuple[str, int32]:
     std::tuple<std::string, int32_t> getsockname() const;
 
-    // def getpeername(self) -> tuple[str, Int32]:
+    // def getpeername(self) -> tuple[str, int32]:
     std::tuple<std::string, int32_t> getpeername() const;
 
     // def makefile(self, mode: str = "r",
-    // buffering: Int32 = -1) -> Own[BufferedReader]:
+    // buffering: int32 = -1) -> Own[BufferedReader]:
     ::tpystd::io::BufferedReader makefile(std::string_view mode = "r", int32_t buffering = -1) const;
 
     // def __enter__(self) -> socket:
@@ -225,16 +225,16 @@ inline std::ostream& operator<<(std::ostream& os, const socket& obj) {
 
 // # Single (errno, strerror) __init__: user classes cannot mirror the
 // # base's message-only overload (no user-class ctor overloads; BUGS.md).
-// def __init__(self, err: Int32, strerror: str) -> None:
+// def __init__(self, err: int32, strerror: str) -> None:
 inline SocketError::SocketError(int32_t err, std::string_view strerror) : ::tpy::OSError(err, strerror) {}
 
-// def __init__(self, err: Int32, strerror: str) -> None:
+// def __init__(self, err: int32, strerror: str) -> None:
 inline gaierror::gaierror(int32_t err, std::string_view strerror) : ::tpy::OSError(err, strerror) {}
 
-// def __init__(self, family: Int32, type_: Int32, proto: Int32 = Int32(0),
-// fileno: Int32 = Int32(-1)) -> None:
+// def __init__(self, family: int32, type_: int32, proto: int32 = int32(0),
+// fileno: int32 = int32(-1)) -> None:
 inline socket::socket(int32_t family, int32_t type_, int32_t proto, int32_t fileno) {
-    // if fileno >= Int32(0):
+    // if fileno >= int32(0):
     if ((fileno >= 0)) {
         // self.fd = fileno
         this->fd = fileno;
@@ -242,7 +242,7 @@ inline socket::socket(int32_t family, int32_t type_, int32_t proto, int32_t file
     } else {
         // new_fd = posix_socket.socket(family, type_, proto)
         int32_t new_fd = ::socket(family, type_, proto);
-        // if new_fd < Int32(0):
+        // if new_fd < int32(0):
         if ((new_fd < 0)) {
             // _raise_errno()
             _raise_errno();
@@ -266,16 +266,16 @@ inline socket& socket::operator=(socket&& other) noexcept {
 // def __del__(self) -> None:
 inline socket::~socket() {
     if (!this->__tpy_owned_) return;
-    // if self.fd >= Int32(0):
+    // if self.fd >= int32(0):
     if ((this->fd >= 0)) {
         // posix_socket.close(self.fd)
         ::close(this->fd);
-        // self.fd = Int32(-1)
+        // self.fd = int32(-1)
         this->fd = -1;
     }
 }
 
-// def fileno(self) -> Int32:
+// def fileno(self) -> int32:
 inline int32_t socket::fileno() const {
     // return self.fd
     return this->fd;
@@ -283,18 +283,18 @@ inline int32_t socket::fileno() const {
 
 // def close(self) -> None:
 inline void socket::close() {
-    // if self.fd >= Int32(0):
+    // if self.fd >= int32(0):
     if ((this->fd >= 0)) {
         // posix_socket.close(self.fd)
         ::close(this->fd);
-        // self.fd = Int32(-1)
+        // self.fd = int32(-1)
         this->fd = -1;
     }
 }
 
-// def shutdown(self, how: Int32) -> None:
+// def shutdown(self, how: int32) -> None:
 inline void socket::shutdown(int32_t how) const {
-    // if posix_socket.shutdown(self.fd, how) < Int32(0):
+    // if posix_socket.shutdown(self.fd, how) < int32(0):
     if ((::shutdown(this->fd, how) < 0)) {
         // _raise_errno()
         _raise_errno();
@@ -331,7 +331,7 @@ inline std::optional<double> socket::gettimeout() const {
     return this->_timeout;
 }
 
-// def bind(self, address: tuple[str, Int32]) -> None:
+// def bind(self, address: tuple[str, int32]) -> None:
 inline void socket::bind(const std::tuple<std::string, int32_t>& address) const {
     // host, port = address
     const auto& __tup_1 = address;
@@ -339,7 +339,7 @@ inline void socket::bind(const std::tuple<std::string, int32_t>& address) const 
     int32_t port = std::get<1>(__tup_1);
     // addr = _build_sockaddr_in(host, port)
     ::sockaddr_in addr = _build_sockaddr_in(host, port);
-    // if posix_socket.bind(self.fd, take_ptr(addr), _SOCKADDR_IN_LEN) < Int32(0):
+    // if posix_socket.bind(self.fd, take_ptr(addr), _SOCKADDR_IN_LEN) < int32(0):
     if ((::bind(this->fd, &addr, _SOCKADDR_IN_LEN) < 0)) {
         // _raise_errno()
         _raise_errno();
@@ -347,32 +347,32 @@ inline void socket::bind(const std::tuple<std::string, int32_t>& address) const 
 }
 
 // # Literal 128 = SOMAXCONN; named-Final-as-default rejected by sema.
-// def listen(self, backlog: Int32 = Int32(128)) -> None:
+// def listen(self, backlog: int32 = int32(128)) -> None:
 inline void socket::listen(int32_t backlog) const {
-    // if posix_socket.listen(self.fd, backlog) < Int32(0):
+    // if posix_socket.listen(self.fd, backlog) < int32(0):
     if ((::listen(this->fd, backlog) < 0)) {
         // _raise_errno()
         _raise_errno();
     }
 }
 
-// def accept(self) -> tuple[Own[socket], tuple[str, Int32]]:
+// def accept(self) -> tuple[Own[socket], tuple[str, int32]]:
 inline std::tuple<socket, std::tuple<std::string, int32_t>> socket::accept() const {
     // fd, peer = self._accept_fd()
     auto __tup_1 = this->_accept_fd();
     int32_t fd = std::get<0>(__tup_1);
     const std::tuple<std::string, int32_t>& peer = std::get<1>(__tup_1);
-    // return (socket(Int32(0), Int32(0), Int32(0), fileno=fd), peer)
+    // return (socket(int32(0), int32(0), int32(0), fileno=fd), peer)
     return std::tuple<socket, std::tuple<std::string, int32_t>>{socket(0, 0, 0, fd), peer};
 }
 
-// def _accept_nonblocking(self) -> tuple[Own[socket], tuple[str, Int32]]:
+// def _accept_nonblocking(self) -> tuple[Own[socket], tuple[str, int32]]:
 inline std::tuple<socket, std::tuple<std::string, int32_t>> socket::_accept_nonblocking() const {
     // fd, peer = self._accept_fd()
     auto __tup_1 = this->_accept_fd();
     int32_t fd = std::get<0>(__tup_1);
     const std::tuple<std::string, int32_t>& peer = std::get<1>(__tup_1);
-    // conn = socket(Int32(0), Int32(0), Int32(0), fileno=fd)
+    // conn = socket(int32(0), int32(0), int32(0), fileno=fd)
     socket conn = socket(0, 0, 0, fd);
     // conn.setblocking(False)
     conn.setblocking(false);
@@ -380,7 +380,7 @@ inline std::tuple<socket, std::tuple<std::string, int32_t>> socket::_accept_nonb
     return std::tuple<socket, std::tuple<std::string, int32_t>>{std::move(conn), peer};
 }
 
-// def send(self, data: bytes) -> Int32:
+// def send(self, data: bytes) -> int32:
 inline int32_t socket::send(::tpy::BytesView data) const {
     // return self._send_from(data, 0)
     return this->_send_from(data, 0);
@@ -390,42 +390,42 @@ inline int32_t socket::send(::tpy::BytesView data) const {
 // # `_SockSendAll` advances `offset` across parks, so slicing a fresh
 // # `bytes` per park would be O(n^2) (CPython tracks a memoryview offset).
 // # Underscore-private: not part of CPython's socket surface.
-// def _send_from(self, data: bytes, offset: UInt64) -> Int32:
+// def _send_from(self, data: bytes, offset: uint64) -> int32:
 inline int32_t socket::_send_from(::tpy::BytesView data, uint64_t offset) const {
-    // data_ptr: Ptr[readonly[UInt8]] = unsafe_ptr(data)
+    // data_ptr: Ptr[readonly[uint8]] = unsafe_ptr(data)
     const uint8_t* data_ptr = data.data();
     // n = posix_socket.send(self.fd,
-    // unsafe_ptr_add(data_ptr, Int64.trunc(offset)),
-    // UInt64(len(data)) - offset, Int32(0))
+    // unsafe_ptr_add(data_ptr, int64.trunc(offset)),
+    // uint64(len(data)) - offset, int32(0))
     int64_t n = ::send(this->fd, (data_ptr + static_cast<int64_t>(offset)), (::tpy::sub_check<uint64_t>(::tpy::int_cast_check<uint64_t>(::tpy::__len__(data)), offset)), 0);
-    // if n < Int64(0):
+    // if n < int64(0):
     if ((n < 0)) {
         // self._raise_io()
         this->_raise_io();
     }
-    // return Int32.trunc(n)
+    // return int32.trunc(n)
     return static_cast<int32_t>(n);
 }
 
-// def setsockopt_int(self, level: Int32, optname: Int32, value: Int32) -> None:
+// def setsockopt_int(self, level: int32, optname: int32, value: int32) -> None:
 inline void socket::setsockopt_int(int32_t level, int32_t optname, int32_t value) const {
     // v = value
     int32_t v = value;
-    // if posix_socket.setsockopt(self.fd, level, optname, take_ptr(v), 4) < Int32(0):
+    // if posix_socket.setsockopt(self.fd, level, optname, take_ptr(v), 4) < int32(0):
     if ((::setsockopt(this->fd, level, optname, &v, 4) < 0)) {
         // _raise_errno()
         _raise_errno();
     }
 }
 
-// def getsockopt_int(self, level: Int32, optname: Int32) -> Int32:
+// def getsockopt_int(self, level: int32, optname: int32) -> int32:
 inline int32_t socket::getsockopt_int(int32_t level, int32_t optname) const {
-    // out: Int32 = 0
+    // out: int32 = 0
     int32_t out = 0;
-    // optlen: UInt32 = 4
+    // optlen: uint32 = 4
     uint32_t optlen = 4;
     // if posix_socket.getsockopt(self.fd, level, optname,
-    // take_ptr(out), take_ptr(optlen)) < Int32(0):
+    // take_ptr(out), take_ptr(optlen)) < int32(0):
     if ((::getsockopt(this->fd, level, optname, &out, &optlen) < 0)) {
         // _raise_errno()
         _raise_errno();
@@ -434,40 +434,40 @@ inline int32_t socket::getsockopt_int(int32_t level, int32_t optname) const {
     return out;
 }
 
-// def getsockname(self) -> tuple[str, Int32]:
+// def getsockname(self) -> tuple[str, int32]:
 inline std::tuple<std::string, int32_t> socket::getsockname() const {
     // addr = SockaddrIn(0, 0, 0)
     ::sockaddr_in addr = ::sockaddr_in{0, 0, 0};
-    // addrlen: UInt32 = _SOCKADDR_IN_LEN
+    // addrlen: uint32 = _SOCKADDR_IN_LEN
     uint32_t addrlen = _SOCKADDR_IN_LEN;
-    // if posix_socket.getsockname(self.fd, take_ptr(addr), take_ptr(addrlen)) < Int32(0):
+    // if posix_socket.getsockname(self.fd, take_ptr(addr), take_ptr(addrlen)) < int32(0):
     if ((::getsockname(this->fd, &addr, &addrlen) < 0)) {
         // _raise_errno()
         _raise_errno();
     }
     // return (_ipv4_to_str(unsafe_cast(take_ptr(addr.sin_addr))),
-    // Int32.trunc(posix_socket.ntohs(addr.sin_port)))
+    // int32.trunc(posix_socket.ntohs(addr.sin_port)))
     return std::tuple<std::string, int32_t>{_ipv4_to_str(reinterpret_cast<uint8_t*>(&addr.sin_addr)), static_cast<int32_t>(::ntohs(addr.sin_port))};
 }
 
-// def getpeername(self) -> tuple[str, Int32]:
+// def getpeername(self) -> tuple[str, int32]:
 inline std::tuple<std::string, int32_t> socket::getpeername() const {
     // addr = SockaddrIn(0, 0, 0)
     ::sockaddr_in addr = ::sockaddr_in{0, 0, 0};
-    // addrlen: UInt32 = _SOCKADDR_IN_LEN
+    // addrlen: uint32 = _SOCKADDR_IN_LEN
     uint32_t addrlen = _SOCKADDR_IN_LEN;
-    // if posix_socket.getpeername(self.fd, take_ptr(addr), take_ptr(addrlen)) < Int32(0):
+    // if posix_socket.getpeername(self.fd, take_ptr(addr), take_ptr(addrlen)) < int32(0):
     if ((::getpeername(this->fd, &addr, &addrlen) < 0)) {
         // _raise_errno()
         _raise_errno();
     }
     // return (_ipv4_to_str(unsafe_cast(take_ptr(addr.sin_addr))),
-    // Int32.trunc(posix_socket.ntohs(addr.sin_port)))
+    // int32.trunc(posix_socket.ntohs(addr.sin_port)))
     return std::tuple<std::string, int32_t>{_ipv4_to_str(reinterpret_cast<uint8_t*>(&addr.sin_addr)), static_cast<int32_t>(::ntohs(addr.sin_port))};
 }
 
 // def makefile(self, mode: str = "r",
-// buffering: Int32 = -1) -> Own[BufferedReader]:
+// buffering: int32 = -1) -> Own[BufferedReader]:
 inline ::tpystd::io::BufferedReader socket::makefile(std::string_view mode, int32_t buffering) const {
     // if mode != "rb" and mode != "br" and mode != "b":
     if ((((mode != "rb") && (mode != "br")) && (mode != "b"))) {
@@ -484,7 +484,7 @@ inline ::tpystd::io::BufferedReader socket::makefile(std::string_view mode, int3
     int32_t size = (((buffering < 0)) ? (::tpystd::io::DEFAULT_BUFFER_SIZE) : (buffering));
     // # Propagate timeout mode so a recv-timeout on the dup'd fd (SO_RCVTIMEO
     // # is shared across the dup) surfaces as TimeoutError, not a raw EAGAIN.
-    // return BufferedReader(FileIO(os.dup(Int64(self.fd)),
+    // return BufferedReader(FileIO(os.dup(int64(self.fd)),
     // timeout_mode=self._timeout > 0.0), size)
     return ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(::tpystd::os::dup(::tpy::int_cast_check<int64_t>(this->fd)), true, (this->_timeout > 0.0))), size);
 }

@@ -5,20 +5,20 @@
 # borrowed. The copy is the ACKNOWLEDGED CPython divergence (CPython aliases
 # the list), so the case prints only what both agree on and the WARNING is the
 # pin.
-from tpy import Int32, Own, copy
+from tpy import int32, Own, copy
 
 
-def first(rows: list[list[Int32]]) -> list[Int32]:
+def first(rows: list[list[int32]]) -> list[int32]:
     return rows[0]
 
 
-def take(rows: list[list[Int32]]) -> Own[list[Int32]]:
+def take(rows: list[list[int32]]) -> Own[list[int32]]:
     # `first(rows)` hands back `std::vector<int32_t>&`; filling the owning
     # slot from it is the copy the warning declares.
-    return first(rows)  # tpyc: warning(/copies list\[Int32\] into owned storage/)
+    return first(rows)  # tpyc: warning(/copies list\[int32\] into owned storage/)
 
 
-def take_copy(rows: list[list[Int32]]) -> Own[list[Int32]]:
+def take_copy(rows: list[list[int32]]) -> Own[list[int32]]:
     return copy(first(rows))  # tpyc: ok
 
 

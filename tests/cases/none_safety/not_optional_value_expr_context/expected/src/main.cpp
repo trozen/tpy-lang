@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def invert(x: Int32 | None) -> bool:
+// def invert(x: int32 | None) -> bool:
 bool invert(std::optional<int32_t> x) {
     // result: bool = not x  # tpyc: ok
     bool result = (!(::tpy::is_truthy(x)));

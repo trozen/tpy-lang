@@ -1,8 +1,8 @@
 # Error: nested classes are not allowed inside generic classes
-from tpy import Int32
+from tpy import int32
 
 class Container[T]:
     class Inner:  # tpyc: error(/Nested classes are not supported inside generic/)
-        val: Int32
+        val: int32
 
     value: T

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def first(items: list[Int32]) -> Int32:
+// def first(items: list[int32]) -> int32:
 int32_t first(const std::vector<int32_t>& items) {
     // return items[0]
     return ::tpy::__getitem__(items, 0);
@@ -27,7 +27,7 @@ void take(::tpy::Union<const Apple*, const Banana*> f) {
 
 // def main() -> None:
 void main() {
-    // print(first([Int32(11), Int32(12), Int32(13)]))
+    // print(first([int32(11), int32(12), int32(13)]))
     std::vector<int32_t> __tmp_1 = {11, 12, 13};
     std::cout << first(__tmp_1) << "\n";
     // take(Apple())

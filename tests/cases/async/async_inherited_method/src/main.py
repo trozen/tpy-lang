@@ -1,11 +1,11 @@
 # Regression: awaiting an inherited async method must name the coro struct
 # after the method's defining base, not the calling subclass.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
 class Pet:
-    async def feed(self, n: Int32) -> Int32:
+    async def feed(self, n: int32) -> int32:
         await asyncio.sleep(0)
         return n + 1
 

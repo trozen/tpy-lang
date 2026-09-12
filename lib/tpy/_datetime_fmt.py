@@ -3,15 +3,15 @@
 # scanner plus the isoformat/offset/label helpers. Pure string builders
 # over component values; classes live in datetime.py.
 # Not for direct user import; the public surface is `datetime`.
-from tpy import Int32, Int64
+from tpy import int32, int64
 from _datetime_cal import (
     _DAY_ABBR, _DAY_FULL, _MONTH_ABBR, _MONTH_FULL,
     _ymd2ord, _days_before_year, _iso_calendar,
 )
 
 
-def _strftime(fmt: str, y: Int32, mo: Int32, d: Int32, hh: Int32, mm: Int32,
-              ss: Int32, us: Int32, has_tz: bool, off_us: int,
+def _strftime(fmt: str, y: int32, mo: int32, d: int32, hh: int32, mm: int32,
+              ss: int32, us: int32, has_tz: bool, off_us: int,
               zone: str) -> str:
     # The shared pure-TPy directive engine. Divergence-relevant facts, all
     # verified against CPython 3.12 on glibc: %Y (and %G) are NOT
@@ -19,9 +19,9 @@ def _strftime(fmt: str, y: Int32, mo: Int32, d: Int32, hh: Int32, mm: Int32,
     # directives pass through verbatim including the '%'; a trailing lone
     # '%' is kept; %z/%Z render empty for naive values.
     o = _ymd2ord(int(y), int(mo), int(d))
-    wd = Int32((o + 6) % 7)          # Mon=0
-    wd_sun0 = Int32(o % 7)           # Sun=0
-    yday0 = Int32(o - _days_before_year(int(y)) - 1)
+    wd = int32((o + 6) % 7)          # Mon=0
+    wd_sun0 = int32(o % 7)           # Sun=0
+    yday0 = int32(o - _days_before_year(int(y)) - 1)
     out = ""
     i = 0
     n = len(fmt)
@@ -80,7 +80,7 @@ def _strftime(fmt: str, y: Int32, mo: Int32, d: Int32, hh: Int32, mm: Int32,
             out = out + f"{(yday0 + 7 - wd_sun0) // 7:02d}"
         elif c == "V":
             iso_y2, iso_w2, iso_d2 = _iso_calendar(int(y), int(mo), int(d))
-            out = out + f"{Int32(iso_w2):02d}"
+            out = out + f"{int32(iso_w2):02d}"
         elif c == "w":
             out = out + f"{wd_sun0}"
         elif c == "W":
@@ -105,7 +105,7 @@ def _strftime(fmt: str, y: Int32, mo: Int32, d: Int32, hh: Int32, mm: Int32,
 
 
 
-def _format_time(hh: Int32, mm: Int32, ss: Int32, us: Int32,
+def _format_time(hh: int32, mm: int32, ss: int32, us: int32,
                  timespec: str = "auto") -> str:
     # 'milliseconds' truncates (never rounds) -- CPython floors the us field.
     if timespec == "auto":
@@ -132,9 +132,9 @@ def _offset_str(off_us: int, sep: str) -> str:
     # when it has microseconds (CPython appends both lazily in %z, isoformat
     # and the synthesized tz name alike).
     sign = "+" if off_us >= 0 else "-"
-    # A valid offset is < 24h in microseconds, so Int64 holds it (BigInt
+    # A valid offset is < 24h in microseconds, so int64 holds it (BigInt
     # values do not support format specs).
-    a = Int64(off_us if off_us >= 0 else -off_us)
+    a = int64(off_us if off_us >= 0 else -off_us)
     total_s, us = divmod(a, 1000000)
     hh, rem = divmod(total_s, 3600)
     mm, ss = divmod(rem, 60)

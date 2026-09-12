@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def use_else(x: Int32 | None) -> Int32:
+// def use_else(x: int32 | None) -> int32:
 int32_t use_else(std::optional<int32_t> x) {
     // if not x:  # tpyc: warning(/Truthiness check on optional value/)
     if ((!(::tpy::is_truthy(x)))) {

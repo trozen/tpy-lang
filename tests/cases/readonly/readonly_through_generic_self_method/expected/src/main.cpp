@@ -6,15 +6,15 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // h = Holder[Int32](Int32(7))
+    // h = Holder[int32](int32(7))
     Holder<int32_t> h = Holder<int32_t>(7);
-    // print(h.lookup(Int32(11)))
+    // print(h.lookup(int32(11)))
     std::cout << h.lookup(11) << "\n";
     // print(h.identity("hello"))
     std::cout << h.identity<std::string>("hello") << "\n";
-    // s = SubHolder[Int32](Int32(9))
+    // s = SubHolder[int32](int32(9))
     SubHolder<int32_t> s = SubHolder<int32_t>(9);
-    // print(s.super_lookup(Int32(13)))
+    // print(s.super_lookup(int32(13)))
     std::cout << s.super_lookup(13) << "\n";
 }
 

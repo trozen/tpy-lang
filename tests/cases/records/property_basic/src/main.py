@@ -1,18 +1,18 @@
 # @property getter-only (read-only property) and computed property
-from tpy import Int32
+from tpy import int32
 
 class Circle:
-    _radius: Int32
+    _radius: int32
 
-    def __init__(self, radius: Int32) -> None:
+    def __init__(self, radius: int32) -> None:
         self._radius = radius
 
     @property
-    def radius(self) -> Int32:
+    def radius(self) -> int32:
         return self._radius
 
     @property
-    def diameter(self) -> Int32:
+    def diameter(self) -> int32:
         return self._radius * 2
 
 def main() -> None:

@@ -4,9 +4,9 @@
 namespace tpyapp::mod_c {
 
 
-// def c_value() -> Int32:
+// def c_value() -> int32:
 int32_t c_value() {
-    // return d_value() + Int32(20)
+    // return d_value() + int32(20)
     return (::tpy::add_check<int32_t>(::tpyapp::mod_d::d_value(), 20));
 }
 

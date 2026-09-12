@@ -1,6 +1,6 @@
 # @override on a @dynamic protocol implementation: clean compile, no warning.
 # The "use a @dynamic protocol" suffix must not appear since one is already in use.
-from tpy import Int32, dynamic
+from tpy import int32, dynamic
 from typing import Protocol, override
 
 @dynamic

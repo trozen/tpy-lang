@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def double(x: Int32) -> Int32:
+// def double(x: int32) -> int32:
 int32_t double_(int32_t x) {
     // return x * 2
     return (::tpy::mul_check<int32_t>(x, 2));
@@ -16,13 +16,13 @@ std::string greet(std::string_view name) {
     return (::tpy::str_concat("Hello, ", name));
 }
 
-// def apply(f: Callable[[Int32], Int32], x: Int32) -> Int32:
+// def apply(f: Callable[[int32], int32], x: int32) -> int32:
 int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t x) {
     // return f(x)
     return f(x);
 }
 
-// def printer(x: Int32) -> None:
+// def printer(x: int32) -> None:
 void printer(int32_t x) {
     // print("got:", x)
     std::cout << "got:" << " " << x << "\n";
@@ -34,7 +34,7 @@ void main() {
     // print(apply(double, 21))  # 42
     std::cout << apply(double_, 21) << "\n";
     // # Callable local
-    // f: Callable[[Int32], Int32] = double
+    // f: Callable[[int32], int32] = double
     std::function<int32_t(int32_t)> f = double_;
     // print(f(10))  # 20
     std::cout << f(10) << "\n";

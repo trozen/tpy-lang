@@ -8,21 +8,21 @@ namespace tpyapp::main {
 // # Array built by index arithmetic: value = start + i * step.
 // def main():
 void main() {
-    // down = [i for i in range(10, 1, -2)]  # tpyc: type(/Array\[Int32, 5\]/)
+    // down = [i for i in range(10, 1, -2)]  # tpyc: type(/Array\[int32, 5\]/)
     std::array<int32_t, 5> down = ::tpy::array_from_index<int32_t, 5>([&](std::size_t __i_0) -> int32_t {
         int32_t i = 10 + int32_t(__i_0) * (-2);
         return i;
     });
     // print(down[0], down[4], len(down))
     std::cout << ::tpy::__getitem__(down, 0) << " " << ::tpy::__getitem__(down, 4) << " " << ::tpy::__len__(down) << "\n";
-    // up = [i * i for i in range(2, 9, 3)]  # tpyc: type(/Array\[Int32, 3\]/)
+    // up = [i * i for i in range(2, 9, 3)]  # tpyc: type(/Array\[int32, 3\]/)
     std::array<int32_t, 3> up = ::tpy::array_from_index<int32_t, 3>([&](std::size_t __i_1) -> int32_t {
         int32_t i = 2 + int32_t(__i_1) * (3);
         return (::tpy::mul_check<int32_t>(i, i));
     });
     // print(up[0], up[2], len(up))
     std::cout << ::tpy::__getitem__(up, 0) << " " << ::tpy::__getitem__(up, 2) << " " << ::tpy::__len__(up) << "\n";
-    // off = [i for i in range(3, 7)]  # tpyc: type(/Array\[Int32, 4\]/)
+    // off = [i for i in range(3, 7)]  # tpyc: type(/Array\[int32, 4\]/)
     std::array<int32_t, 4> off = ::tpy::array_from_index<int32_t, 4>([&](std::size_t __i_2) -> int32_t {
         int32_t i = 3 + int32_t(__i_2);
         return i;

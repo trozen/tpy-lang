@@ -11,7 +11,7 @@ void main() {
     Container<std::string, 10> c1 = Container<std::string, 10>("hello");
     // print(c1.value)
     std::cout << c1.value << "\n";
-    // c2: Container[Int32, 5] = Container[Int32, 5](Int32(42))
+    // c2: Container[int32, 5] = Container[int32, 5](int32(42))
     Container<int32_t, 5> c2 = Container<int32_t, 5>(42);
     // print(c2.value)
     std::cout << c2.value << "\n";

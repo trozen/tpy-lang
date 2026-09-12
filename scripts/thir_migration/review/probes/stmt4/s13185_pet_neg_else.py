@@ -1,5 +1,5 @@
 from typing import Protocol
-from tpy import Int32, dynamic
+from tpy import int32, dynamic
 @dynamic
 class Pet(Protocol):
     def name(self) -> str: ...

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def make_list() -> Own[list[Int32]]:
+// async def make_list() -> Own[list[int32]]:
 ::tpystd::tpy::Poll<std::vector<int32_t>> __coro_make_list::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
@@ -20,7 +20,7 @@ namespace tpyapp::main {
 }
 
 
-// async def make_list() -> Own[list[Int32]]:
+// async def make_list() -> Own[list[int32]]:
 __coro_make_list make_list() {
     return __coro_make_list();
 }
@@ -46,7 +46,7 @@ __coro_make_bytes make_bytes() {
     return __coro_make_bytes();
 }
 
-// async def make_array() -> Own[Array[Int32, 3]]:  # the Array return slot
+// async def make_array() -> Own[Array[int32, 3]]:  # the Array return slot
 ::tpystd::tpy::Poll<std::array<int32_t, 3>> __coro_make_array::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
@@ -62,12 +62,12 @@ __coro_make_bytes make_bytes() {
 }
 
 
-// async def make_array() -> Own[Array[Int32, 3]]:  # the Array return slot
+// async def make_array() -> Own[Array[int32, 3]]:  # the Array return slot
 __coro_make_array make_array() {
     return __coro_make_array();
 }
 
-// async def make_boxes() -> Own[list[Box[Int32]]]:   # the @nocopy payload
+// async def make_boxes() -> Own[list[Box[int32]]]:   # the @nocopy payload
 ::tpystd::tpy::Poll<std::vector<::tpystd::tplib::box::Box<int32_t>>> __coro_make_boxes::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
@@ -83,7 +83,7 @@ __coro_make_array make_array() {
 }
 
 
-// async def make_boxes() -> Own[list[Box[Int32]]]:   # the @nocopy payload
+// async def make_boxes() -> Own[list[Box[int32]]]:   # the @nocopy payload
 __coro_make_boxes make_boxes() {
     return __coro_make_boxes();
 }

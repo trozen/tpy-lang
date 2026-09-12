@@ -34,10 +34,10 @@ void main();
 
 // class A:
 struct A {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     A() = default;
     explicit A(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.A";
@@ -50,10 +50,10 @@ inline std::ostream& operator<<(std::ostream& os, const A& obj) {
 
 // class Holder:
 struct Holder {
-    // xs: list[tuple[Int32, A]]
+    // xs: list[tuple[int32, A]]
     std::vector<std::tuple<int32_t, A>> xs;
 
-    // def __init__(self, xs: Own[list[tuple[Int32, A]]]) -> None:
+    // def __init__(self, xs: Own[list[tuple[int32, A]]]) -> None:
     Holder() = default;
     explicit Holder(std::vector<std::tuple<int32_t, A>>&& xs);
 
@@ -301,10 +301,10 @@ inline __gen_Holder_peek Holder::peek() const {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline A::A(int32_t v) : v(v) {}
 
-// def __init__(self, xs: Own[list[tuple[Int32, A]]]) -> None:
+// def __init__(self, xs: Own[list[tuple[int32, A]]]) -> None:
 inline Holder::Holder(std::vector<std::tuple<int32_t, A>>&& xs) : xs(std::move(xs)) {}
 void __tpy_init();
 } // namespace tpyapp::main

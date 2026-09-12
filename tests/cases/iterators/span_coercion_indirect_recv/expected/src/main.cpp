@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def total(sp: Span[readonly[Int32]]) -> Int32:
+// def total(sp: Span[readonly[int32]]) -> int32:
 int32_t total(std::span<const int32_t> sp) {
     // t = 0
     int32_t t = 0;
@@ -21,7 +21,7 @@ int32_t total(std::span<const int32_t> sp) {
     return t;
 }
 
-// def opt_total(b: Buf | None) -> Int32:
+// def opt_total(b: Buf | None) -> int32:
 int32_t opt_total(const Buf* b) {
     // if b is not None:
     if ((b != nullptr)) {
@@ -32,7 +32,7 @@ int32_t opt_total(const Buf* b) {
     return -1;
 }
 
-// def plain_total(b: Buf) -> Int32:
+// def plain_total(b: Buf) -> int32:
 int32_t plain_total(const Buf& b) {
     // return total(b)             # tpyc: ok -- a record name calls directly
     return total(b.__span__());

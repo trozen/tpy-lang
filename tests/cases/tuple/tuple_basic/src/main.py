@@ -1,17 +1,17 @@
 # Tuple creation, annotation, and printing
-from tpy import Int32
+from tpy import int32
 
 def main() -> None:
     # Annotated tuple (testing annotation support)
-    t: tuple[Int32, str] = (Int32(1), "hello")
+    t: tuple[int32, str] = (int32(1), "hello")
     print(t)
 
     # Inferred tuple type
-    t2 = (Int32(42), True, "world")
+    t2 = (int32(42), True, "world")
     print(t2)
 
     # Nested tuple (inferred)
-    t3 = (Int32(10), ("inner", False))
+    t3 = (int32(10), ("inner", False))
     print(t3)
 
 main()

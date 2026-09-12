@@ -23,7 +23,7 @@ try:
 except TypeError:
     pass
 
-# A right-TYPE but out-of-Int64-range operand must raise OverflowError, not
+# A right-TYPE but out-of-int64-range operand must raise OverflowError, not
 # be swallowed into NotImplemented by the MarshalError-downgrade path (which
 # only downgrades a TypeError -- a type mismatch -- never a real error).
 try:

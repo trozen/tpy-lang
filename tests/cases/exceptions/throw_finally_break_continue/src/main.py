@@ -1,5 +1,5 @@
 # break and continue inside try-with-finally
-from tpy import Int32
+from tpy import int32
 
 def test_break() -> None:
     """Break in try body -- finally runs before exiting loop."""

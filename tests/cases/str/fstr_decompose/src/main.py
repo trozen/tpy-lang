@@ -1,6 +1,6 @@
 # FStr: f-string decomposition via call macro, FStr inlining, tuple dispatch,
 # static string detection, deferred-copy string wrapping, and auto-discovery.
-from tpy import FStr, Int32, inline
+from tpy import FStr, int32, inline
 from log_infra import LogHandle
 from log_macro import log_debug, log
 
@@ -24,7 +24,7 @@ class Module:
         log_debug(self._logger, fs)
 
     # Auto-discover via _logger field
-    def log_auto(self, tag: str, n: Int32) -> None:
+    def log_auto(self, tag: str, n: int32) -> None:
         log(f"tag={tag} n={n}")
 
 
@@ -44,12 +44,12 @@ class Service:
 
 
 # Free function: log() inspects first param for _logger field
-def log_from_module(mod: Module, val: Int32) -> None:
+def log_from_module(mod: Module, val: int32) -> None:
     log(f"free_mod={val}")
 
 
 # Free function: log() inspects first param for get_logger() method
-def log_from_service(svc: Service, val: Int32) -> None:
+def log_from_service(svc: Service, val: int32) -> None:
     log(f"free_svc={val}")
 
 
@@ -58,7 +58,7 @@ def main() -> None:
 
     # Method @inline: mixed types
     s = "hello"
-    i: Int32 = 42
+    i: int32 = 42
     m.log_inline(f"s={s} i={i}")
 
     # Method @inline: static string literal

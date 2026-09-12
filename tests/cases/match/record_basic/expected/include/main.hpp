@@ -20,9 +20,9 @@ void main();
 // @dataclass
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
-    // y: Int32
+    // y: int32
     int32_t y;
 
     Point() = default;

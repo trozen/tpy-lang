@@ -1,18 +1,18 @@
 # Test bounded type parameters with user-defined protocol
 from __future__ import annotations
 from typing import Protocol
-from tpy import Int32
+from tpy import int32
 
 class Addable(Protocol):
-    def add(self, x: Int32) -> Int32: ...
+    def add(self, x: int32) -> int32: ...
 
 class MyNumber:
-    value: Int32
+    value: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.value = v
 
-    def add(self, x: Int32) -> Int32:
+    def add(self, x: int32) -> int32:
         return self.value + x
 
 class Holder[T: Addable]:

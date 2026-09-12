@@ -1,31 +1,31 @@
 # Test `in` operator, comprehension, and for-loop on user NativeIterable.
 # Exercises the __iter__() capture path in codegen for types with
 # synthesized begin()/end().
-from tpy import Int32, Array, Span, SpanIter, readonly, auto_readonly
+from tpy import int32, Array, Span, SpanIter, readonly, auto_readonly
 from tplib import ArrayList
 
 
 class SimpleBuffer:
     """User NativeIterable WITHOUT __contains__ -- exercises the IIFE
     capture path in the `in` operator fallback (std::find via __iter__)."""
-    _data: Array[Int32, 4]
-    _n: Int32
+    _data: Array[int32, 4]
+    _n: int32
 
     def __init__(self) -> None:
         self._data = [10, 20, 30, 0]
         self._n = 3
 
     @auto_readonly
-    def __span__(self) -> Span[auto_readonly[Int32]]:
+    def __span__(self) -> Span[auto_readonly[int32]]:
         return self._data
 
     @auto_readonly
-    def __iter__(self) -> SpanIter[auto_readonly[Int32]]:
+    def __iter__(self) -> SpanIter[auto_readonly[int32]]:
         return SpanIter(self.__span__())
 
 
 def main() -> None:
-    a = ArrayList[Int32, 8]()
+    a = ArrayList[int32, 8]()
     a.append(10)
     a.append(20)
     a.append(30)
@@ -48,7 +48,7 @@ def main() -> None:
     print(len(unique))
 
     # for-loop (universal default path)
-    total: Int32 = 0
+    total: int32 = 0
     for x in a:
         total += x
     print(total)

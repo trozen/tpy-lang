@@ -27,10 +27,10 @@ void main();
 
 // class Holder:
 struct Holder {
-    // rows: list[Int32]
+    // rows: list[int32]
     std::vector<int32_t> rows;
 
-    // def __init__(self, rows: Own[list[Int32]]) -> None:
+    // def __init__(self, rows: Own[list[int32]]) -> None:
     Holder() = default;
     explicit Holder(std::vector<int32_t>&& rows);
 
@@ -72,7 +72,7 @@ struct __coro_consume {
         return os << "<coroutine consume>";
     }
 };
-// async def consume(it: Iterable[Int32]) -> None:
+// async def consume(it: Iterable[int32]) -> None:
 template <::tpystd::typing::Iterable<int32_t> T_it>
 ::tpystd::tpy::Poll<::std::monostate> __coro_consume<T_it>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
@@ -109,7 +109,7 @@ template <::tpystd::typing::Iterable<int32_t> T_it>
 }
 
 
-// async def consume(it: Iterable[Int32]) -> None:
+// async def consume(it: Iterable[int32]) -> None:
 template <::tpystd::typing::Iterable<int32_t> T_it>
 __coro_consume<T_it> consume(T_it&& it) {
     return __coro_consume<T_it>(std::forward<T_it>(it));
@@ -143,7 +143,7 @@ struct __coro_Holder_run {
     }
 };
 
-// async def run(self, extra: Iterable[Int32]) -> None:
+// async def run(self, extra: Iterable[int32]) -> None:
 template <::tpystd::typing::Iterable<int32_t> T_extra>
 ::tpystd::tpy::Poll<::std::monostate> __coro_Holder_run<T_extra>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
@@ -208,7 +208,7 @@ struct __coro_main_coro {
 };
 
 
-// def __init__(self, rows: Own[list[Int32]]) -> None:
+// def __init__(self, rows: Own[list[int32]]) -> None:
 inline Holder::Holder(std::vector<int32_t>&& rows) : rows(std::move(rows)) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -1,7 +1,7 @@
 # Regression: print() on a narrowed value-Optional BigInt field. The print
 # path's BigInt branch fires from get_resolved_type (narrowed inner) before
 # the OptionalType branch can intercept, so the BigInt formatter must see
-# the storage->value boundary handled by gen_expr_deref. Int32/str/bool/
+# the storage->value boundary handled by gen_expr_deref. int32/str/bool/
 # float fields are already covered by narrowed_field_print.
 class Stats:
     total: int | None

@@ -15,19 +15,19 @@ void main();
 
 // class Counter:
 struct Counter {
-    // current: Int32
+    // current: int32
     int32_t current;
-    // limit: Int32
+    // limit: int32
     int32_t limit;
 
-    // def __init__(self, limit: Int32) -> None:
+    // def __init__(self, limit: int32) -> None:
     Counter() = default;
     explicit Counter(int32_t limit);
 
     // def __iter__(self) -> Counter:
     Counter& __iter__();
 
-    // def __next__(self) -> Int32:
+    // def __next__(self) -> int32:
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
@@ -38,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 }
 
 
-// def __init__(self, limit: Int32) -> None:
+// def __init__(self, limit: int32) -> None:
 inline Counter::Counter(int32_t limit) : current(0), limit(limit) {}
 
 // def __iter__(self) -> Counter:
@@ -47,7 +47,7 @@ inline Counter& Counter::__iter__() {
     return (*this);
 }
 
-// def __next__(self) -> Int32:
+// def __next__(self) -> int32:
 inline std::expected<int32_t, ::tpy::StopIteration> Counter::__next__() {
     // if self.current < self.limit:
     if ((this->current < this->limit)) {

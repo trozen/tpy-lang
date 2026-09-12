@@ -33,14 +33,14 @@ inline std::ostream& operator<<(std::ostream& os, const Named& obj) {
 
 // class Counted:
 struct Counted {
-    // count: Int32
+    // count: int32
     int32_t count;
 
 
     // def inc(self) -> None:
     void inc();
 
-    // def value(self) -> Int32:
+    // def value(self) -> int32:
     int32_t value() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counted";
 };
@@ -53,7 +53,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counted& obj) {
 // class Widget(Named, Counted):
 struct Widget : Named, Counted {
 
-    // def __init__(self, name: str, count: Int32) -> None:
+    // def __init__(self, name: str, count: int32) -> None:
     Widget() = default;
     explicit Widget(std::string_view name, int32_t count);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Widget";
@@ -77,13 +77,13 @@ inline void Counted::inc() {
     this->count = (::tpy::add_check<int32_t>(this->count, 1));
 }
 
-// def value(self) -> Int32:
+// def value(self) -> int32:
 inline int32_t Counted::value() const {
     // return self.count
     return this->count;
 }
 
-// def __init__(self, name: str, count: Int32) -> None:
+// def __init__(self, name: str, count: int32) -> None:
 inline Widget::Widget(std::string_view name, int32_t count) {
     // self.name = name
     this->name = name;

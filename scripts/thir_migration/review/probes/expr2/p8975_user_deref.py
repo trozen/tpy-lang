@@ -1,12 +1,12 @@
-from tpy import Int32
+from tpy import int32
 from tplib import Box
 class Node:
-    v: Int32
-    def __init__(self, v: Int32) -> None:
+    v: int32
+    def __init__(self, v: int32) -> None:
         self.v = v
-    def pair(self) -> tuple[Int32, Int32]:
+    def pair(self) -> tuple[int32, int32]:
         return (self.v, self.v)
-    def maybe(self) -> Int32 | None:
+    def maybe(self) -> int32 | None:
         return self.v
 def main() -> None:
     b = Box(Node(2))

@@ -10,11 +10,11 @@ void main() {
     Pile p = Pile();
     // print(p.total())
     std::cout << p.total(::tpy::varargs<const Box>()) << "\n";
-    // a = Box(Int32(1))
+    // a = Box(int32(1))
     Box a = Box(1);
-    // b = Box(Int32(2))
+    // b = Box(int32(2))
     Box b = Box(2);
-    // c = Box(Int32(3))
+    // c = Box(int32(3))
     Box c = Box(3);
     // print(p.total(a, b, c))
     std::array<const Box*, 3> __tmp_1{&a, &b, &c};

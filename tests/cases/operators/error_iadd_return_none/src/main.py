@@ -1,16 +1,16 @@
 # Test that inplace dunders must return self, not None
-from tpy import Int32
+from tpy import int32
 
 class Counter:
-    value: Int32
+    value: int32
 
-    def __init__(self, value: Int32) -> None:
+    def __init__(self, value: int32) -> None:
         self.value = value
 
     def __iadd__(self, other: Counter) -> None:  # tpyc: error(must return self)
         self.value += other.value
 
 def main() -> None:
-    c = Counter(Int32(1))
+    c = Counter(int32(1))
 
 main()

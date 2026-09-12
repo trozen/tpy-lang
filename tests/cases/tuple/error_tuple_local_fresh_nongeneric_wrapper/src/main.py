@@ -1,12 +1,12 @@
 # A fresh NON-generic recursive-union-wrapper member of a tuple local, returned
 # by bare name, must be rejected -- exercises the UnionType wrapper carrier
 # (vs the generic Tree[T] RecursiveAliasInstanceType carrier).
-from tpy import Int32
+from tpy import int32
 
-type Expr = Int32 | list[Expr]
+type Expr = int32 | list[Expr]
 
 
-def f() -> tuple[Expr, Int32]:
+def f() -> tuple[Expr, int32]:
     leaf: Expr = 5
     pair = (leaf, 0)
     return pair  # tpyc: error(/owns a freshly constructed value/)

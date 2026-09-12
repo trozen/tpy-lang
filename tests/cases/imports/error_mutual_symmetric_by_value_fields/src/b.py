@@ -1,9 +1,9 @@
 from a import A
-from tpy import Int32
+from tpy import int32
 
 class B:
-    m: Int32
+    m: int32
     other: A
-    def __init__(self, m: Int32, o: A) -> None:
+    def __init__(self, m: int32, o: A) -> None:
         self.m = m
         self.other = o

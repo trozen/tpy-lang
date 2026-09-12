@@ -1,1 +1,1 @@
-main.py:6: error: list() cannot be constructed from list[Int32]
+main.py:6: error: list() cannot be constructed from list[int32]

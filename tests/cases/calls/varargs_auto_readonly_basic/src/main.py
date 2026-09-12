@@ -2,25 +2,25 @@
 # `varargs<const Box>` and the caller's params can themselves be const-inferred
 # (`Box& b, Box& c` collapses to `const Box& b, const Box& c`). Parallel to
 # the existing non-vararg ref-param auto-const inference.
-from tpy import Int32, nocopy
+from tpy import int32, nocopy
 
 
 @nocopy
 class Box:
-    val: Int32
+    val: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 
-def sum_all(*items: Box) -> Int32:  # tpyc: ok
-    n: Int32 = 0
+def sum_all(*items: Box) -> int32:  # tpyc: ok
+    n: int32 = 0
     for b in items:
         n += b.val
     return n
 
 
-def via_param(b: Box, c: Box) -> Int32:
+def via_param(b: Box, c: Box) -> int32:
     return sum_all(b, c)
 
 

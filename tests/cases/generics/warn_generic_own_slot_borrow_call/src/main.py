@@ -3,13 +3,13 @@
 # no_cpython: each section mutates the source after the boundary to show the
 # copy, which is the acknowledged TPy-copies/CPython-aliases divergence.
 from __future__ import annotations
-from tpy import Int32, Own, auto_readonly, readonly
+from tpy import int32, Own, auto_readonly, readonly
 
 
 class Cell:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 

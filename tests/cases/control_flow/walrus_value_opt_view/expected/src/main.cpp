@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def maybe_text(k: Int32) -> str | None:
+// def maybe_text(k: int32) -> str | None:
 std::optional<std::string> maybe_text(int32_t k) {
     // if k > 0:
     if ((k > 0)) {
@@ -15,7 +15,7 @@ std::optional<std::string> maybe_text(int32_t k) {
     return std::nullopt;
 }
 
-// def maybe_blob(k: Int32) -> bytes | None:
+// def maybe_blob(k: int32) -> bytes | None:
 std::optional<::tpy::Bytes> maybe_blob(int32_t k) {
     // if k > 0:
     if ((k > 0)) {
@@ -26,7 +26,7 @@ std::optional<::tpy::Bytes> maybe_blob(int32_t k) {
     return std::nullopt;
 }
 
-// def text_len(k: Int32) -> Int32:
+// def text_len(k: int32) -> int32:
 int32_t text_len(int32_t k) {
     // if (s := maybe_text(k)) is not None:   # tpyc: ok -- `str | None` target
     std::optional<std::string> s;
@@ -40,7 +40,7 @@ int32_t text_len(int32_t k) {
     return -1;
 }
 
-// def blob_len(k: Int32) -> Int32:
+// def blob_len(k: int32) -> int32:
 int32_t blob_len(int32_t k) {
     // if (b := maybe_blob(k)) is not None:   # tpyc: ok -- `bytes | None` target
     std::optional<::tpy::Bytes> b;
@@ -52,7 +52,7 @@ int32_t blob_len(int32_t k) {
     return -1;
 }
 
-// def from_text_param(t: str | None) -> Int32:
+// def from_text_param(t: str | None) -> int32:
 int32_t from_text_param(std::optional<std::string_view> t) {
     // # A PARAM source binds the VIEW form, so the owned slot takes an explicit
     // # copy rather than the optional's converting assignment.
@@ -66,7 +66,7 @@ int32_t from_text_param(std::optional<std::string_view> t) {
     return -1;
 }
 
-// def from_blob_param(t: bytes | None) -> Int32:
+// def from_blob_param(t: bytes | None) -> int32:
 int32_t from_blob_param(std::optional<::tpy::BytesView> t) {
     // # The bytes face of the same copy: `optional<span>` never converts to
     // # `optional<vector>` on its own.
@@ -80,7 +80,7 @@ int32_t from_blob_param(std::optional<::tpy::BytesView> t) {
     return -1;
 }
 
-// def reassigned(k: Int32) -> Int32:
+// def reassigned(k: int32) -> int32:
 int32_t reassigned(int32_t k) {
     // s = maybe_text(k)
     std::optional<std::string> s = maybe_text(k);

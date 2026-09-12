@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def via_param(b: Box, c: Box) -> Int32:
+// def via_param(b: Box, c: Box) -> int32:
 int32_t via_param(const Box& b, const Box& c) {
     // return count_them(b, c)
     std::array<const Box*, 2> __tmp_1{&b, &c};

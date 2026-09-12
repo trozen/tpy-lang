@@ -1,9 +1,9 @@
 # Error: a var assigned only in the try body (the handler neither assigns it
 # nor terminates), read after the block, is not definitely assigned -> rejected.
-from tpy import Int32
+from tpy import int32
 
 
-def compute() -> Int32:
+def compute() -> int32:
     return 5
 
 

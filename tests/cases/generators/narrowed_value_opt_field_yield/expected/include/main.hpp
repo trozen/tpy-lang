@@ -22,10 +22,10 @@ void main();
 
 // class Box:
 struct Box {
-    // f: Int32 | None
+    // f: int32 | None
     std::optional<int32_t> f;
 
-    // def __init__(self, v: Int32 | None) -> None:
+    // def __init__(self, v: int32 | None) -> None:
     Box() = default;
     explicit Box(std::optional<int32_t> v);
 
@@ -229,7 +229,7 @@ inline __gen_Box_gen_local_bind_loop Box::gen_local_bind_loop() const {
 }
 
 
-// def __init__(self, v: Int32 | None) -> None:
+// def __init__(self, v: int32 | None) -> None:
 inline Box::Box(std::optional<int32_t> v) : f(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

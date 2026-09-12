@@ -1,11 +1,11 @@
 # A failing assert_send prints the why-not chain down to the offending field.
-from tpy import Int32, Ptr, assert_send
+from tpy import int32, Ptr, assert_send
 
 
 class Order:
-    handler: Ptr[Int32]
+    handler: Ptr[int32]
 
-    def __init__(self, h: Ptr[Int32]) -> None:
+    def __init__(self, h: Ptr[int32]) -> None:
         self.handler = h
 
 

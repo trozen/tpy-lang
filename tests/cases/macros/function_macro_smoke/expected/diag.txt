@@ -1,1 +1,1 @@
-main.py:9: warning: function macro saw add(a, b) -> Int32 with 1 statement(s)
+main.py:9: warning: function macro saw add(a, b) -> int32 with 1 statement(s)

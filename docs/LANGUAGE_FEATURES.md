@@ -76,12 +76,12 @@ Profiles can be set at multiple granularities:
 # Class-level
 @profile("noalloc")
 class HotPath:
-    def process(self, data: Span[Int32]) -> Int32:
+    def process(self, data: Span[int32]) -> int32:
         ...
 
 # Function-level (overrides module/class default)
 @noalloc
-def critical_loop(data: Span[Int32]) -> Int32:
+def critical_loop(data: Span[int32]) -> int32:
     ...
 
 @alloc  # explicitly allow allocation in otherwise restricted context
@@ -134,7 +134,7 @@ TurboPython distinguishes between **value types** and **reference types**:
 
 ### Value Types
 Small, cheaply copyable, passed by value:
-- `int`, `float`, `Int32`, `Int64`, `bool`
+- `int`, `float`, `int32`, `int64`, `bool`
 - Small immutable structs (configurable threshold)
 - `FixStr[N]` (fixed-size string)
 - User records that extend `ValueType` (see [ValueType Protocol](#working-valuetype-marker-protocol))
@@ -161,19 +161,19 @@ def process(data: MyClass) -> None:  # data is passed by reference
 **Element-ref deferral**: taking an element reference (`v = items[i]`) does not immediately mark `items` as mutated. The source container is only marked when the borrowed element is actually written through (field write, subscript write, or pass to mutating callee). This allows read-only element-ref patterns to preserve `const T&` for the container param:
 
 ```python
-def read_elem(items: list[Point]) -> Int32:
+def read_elem(items: list[Point]) -> int32:
     v = items[0]    # deferred -- items not yet marked
     return v.x      # read only -- items stays const T&
     # C++: int32_t read_elem(const std::vector<Point>& items)
 
-def write_elem(items: list[Point], val: Int32) -> None:
+def write_elem(items: list[Point], val: int32) -> None:
     v = items[0]    # deferred
     v.x = val       # write through -- items now T&
     # C++: void write_elem(std::vector<Point>& items, int32_t val)
 ```
 
 ```python
-def read_point(p: Point) -> Int32:
+def read_point(p: Point) -> int32:
     return p.x  # const Point& p in C++
 
 def mutate_point(p: Point) -> None:
@@ -211,7 +211,7 @@ section is what those terms mean.
   which instantiates to `T*` for non-value `T` and `T` by value
   otherwise, keeping generic and concrete tuple ABIs compatible.
 
-For value types (`Int32`, `bool`, `Char`, etc.) the two forms coincide
+For value types (`int32`, `bool`, `char`, etc.) the two forms coincide
 -- they're cheaply copyable, so the value form serves both roles.
 
 For non-value types, the codegen inserts conversions at boundaries
@@ -231,7 +231,7 @@ A GENERIC `T` parameter is spelled off the instantiation's C++ type -- `param_va
 
 In either variant form the union's members must render DISTINCT C++ types.
 Every str/bytes type owns one -- `bytes | bytearray`, `str | String`,
-`list[UInt8] | bytes` and `Span[readonly[UInt8]] | BytesView` all discriminate
+`list[uint8] | bytes` and `Span[readonly[uint8]] | BytesView` all discriminate
 correctly (`tests/cases/bytes/distinct_spelling_union`); the view pair was the
 last to split, when `tpy.BytesView` became `::tpy::BytesView`, its own type
 over the bare span. The lowering still refuses a union whose members would
@@ -351,7 +351,7 @@ It matters when:
   ternaries, branch merges of such locals) hands out a pointer borrow of
   `b`, so post-boundary mutation reaches the original object exactly as
   CPython aliases it. The same holds for a param-sourced tuple
-  (`def gen(p: tuple[Int32, Box]): yield p`) and a call-returned one
+  (`def gen(p: tuple[int32, Box]): yield p`) and a call-returned one
   (`u = make(); yield u`).
 - You bind a tuple local from a **storage location** (`t = items[0]`,
   `t = h.pair`) -- the binding ALIASES the stored element (CPython
@@ -378,15 +378,15 @@ Full mapping of TurboPython types to their C++ representation. Where parameter r
 | TurboPython | C++ |
 |-------------|-----|
 | `int` | `tpy::BigInt` (arbitrary precision) |
-| `Int8/16/32/64` | `int8_t/int16_t/int32_t/int64_t` |
-| `UInt8/16/32/64` | `uint8_t/uint16_t/uint32_t/uint64_t` |
-| `float` / `Float64` | `double` (IEEE 754) |
-| `Float32` | `float` (IEEE 754 single precision) |
+| `int8/16/32/64` | `int8_t/int16_t/int32_t/int64_t` |
+| `uint8/16/32/64` | `uint8_t/uint16_t/uint32_t/uint64_t` |
+| `float` / `float64` | `double` (IEEE 754) |
+| `float32` | `float` (IEEE 754 single precision) |
 | `bool` | `bool` |
 | `str` | `std::string` (parameters: `std::string_view`) |
 | `String` | `::tpy::String` (parameters: `const ::tpy::String&`) |
 | `StrView` | `std::string_view` |
-| `Char` | `char` |
+| `char` | `char` |
 | `None` (function-return slot, e.g. `def f() -> None`) | `void` |
 | `None` (every other annotation slot -- function params, locals, fields, type-args like `Future[None]`/`Own[None]`/`list[None]`, tuple elements, ...) | `std::monostate` |
 | `T \| None` (T value type) | `std::optional<T>` |
@@ -401,7 +401,7 @@ Full mapping of TurboPython types to their C++ representation. Where parameter r
 | `Span[readonly[T]]` | `std::span<const T>` |
 | `SpanIter[T]` | `tpy::SpanIter<T>` |
 | `A \| B` (value types) | `::tpy::Union<A, B>` (a `std::variant` that owns Python's comparison rule -- see Union/Optional) |
-| `A \| B` (non-value, params/returns/locals) | `::tpy::Union<A*, B*>` (borrow form -- pointer-variant), `::tpy::Union<const A*, const B*>` at a parameter the body does not mutate through (see the Union/Optional section). Members must render distinct C++ types -- every str/bytes type owns one, the view pair included (`tpy.BytesView` is `::tpy::BytesView`, `Span[readonly[UInt8]]` the bare span) |
+| `A \| B` (non-value, params/returns/locals) | `::tpy::Union<A*, B*>` (borrow form -- pointer-variant), `::tpy::Union<const A*, const B*>` at a parameter the body does not mutate through (see the Union/Optional section). Members must render distinct C++ types -- every str/bytes type owns one, the view pair included (`tpy.BytesView` is `::tpy::BytesView`, `Span[readonly[uint8]]` the bare span) |
 | `A \| B` (non-value, fields/containers) | `::tpy::Union<A, B>` (storage form -- the SAME type a value union spells, so one type owns Python's comparison rule at every owning position) |
 | `Ptr[A] \| Ptr[B]` (every position) | `::tpy::Union<A*, B*>` -- the members are already borrowed references, so this union takes the borrow form's HEAD even where a union owns; one type serves both forms, so no carve-out is needed. Only the alias and a parameter signature reach codegen today (BUGS.md#ptr-member-union-unreachable) |
 | `Ptr[T]` | `T*` |
@@ -413,7 +413,7 @@ Full mapping of TurboPython types to their C++ representation. Where parameter r
 | `Rc[T]` | TPy class wrapping `Ptr[_RcCellBase]` (strong/weak counters + virtual bookkeeping) + `Ptr[T]` (payload, aliases into the cell's inline storage); `@nocopy`, explicit `.clone()` to share. Construct via `Rc.new(value)`. One heap allocation per `Rc.new` -- the cell is generic `_RcCell[U]` (derived from `@dynamic _RcCellBase`) and holds the payload inline via `UninitArrayStorage[U, 1]`. Works for both concrete T and abstract `@dynamic` P; structural conformers of a `@dynamic` T are wrapped at the call site as `Adapter<T, U>` so the inline storage holds a type that inherits T's vtable. |
 | `Weak[T]` | Non-owning companion to `Rc[T]`; shares the cell but doesn't keep the payload alive. `@nocopy`. Mint via `rc.downgrade()`; recover a strong handle (or None) via `weak.upgrade()`. |
 | `Atomic[T]` (`T: AnyFixedInt`) | `@nocopy` but movable, `Send + Sync` wrapper over `std::atomic<T>`. `from tpy.atomic import Atomic, MemoryOrder`. Full `std::atomic<integral>` op surface (`load`/`store`/`exchange`, `fetch_add/sub/and/or/xor`, `compare_exchange[/_weak]`) plus a module-level `fence`. Each op takes a `MemoryOrder` (a `@native("std::memory_order")` enum) that **defaults to `SEQ_CST`**, so casual use needs no ordering (`c.fetch_add(1)`); CAS returns `(succeeded, observed)`. Ergonomic in-place operators `+= -= &= |= ^=` (atomic RMW at seq_cst) and `str`/`repr` (snapshot print); binary operators and implicit `int()` are deliberately omitted (they'd make the non-atomic `a = a + 1` look valid). |
-| `Arc[T]` (arc) | TPy class mirroring `Rc[T]` (`tplib/arc.py`) but with `Atomic[UInt32]` strong/weak counters, so handles cross threads. `@nocopy`; `Send + Sync` iff `T` is (conditional override). Construct via `Arc.new(value)`; share via `arc.clone()`. `from tplib.arc import Arc` (not re-exported from `tplib` -- keeps the atomic runtime out of non-threaded consumers). |
+| `Arc[T]` (arc) | TPy class mirroring `Rc[T]` (`tplib/arc.py`) but with `Atomic[uint32]` strong/weak counters, so handles cross threads. `@nocopy`; `Send + Sync` iff `T` is (conditional override). Construct via `Arc.new(value)`; share via `arc.clone()`. `from tplib.arc import Arc` (not re-exported from `tplib` -- keeps the atomic runtime out of non-threaded consumers). |
 | `Weak[T]` (arc) | Non-owning atomic companion to `Arc[T]`. `@nocopy`. `from tplib.arc import Weak` -- module-scoped, coexists with `tplib.rc.Weak`. |
 | `Mutex[T]` / `RwLock[T]` | Blocking locks wrapping `std::mutex` / `std::shared_mutex` (`tpy.sync`, `from tpy.sync import Mutex, RwLock`). `@nocopy`; the interior-mutability primitives. both `Mutex[T]` and `RwLock[T]` are `Send + Sync` iff `T: Send` (conditional override). For `RwLock` this is looser than Rust's `RwLock<T>: Sync iff T: Send + Sync`, and sound on the safe surface (a safe not-`Sync` `T` is always a container whose shared-mutability the readonly read guard removes; TPy has no safe interior mutability, unlike Rust's `Cell`). It is *not* sound for a `Send`-but-not-`Sync` interior-mutable payload built with the unsafe `unsafe_interior_mutable` hatch (a user `Cell`-analog): the bound fabricates a `Sync` the author never asserted -- a latent hole, low priority; see `BUGS.md` / `docs/SEND_SYNC_DESIGN.md`. `lock()` (Mutex) / `read()` / `write()` (RwLock) are `@readonly` -- you lock through a shared handle, so `arc.lock()` works -- and return a `@nocopy` `Deref[T]` guard used as a context manager: `with m.lock() as g: g.append(x)` (deref forwards to the payload; value-type payloads use `g.get()`/`g.set()`). `set()` takes `Own[T]` -- it moves into the lock's storage, so replacing a reference payload with a still-live lvalue warns (copy-into-owned-storage; silence with `set(x.copy())`), while an rvalue/last-use moves in cleanly. The guard acquires the lock in `__enter__` and releases in `__exit__`; a guard never entered never blocks. Canonical shared-mutable form is `Arc[Mutex[T]]`, which each spawned thread reaches through its own `arc.clone()`. |
 | `Condvar` | Blocking condition variable (`tpy.sync`, `from tpy.sync import Condvar`) over `std::condition_variable`. `@nocopy`, `Send + Sync` unconditionally (the primitive is internally synchronized, like `Atomic`). `@readonly` `wait(guard)` / `notify_one()` / `notify_all()`. `wait` takes the live `Mutex` guard directly (`with m.lock() as g: cv.wait(g)`), atomically releases the lock it holds, blocks until notified, then reacquires; callers re-check their predicate in a loop (spurious wakeups possible). The guard is taken via a monomorphized structural hook, so `wait(g)` is a static call and `_RawMutex` never appears in the surface. Pairs with `Mutex` for blocking producer/consumer handoff across threads. |
@@ -427,10 +427,13 @@ Full mapping of TurboPython types to their C++ representation. Where parameter r
 ### Numeric
 - **Working**: `int` (Python's int -> `tpy::BigInt` arbitrary precision, custom runtime implementation)
 - **Working**: `float` (Python's float -> `double`, 64-bit IEEE 754)
-- **Working**: `Float32` (32-bit single precision -> `float`), `Float64` (alias for `float`)
-- **Working**: `Int8`, `Int16`, `Int32`, `Int64`, `UInt8`, `UInt16`, `UInt32`, `UInt64`, `bool`, `Char`
+- **Working**: `float32` (32-bit single precision -> `float`), `float64` (alias for `float`)
+- **Working**: `int8`, `int16`, `int32`, `int64`, `uint8`, `uint16`, `uint32`, `uint64`, `bool`, `char`
+- **Working**: a binding under a scalar type's name hides the type wherever that binding is visible, so a later `int32(x)` calls the variable. Valid Python, so it warns rather than rejects, at the binding: parameters, locals, tuple-unpack, walrus, `for` and `with` targets and nested-def names (`'int32' shadows the tpy type 'int32' for the rest of this function`), module-level statements (`... for the rest of this module`), and comprehension variables and `except ... as` names (`... within its scope`). The check keys on the imported type, so `from tpy import int16 as i16` makes a local `i16` warn and a local `int16` not. Not covered: `match` captures, and a scalar re-exported through a user module. Rename the binding or use the qualified `tpy.int32`.
+
+**Naming rule for scalar types.** A lowercase name denotes a machine representation and sits in the same register as Python's own `int`, `float`, `bool`, `str`: `int8`..`int64`, `uint8`..`uint64`, `float32`, `float64`, `char`. A CapWords name denotes an abstraction over a representation: `String`, `StrView`, `BigInt`, `Span`, `Array`, `Own`, the protocol names. Future scalars follow the rule (`int128`, `float16`, `bfloat16`, `complex64`); a vector type composes the scalar instead of minting a name per lane count (`Simd[int32, 4]`). `int` stays Python's arbitrary-precision integer; the fixed widths are the opt-in. The names coincide with numpy's dtype names, so `from tpy import int32` and `from numpy import int32` in one module shadow each other; import one of them qualified.
 - **Working**: `%` on floats follows Python floor semantics (sign-of-divisor) -- `-1.5 % 2.5 == 1.0`, `7.0 % -3.0 == -2.0`, `-0.0 % 3.0 == 0.0`. Distinct from `math.fmod`, which keeps C truncation semantics (sign-of-dividend) for compatibility with CPython's `math.fmod`.
-- **Working**: `int.bit_length()` returns the number of bits to represent `abs(self)`, matching CPython (`(0).bit_length() == 0`, sign is ignored). Returns `Int32`.
+- **Working**: `int.bit_length()` returns the number of bits to represent `abs(self)`, matching CPython (`(0).bit_length() == 0`, sign is ignored). Returns `int32`.
 - **Working**: `float.as_integer_ratio()` / `int.as_integer_ratio()` return the exact `(numerator, denominator)` pair (`tuple[int, int]`) in lowest terms with a positive denominator, matching CPython; `float('inf').as_integer_ratio()` raises `OverflowError` and `nan` raises `ValueError`. (Available on `int`/`float` typed values; a bare `int`/`float` literal keeps its `IntLiteral`/`FloatLiteral` type and doesn't expose the method.)
 
 `int` stores values from `-(2**62)` through `2**62 - 1` inline. Comparisons,
@@ -441,20 +444,20 @@ rounded algorithm and can allocate for intermediate values even with small input
 
 #### Default Integer Type for Unannotated Literals (Working)
 
-Unannotated integer literals (`x = 42`) use the configured default integer type, controlled by `--default-int` (default: `Int32`). Explicit `int` annotations always mean `BigInt`:
+Unannotated integer literals (`x = 42`) use the configured default integer type, controlled by `--default-int` (default: `int32`). Explicit `int` annotations always mean `BigInt`:
 
 ```python
-x = 42          # Int32 (default), or Int64/BigInt with --default-int
+x = 42          # int32 (default), or int64/BigInt with --default-int
 y: int = 42     # always BigInt (explicit annotation)
 ```
 
 The compiler performs range-safe fallback: if a literal's value exceeds the configured type's range, it automatically falls back to `BigInt` with a warning:
 
 ```python
-a = 2147483647   # Int32 (fits)
-b = 2147483648   # BigInt with warning (exceeds Int32 range)
-c = -2147483648  # Int32 (exactly Int32 min)
-d = -2147483649  # BigInt with warning (below Int32 min)
+a = 2147483647   # int32 (fits)
+b = 2147483648   # BigInt with warning (exceeds int32 range)
+c = -2147483648  # int32 (exactly int32 min)
+d = -2147483649  # BigInt with warning (below int32 min)
 ```
 
 Constant folding is uniform: every variable-free integer binop (`1 << 100`, `2 ** 40`, `1024 * 1024 * 1024 * 4`) is evaluated at compile time wherever it appears, and the slot it lands in decides only how the folded literal is spelled -- never whether the fold happens. The range check above applies to the folded result, so a value too wide for its slot is a sema error rather than an overflowing chain of run-time checked ops.
@@ -466,55 +469,55 @@ See `docs/INTEGER_INFERENCE_DESIGN.md` for the full design rationale.
 All fixed-width integer types use checked arithmetic (panics on overflow). Operations between fixed-width types and `int` (BigInt) follow Python's promotion rules - the result is always the wider type:
 
 ```python
-x: Int32 = 5
+x: int32 = 5
 y: int = 10     # explicit int (BigInt)
-z = x + y       # Result is int (BigInt), not Int32
+z = x + y       # Result is int (BigInt), not int32
 ```
 
 | Operation | Result Type | Rationale |
 |-----------|-------------|-----------|
-| `Int32 + Int32` | `Int32` | Both operands same type, checked arithmetic |
-| `Int32 + int` | `int` | Promotes to BigInt to avoid overflow |
-| `int + Int32` | `int` | Promotes to BigInt to avoid overflow |
-| `Int32 + literal` | `Int32` | Literal coerces to target type |
+| `int32 + int32` | `int32` | Both operands same type, checked arithmetic |
+| `int32 + int` | `int` | Promotes to BigInt to avoid overflow |
+| `int + int32` | `int` | Promotes to BigInt to avoid overflow |
+| `int32 + literal` | `int32` | Literal coerces to target type |
 
 **Implicit widening**: Smaller fixed-width integers widen to larger ones automatically:
-- Signed: `Int8` → `Int16` → `Int32` → `Int64`
-- Unsigned: `UInt8` → `UInt16` → `UInt32` → `UInt64`
-- Cross-sign: `UInt8` → `Int16`, `UInt16` → `Int32`, `UInt32` → `Int64`
+- Signed: `int8` → `int16` → `int32` → `int64`
+- Unsigned: `uint8` → `uint16` → `uint32` → `uint64`
+- Cross-sign: `uint8` → `int16`, `uint16` → `int32`, `uint32` → `int64`
 
-`Int32 → UInt64` and similar same-or-narrower cross-sign conversions are deliberately **not** implicit -- negative signed values don't round-trip through unsigned types. Direct integer literals at a fixed-width call site (`f(0)` for `f: UInt64`) bypass this gap because the value is known at compile time; non-fitting literals (`f(-1)`, `f(300)` for `UInt8`) are rejected at compile time with a range error.
+`int32 → uint64` and similar same-or-narrower cross-sign conversions are deliberately **not** implicit -- negative signed values don't round-trip through unsigned types. Direct integer literals at a fixed-width call site (`f(0)` for `f: uint64`) bypass this gap because the value is known at compile time; non-fitting literals (`f(-1)`, `f(300)` for `uint8`) are rejected at compile time with a range error.
 
-**Implicit `int` (BigInt) → fixed-width narrowing**: a `BigInt` value flows into a fixed-width-int slot without an explicit cast via a runtime range check that panics on overflow (the same `to_fixed_check` the explicit constructor uses). This applies at scalar positions (annotated assignment, call argument, return), at `list` / `tuple` literal element positions (`ports: list[Int32] = [get_port()]`), and at subscript key/index positions against the receiver's declared key/index width (a `dict[Int64, T]` key or a `list` index narrows to that width; a BigInt-keyed `dict` or a user `__getitem__` taking `int` passes the key through unchanged -- `d[2**40]` works like CPython). Membership (`in` / `not in`) is the exception: it is a value question, so a BigInt needle against a fixed-int-keyed `dict`/`set` (or their views, or fixed-int sequence elements) never range-panics -- an out-of-width needle is simply absent (`2**70 in d` is `False`, like CPython), an int needle in `bytes` raises `ValueError` outside `range(0, 256)` (also like CPython), and only a user `__contains__` with a declared fixed-int param takes the standard call-arg narrow. `dict` / `set` literal elements do not yet accept it (a coercible element is rejected at compile time) -- see BUGS.md.
+**Implicit `int` (BigInt) → fixed-width narrowing**: a `BigInt` value flows into a fixed-width-int slot without an explicit cast via a runtime range check that panics on overflow (the same `to_fixed_check` the explicit constructor uses). This applies at scalar positions (annotated assignment, call argument, return), at `list` / `tuple` literal element positions (`ports: list[int32] = [get_port()]`), and at subscript key/index positions against the receiver's declared key/index width (a `dict[int64, T]` key or a `list` index narrows to that width; a BigInt-keyed `dict` or a user `__getitem__` taking `int` passes the key through unchanged -- `d[2**40]` works like CPython). Membership (`in` / `not in`) is the exception: it is a value question, so a BigInt needle against a fixed-int-keyed `dict`/`set` (or their views, or fixed-int sequence elements) never range-panics -- an out-of-width needle is simply absent (`2**70 in d` is `False`, like CPython), an int needle in `bytes` raises `ValueError` outside `range(0, 256)` (also like CPython), and only a user `__contains__` with a declared fixed-int param takes the standard call-arg narrow. `dict` / `set` literal elements do not yet accept it (a coercible element is rejected at compile time) -- see BUGS.md.
 
-**Literal-seeded local retro-widening**: A function-local initialized from a non-negative integer literal (`offset = 0`, `n = 5`) without an annotation takes the configured default integer type at the assignment, then retroactively re-types to a fixed-width target the first time it flows into a typed slot the standard widening rules can't reach -- call argument, return value, annotated init, reassignment to a typed local, container element, field assign, or dict-key in subscript-assign. This makes `offset = 0; _pcre_match(..., offset, ...)` work when the parameter is `UInt64` without an explicit cast. The lock is one-shot: the first such use pins the local's type, and a later use demanding a different type produces a type-mismatch error with a hint pointing at the locking site. Reassigning the local from a non-literal source (`offset = some_func()`) drops the seed; module-level globals and collection-element literals are not covered by retro-widening (see `INTEGER_INFERENCE_DESIGN.md`). This is distinct from the runtime-checked `BigInt -> fixed-width` element coercion noted above, which applies to a direct `BigInt` *value* at a list/tuple element regardless of retro-widening.
+**Literal-seeded local retro-widening**: A function-local initialized from a non-negative integer literal (`offset = 0`, `n = 5`) without an annotation takes the configured default integer type at the assignment, then retroactively re-types to a fixed-width target the first time it flows into a typed slot the standard widening rules can't reach -- call argument, return value, annotated init, reassignment to a typed local, container element, field assign, or dict-key in subscript-assign. This makes `offset = 0; _pcre_match(..., offset, ...)` work when the parameter is `uint64` without an explicit cast. The lock is one-shot: the first such use pins the local's type, and a later use demanding a different type produces a type-mismatch error with a hint pointing at the locking site. Reassigning the local from a non-literal source (`offset = some_func()`) drops the seed; module-level globals and collection-element literals are not covered by retro-widening (see `INTEGER_INFERENCE_DESIGN.md`). This is distinct from the runtime-checked `BigInt -> fixed-width` element coercion noted above, which applies to a direct `BigInt` *value* at a list/tuple element regardless of retro-widening.
 
 Negation (`-x`) is only available on signed types — unsigned types produce a compile error.
 
 **Explicit cross-type casts**: Any fixed-width integer type can be explicitly converted to any other using the constructor. Out-of-range values panic at runtime:
 
 ```python
-from tpy import Int8, Int32, UInt8
+from tpy import int8, int32, uint8
 
-a: UInt8 = UInt8(42)
-b: Int32 = Int32(a)      # OK: widening, always safe
-c: UInt8 = UInt8(b)      # OK: narrowing, panics if b > 255
+a: uint8 = uint8(42)
+b: int32 = int32(a)      # OK: widening, always safe
+c: uint8 = uint8(b)      # OK: narrowing, panics if b > 255
 
-d: UInt8 = UInt8(Int32(300))  # Runtime panic: UInt8 overflow
-e: UInt8 = UInt8(-3)          # Compile error: out of range literal
+d: uint8 = uint8(int32(300))  # Runtime panic: uint8 overflow
+e: uint8 = uint8(-3)          # Compile error: out of range literal
 ```
 
 **Truncating conversion** (`trunc`): For wrapping/modular conversion without panicking, use the `trunc()` static method:
 
 ```python
-from tpy import Int8, Int32, UInt8
+from tpy import int8, int32, uint8
 
-x: Int32 = Int32(300)
-print(UInt8.trunc(x))       # 44 (300 % 256)
-print(UInt8.trunc(Int8(-1))) # 255
+x: int32 = int32(300)
+print(uint8.trunc(x))       # 44 (300 % 256)
+print(uint8.trunc(int8(-1))) # 255
 
 # Also accepts BigInt (int)
-print(UInt8.trunc(2**100 + 42))  # 42 (low 8 bits)
+print(uint8.trunc(2**100 + 42))  # 42 (low 8 bits)
 ```
 
 **Float promotion**: Any operation involving `float` promotes to `float`:
@@ -525,9 +528,9 @@ print(UInt8.trunc(2**100 + 42))  # 42 (low 8 bits)
 | `float + int` | `float` | Float is wider than int |
 | `int + float` | `float` | Float is wider than int |
 | `float + IntN` | `float` | Float is wider than any fixed-width int (signed or unsigned) |
-| `Float32 + IntN` | `Float32` | Result keeps `Float32`; mixing with `float` widens to `float` |
+| `float32 + IntN` | `float32` | Result keeps `float32`; mixing with `float` widens to `float` |
 | `int / int` | `float` | True division always returns float, correctly rounded like CPython (raises `ZeroDivisionError` on zero divisor, `OverflowError` when the quotient exceeds double range) |
-| `Int32 / Int32` | `float` | Fixed-width true division, same CPython-parity semantics (Int64/UInt64 magnitudes beyond 2^53 route through the correctly-rounded BigInt path) |
+| `int32 / int32` | `float` | Fixed-width true division, same CPython-parity semantics (int64/uint64 magnitudes beyond 2^53 route through the correctly-rounded BigInt path) |
 
 `float + bool` (e.g. `3.0 + True`) is currently rejected, unlike CPython where `bool` is an `int` -- `bool` does not extend the `AnyFixedInt` marker the float operators widen over (see BUGS.md).
 
@@ -535,13 +538,13 @@ For augmented assignment (`+=`, `-=`, `*=`, `/=`, etc.), behavior depends on whe
 
 **Explicitly annotated variables** -- the annotation is preserved; the right-hand side is converted to match. If the operation would produce a wider type, it is a compile error (same as a regular assignment mismatch):
 ```python
-total: Int32 = 0
+total: int32 = 0
 big_value: int = 10  # int (BigInt)
-total += big_value  # big_value converted to Int32, then Int32 addition
-total *= big_value  # same: converts to Int32 first
+total += big_value  # big_value converted to int32, then int32 addition
+total *= big_value  # same: converts to int32 first
 
-y: Int32 = 10
-y *= 1.5            # error: '*=' produces float but 'y' is annotated as Int32
+y: int32 = 10
+y *= 1.5            # error: '*=' produces float but 'y' is annotated as int32
 ```
 
 This ensures fixed-width variables stay in the checked arithmetic domain. If the BigInt value is too large for the target type, the conversion panics at runtime.
@@ -554,31 +557,31 @@ x *= 1.3     # x widens to float; result is 18.2
 
 **Cross-width FixedInt aug-assign is an error** -- assigning a wider integer type with `+=`/`*=` etc. where the result would silently truncate is rejected:
 ```python
-i = Int16(2)
-i += Int64(3)   # error: '+=' is not supported between Int16 and Int64
+i = int16(2)
+i += int64(3)   # error: '+=' is not supported between int16 and int64
 ```
-Use an explicit cast if narrowing is intended: `i += Int16(Int64(3))`.
+Use an explicit cast if narrowing is intended: `i += int16(int64(3))`.
 
 #### Float Literal Adaptation (Working)
 
-Bare float literals (`2.0`, `1.5`) carry an unresolved `FloatLiteralType` that adapts to context, analogous to how integer literals adapt to `Int32`/`BigInt`. The default when no context forces a specific type is `float` (64-bit):
+Bare float literals (`2.0`, `1.5`) carry an unresolved `FloatLiteralType` that adapts to context, analogous to how integer literals adapt to `int32`/`BigInt`. The default when no context forces a specific type is `float` (64-bit):
 
 ```python
-x = Float32(1.5)
-x *= 2.0            # stays Float32 -- literal adapts to Float32 context
-x *= Float64(2.0)   # widens to float -- explicit Float64 forces widening
+x = float32(1.5)
+x *= 2.0            # stays float32 -- literal adapts to float32 context
+x *= float64(2.0)   # widens to float -- explicit float64 forces widening
 
 y = 2.0             # float (default)
-z: Float32 = 2.0    # Float32 -- annotation forces adaptation
+z: float32 = 2.0    # float32 -- annotation forces adaptation
 ```
 
-This means `Float32` arithmetic stays in single precision without requiring explicit `Float32(...)` wrappers on every literal.
+This means `float32` arithmetic stays in single precision without requiring explicit `float32(...)` wrappers on every literal.
 
 ### Strings
 - **Working**: `str` type -- context-dependent: `std::string` by default, `std::string_view` for parameters
 - **Working**: `String` (`tpy.String`) -- explicit owned `::tpy::String`, a `std::string` subclass (parameters use `const ::tpy::String&`)
 - **Working**: `StrView` (`tpy.StrView`) -- explicit `std::string_view`
-- **Working**: `Char` type for single characters (str-like: `str + Char`, `Char + str`, `Char + Char` concat, `Char * n` / `n * Char` repeat, `len(c)` returns 1, `ord(str)` with runtime length-1 check)
+- **Working**: `char` type for single characters (str-like: `str + char`, `char + str`, `char + char` concat, `char * n` / `n * char` repeat, `len(c)` returns 1, `ord(str)` with runtime length-1 check)
 - **Working**: String concatenation with `+` and `+=`
 - **Working**: `str()` conversions (e.g. `str(42)`) safe to store in variables (no dangling)
 - **Working**: `list[str]` generates `std::vector<std::string>`
@@ -617,7 +620,7 @@ y = p.name                     # local = std::string_view (stable storage)
 p.name = "new"                 # source mutated -> y falls back to std::string
 
 names: list[str] = ["alice", "bob"]
-a = names[Int32(0)]            # local = std::string_view
+a = names[int32(0)]            # local = std::string_view
 names.append("carol")          # source mutated -> a falls back to std::string
 
 d: dict[str, str] = {"key": "val"}
@@ -739,9 +742,9 @@ log(f"x={x}")
 - **Working**: `BytesView` (`tpy.BytesView`) -- non-owning read-only view -> `::tpy::BytesView`, a `std::span<const uint8_t>` subclass. Its own type so the family has an `==`, a `<=>` and a `std::hash` the standard does not give a span: `bytes` / `bytearray` / `BytesView` compare, order, hash and serve as lookup keys through it in every pairing, with bare operators, the way `str` / `String` / `StrView` do through `std::string_view` (`tests/cases/bytes/view_type_compare`)
 - **Working**: Byte literals (`b"hello"`, `b"\x00\xff"`) -- use static storage (C++ string literal) when used as `BytesView` or function arguments (zero heap allocation)
 - **Working**: `bytes(n)` zero-fill constructor, `bytes(b)` / `bytearray(b)` copy constructors, and the same three spellings as a `bytearray` field's constructor member-init (`self.buf = bytearray()` / `bytearray(seed)` / `bytearray(n)`). Caveats: `bytearray(n)` with a runtime `BigInt` size fails the C++ build (`BUGS.md#bytearray-size-bigint-unnarrowed`), and a `bytearray` field initialized in a constructor from an ordinary FUNCTION call (`self.buf = make(n)`) still rejects (`BUGS.md#bytearray-ctor-field-and-list-conv`).
-- **Working**: `bytes(iter)` / `bytearray(iter)` from `Iterable[UInt8]` (fast path) or `Iterable[Int32]` (runtime range-checked 0..255); generator expressions work too
-- **Working**: `bytearray.extend(iter)` accepts `Iterable[UInt8]` or `Iterable[Int32]` (range-checked)
-- **Working**: Subscript (`b[i]` -> `UInt8`), `len()`, `in` operator
+- **Working**: `bytes(iter)` / `bytearray(iter)` from `Iterable[uint8]` (fast path) or `Iterable[int32]` (runtime range-checked 0..255); generator expressions work too
+- **Working**: `bytearray.extend(iter)` accepts `Iterable[uint8]` or `Iterable[int32]` (range-checked)
+- **Working**: Subscript (`b[i]` -> `uint8`), `len()`, `in` operator
 - **Working**: Concatenation (`+`), repetition (`*`), equality and ordering (`==`, `!=`, `<`, `<=`, `>`, `>=`; `bytes` is `Comparable`, so `list[bytes].sort()` works), a bytes needle in a tuple literal (`name in (b"A", b"B")`, an `==` OR-chain over the static literal spans) and in a `list` / `set` / `dict` of bytes
 - **Working**: `decode()` -> `str`, `hex()` -> `str`
 - **Working**: Search methods: `find`, `rfind`, `count`, `startswith`, `endswith`
@@ -753,7 +756,7 @@ log(f"x={x}")
 
 #### Bytes Type Semantics (Working)
 
-`bytes` maps to `::tpy::Bytes` and `bytearray` to `::tpy::ByteArray` -- two distinct C++ types over the same `std::vector<uint8_t>` base, neither convertible to the other (a conversion between them is a TPy coercion the front end decides, never something C++ does on its own), and both distinct from `list[UInt8]`, which keeps the bare base. The difference is at the type-system level: `bytes` is immutable (no mutation methods), `bytearray` is mutable. `bytearray` is a **reference type** (like `list`/`dict`/`set`): a local binding or field/return read aliases the buffer rather than deep-copying it, so mutation through the alias is visible, matching CPython; storing one into owned storage (field, container element) copies and warns like any reference type. `bytes` stays value-like -- it is immutable, so the copy is unobservable. Being a reference type, `bytearray` takes the reference-shaped slots the other containers do: an `Own[bytearray]` parameter reads as a plain owned local, and a coroutine may return `Own[bytearray]`.
+`bytes` maps to `::tpy::Bytes` and `bytearray` to `::tpy::ByteArray` -- two distinct C++ types over the same `std::vector<uint8_t>` base, neither convertible to the other (a conversion between them is a TPy coercion the front end decides, never something C++ does on its own), and both distinct from `list[uint8]`, which keeps the bare base. The difference is at the type-system level: `bytes` is immutable (no mutation methods), `bytearray` is mutable. `bytearray` is a **reference type** (like `list`/`dict`/`set`): a local binding or field/return read aliases the buffer rather than deep-copying it, so mutation through the alias is visible, matching CPython; storing one into owned storage (field, container element) copies and warns like any reference type. `bytes` stays value-like -- it is immutable, so the copy is unobservable. Being a reference type, `bytearray` takes the reference-shaped slots the other containers do: an `Own[bytearray]` parameter reads as a plain owned local, and a coroutine may return `Own[bytearray]`.
 
 A `bytearray` receiver is the same method-call family a `list`/`dict`/`set` receiver is, so every receiver shape they admit it admits: a bare name, a field, a container-valued **property** (the getter call is the receiver lvalue), an inner-call result (`ba.strip().upper()`), and an inherited stub method on a `class MyBA(bytearray)` subclass that declares its own `__init__`. A `bytearray | None` **field** stores `std::optional<std::vector<uint8_t>>` and takes the same bare-or-moved name write an `Optional[list]` field takes.
 
@@ -815,7 +818,7 @@ admitted only where the destination borrows: the value can be handed over, so
 the one thing missing here is the copy, and spelling the destination type
 around it is the copy. The name inside the quotes is the destination type's
 own. Every other mismatch is left alone -- a `list` at a `bytes` slot, or a
-`str` at an `Int32` slot, needs a conversion or a parse, not a copy, and gets
+`str` at an `int32` slot, needs a conversion or a parse, not a copy, and gets
 the bare mismatch.
 
 The `bytes` -> `bytearray` direction is one of those: it has no conversion at
@@ -877,7 +880,7 @@ process(b"hello")      # zero-alloc: static span passed directly
   - **Readonly keys**: the pure-read key methods (`__getitem__`, `get`, `__contains__`, `__delitem__`, `pop`) accept a `readonly[K]` key -- the key is only hashed/compared. (`__delitem__`/`pop` mutate, so they still require a mutable dict; only their *key argument* may be readonly. `__setitem__`/`setdefault` store the key and keep a mutable `K`.)
   - **Acknowledged divergence**: two-arg `get(k, default)` on reference-type values returns a *copy* of the stored value (CPython returns the stored object); a warning fires at the call site. Alias via `d[k]` / one-arg `get(k)`, or wrap in `copy()` to acknowledge the copy. Value-type results are parity-clean (no warning). The borrow-returning form is tracked in BUGS.md.
   - `Iterable[T]` conformance: `dict[K,V]` and views conform to `Iterable` (`d` is `Iterable[K]`, `d.keys()` is `Iterable[K]`, `d.values()` is `Iterable[V]`, `d.items()` is `Iterable[tuple[K, V]]`) and can be passed to generic functions accepting `Iterable[T]`
-  - Keys: `str`, `int`, fixed-width ints, `float`, `bool`, `Char`
+  - Keys: `str`, `int`, fixed-width ints, `float`, `bool`, `char`
   - Keys must be hashable AND copy-constructible. Sema enforces both at annotation resolution -- annotating `d: dict[K, V]` is enough; you don't need a literal or `__setitem__` to trigger the check. Non-hashable user records (no `__hash__` / `__eq__`, including inherited) get a "missing `__hash__`; use @dataclass(frozen=True) or define it explicitly" message. `@nocopy` keys (`Rc[T]`, `Box[T]`, user `@nocopy` classes, tuples wrapping them) get a precise "non-copyable" message -- the copy-constructibility requirement is a runtime limitation (`tpy::ordered_map`'s `std::pair<const K, ...>` entries force copy-construction), not a language design choice. (Move-only **values** in `dict[K, Rc[T]]` work; only the key slot is gated.)
   - **Type parameters are invariant**: `dict[K, Child]` is not compatible with `dict[K, Base]` even when `Child` inherits from `Base`. C++ `ordered_map<V>` is a non-converting template — passing `Child` where `Base` is expected would fail at C++ build time or silently slice objects.
   - Return by value requires `Own[dict[K, V]]`
@@ -901,8 +904,8 @@ process(b"hello")      # zero-alloc: static span passed directly
 
 Array literals compile to fixed-size stack arrays with inferred size:
 ```python
-nums = [1, 2, 3]                    # type inferred as Array[Int32, 3]
-arr: Array[Int32, 3] = [10, 20, 30] # explicit type annotation
+nums = [1, 2, 3]                    # type inferred as Array[int32, 3]
+arr: Array[int32, 3] = [10, 20, 30] # explicit type annotation
 ```
 
 #### List Literal Inference (Working)
@@ -925,7 +928,7 @@ Context-dependent inference for Python-first semantics:
 | Return type `-> Own[list[T]]` | `list` | `std::vector` | Return type context propagates to literal |
 
 List reassignment is element-type-checked (independent of the size-widening
-above): `x = [1, 2]; x = ["a"]` is a sema error (`expected list[Int32], got
+above): `x = [1, 2]; x = ["a"]` is a sema error (`expected list[int32], got
 list[str]`), like the equivalent scalar/str rebind. Numeric element widening
 is still accepted.
 
@@ -988,8 +991,8 @@ def make_empty[T]() -> Own[list[T]]:
 
 def build_from_usage() -> None:
     xs = []                # element type unknown at declaration
-    xs.append(42)          # → list[Int32], inferred from append arg
-    xs.append(100)         # widened if needed (e.g., Int32 + Int64 → Int64)
+    xs.append(42)          # → list[int32], inferred from append arg
+    xs.append(100)         # widened if needed (e.g., int32 + int64 → int64)
     print(xs)
 
 def reader(items: Span[int]) -> int:
@@ -1003,8 +1006,8 @@ def caller2():
 **Contextual element-type widening**: When the annotation's element type is wider than the literal's inferred element type, the literal adopts the annotation's type. This enables mixed-type literals:
 ```python
 # Union element types: literal elements are checked against the annotation
-items: list[Int32 | None] = [Int32(1), None, Int32(3)]
-empty: list[Int32 | None] = []
+items: list[int32 | None] = [int32(1), None, int32(3)]
+empty: list[int32 | None] = []
 ```
 
 Note: Passing literals (`[]`, `[1,2,3]`) or constructors (`list()`) directly to functions expecting mutable reference parameters works - the compiler generates temporary variables automatically.
@@ -1012,27 +1015,27 @@ Note: Passing literals (`[]`, `[1,2,3]`) or constructors (`list()`) directly to 
 `Span[T]` is a non-owning mutable view into contiguous memory. `Span[readonly[T]]` is the read-only variant. This follows the same pattern as `Ptr[T]`/`Ptr[readonly[T]]`:
 
 ```python
-from tpy import Int32, Span, Array
+from tpy import int32, Span, Array
 
 # Mutable span -- can read and write elements
-def zero_first(values: Span[Int32]) -> None:
+def zero_first(values: Span[int32]) -> None:
     values[0] = 0
 
 # Read-only span -- can only read elements
-def sum_values(values: Span[readonly[Int32]]) -> Int32:
-    total: Int32 = 0
+def sum_values(values: Span[readonly[int32]]) -> int32:
+    total: int32 = 0
     for v in values:
         total += v
     return total
 
 # Any contiguous container coerces to Span or Span[readonly[T]]:
-arr: Array[Int32, 3] = [10, 20, 30]
-zero_first(arr)                     # Array -> Span[Int32]
-print(sum_values(arr))              # Array -> Span[readonly[Int32]]
-print(sum_values([1, 2, 3, 4, 5])) # array literal -> Span[readonly[Int32]]
+arr: Array[int32, 3] = [10, 20, 30]
+zero_first(arr)                     # Array -> Span[int32]
+print(sum_values(arr))              # Array -> Span[readonly[int32]]
+print(sum_values([1, 2, 3, 4, 5])) # array literal -> Span[readonly[int32]]
 
 # Span[T] auto-coerces to Span[readonly[T]] (like Ptr -> Ptr[readonly[T]]):
-s: Span[Int32] = arr
+s: Span[int32] = arr
 print(sum_values(s))                # Span -> Span[readonly[T]]
 
 # Through @readonly refs, Span[T] becomes Span[readonly[T]] automatically
@@ -1045,7 +1048,7 @@ Key features:
 - `unchecked_get(index)` for raw unchecked access (no bounds check, no negative index normalization)
 - `sort()` for in-place stable sort via `std::stable_sort` (matches Python's stable sort guarantee)
 - Zero-allocation passing of fixed-size arrays to functions that work with any size
-- Constructors: `Span(Ptr[T], Int32)` and `Span(Ptr[readonly[T]], Int32)` for low-level span creation
+- Constructors: `Span(Ptr[T], int32)` and `Span(Ptr[readonly[T]], int32)` for low-level span creation
 - Explicit construction from containers: `Span[T](arr)`, `Span[readonly[T]](lst)` for any `Spannable[T]` source (list, Array)
 - Containers coerce to `Optional[Span[T]]` / `Optional[Span[readonly[T]]]` at call sites
 - `Ptr[T].span(length)` returns `Span[T]`, `Ptr[readonly[T]].span(length)` returns `Span[readonly[T]]`
@@ -1055,14 +1058,14 @@ Key features:
 Fixed-length typed tuples with compile-time element access:
 
 ```python
-from tpy import Int32
+from tpy import int32
 
 # Type is inferred -- no annotation needed
-t = (Int32(1), "hello")
+t = (int32(1), "hello")
 print(t)           # (1, 'hello')
 
 # Explicit annotation also works
-t2: tuple[Int32, bool, str] = (Int32(42), True, "world")
+t2: tuple[int32, bool, str] = (int32(42), True, "world")
 
 # Element access with compile-time integer index
 x = t[0]           # -> std::get<0>(t)
@@ -1070,34 +1073,34 @@ s = t[1]           # -> std::get<1>(t)
 last = t[-1]       # negative indexing supported
 
 # Single-element tuple (trailing comma required, like Python)
-single = (Int32(42),)
+single = (int32(42),)
 print(single)       # (42,)
 
 # Nested tuples
-nested = (Int32(10), ("inner", False))
+nested = (int32(10), ("inner", False))
 
 # Tuple as function parameter and return type
 def swap[A, B](p: tuple[A, B]) -> tuple[B, A]:
     return (p[1], p[0])
 
 # Tuple unpacking (destructuring assignment)
-a, b = (Int32(1), "hello")  # fresh variables
+a, b = (int32(1), "hello")  # fresh variables
 _, second = swap(t)          # _ discards a value
 
 # For-loop unpacking
-items: list[tuple[Int32, str]] = [(Int32(1), "one"), (Int32(2), "two")]
+items: list[tuple[int32, str]] = [(int32(1), "one"), (int32(2), "two")]
 for n, s in items:
     print(n, s)
 
 # Comparison (==, !=, <, <=, >, >=)
-a2 = (Int32(1), "hello")
-b2 = (Int32(1), "hello")
+a2 = (int32(1), "hello")
+b2 = (int32(1), "hello")
 print(a2 == b2)       # True
 print((1, 2) < (1, 3))  # True (lexicographic)
 
 # Hashing -- tuples can be used as dict keys
-d: dict[tuple[Int32, Int32], str] = {(1, 2): "one-two", (3, 4): "three-four"}
-key: tuple[Int32, Int32] = (1, 2)
+d: dict[tuple[int32, int32], str] = {(1, 2): "one-two", (3, 4): "three-four"}
+key: tuple[int32, int32] = (1, 2)
 print(key in d)            # True -- membership test with tuple LHS
 print((3, 4) in d)         # True -- tuple-literal LHS coerces to dict's key type
 print(hash((1, 2, 3)))     # hash of a tuple
@@ -1106,12 +1109,12 @@ print(hash((1, 2, 3)))     # hash of a tuple
 Reference types in tuples follow context-dependent semantics (same rules as standalone `T`):
 
 ```python
-from tpy import Int32, Own
+from tpy import int32, Own
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32) -> None:
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 
@@ -1120,11 +1123,11 @@ def find(p: Point) -> tuple[Point, bool]:
     return (p, True)  # -> std::tuple<Point*, bool>
 
 # Own[T] forces value/copy semantics in return context
-def make(x: Int32) -> tuple[Own[Point], bool]:
+def make(x: int32) -> tuple[Own[Point], bool]:
     return (Point(x, x), True)  # -> std::tuple<Point, bool>
 
 # Local tuple: lvalue elements captured by reference
-p = Point(Int32(1), Int32(2))
+p = Point(int32(1), int32(2))
 t = (p, True)     # std::tuple<Point*, bool>, p.x mutation visible through t
 
 # Tuple unpacking: reference elements bind as aliases
@@ -1140,7 +1143,7 @@ pt, found = find(p)  # pt aliases p, found is bool
 a, b = (items[0], items[1])  # a aliases items[0], b aliases items[1]
 ```
 
-| Context | `tuple[Int32, Point]` C++ | Rationale |
+| Context | `tuple[int32, Point]` C++ | Rationale |
 |---------|--------------------------|-----------|
 | Return | `std::tuple<int32_t, Point*>` | Borrow form (pointer element; a reference can't be a tuple member) |
 | Return (`@readonly`) | `std::tuple<int32_t, const Point*>` | Const borrow form |
@@ -1157,25 +1160,25 @@ Ownership transfer (all three forms produce identical codegen):
 
 ```python
 def make_pair() -> tuple[Own[Handle], Own[Handle]]:
-    a = Handle(Int32(1))
-    b = Handle(Int32(2))
+    a = Handle(int32(1))
+    b = Handle(int32(2))
     return (a, b)              # std::tuple<Handle, Handle>{std::move(a), std::move(b)}
 
 def make_pair_alt() -> Own[tuple[Handle, Handle]]:
-    return (Handle(Int32(1)), Handle(Int32(2)))   # same codegen
+    return (Handle(int32(1)), Handle(int32(2)))   # same codegen
 
 class Container:
     pair: tuple[Handle, Handle]              # no Own[T] needed
     def __init__(self) -> None:
-        a = Handle(Int32(1))
-        b = Handle(Int32(2))
+        a = Handle(int32(1))
+        b = Handle(int32(2))
         self.pair = (a, b)                   # auto-moves at last-use
 ```
 
 Restrictions:
 - Index must be a compile-time integer literal (variable indexing is rejected)
 - Bare `tuple` without type arguments is rejected (must use `tuple[T1, T2, ...]`)
-- Returning a reference to a local or temporary as a tuple element is rejected (dangling reference check). Use `Own[T]` to return by value. This includes a fresh value coerced into a recursive-union-wrapper element (the element is borrow form `X&`), which needs `Own[X]` just like a fresh single-value return. The same rejection covers the *bound* form -- binding such a tuple to a local then returning/yielding it by name (`pair = (leaf, 0); return pair`, `leaf: Tree[Int32]`) -- via a per-local owned-fresh-member fact set at the tuple-literal assignment. The fact is derived from the binding's provenance, so it also propagates through a tuple-local alias (`alias = pair; return alias`), an alias chain, a ternary of such locals, a one-branch alias (UNION merge), and a self-assignment. A *durable* (param / field / call-rooted) reference member is NOT rejected when the destination is a borrow-form tuple: the bound local is pointer borrow form (`std::tuple<..., T*>`), so returning/yielding it shares the member like CPython. (Returning / passing it into an `Own[T]` return / call-arg *slot* is a different boundary -- there the durable borrow would be copied into owned storage, so it requires explicit `copy()`; see the per-element-Own rules above.)
+- Returning a reference to a local or temporary as a tuple element is rejected (dangling reference check). Use `Own[T]` to return by value. This includes a fresh value coerced into a recursive-union-wrapper element (the element is borrow form `X&`), which needs `Own[X]` just like a fresh single-value return. The same rejection covers the *bound* form -- binding such a tuple to a local then returning/yielding it by name (`pair = (leaf, 0); return pair`, `leaf: Tree[int32]`) -- via a per-local owned-fresh-member fact set at the tuple-literal assignment. The fact is derived from the binding's provenance, so it also propagates through a tuple-local alias (`alias = pair; return alias`), an alias chain, a ternary of such locals, a one-branch alias (UNION merge), and a self-assignment. A *durable* (param / field / call-rooted) reference member is NOT rejected when the destination is a borrow-form tuple: the bound local is pointer borrow form (`std::tuple<..., T*>`), so returning/yielding it shares the member like CPython. (Returning / passing it into an `Own[T]` return / call-arg *slot* is a different boundary -- there the durable borrow would be copied into owned storage, so it requires explicit `copy()`; see the per-element-Own rules above.)
 - Tuple element assignment (`t[0] = x`) is rejected (tuples are immutable)
 - Nested unpacking (`a, (b, c) = ...`) is not yet supported. The reference-element aliasing of a tuple-literal unpack applies to **flat** unpacks at both function-body and module/REPL scope (a class-body tuple target is a field-declaration parse error, never an unpack). All element kinds alias correctly, including a ternary of reference lvalues and a reference-returning method call (both are borrow-aliases, not owned values).
 - Non-value `Union` elements (`tuple[A | B, ...]`) borrow as a const pointer variant `::tpy::Union<const A*, const B*>` at the param/return/passthrough boundary (passing such a tuple and reading its non-union elements works); reading/narrowing the union element itself, and the storage/local/field directions, are not yet wired (see BUGS.md). `T | None` elements are fully supported (pointer-repr slots, see the Optional-element conversions above)
@@ -1216,7 +1219,7 @@ Restrictions:
 - **Working**: `Ptr[readonly[T]]` -> `const T*`
 - **Working**: `Own[T]` -> `T` (ownership transfer for return values)
 - **Working**: `Rc[T]` / `Weak[T]` -- pure-TPy non-atomic single-threaded shared-ownership smart pointer with a non-owning companion (`tplib/rc.py`). One heap allocation per `Rc.new`: the cell is generic `_RcCell[U]`, derived from a `@dynamic _RcCellBase` protocol, and holds strong/weak counters plus an inline `UninitStorage[U]` payload. Rc holds two pointers (`_cell: Ptr[_RcCellBase]` for refcount + virtual dispatch, `_payload: Ptr[T]` for fast deref -- aliases into the cell's inline storage). Cell virtuals are *fused* (`incr_strong`, `release_strong`, `try_incr_strong`, `incr_weak`, `release_weak`) so each Rc/Weak op dispatches at most one vcall; `release_strong` does the strong-zero -> drop_payload -> decrement-collective-weak chain in one call, preserving the invariant that a nested `Weak.__del__` triggered by the payload destructor sees `weak >= 2` and can't free the cell. Cell deallocation defers until the last `Weak` drops (weak reaches 0), so `Weak.upgrade()` can safely check `strong > 0` against still-valid memory and return `Rc[T] | None`. `@nocopy` at the TPy level: deliberate sharing is always explicit via `Rc.clone()`, `Rc.downgrade()`, `Weak.clone()`, or `Weak.upgrade()`. `Rc[T]` implements `Deref[T]` for transparent field/method access in TPy (`r.x`, `r.method()`); under CPython use `r.get().x` explicitly because the auto-deref protocol isn't simulated -- tests relying on `r.x` syntax need `no_cpython.txt`. `Weak[T]` deliberately does NOT implement `Deref` -- access must go through `upgrade()` so callers handle the "payload already dropped" case. `Rc[T]` is `Covariant[T]`: `Rc[Parrot]` -> `Rc[Pet]` works for inheritance conformers (the converting move ctor transfers `_cell` and upcasts `_payload` via standard C++ pointer upcast). For `@dynamic` protocol P, both structural and inheritance conformers work via the `Rc.new[U: T]` factory: `r: Rc[Pet] = Rc.new(Parrot(...))` (inheritance: cell is `_RcCell<Parrot>`, payload upcasts `Parrot*` -> `Pet*`) and `r: Rc[Pet] = Rc.new(Cat(...))` (structural: codegen substitutes the method-level type-arg `U -> Adapter<Pet, Cat>` so the cell is `_RcCell<Adapter<Pet, Cat>>`; Adapter inherits Pet, so `Adapter<Pet, Cat>*` upcasts cleanly to `Pet*`). The structural-conformer path is driven by a *representational-use* mark recorded on the canonical `FunctionInfo` during body analysis (the body coerces `Ptr[U] -> Ptr[T]` via `cell.storage.ptr()`) and read by codegen at the call site. Mutation through any clone is visible to all other clones; for shared-immutable use `Rc[readonly[T]]`. `_cell` is declared `unsafe_interior_mutable[Ptr[_RcCellBase]]` -- the refcount is bookkeeping outside the readonly boundary (the std::shared_ptr const-copy pattern) -- so `clone`/`downgrade`/`upgrade`/`Weak.clone` are `@auto_readonly`: callable on a `readonly[Rc[T]]` handle (e.g. cloning an `Rc` field inside a `@readonly` method), and from a readonly handle they yield a readonly-payload handle (`Own[Rc[readonly[T]]]`), so readonly can't be laundered into mutable `T`. Dunder surface on Rc mirrors `Box[T]`: `__str__`, `__repr__`, plus `__eq__` (content equality, delegates to `T.__eq__`, gated on `T: Equatable`), `__lt__`/`__le__`/`__gt__`/`__ge__` (gated on `T: Comparable`), and `__hash__` (gated on `T: Hashable`). Cycles between two strong `Rc` handles still leak (the canonical fix is to wire one edge of the cycle as `Weak`; see `weak_cycle_breaks` test). `Rc`'s refcount is non-atomic (single-threaded by construction, so it's `!Send`/`!Sync` for free from its raw-pointer fields); the atomic sibling is `Arc[T]` (`tplib/arc.py`, shipped). Construct via `Rc.new(value)`; the `Rc(other)` sharing-ctor shape is still blocked by a sema bug filed in `BUGS.md`. `dict[K, Rc[T]]` literal initialization works (`d = {"a": r.clone(), ...}` lowers via `tpy::make_ordered_map`, preserving move semantics for the @nocopy value). `Rc[T]` is rejected as a `set` element / `dict` key with a precise diagnostic -- hash-table-backed containers store keys in `std::pair<const K, ...>` and require copy-constructible K, which `@nocopy` cannot satisfy. Import: `from tplib import Rc` for the strong-handle surface; `Weak` lives only at `tplib.rc.Weak` (not re-exported flat) so the future `Arc[T]` companion at `tplib.arc.Weak` can take the same bare name without collision -- mirrors `std::rc::Weak` vs `std::sync::Weak` in Rust. Use `from tplib.rc import Rc, Weak` when both handles are needed.
-- **Working**: `Arc[T]` / `Weak[T]` -- atomic-refcount sibling of `Rc`/`Weak` (`tplib/arc.py`), a near-clone whose only behavioral delta is that the strong/weak counters are `Atomic[UInt32]`, so handles can be moved and shared across threads. `Arc[T]` is `Send + Sync` exactly when `T` is both (Rust's `Arc<T>` rule), via the conditional `@unsafe_send(if_params_send=True, if_params_sync=True)` / `@unsafe_sync(...)` override -- the handle's raw-pointer fields make it structurally non-Send, and the conditional lifts it only for the type args that make it sound. No constructor gate: `Arc[non-Send-Sync]` is a legal *non-Send* value (like Rust's `Arc<Rc<_>>`), rejected only where it crosses a thread boundary (`spawn`), with a why-not chain that names the offending type parameter and the marker it lacks. Refcount ordering follows `std::sync::Arc`: clone `fetch_add(1, Relaxed)`; drop `fetch_sub(1, Release)` + an `Acquire` fence on the final decrement before the payload destructor; `upgrade` a CAS loop with `Acquire`. Everything else -- the fused `@dynamic _ArcCellBase` cell, `UninitStorage[U]` payload, `Deref[T]`, `Covariant[T]`, the dunder surface, `@auto_readonly` clone/downgrade, `Weak.upgrade() -> Arc[T] | None` after the last strong drop -- mirrors `Rc` exactly. Composes with V1 `tpy.thread.spawn`: `arc.clone()` into a `@nocopy` task's field carries shared state across the spawn boundary with no closures (`tests/cases/threading/arc_spawn`). Import: `from tplib.arc import Arc, Weak` -- deliberately NOT re-exported from `tplib` (that would pull the atomic runtime into every `from tplib import ...` consumer, against the "pay nothing if you don't use threads" principle); `Weak` coexists with `tplib.rc.Weak`. Built on the general `Atomic[T: AnyFixedInt]` primitive (`tpy.atomic`).
+- **Working**: `Arc[T]` / `Weak[T]` -- atomic-refcount sibling of `Rc`/`Weak` (`tplib/arc.py`), a near-clone whose only behavioral delta is that the strong/weak counters are `Atomic[uint32]`, so handles can be moved and shared across threads. `Arc[T]` is `Send + Sync` exactly when `T` is both (Rust's `Arc<T>` rule), via the conditional `@unsafe_send(if_params_send=True, if_params_sync=True)` / `@unsafe_sync(...)` override -- the handle's raw-pointer fields make it structurally non-Send, and the conditional lifts it only for the type args that make it sound. No constructor gate: `Arc[non-Send-Sync]` is a legal *non-Send* value (like Rust's `Arc<Rc<_>>`), rejected only where it crosses a thread boundary (`spawn`), with a why-not chain that names the offending type parameter and the marker it lacks. Refcount ordering follows `std::sync::Arc`: clone `fetch_add(1, Relaxed)`; drop `fetch_sub(1, Release)` + an `Acquire` fence on the final decrement before the payload destructor; `upgrade` a CAS loop with `Acquire`. Everything else -- the fused `@dynamic _ArcCellBase` cell, `UninitStorage[U]` payload, `Deref[T]`, `Covariant[T]`, the dunder surface, `@auto_readonly` clone/downgrade, `Weak.upgrade() -> Arc[T] | None` after the last strong drop -- mirrors `Rc` exactly. Composes with V1 `tpy.thread.spawn`: `arc.clone()` into a `@nocopy` task's field carries shared state across the spawn boundary with no closures (`tests/cases/threading/arc_spawn`). Import: `from tplib.arc import Arc, Weak` -- deliberately NOT re-exported from `tplib` (that would pull the atomic runtime into every `from tplib import ...` consumer, against the "pay nothing if you don't use threads" principle); `Weak` coexists with `tplib.rc.Weak`. Built on the general `Atomic[T: AnyFixedInt]` primitive (`tpy.atomic`).
 - **Working**: `tpy.unsafe` -- unsafe pointer operations (`unsafe_ptr`, `unsafe_load`, `unsafe_store`, `unsafe_copy_n`, `unsafe_ptr_add`, `unsafe_ptr_diff`, `unsafe_cast`, `unsafe_const_cast`, `unsafe_str_view`, `unsafe_str_from_cstr`, `unsafe_cstr`, `unsafe_alloc`, `unsafe_alloc_n`, `unsafe_free`, `unsafe_init`, `unsafe_drop`, `unsafe_move_out`)
 - **Working**: `tpy.mem` -- uninitialized storage primitives (`UninitArrayStorage[T, N]`, `UninitHeapStorage[T]`, `UninitStorage[T]`)
 - **Working (internal)**: `Ref[T]` -- internal type for explicit reference semantics. Flows through the type system uniformly: auto-inserted on function params/returns, preserved on non-reassigned locals, returned by field access and subscript. Detects implicit copies when storing borrowed references into fields/containers (complemented by `needs_copy_warning` for owned lvalue copies). Also drives lambda trailing return types (`-> T&`) and `val_or_ref<T>` template args for iterator combinators. Not user-facing -- users see `T` in annotations, the compiler infers reference vs owned.
@@ -1249,24 +1252,24 @@ Implicit conversions between records and pointers with safety checks:
 
 **Bounded type-parameter coercion** (Working for class / type-param bounds): a type parameter may carry a *subtype* bound -- a class (`def f[U: Animal]`) or another (sibling/enclosing) type parameter (`def make[U: T]` on `class Holder[T]`) -- in addition to the existing protocol (capability) bounds like `T: Comparable`. Inside the generic body, `Ptr[U]` then coerces to `Ptr[B]` as a plain C++ pointer upcast (`U*` -> `B*`); the bound emits an unconstrained `typename U` template parameter (a class/type-param bound is not a C++ concept). The subtype is enforced *nominally* at the call site by `satisfies_bound` (which uses `is_subclass_of` for class bounds), so a non-subtype type argument is rejected with a clear diagnostic. A **protocol target** (`Ptr[U] -> Ptr[Pet]` for a `@dynamic` protocol `Pet`) is deliberately **declined**: a structural conformer satisfies `U: Pet` without inheriting Pet's C++ base, so the plain pointer upcast would be invalid -- those need the adapter path. This is the sema prerequisite for the single-allocation `Rc[@dynamic P]` migration. A bounded *factory* -- `@staticmethod def make[U: T](value: Own[U]) -> Own[Box[T]]` -- is callable by inference: `b: Box[Pet] = Box.make(Parrot(...))` resolves `U` from the argument and `T` from the LHS hint, validating the `U: T` bound against its *substituted* form (inference checks each inferred arg against its bound only after substituting already-inferred params into it; otherwise `U: T` would be checked against the raw `T`). The *explicit-type-args* path (`f[A, B](...)`, and the method form `obj.m[A, B](...)`) substitutes resolved sibling type parameters into the bound the same way before checking, so a bound naming a sibling -- `def f[R, T: Container[R]]`, or a method bound naming a class-level param `class C[R]: def m[T: Container[R]]` -- is validated as `Container[<resolved R>]`, not the raw `Container[R]`. Hint-free `x = Box.make(...)` still needs the deferred default-`T=U` rule -- see TODO.md.
 
-**Associated-type inference** (Working): a sibling param that appears only inside a generic-protocol bound is solved from the concrete conformer -- `def unwrap[R, T: Container[R]](x: T) -> R` called as `unwrap(IntBox(...))` infers `T = IntBox` from the argument and then `R = Int32` by unifying the protocol's member signatures (`get() -> R`) against `IntBox`'s concrete methods. The pass fires only for type params still unresolved after argument matching, so it never changes the outcome of a call that already infers. Type params are likewise inferred *through* the transparent `Send[T]`/`Sync[T]` marker wrappers (`def spawn[...](task: Send[Own[T]])` infers `T` from a bare task argument), and a marker on an argument's declared type no longer leaks into the inferred param. Together these make `tpy.thread.spawn(task)` fully inferred. A `-> None` conformer method satisfies a bound instantiated with `R = None` (the void-like binding canonicalizes to `None`; the generated concept accepts a void-returning conformer via `tpy::proto_result`). A bound naming a protocol with *two or more* own type params (`def take[K, V, T: Pair[K, V]](x: T)`) solves all of them positionally from the conformer's method signatures, distinct params tracked independently. The one remaining exclusion: a multi-param protocol reached via an *extends* declaration (protocol inheritance) rather than a direct conformer resolves only its first param -- see TODO.md. Note: the sibling-referencing bound spelling itself (`[R, T: Container[R]]`) is an intentional TPy extension -- current type checkers (mypy, pyright) reject a generic bound, while CPython erases annotations and runs the code unchanged.
+**Associated-type inference** (Working): a sibling param that appears only inside a generic-protocol bound is solved from the concrete conformer -- `def unwrap[R, T: Container[R]](x: T) -> R` called as `unwrap(IntBox(...))` infers `T = IntBox` from the argument and then `R = int32` by unifying the protocol's member signatures (`get() -> R`) against `IntBox`'s concrete methods. The pass fires only for type params still unresolved after argument matching, so it never changes the outcome of a call that already infers. Type params are likewise inferred *through* the transparent `Send[T]`/`Sync[T]` marker wrappers (`def spawn[...](task: Send[Own[T]])` infers `T` from a bare task argument), and a marker on an argument's declared type no longer leaks into the inferred param. Together these make `tpy.thread.spawn(task)` fully inferred. A `-> None` conformer method satisfies a bound instantiated with `R = None` (the void-like binding canonicalizes to `None`; the generated concept accepts a void-returning conformer via `tpy::proto_result`). A bound naming a protocol with *two or more* own type params (`def take[K, V, T: Pair[K, V]](x: T)`) solves all of them positionally from the conformer's method signatures, distinct params tracked independently. The one remaining exclusion: a multi-param protocol reached via an *extends* declaration (protocol inheritance) rather than a direct conformer resolves only its first param -- see TODO.md. Note: the sibling-referencing bound spelling itself (`[R, T: Container[R]]`) is an intentional TPy extension -- current type checkers (mypy, pyright) reject a generic bound, while CPython erases annotations and runs the code unchanged.
 
 #### Pointer Constructors (Working)
 
 Explicit constructors for `Ptr[T]` and `Ptr[readonly[T]]`, as an alternative to implicit coercions:
 
 ```python
-from tpy import Ptr, Int32
+from tpy import Ptr, int32
 
 def test() -> None:
     # Null pointers
     p: Ptr[None] = Ptr[None]()        # → void* (opaque-pointer idiom for C interop)
-    q: Ptr[Int32] = Ptr[Int32]()      # → nullptr (typed null)
+    q: Ptr[int32] = Ptr[int32]()      # → nullptr (typed null)
 
     # Address-of with take_ptr()
-    x: Int32 = Int32(42)
-    p: Ptr[Int32] = take_ptr(x)              # → &x
-    cp: Ptr[readonly[Int32]] = take_ptr(x)   # → &x (coerces to const)
+    x: int32 = int32(42)
+    p: Ptr[int32] = take_ptr(x)              # → &x
+    cp: Ptr[readonly[int32]] = take_ptr(x)   # → &x (coerces to const)
 ```
 
 **`take_ptr(x)`** takes the address of a mutable lvalue, returning `Ptr[T]`. It can be coerced to `Ptr[readonly[T]]` at the assignment target.
@@ -1274,10 +1277,10 @@ def test() -> None:
 **`Ptr[readonly[T]]`** is the canonical form for read-only pointers. Both spellings are equivalent; `Ptr[readonly[T]]` is the canonical form:
 
 ```python
-from tpy import Ptr, readonly, Int32, take_ptr
+from tpy import Ptr, readonly, int32, take_ptr
 
-x: Int32 = Int32(42)
-p: Ptr[readonly[Int32]] = take_ptr(x)
+x: int32 = int32(42)
+p: Ptr[readonly[int32]] = take_ptr(x)
 ```
 
 **Safety rules:**
@@ -1285,16 +1288,16 @@ p: Ptr[readonly[Int32]] = take_ptr(x)
 - Dangling detection works through `take_ptr` and intermediate variables:
 
 ```python
-def bad() -> Ptr[Int32]:
-    x: Int32 = Int32(1)
+def bad() -> Ptr[int32]:
+    x: int32 = int32(1)
     return take_ptr(x)     # ERROR: returned pointer would dangle
 
-def also_bad() -> Ptr[Int32]:
-    x: Int32 = Int32(1)
-    p: Ptr[Int32] = take_ptr(x)
+def also_bad() -> Ptr[int32]:
+    x: int32 = int32(1)
+    p: Ptr[int32] = take_ptr(x)
     return p                # ERROR: returned pointer would dangle
 
-def ok(x: Int32) -> Ptr[Int32]:
+def ok(x: int32) -> Ptr[int32]:
     return take_ptr(x)     # OK: x is a parameter
 ```
 
@@ -1305,15 +1308,15 @@ Types that implement `__deref__() -> T` conform to the `Deref[T]` protocol and s
 `Ptr[T]` and `Ptr[readonly[T]]` conform to `Deref[T]`. User-defined types can also implement `__deref__`:
 
 ```python
-from tpy import Int32, copy
+from tpy import int32, copy
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32) -> None:
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
-    def sum(self) -> Int32:
+    def sum(self) -> int32:
         return self.x + self.y
 
 class Ref:
@@ -1327,7 +1330,7 @@ def main() -> None:
     r: Ref = Ref(Point(10, 20))
     print(r.x)     # auto-deref: r.__deref__().x -> 10
     print(r.sum())  # auto-deref: r.__deref__().sum() -> 30
-    r.x = Int32(99)  # mutation through __deref__ works -- dual overloads are implicit
+    r.x = int32(99)  # mutation through __deref__ works -- dual overloads are implicit
 ```
 
 The plain `def __deref__` above implicitly gets mutable + const overloads because the return type is a reference type. Explicit `@auto_readonly` is no longer needed for `__deref__`, `__getitem__`, and `__span__` with reference-typed returns -- the compiler synthesizes the pair via `IMPLICIT_AUTO_READONLY_METHODS`. Write `@readonly` to opt back into a single const overload.
@@ -1363,19 +1366,19 @@ Narrowing facts (and value-range facts driving bounds/div-zero check elision) ar
 Low-level pointer arithmetic for C interop and performance-critical code. These bypass bounds checking. The API uses free functions from `tpy.unsafe` (not method calls on pointers):
 
 ```python
-from tpy import Ptr, Int32, UInt32, Array
+from tpy import Ptr, int32, uint32, Array
 from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store
 
 # Get raw pointer to array data
-arr: Array[Int32, 4] = [Int32(10), Int32(20), Int32(30), Int32(40)]
-p: Ptr[Int32] = unsafe_ptr(arr)
+arr: Array[int32, 4] = [int32(10), int32(20), int32(30), int32(40)]
+p: Ptr[int32] = unsafe_ptr(arr)
 
 # Indexed read/write (no bounds check)
-val: Int32 = unsafe_load(p, UInt32(2))       # -> 30
-unsafe_store(p, UInt32(0), Int32(99))        # arr[0] = 99
+val: int32 = unsafe_load(p, uint32(2))       # -> 30
+unsafe_store(p, uint32(0), int32(99))        # arr[0] = 99
 
 # Ptr[readonly[T]] has unsafe_load only (no store)
-cp: Ptr[readonly[Char]] = unsafe_ptr("hello")
+cp: Ptr[readonly[char]] = unsafe_ptr("hello")
 ```
 
 Generated C++: `unsafe_ptr(x)` -> `x.data()`, `unsafe_load(p, i)` -> `p[i]`, `unsafe_store(p, i, v)` -> `p[i] = v`.
@@ -1397,7 +1400,7 @@ def create_point() -> Point:
 The compiler detects this as a dangling reference error. Use `Own[T]` to indicate the function returns a newly constructed object by value (with move semantics):
 
 ```python
-from tpy import Int32, Own, copy
+from tpy import int32, Own, copy
 
 def create_point() -> Own[Point]:
     p: Point = Point()
@@ -1413,7 +1416,7 @@ def main():
 Returning an rvalue (like a constructor call) doesn't require `copy()`:
 
 ```python
-def make_point(x: Int32, y: Int32) -> Own[Point]:
+def make_point(x: int32, y: int32) -> Own[Point]:
     return Point(x, y)  # OK: constructor call is an rvalue
 ```
 
@@ -1616,7 +1619,7 @@ The payload is checked recursively, so `tuple[str, V]` hedges on account of
 `V` even though a tuple is itself a value type.
 
 No warning is emitted for:
-- **Value types** (Int32, bool, str, etc.) -- copy-vs-share is unobservable
+- **Value types** (int32, bool, str, etc.) -- copy-vs-share is unobservable
 - **`T: ValueType` bounded type params** -- the bound guarantees value semantics
 - **Rvalues that own their result** (constructor calls, `Own[T]`-returning
   functions, factories) -- no existing owner. A call that returns a BORROW
@@ -1685,7 +1688,7 @@ The warning covers `for` and `while` bodies, nested loops, module scope, method 
 The check above fires where the alias is **bound**, keyed on scope depth. Its sibling fires where the source is **rebound**, keyed on the alias itself — the same hazard reached from the other end, and the one that catches a local declared above the loop:
 
 ```python
-def gen() -> Iterator[Int32]:
+def gen() -> Iterator[int32]:
     p = Point(1)
     alias = p
     p = Point(100)  # WARNING: 'alias' will not keep the object it was given
@@ -1741,10 +1744,10 @@ def example(cond: bool) -> None:
         x: Point = Point(1, 2)
     print(x)  # ERROR: variable 'x' may be used before assignment
 
-    y: Int32          # bare annotation, no init
+    y: int32          # bare annotation, no init
     print(y)          # ERROR: variable 'y' may be used before assignment
 
-    z: Int32
+    z: int32
     for i in range(n):
         z = i         # assignment inside loop doesn't count (loop may not execute)
     print(z)          # ERROR
@@ -1753,7 +1756,7 @@ def example(cond: bool) -> None:
 **Rules:**
 - Function parameters and `self` are assigned at entry
 - `x = expr` marks `x` as assigned
-- `x: Int32` (bare annotation) does NOT mark as assigned
+- `x: int32` (bare annotation) does NOT mark as assigned
 - **If/else merge**: intersection of both branches (a variable is assigned after `if/else` only if assigned in *both* branches)
 - **Terminated branch**: if one branch returns/breaks/continues, the other branch's state is used
 - **Loops**: conservative — assignments inside loop bodies don't persist after the loop (loop may execute 0 times)
@@ -1764,13 +1767,13 @@ def example(cond: bool) -> None:
 `Own[T]` can also be used for parameter types to receive values by-value:
 
 ```python
-def take_point(p: Own[Point]) -> Int32:
+def take_point(p: Own[Point]) -> int32:
     # p is received by value (Point p in C++)
     return p.x + p.y  # Field access on Own[T] works
 
 def main():
     # Pass Own[Point] return directly to Own[Point] param
-    result: Int32 = take_point(create_point(10, 20))
+    result: int32 = take_point(create_point(10, 20))
     print(result)
 ```
 
@@ -1793,7 +1796,7 @@ The temp is an lvalue, so it binds to both `T&` and `const T&` params. This is c
 When a local variable or `Own[T]` parameter is passed to an `Own[T]` parameter and it is the **last use** of that variable (not read again on any subsequent execution path), the compiler automatically emits `std::move()` instead of requiring `copy()`:
 
 ```python
-def consume(p: Own[Point]) -> Int32:
+def consume(p: Own[Point]) -> int32:
     return p.x + p.y
 
 def main():
@@ -1856,7 +1859,7 @@ for i in range(n):
 **Return site auto-move**: When a function returns `Own[T]` and the return value is a local variable at its last use, `copy()` is not needed -- the compiler allows it directly (C++ NRVO/implicit move handles the rest):
 
 ```python
-def make_point(x: Int32, y: Int32) -> Own[Point]:
+def make_point(x: int32, y: int32) -> Own[Point]:
     p = Point()
     p.x = x
     p.y = y
@@ -1873,7 +1876,7 @@ consume(copy(b))    # warning: unnecessary copy()
 **Own[T] param forwarding**: An `Own[T]` parameter can be forwarded to another `Own[T]` parameter at its last use:
 
 ```python
-def forward(p: Own[Point]) -> Int32:
+def forward(p: Own[Point]) -> int32:
     return consume(p)  # auto-move of Own param
 ```
 
@@ -1893,11 +1896,11 @@ At call sites, the compiler inserts `std::move()` at last use. For non-last-use,
 **Own[T] param consumption warning (Working)**: When an `Own[T]` param is never consumed -- not stored in a field, forwarded to another `Own[T]` param, or returned as `Own[T]` -- the compiler warns:
 
 ```python
-def borrow_only(b: Own[Box]) -> Int32:
+def borrow_only(b: Own[Box]) -> int32:
     return b.value  # warning: Own[Box] param 'b' is never consumed
 ```
 
-This warning is suppressed for value types (`Own[Int32]` -- copy equals move), `@nocopy` types (Own is the only way to pass them), and generic `T` bounded to `ValueType`.
+This warning is suppressed for value types (`Own[int32]` -- copy equals move), `@nocopy` types (Own is the only way to pass them), and generic `T` bounded to `ValueType`.
 
 #### @nocopy Types (Working)
 
@@ -1905,13 +1908,13 @@ Types decorated with `@nocopy` have their copy constructor and copy assignment d
 in C++. Values can only be moved (via auto-move at last use), never copied:
 
 ```python
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 
 @nocopy
 class Handle:
-    fd: Int32
+    fd: int32
 
-def close(h: Own[Handle]) -> Int32:
+def close(h: Own[Handle]) -> int32:
     return h.fd
 
 def main():
@@ -1943,7 +1946,7 @@ transitively and with generic types:
 ```python
 @nocopy
 class Handle:
-    fd: Int32
+    fd: int32
 
 class Container:       # implicitly nocopy (field 'handle' is @nocopy)
     handle: Handle
@@ -1983,7 +1986,7 @@ struct Handle {
 **`__del__` default ctor suppression:** When a record has `__del__`, the auto `ClassName() = default;` is suppressed in any of these cases:
   - `@nocopy + __del__` (the author's "no safe default" declaration: `Box`, `Rc`, `Weak`).
   - `__del__ + __init__` with any required parameter -- the user explicitly opted out of a zero-arg ctor.
-  - `__del__ + no __init__ + any own field that's indeterminate after C++ value-initialization` (raw `Ptr[T]`, primitive scalars like `Int32`/`Bool`/`Char`/floats without an in-class initializer). Such fields would be left in an indeterminate state by `T() = default;`, and the destructor would read them.
+  - `__del__ + no __init__ + any own field that's indeterminate after C++ value-initialization` (raw `Ptr[T]`, primitive scalars like `int32`/`Bool`/`char`/floats without an in-class initializer). Such fields would be left in an indeterminate state by `T() = default;`, and the destructor would read them.
 
 Empty-fields `__del__`-only records (the abstract-Base pattern: `class Base: def __del__(self): ...`) **do** keep their auto default ctor, so derived classes can value-init the base subobject via their member initializer list.
 
@@ -2008,8 +2011,8 @@ returns `Own[ClassName]`. The compiler generates a C++ copy constructor that del
 ```python
 @nocopy
 class Handle:
-    fd: Int32
-    def __init__(self, fd: Int32):
+    fd: int32
+    def __init__(self, fd: int32):
         self.fd = fd
 
 class Container:      # would be implicitly nocopy, but __copy__ opts out
@@ -2046,9 +2049,9 @@ element, element-wise move otherwise):
 ```python
 class Pool[T, N: int]:
     _storage: UninitArrayStorage[T, N]
-    _size: UInt32
+    _size: uint32
     def __del__(self) -> None:
-        self._storage.drop_n(UInt32(0), self._size)
+        self._storage.drop_n(uint32(0), self._size)
     def __move__(self, other: Own[Pool[T, N]]) -> None:
         self._storage.relocate_from(other._storage, other._size)
         self._size = other._size
@@ -2102,7 +2105,7 @@ of `UninitArrayStorage`.)
 The `tpy.unsafe` module provides low-level pointer operations that bypass the compiler's safety checks. These functions require an explicit import -- `from tpy import *` does NOT include them. This forces a deliberate opt-in for unsafe code.
 
 ```python
-from tpy import Ptr, Int32, UInt32, Array
+from tpy import Ptr, int32, uint32, Array
 from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store
 ```
 
@@ -2114,14 +2117,14 @@ Import styles supported:
 **`unsafe_ptr`** -- get a raw pointer to the underlying data of a container or string:
 
 ```python
-arr: Array[Int32, 4] = [Int32(1), Int32(2), Int32(3), Int32(4)]
-p: Ptr[Int32] = unsafe_ptr(arr)          # Array[T, N] -> Ptr[T]
+arr: Array[int32, 4] = [int32(1), int32(2), int32(3), int32(4)]
+p: Ptr[int32] = unsafe_ptr(arr)          # Array[T, N] -> Ptr[T]
 
-lst: list[Int32] = [Int32(10), Int32(20)]
-q: Ptr[Int32] = unsafe_ptr(lst)          # list[T] -> Ptr[T]
+lst: list[int32] = [int32(10), int32(20)]
+q: Ptr[int32] = unsafe_ptr(lst)          # list[T] -> Ptr[T]
 
 s: str = "hello"
-cp: Ptr[readonly[Char]] = unsafe_ptr(s)     # str -> Ptr[readonly[Char]]
+cp: Ptr[readonly[char]] = unsafe_ptr(s)     # str -> Ptr[readonly[char]]
 ```
 
 The element type `T` is inferred from the argument. All three variants generate `.data()` in C++.
@@ -2129,8 +2132,8 @@ The element type `T` is inferred from the argument. All three variants generate 
 **`unsafe_load`** -- read through a pointer at an offset (no bounds checking):
 
 ```python
-val: Int32 = unsafe_load(p, UInt32(0))   # Ptr[T], UInt32 -> T
-val2: Int32 = unsafe_load(cp, UInt32(1)) # Ptr[readonly[T]], UInt32 -> T
+val: int32 = unsafe_load(p, uint32(0))   # Ptr[T], uint32 -> T
+val2: int32 = unsafe_load(cp, uint32(1)) # Ptr[readonly[T]], uint32 -> T
 ```
 
 Generates `p[offset]` in C++.
@@ -2138,7 +2141,7 @@ Generates `p[offset]` in C++.
 **`unsafe_store`** -- write through a pointer at an offset (no bounds checking):
 
 ```python
-unsafe_store(p, UInt32(0), Int32(99))    # Ptr[T], UInt32, Own[T] -> None
+unsafe_store(p, uint32(0), int32(99))    # Ptr[T], uint32, Own[T] -> None
 ```
 
 Generates `p[offset] = value` in C++. Only `Ptr[T]` is accepted (not `Ptr[readonly[T]]`).
@@ -2148,9 +2151,9 @@ Generates `p[offset] = value` in C++. Only `Ptr[T]` is accepted (not `Ptr[readon
 ```python
 from tpy.unsafe import unsafe_copy_n
 
-src: Array[Int32, 3] = [Int32(10), Int32(20), Int32(30)]
-dst: Array[Int32, 3] = [Int32(0), Int32(0), Int32(0)]
-unsafe_copy_n(unsafe_ptr(dst), unsafe_ptr(src), UInt32(3))  # Ptr[T], Ptr[T]|Ptr[readonly[T]], UInt32 -> None
+src: Array[int32, 3] = [int32(10), int32(20), int32(30)]
+dst: Array[int32, 3] = [int32(0), int32(0), int32(0)]
+unsafe_copy_n(unsafe_ptr(dst), unsafe_ptr(src), uint32(3))  # Ptr[T], Ptr[T]|Ptr[readonly[T]], uint32 -> None
 ```
 
 Generates `std::copy_n(src, count, dest)` in C++. The source can be either `Ptr[T]` or `Ptr[readonly[T]]`.
@@ -2160,8 +2163,8 @@ Generates `std::copy_n(src, count, dest)` in C++. The source can be either `Ptr[
 ```python
 from tpy.unsafe import unsafe_ptr_add
 
-p: Ptr[Int32] = unsafe_ptr(arr)
-q: Ptr[Int32] = unsafe_ptr_add(p, Int64(3))   # Ptr[T], Int64 -> Ptr[T]
+p: Ptr[int32] = unsafe_ptr(arr)
+q: Ptr[int32] = unsafe_ptr_add(p, int64(3))   # Ptr[T], int64 -> Ptr[T]
 ```
 
 Generates `(p + 3)` in C++. The offset is in elements (not bytes). Negative offsets move the pointer backward. Works with both `Ptr[T]` and `Ptr[readonly[T]]`.
@@ -2171,7 +2174,7 @@ Generates `(p + 3)` in C++. The offset is in elements (not bytes). Negative offs
 ```python
 from tpy.unsafe import unsafe_ptr_diff
 
-d: Int64 = unsafe_ptr_diff(p2, p1)   # Ptr[T], Ptr[T] -> Int64
+d: int64 = unsafe_ptr_diff(p2, p1)   # Ptr[T], Ptr[T] -> int64
 ```
 
 Generates `static_cast<int64_t>(p2 - p1)` in C++. Returns the number of elements between the two pointers (negative if `p2` precedes `p1`). Both pointers must point into the same allocation. Works with both `Ptr[T]` and `Ptr[readonly[T]]`.
@@ -2181,8 +2184,8 @@ Generates `static_cast<int64_t>(p2 - p1)` in C++. Returns the number of elements
 ```python
 from tpy.unsafe import unsafe_const_cast
 
-cp: Ptr[readonly[Int32]] = ...
-p: Ptr[Int32] = unsafe_const_cast(cp)    # Ptr[readonly[T]] -> Ptr[T]
+cp: Ptr[readonly[int32]] = ...
+p: Ptr[int32] = unsafe_const_cast(cp)    # Ptr[readonly[T]] -> Ptr[T]
 ```
 
 Generates `const_cast<T*>(p)` in C++.
@@ -2192,31 +2195,31 @@ Generates `const_cast<T*>(p)` in C++.
 ```python
 from tpy.unsafe import unsafe_cast
 
-p: Ptr[Int32] = ...
-q: Ptr[UInt32] = unsafe_cast[UInt32](p)  # explicit type arg (preferred)
-q: Ptr[UInt32] = unsafe_cast(p)          # target inferred from annotation
-print(unsafe_load(unsafe_cast[UInt32](p), UInt32(0)))  # works inline too
+p: Ptr[int32] = ...
+q: Ptr[uint32] = unsafe_cast[uint32](p)  # explicit type arg (preferred)
+q: Ptr[uint32] = unsafe_cast(p)          # target inferred from annotation
+print(unsafe_load(unsafe_cast[uint32](p), uint32(0)))  # works inline too
 ```
 
-Generates `reinterpret_cast<T*>(p)` in C++. `unsafe_cast` is a standard two-type-param generic (`T` = target pointee, `U` = source pointee). The target type can be specified via explicit type argument (`unsafe_cast[UInt32](p)`, partial -- `U` inferred from arg) or inferred from context (`q: Ptr[UInt32] = unsafe_cast(p)` -- both `T` and `U` inferred). The pointer kind (`Ptr`/`Ptr[readonly[...]]`) is preserved: `Ptr[U]` returns `Ptr[T]`, `Ptr[readonly[U]]` returns `Ptr[readonly[T]]`. Casting `Ptr[readonly[T]]` to `Ptr[T]` is rejected -- use `unsafe_const_cast` first.
+Generates `reinterpret_cast<T*>(p)` in C++. `unsafe_cast` is a standard two-type-param generic (`T` = target pointee, `U` = source pointee). The target type can be specified via explicit type argument (`unsafe_cast[uint32](p)`, partial -- `U` inferred from arg) or inferred from context (`q: Ptr[uint32] = unsafe_cast(p)` -- both `T` and `U` inferred). The pointer kind (`Ptr`/`Ptr[readonly[...]]`) is preserved: `Ptr[U]` returns `Ptr[T]`, `Ptr[readonly[U]]` returns `Ptr[readonly[T]]`. Casting `Ptr[readonly[T]]` to `Ptr[T]` is rejected -- use `unsafe_const_cast` first.
 
 **`unsafe_str_view`** -- create a `StrView` from a char pointer and length:
 
 ```python
 from tpy.unsafe import unsafe_str_view
 
-p: Ptr[Char] = ...
-sv: StrView = unsafe_str_view(p, UInt32(5))   # Ptr[Char], UInt32 -> StrView
+p: Ptr[char] = ...
+sv: StrView = unsafe_str_view(p, uint32(5))   # Ptr[char], uint32 -> StrView
 ```
 
-Generates `std::string_view(p, size)` in C++. Also accepts `ConstPtr[Char]`. The caller must ensure the pointer remains valid for the lifetime of the returned view.
+Generates `std::string_view(p, size)` in C++. Also accepts `ConstPtr[char]`. The caller must ensure the pointer remains valid for the lifetime of the returned view.
 
 **`unsafe_str_from_cstr`** / **`unsafe_cstr`** -- convert between a TPy string and a null-terminated C string:
 
 ```python
 from tpy.unsafe import unsafe_cstr, unsafe_str_from_cstr
 
-def handle(p: Ptr[readonly[UInt8]]) -> None:
+def handle(p: Ptr[readonly[uint8]]) -> None:
     name = unsafe_str_from_cstr(p)      # const char* -> owned str (copies)
     reply = String("hi " + name)
     c_sink(unsafe_cstr(reply))          # String -> const uint8_t*, borrowed
@@ -2228,8 +2231,8 @@ def handle(p: Ptr[readonly[UInt8]]) -> None:
 
 ```python
 from tpy.unsafe import unsafe_alloc, unsafe_alloc_n
-p: Ptr[Int32] = unsafe_alloc()        # allocate space for 1 element
-q: Ptr[Int32] = unsafe_alloc_n(UInt32(10))  # allocate space for 10 elements
+p: Ptr[int32] = unsafe_alloc()        # allocate space for 1 element
+q: Ptr[int32] = unsafe_alloc_n(uint32(10))  # allocate space for 10 elements
 ```
 
 **`unsafe_free`** -- free raw memory allocated by `unsafe_alloc`/`unsafe_alloc_n`:
@@ -2243,7 +2246,7 @@ unsafe_free(p)  # Ptr[T] -> None
 
 ```python
 from tpy.unsafe import unsafe_init
-unsafe_init(p, Int32(42))  # Ptr[T], Own[T] -> None
+unsafe_init(p, int32(42))  # Ptr[T], Own[T] -> None
 ```
 
 **`unsafe_drop`** -- call the destructor on an object at a pointer location (no-op for trivially destructible types):
@@ -2257,7 +2260,7 @@ unsafe_drop(p)  # Ptr[T] -> None
 
 ```python
 from tpy.unsafe import unsafe_move_out
-val: Int32 = unsafe_move_out(p)  # Ptr[T] -> Own[T]
+val: int32 = unsafe_move_out(p)  # Ptr[T] -> Own[T]
 ```
 
 Generates `std::move(*p)` in C++. Used by `Box[T].take()` to extract the contained value before freeing the raw memory.
@@ -2267,14 +2270,14 @@ Generates `std::move(*p)` in C++. Used by `Box[T].take()` to extract the contain
 The `tpy.mem` module provides low-level uninitialized storage types for building containers. Elements are not default-constructed -- the caller manages element lifetimes explicitly via `init`/`drop`. Lifetime tracking that panics on misuse (double-init, use-after-drop, leak on destruction) is compiled in unless `NDEBUG` is defined; neither `tpy` build variant defines it, so both the default `-O3` build and `--debug` keep the checks.
 
 ```python
-from tpy import Int32, Ptr
+from tpy import int32, Ptr
 from tpy.mem import UninitArrayStorage, UninitHeapStorage
 ```
 
 **UninitArrayStorage[T, N]** -- inline (stack) storage for N elements. Uses a C++ union so elements are not default-constructed. The owner tracks which slots are live (a size/count/flag), so the storage carries no runtime liveness and cannot relocate its elements on its own -- it is therefore `@nomove` (non-movable for any element type). An owner that needs to be moved defines `__move__` and relocates the live prefix with `relocate_from(other, count)` (a `memcpy` for a trivially-relocatable element, element-wise move + destroy otherwise; the source is left empty). A movable single-value owner uses `UninitStorage[T]` instead; a trivial fixed scratch buffer uses the movable `Array[T, N]`.
 
 ```python
-storage = UninitArrayStorage[Int32, 4]()
+storage = UninitArrayStorage[int32, 4]()
 storage.init(0, 10)        # placement-new at index 0
 storage.init(1, 20)
 print(storage.load(0))     # access element -> 10
@@ -2284,7 +2287,7 @@ storage.drop(0)            # destroy element at index 0
 **UninitStorage[T]** -- owning storage for a single optional value, tracking its own liveness in one bit. Unlike `UninitArrayStorage`, it MOVES CORRECTLY element-wise (transferring the live payload and leaving the source empty), so it is safe for a non-trivially-relocatable payload (e.g. an SSO `std::string`). Use it for owners that are a single optional value -- `Poll`, the `Rc` cell payload, the asyncio `Task`/`Future` result slot, a channel send slot -- where its bit IS the owner's liveness (no separate flag). Surface: `construct(value)` (place a payload into an empty slot), `has()`, `get()`, `take()` (move the payload out and empty the slot), `reset()`, `ptr()`. `T` must be nothrow-move-constructible (a `static_assert` enforces it): every owner move-constructs the slot under a `noexcept` move ctor, so a throwing `T` move would `std::terminate` at the owner boundary -- a throwing-move `T` is rejected at compile time instead.
 
 ```python
-slot = UninitStorage[Int32]()
+slot = UninitStorage[int32]()
 slot.construct(10)         # place the value
 print(slot.has())          # -> True
 print(slot.get())          # access -> 10
@@ -2294,12 +2297,12 @@ x = slot.take()            # move out, slot now empty
 **UninitHeapStorage[T]** -- heap-allocated storage for a given capacity. Non-copyable, movable (move transfers pointer ownership). Always allocated -- constructor allocates, destructor deallocates.
 
 ```python
-storage = UninitHeapStorage[Int32](4)   # allocate capacity for 4 elements
+storage = UninitHeapStorage[int32](4)   # allocate capacity for 4 elements
 storage.init(0, 100)
-val: Int32 = storage.take(0)            # move value out + destroy slot
+val: int32 = storage.take(0)            # move value out + destroy slot
 
 # Type can be inferred from assignment target context:
-s: UninitHeapStorage[Int32] = UninitHeapStorage(1)  # T inferred as Int32
+s: UninitHeapStorage[int32] = UninitHeapStorage(1)  # T inferred as int32
 ```
 
 **Shared API** (both types):
@@ -2317,10 +2320,10 @@ s: UninitHeapStorage[Int32] = UninitHeapStorage(1)  # T inferred as Int32
 - **Working**: Classes -> C++ structs
 - **Working**: Auto-declare fields from `__init__`: `self.field = param` auto-declares a field using the parameter's type, no class-level annotation needed (CPython-compatible). Works for any class, including subclasses: a name already declared by an ancestor reuses the inherited slot (no shadow), a new name becomes an own field. An `Own[T]` param infers a `T` field (a field owns its value inline; the param is moved in). Only direct parameter assignments at `__init__` top level; computed expressions (`self.f = 0`, `self.f = g()`) still require an explicit class-level annotation. See `docs/CONSTRUCTOR_DESIGN.md`.
 - **Working**: Two-section `__init__` model: the leading contiguous chain of `super().__init__()` calls and `self.field = expr` assignments (intervening docstring / `pass` also skipped) is the *init section* (maps to the C++ member initializer list); the first non-conforming statement closes the section and any `self.field = expr` after it stays in the *body section*, so its expression evaluates in source order with the preceding body statements. Fields not initialized in the init section are checked at the split point: no default constructor -> compile error; default-constructible -> warning; has class-level default -> silent. Assigning a `@nocopy` or `__del__` field inside control flow (`if`/`else`/`while`/`for`) in the body section is a compile error (move-only or destructor would run on the default-constructed value). See `docs/CONSTRUCTOR_DESIGN.md`.
-- **Working**: Single class inheritance (`class Child(Parent)`). A subclass `__init__` must call `super().__init__(...)` as its first statement when the parent's C++ default constructor is implicitly deleted (e.g. when the parent has a `@nocopy`/`__del__` field, or any field whose type has no default ctor); otherwise the C++ build can't synthesize the base subobject init. Subclasses of parents whose fields are all default-constructible (`Int32`, `str`, `list[T]`, etc.) may omit the super call -- C++ default-initializes the base subobject and the child can overwrite inherited fields by direct assignment.
+- **Working**: Single class inheritance (`class Child(Parent)`). A subclass `__init__` must call `super().__init__(...)` as its first statement when the parent's C++ default constructor is implicitly deleted (e.g. when the parent has a `@nocopy`/`__del__` field, or any field whose type has no default ctor); otherwise the C++ build can't synthesize the base subobject init. Subclasses of parents whose fields are all default-constructible (`int32`, `str`, `list[T]`, etc.) may omit the super call -- C++ default-initializes the base subobject and the child can overwrite inherited fields by direct assignment.
 - **Working**: Generic inheritance with forwarded type params (`class Child[T](Parent[T])`)
-- **Working**: Explicit protocol implementation (`class MyList(Sequence[Int32])`)
-- **Working**: Enums -> `enum class` (base `Enum` with integer members, `auto()`, `.name`, `.value`, `==`/`!=`/`is`/`not`, truthiness, record field, `list[Enum]`, `Optional[Enum]`, cross-module import, iteration `for c in Color`, value lookup `Color(0)`, name lookup `Color["Red"]`, `try_parse(Color, "Red")` via `from tpy import try_parse`, `IntEnum` with arithmetic/ordering/int comparison, configurable underlying type via mixin `(Int8, Enum)`). Both `from enum import Enum, auto` and `import enum` (qualified `enum.Enum`, `enum.auto()`) are supported. `.name` is typed `StrView` -- the value is a `string_view` into the enum's static member-name storage (safe to hold indefinitely), so view positions read it copy-free and owned-`str` sinks (an owned return, a `: str` annotated-and-mutated local, `list[str].append`, a `yield` at an `Iterator[str]` slot) insert the standard view->owned copy.
+- **Working**: Explicit protocol implementation (`class MyList(Sequence[int32])`)
+- **Working**: Enums -> `enum class` (base `Enum` with integer members, `auto()`, `.name`, `.value`, `==`/`!=`/`is`/`not`, truthiness, record field, `list[Enum]`, `Optional[Enum]`, cross-module import, iteration `for c in Color`, value lookup `Color(0)`, name lookup `Color["Red"]`, `try_parse(Color, "Red")` via `from tpy import try_parse`, `IntEnum` with arithmetic/ordering/int comparison, configurable underlying type via mixin `(int8, Enum)`). Both `from enum import Enum, auto` and `import enum` (qualified `enum.Enum`, `enum.auto()`) are supported. `.name` is typed `StrView` -- the value is a `string_view` into the enum's static member-name storage (safe to hold indefinitely), so view positions read it copy-free and owned-`str` sinks (an owned return, a `: str` annotated-and-mutated local, `list[str].append`, a `yield` at an `Iterator[str]` slot) insert the standard view->owned copy.
 - **Working**: `@native` enums -> bind to existing C++ `enum class` via `@native("ns::E")`. Two value-declaration modes: `auto()` / `native_member("cpp_name")` leave the value implicit (C++ is the source of truth; `e.value` reads `static_cast<underlying>(e)`); explicit integer literals are verified against the C++ side via a per-member `static_assert` at compile time. `native_member("cpp_name")` also aliases a TPy-side member name to a C++-side enumerator (for Python keywords like `None` or naming-convention mismatches). No `enum class` declaration is generated and no `operator<<` is emitted (print/repr route through `EnumUtil` via runtime templates). See `docs/NATIVE_INTEROP.md#enums`.
 
 ### Protocols (Partial)
@@ -2333,13 +2336,13 @@ The built-in `Sized` protocol is available from the `typing` module:
 
 ```python
 from typing import Sized
-from tpy import Int32
+from tpy import int32
 
-def count(items: Sized) -> Int32:
+def count(items: Sized) -> int32:
     return len(items)
 
 def main() -> None:
-    nums: list[Int32] = [1, 2, 3]
+    nums: list[int32] = [1, 2, 3]
     print(count(nums))  # Works! Prints 3
 ```
 
@@ -2375,16 +2378,16 @@ Implicit truthiness is supported: `if obj:`, `while obj:`, `not obj`, `and`/`or`
 
 #### Working: Built-in `Hashable` Protocol
 
-The built-in `Hashable` protocol is available from the `tpy` module. Types that implement `__hash__() -> UInt64` conform to `Hashable`. The `hash()` builtin dispatches to `tpy::__hash__()`:
+The built-in `Hashable` protocol is available from the `tpy` module. Types that implement `__hash__() -> uint64` conform to `Hashable`. The `hash()` builtin dispatches to `tpy::__hash__()`:
 
 ```python
-h = hash("hello")    # UInt64
-h = hash(42)          # UInt64
-h = hash(3.14)        # UInt64
-h = hash(True)        # UInt64
+h = hash("hello")    # uint64
+h = hash(42)          # uint64
+h = hash(3.14)        # uint64
+h = hash(True)        # uint64
 ```
 
-All primitive types (str, int, fixed-width ints, float, bool, Char), `bytes`, `BytesView`, and Enum types are hashable. `bytearray` is not hashable (mutable). Dict key / set element validation requires conformance to BOTH the `Hashable` and `Equatable` protocols (ordered_set / ordered_map use std::hash AND std::equal_to). Conformance walks the inheritance chain, so a subclass inherits its parent's dunders.
+All primitive types (str, int, fixed-width ints, float, bool, char), `bytes`, `BytesView`, and Enum types are hashable. `bytearray` is not hashable (mutable). Dict key / set element validation requires conformance to BOTH the `Hashable` and `Equatable` protocols (ordered_set / ordered_map use std::hash AND std::equal_to). Conformance walks the inheritance chain, so a subclass inherits its parent's dunders.
 
 Generated C++ uses `tpy::__hash__()` free function dispatch with overloads for built-in types (`std::integral`, `double`, strings, bytes, `BigInt`, enums) and a default template forwarding to user-defined `__hash__()` methods.
 
@@ -2396,12 +2399,12 @@ Example of a custom protocol:
 
 ```python
 from typing import Protocol
-from tpy import Int32
+from tpy import int32
 
 class Measurable(Protocol):
-    def __len__(self) -> Int32: ...
+    def __len__(self) -> int32: ...
 
-def count(items: Measurable) -> Int32:
+def count(items: Measurable) -> int32:
     return len(items)
 ```
 
@@ -2424,30 +2427,30 @@ int32_t count(T_items& items) {
 
 ```python
 from typing import Protocol
-from tpy import Int32, readonly
+from tpy import int32, readonly
 
 class Readable(Protocol):
     @readonly
-    def read(self) -> Int32: ...
+    def read(self) -> int32: ...
 
 class GoodReader:
-    value: Int32
-    def __init__(self, value: Int32) -> None:
+    value: int32
+    def __init__(self, value: int32) -> None:
         self.value = value
 
     @readonly
-    def read(self) -> Int32:
+    def read(self) -> int32:
         return self.value
 
 class BadReader:
-    value: Int32
-    def __init__(self, value: Int32) -> None:
+    value: int32
+    def __init__(self, value: int32) -> None:
         self.value = value
 
-    def read(self) -> Int32:  # Not readonly
+    def read(self) -> int32:  # Not readonly
         return self.value
 
-def use(r: Readable) -> Int32:
+def use(r: Readable) -> int32:
     return r.read()
 
 use(GoodReader(1))  # OK
@@ -2498,7 +2501,7 @@ Protocols can inherit from other protocols, creating combined protocols that req
 
 ```python
 from typing import Protocol, Sized
-from tpy import Int32
+from tpy import int32
 
 class Printable(Protocol):
     def to_str(self) -> str: ...
@@ -2516,8 +2519,8 @@ class Message:
     def to_str(self) -> str:
         return self.text
 
-    def __len__(self) -> Int32:
-        return Int32(5)
+    def __len__(self) -> int32:
+        return int32(5)
 
 class Container[T: PrintableAndSized]:
     value: T
@@ -2567,17 +2570,17 @@ Protocols can require fields in addition to methods:
 
 ```python
 from typing import Protocol
-from tpy import Int32
+from tpy import int32
 
 class HasValue(Protocol):
-    value: Int32
+    value: int32
 
 class Point:
-    value: Int32
-    def __init__(self, v: Int32):
+    value: int32
+    def __init__(self, v: int32):
         self.value = v
 
-def get_value[T: HasValue](item: T) -> Int32:
+def get_value[T: HasValue](item: T) -> int32:
     return item.value  # Access protocol field
 
 p = Point(42)
@@ -2595,7 +2598,7 @@ concept HasValue = requires(const T& t) {
 Protocols can combine fields and methods:
 ```python
 class Container(Protocol):
-    count: Int32
+    count: int32
     def is_empty(self) -> bool: ...
 ```
 
@@ -2604,7 +2607,7 @@ Generic protocols can use type parameters in fields:
 class Holder[T](Protocol):
     item: T
 
-def get_item[T: Holder[Int32]](h: T) -> Int32:
+def get_item[T: Holder[int32]](h: T) -> int32:
     return h.item
 ```
 
@@ -2616,7 +2619,7 @@ The `Self` type can be used in protocol method signatures to refer to the implem
 
 ```python
 from typing import Protocol, Self
-from tpy import Int32
+from tpy import int32
 
 class Addable(Protocol):
     def __add__(self, other: Self) -> Self: ...
@@ -2625,9 +2628,9 @@ def add_values(x: Addable, y: Addable) -> None:
     result = x + y
     print(result)
 
-a: Int32 = 21
-b: Int32 = 21
-add_values(a, b)  # Int32 conforms: __add__(Int32) -> Int32
+a: int32 = 21
+b: int32 = 21
+add_values(a, b)  # int32 conforms: __add__(int32) -> int32
 ```
 
 Generated C++:
@@ -2644,23 +2647,23 @@ void add_values(T_x& x, T_y& y) {
 }
 ```
 
-When checking protocol conformance, `Self` is substituted with the actual type being checked. For example, `Int32` conforms to `Addable` because `Int32.__add__(Int32) -> Int32` matches the protocol signature.
+When checking protocol conformance, `Self` is substituted with the actual type being checked. For example, `int32` conforms to `Addable` because `int32.__add__(int32) -> int32` matches the protocol signature.
 
 `Self` can also be used inside wrapper types like `Own[Self]`:
 
 ```python
 from __future__ import annotations
 from typing import Protocol, Self
-from tpy import Int32, Own
+from tpy import int32, Own
 
 class Addable(Protocol):
     def __add__(self, other: Self) -> Own[Self]: ...
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32) -> None:
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 
@@ -2678,21 +2681,21 @@ A protocol may also reference its own name (or another protocol, mutually) in a 
 
 ```python
 from typing import Self
-from tpy import Int32
+from tpy import int32
 
 class Builder:
     name: str
-    value: Int32
+    value: int32
 
     def set_name(self, name: str) -> Self:
         self.name = name
         return self
 
-    def with_offset(self, other: Self) -> Int32:
+    def with_offset(self, other: Self) -> int32:
         return self.value + other.value
 
-b = Builder("start", Int32(0))
-b.set_name("hello").set_value(Int32(42))  # method chaining
+b = Builder("start", int32(0))
+b.set_name("hello").set_value(int32(42))  # method chaining
 ```
 
 For generic classes, `Self` resolves to the full parameterized type:
@@ -2749,9 +2752,9 @@ result = w.take()   # w is consumed, moves self
 
 ```python
 from tplib.box import Box
-from tpy import Int32
+from tpy import int32
 
-b = Box(Int32(42))
+b = Box(int32(42))
 val = b.take()      # Moves out value, destroys box
 print(val)          # 42
 # b is consumed -- any further use is a compile error
@@ -2822,15 +2825,15 @@ You can call any method defined in a protocol on a protocol-typed value:
 ```python
 from __future__ import annotations
 from typing import Protocol, Self
-from tpy import Int32, Own
+from tpy import int32, Own
 
 class Duplicable(Protocol):
     def duplicate(self) -> Own[Self]: ...
 
 class Value:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
     def duplicate(self) -> Own[Value]:
@@ -2850,24 +2853,24 @@ The `Sequence[T]` generic protocol is available for types that support `len()` a
 
 ```python
 from typing import Sequence
-from tpy import Int32, Array
+from tpy import int32, Array
 
-def first(items: Sequence[Int32]) -> Int32:
+def first(items: Sequence[int32]) -> int32:
     return items[0]
 
-def sum_all(items: Sequence[Int32]) -> Int32:
-    total: Int32 = 0
-    i: Int32 = 0
+def sum_all(items: Sequence[int32]) -> int32:
+    total: int32 = 0
+    i: int32 = 0
     while i < len(items):
         total += items[i]
         i += 1
     return total
 
 def main() -> None:
-    nums: list[Int32] = [1, 2, 3]
+    nums: list[int32] = [1, 2, 3]
     print(sum_all(nums))  # 6
 
-    arr: Array[Int32, 3] = [10, 20, 30]
+    arr: Array[int32, 3] = [10, 20, 30]
     print(sum_all(arr))   # 60
 ```
 
@@ -2887,13 +2890,13 @@ int32_t sum_all(const T_items& items) {
 
 **Important**: Generic protocols require explicit type arguments. Bare `Sequence` without type args is a compile error:
 ```python
-def bad(items: Sequence) -> Int32:  # ERROR: Generic protocol 'Sequence' requires type arguments
+def bad(items: Sequence) -> int32:  # ERROR: Generic protocol 'Sequence' requires type arguments
     return len(items)
 ```
 
 **Conforming types**:
 - `list[T]`, `Array[T, N]`, `Span[T]` - built-in containers
-- `str` conforms to `Sequence[Char]` - strings are sequences of characters
+- `str` conforms to `Sequence[char]` - strings are sequences of characters
 - User records with `__len__` and `__getitem__` methods (see below)
 
 **Temporaries**: Passing temporaries (list literals, constructor calls) to protocol-typed parameters works. The compiler generates temporary variables automatically since protocol parameters may use mutable references (`T&`) in C++.
@@ -2901,29 +2904,29 @@ def bad(items: Sequence) -> Int32:  # ERROR: Generic protocol 'Sequence' require
 **User records as Sequence**: Records with `__len__` and `__getitem__` automatically conform to `Sequence[T]`. The compiler generates `operator[]` from `__getitem__`:
 ```python
 class IntWrapper:
-    data: list[Int32]
+    data: list[int32]
 
-    def __len__(self) -> Int32:
+    def __len__(self) -> int32:
         return len(self.data)
 
-    def __getitem__(self, index: Int32) -> Int32:
+    def __getitem__(self, index: int32) -> int32:
         return self.data[index]
 
-def sum_seq(s: Sequence[Int32]) -> Int32:
+def sum_seq(s: Sequence[int32]) -> int32:
     # Works with IntWrapper, list, Array, etc.
     ...
 
 wrapper: IntWrapper = IntWrapper(nums)
-sum_seq(wrapper)  # OK - IntWrapper conforms to Sequence[Int32]
+sum_seq(wrapper)  # OK - IntWrapper conforms to Sequence[int32]
 ```
 
-`__getitem__` may take a **non-integer key** (mapping types): `obj[key]` dispatches to a user `__getitem__` whose key param matches the index type (e.g. `def __getitem__(self, key: str) -> Int32`), not only integer-indexed sequences. The index is validated against the key param.
+`__getitem__` may take a **non-integer key** (mapping types): `obj[key]` dispatches to a user `__getitem__` whose key param matches the index type (e.g. `def __getitem__(self, key: str) -> int32`), not only integer-indexed sequences. The index is validated against the key param.
 
 **Mixing protocols**: Generic and non-generic protocols can be used together:
 ```python
 from typing import Sized, Sequence
 
-def process(items: Sequence[Int32], container: Sized) -> Int32:
+def process(items: Sequence[int32], container: Sized) -> int32:
     return items[0] + len(container)
 ```
 
@@ -2967,7 +2970,7 @@ dispatch via `isinstance`/`dynamic_cast`. The stdlib's `Throwable` is the canoni
 example: it has no methods and roots the `BaseException` tree so the M2 dispatch
 machinery activates for exception isinstance checks in `__exit__` bodies.
 
-Generic `@dynamic` protocols are supported (e.g., `@dynamic class Container[T](Protocol)`). Each instantiation `Container[Int32]`, `Container[str]` has an independent vtable; the concept, base class, and adapter partial specializations are emitted once as C++ class templates. See `docs/DYNAMIC_PROTOCOL_DESIGN.md` for the codegen shape.
+Generic `@dynamic` protocols are supported (e.g., `@dynamic class Container[T](Protocol)`). Each instantiation `Container[int32]`, `Container[str]` has an independent vtable; the concept, base class, and adapter partial specializations are emitted once as C++ class templates. See `docs/DYNAMIC_PROTOCOL_DESIGN.md` for the codegen shape.
 
 Two additional constraints apply to generic `@dynamic` protocols:
 - **Reserved type-parameter name `__tpy_Impl`**: the adapter codegen uses `__tpy_Impl` as the concrete-impl template parameter on its partial specializations. A user-declared protocol type param of the same name is rejected at codegen time. The `__tpy_` prefix is the project's reserved namespace; users should not pick names that start with it.
@@ -3112,16 +3115,16 @@ See [docs/DYNAMIC_PROTOCOL_DESIGN.md](DYNAMIC_PROTOCOL_DESIGN.md) for the full d
 
 #### Working: `ValueType` Marker Protocol
 
-The `ValueType` marker protocol declares that a user-defined record has value semantics -- it is small, cheaply copyable, and behaves like a built-in value type (Int32, bool, etc.). Value types are **immutable**: like their built-in counterparts (and frozen dataclasses), their fields are set in `__init__` and never reassigned afterward. Immutability is what makes copy-vs-alias unobservable, so value types stay CPython-portable (mutating a copied value would otherwise diverge). Import it from the `tpy` module:
+The `ValueType` marker protocol declares that a user-defined record has value semantics -- it is small, cheaply copyable, and behaves like a built-in value type (int32, bool, etc.). Value types are **immutable**: like their built-in counterparts (and frozen dataclasses), their fields are set in `__init__` and never reassigned afterward. Immutability is what makes copy-vs-alias unobservable, so value types stay CPython-portable (mutating a copied value would otherwise diverge). Import it from the `tpy` module:
 
 ```python
-from tpy import Int32, ValueType
+from tpy import int32, ValueType
 
 class Vec2(ValueType):
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32) -> None:
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 ```
@@ -3148,14 +3151,14 @@ class Box[T: ValueType]:
 - Fields are immutable: assigning a field anywhere other than the class's own `__init__` is a compile error (`Cannot assign to field '...' of immutable value type '...'`). This covers plain assignment, augmented assignment, and assignment to `self.<field>` in any non-`__init__` method.
 - An explicit `__init__` is required -- there is no synthesized aggregate constructor, since immutable fields can only be set during construction. (`@native` value types are exempt: they are constructed on the C++ side.)
 
-**Implicit conformance:** Built-in value types (Int32, bool, float, etc.) implicitly conform to `ValueType`, so they can be used as arguments for `T: ValueType` bounded type params without explicit declaration.
+**Implicit conformance:** Built-in value types (int32, bool, float, etc.) implicitly conform to `ValueType`, so they can be used as arguments for `T: ValueType` bounded type params without explicit declaration.
 
 #### Working: `Default` Marker Protocol and `make_default()`
 
 The `Default` marker protocol declares that a type supports zero-argument default construction. It maps to the C++20 `std::default_initializable` concept.
 
 **Implicit conformance** -- the following types conform to `Default` without explicit declaration:
-- All primitives: fixed-width integers, `float`, `bool`, `str`, `String`, `StrView`, `Char`, `int`
+- All primitives: fixed-width integers, `float`, `bool`, `str`, `String`, `StrView`, `char`, `int`
 - `list[T]`, `dict[K, V]`, `Span[T]` (empty container is default)
 - `Optional[T]` (`None` is default)
 - `Ptr[T]` (default-constructs to `nullptr`)
@@ -3166,10 +3169,10 @@ The `Default` marker protocol declares that a type supports zero-argument defaul
 **`make_default()`** is a portable function for default-constructing generic types:
 
 ```python
-from tpy import Int32, make_default
+from tpy import int32, make_default
 
 # Explicit type argument
-x = make_default[Int32]()    # -> Int32(0)
+x = make_default[int32]()    # -> int32(0)
 
 # Inferred from context
 y: str = make_default()      # -> ""
@@ -3186,13 +3189,13 @@ def create[T: Default]() -> T:
 ```python
 class ArrayList[T, N: int]:
     def append_default[T: Default](self) -> None:
-        self._storage.init(UInt32(self._size), make_default())
+        self._storage.init(uint32(self._size), make_default())
         self._size += 1
 ```
 
 A per-method bound on a shadowed class type param is interpreted as **"this method is only callable when the class type satisfies the bound"** -- i.e. `ArrayList[NotDefault]` cannot call `append_default`. Sema enforces the rule at every dispatch site (direct method calls, operators including comparisons/arithmetic/augmented assignment/unary, `in`/`not in`, `hash()`, and any protocol-conformance check), producing a diagnostic like `Method 'append_default' requires type parameter 'T' to satisfy 'Default', but 'NotDefault' does not conform`. The C++ output also carries the same rule as a `requires` clause; users see the TPy diagnostic before any C++ error on every site except the subclass-receiver operator gap noted below.
 
-Shadowed-bound methods resolve through **subclass receivers** too: for a method inherited from a generic base (`class IntBag(Bag[Int32, 4])` calling `contains[T: Equatable]`), the base instantiation binds the shadowed param, so the call dispatches without inference and the bound is checked against the inherited binding (`tests/cases/generics/method_bound_shadow_subclass*` and `error_method_bound_shadow_subclass*`). Known limitation: on the *operator* dispatch sites (`in`, binops, `hash()` / protocol conformance), the sema-level bound check currently fires only for direct generic receivers -- through a subclass a violation is still caught, but by the C++ `requires` clause instead of the clean TPy diagnostic (see BUGS.md).
+Shadowed-bound methods resolve through **subclass receivers** too: for a method inherited from a generic base (`class IntBag(Bag[int32, 4])` calling `contains[T: Equatable]`), the base instantiation binds the shadowed param, so the call dispatches without inference and the bound is checked against the inherited binding (`tests/cases/generics/method_bound_shadow_subclass*` and `error_method_bound_shadow_subclass*`). Known limitation: on the *operator* dispatch sites (`in`, binops, `hash()` / protocol conformance), the sema-level bound check currently fires only for direct generic receivers -- through a subclass a violation is still caught, but by the C++ `requires` clause instead of the clean TPy diagnostic (see BUGS.md).
 
 **`T()` deprecation warning:** Using `T()` for default construction of type parameters emits a warning recommending `make_default()` instead, since `T()` is not supported in CPython.
 
@@ -3214,7 +3217,7 @@ class Box[T](Deref[T], Covariant[T]):
         return Box(self.get())
 ```
 
-`Box[Rc[Int32]].clone()` is rejected with a TPy diagnostic (`Method 'clone' requires type parameter 'T' to satisfy 'Copyable', but 'Rc[Int32]' does not conform`) instead of the cryptic C++ template error the compiler used to surface from `box.hpp`. `Rc[T]` itself does **not** need the bound on its `clone()`, because Rc just bumps a refcount and never touches T's copy constructor.
+`Box[Rc[int32]].clone()` is rejected with a TPy diagnostic (`Method 'clone' requires type parameter 'T' to satisfy 'Copyable', but 'Rc[int32]' does not conform`) instead of the cryptic C++ template error the compiler used to surface from `box.hpp`. `Rc[T]` itself does **not** need the bound on its `clone()`, because Rc just bumps a refcount and never touches T's copy constructor.
 
 #### Working: `NativeIterable[T]` (C++ range-for optimization marker)
 
@@ -3226,16 +3229,16 @@ class Box[T](Deref[T], Covariant[T]):
 
 ```python
 from typing import Iterable
-from tpy import NativeIterable, Int32
+from tpy import NativeIterable, int32
 
-def sum_fast(it: Iterable[Int32]) -> Int32:
-    total: Int32 = 0
+def sum_fast(it: Iterable[int32]) -> int32:
+    total: int32 = 0
     if isinstance(it, NativeIterable):
-        # Narrowed to NativeIterable[Int32] -> C++ range-for (begin/end).
+        # Narrowed to NativeIterable[int32] -> C++ range-for (begin/end).
         for x in it:
             total += x
     else:
-        # Iterable[Int32] -> universal __iter__/__next__ loop.
+        # Iterable[int32] -> universal __iter__/__next__ loop.
         for x in it:
             total += x
     return total
@@ -3245,16 +3248,16 @@ The element type is threaded through the parent-protocol relationship (`NativeIt
 
 ```python
 from typing import Iterable
-from tpy import Int32
+from tpy import int32
 
-def sum_all(items: Iterable[Int32]) -> Int32:
-    total: Int32 = 0
+def sum_all(items: Iterable[int32]) -> int32:
+    total: int32 = 0
     for x in items:
         total += x
     return total
 
 # All built-in containers work:
-nums: list[Int32] = [1, 2, 3]
+nums: list[int32] = [1, 2, 3]
 print(sum_all(nums))  # 6
 ```
 
@@ -3280,21 +3283,21 @@ When a container satisfies a protocol parameterized by an element type (e.g. `li
 
 ```python
 from typing import Iterable
-from tpy import Int32, Int64, UInt8
+from tpy import int32, int64, uint8
 
-def take_int32(it: Iterable[Int32]) -> None: ...
-def take_int64(it: Iterable[Int64]) -> None: ...
-def take_uint8(it: Iterable[UInt8]) -> None: ...
+def take_int32(it: Iterable[int32]) -> None: ...
+def take_int64(it: Iterable[int64]) -> None: ...
+def take_uint8(it: Iterable[uint8]) -> None: ...
 
-xs: list[Int32] = [1, 2, 3]
+xs: list[int32] = [1, 2, 3]
 take_int32(xs)        # OK: exact element match
-take_int64(xs)        # OK: Int32 widens to Int64
-take_uint8(xs)        # Error: Int32 does not widen to UInt8 (narrowing)
+take_int64(xs)        # OK: int32 widens to int64
+take_uint8(xs)        # Error: int32 does not widen to uint8 (narrowing)
 ```
 
-**Unannotated integer list literals resolve to the configured default int type** (typically `Int32`). `[1, 2, 3]` passed to a function expecting `Iterable[UInt8]` does *not* match, regardless of whether the literal values would fit -- the concrete list is `list[Int32]`, not `list[UInt8]`. To target a narrow iterable, annotate the source (`xs: list[UInt8] = [1, 2, 3]`) or construct explicitly.
+**Unannotated integer list literals resolve to the configured default int type** (typically `int32`). `[1, 2, 3]` passed to a function expecting `Iterable[uint8]` does *not* match, regardless of whether the literal values would fit -- the concrete list is `list[int32]`, not `list[uint8]`. To target a narrow iterable, annotate the source (`xs: list[uint8] = [1, 2, 3]`) or construct explicitly.
 
-Supported element widenings: fixed-width int -> wider fixed-width int (same signedness, strict bit growth; or unsigned -> strictly wider signed), fixed int -> `BigInt`, fixed/`BigInt` -> `float`/`Float32`, `Float32` -> `float`. `readonly[T]` is transparent at element positions (the const qualifier is carried by the container, not the element-type match).
+Supported element widenings: fixed-width int -> wider fixed-width int (same signedness, strict bit growth; or unsigned -> strictly wider signed), fixed int -> `BigInt`, fixed/`BigInt` -> `float`/`float32`, `float32` -> `float`. `readonly[T]` is transparent at element positions (the const qualifier is carried by the container, not the element-type match).
 
 #### Working: Lazy Iteration via `Iterator[T]`
 
@@ -3302,17 +3305,17 @@ All iterators use the `Iterator[T]` protocol (`__next__(self) -> T` with `@error
 
 ```python
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 class Counter:
-    current: Int32
-    limit: Int32
+    current: int32
+    limit: int32
 
-    def __init__(self, limit: Int32) -> None:
+    def __init__(self, limit: int32) -> None:
         self.current = 0
         self.limit = limit
 
-    def __next__(self) -> Int32:
+    def __next__(self) -> int32:
         if self.current < self.limit:
             result = self.current
             self.current += 1
@@ -3323,9 +3326,9 @@ class Counter:
 for x in Counter(5):
     print(x)
 
-# Pass to function taking Iterator[Int32]
-def sum_iter(it: Iterator[Int32]) -> Int32:
-    total: Int32 = 0
+# Pass to function taking Iterator[int32]
+def sum_iter(it: Iterator[int32]) -> int32:
+    total: int32 = 0
     for x in it:
         total += x
     return total
@@ -3333,15 +3336,15 @@ def sum_iter(it: Iterator[Int32]) -> Int32:
 print(sum_iter(Counter(5)))        # 10
 ```
 
-**Codegen**: `for i in range(...)` is optimized to a C-style counter loop. When the body can rebind `i`, a private counter advances the range and binds the user target at each iteration; body writes do not alter iteration. Targets that need no enclosing storage and have no possible write reported by conservative analysis retain the direct counter, avoiding an extra BigInt copy. `range()` accepts all fixed-width integer types (Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64) as well as BigInt, preserving the element type in the loop variable.
+**Codegen**: `for i in range(...)` is optimized to a C-style counter loop. When the body can rebind `i`, a private counter advances the range and binds the user target at each iteration; body writes do not alter iteration. Targets that need no enclosing storage and have no possible write reported by conservative analysis retain the direct counter, avoiding an extra BigInt copy. `range()` accepts all fixed-width integer types (int8, int16, int32, int64, uint8, uint16, uint32, uint64) as well as BigInt, preserving the element type in the loop variable.
 
-Bare integer literals use the configured default integer type (`--default-int`, default: `Int32`), so `range(10)` uses `Range<Int32>` by default. For CPython-like behavior, use `--default-int=BigInt`.
+Bare integer literals use the configured default integer type (`--default-int`, default: `int32`), so `range(10)` uses `Range<int32>` by default. For CPython-like behavior, use `--default-int=BigInt`.
 
 ```cpp
-// range(Int8(0), Int8(10)) -> int8_t loop
+// range(int8(0), int8(10)) -> int8_t loop
 for (int8_t i = 0; i < 10; ++i) { ... }
 
-// range(Int32(0), Int32(100), Int32(3)) -> int32_t loop with upfront overflow check
+// range(int32(0), int32(100), int32(3)) -> int32_t loop with upfront overflow check
 tpy::range_check_overflow<int32_t>(0, 100, 3);
 for (int32_t i = 0; i < 100; i += 3) { ... }
 ```
@@ -3374,7 +3377,7 @@ for (;;) {
 | 5. `__span__` protocol | **Working** | `__span__() -> Span[T]` for implicit Span coercion; iteration requires `__iter__()` |
 | 5b. `Spannable[T]` protocol | **Working** | Readonly protocol for types with `__span__()`, for-loop and ReadOnlySpan coercion |
 | 6. Generator expressions | **Working** | `(expr for x in iterable)` → lazy `make_generator` wrapper, satisfies `Iterable[T]`. A bare reference element (`(n for n in nodes)`) is yielded as a live borrow (`val_or_ref<T>` slot, zero-copy, mutation propagates); a freshly-constructed reference element (`(Node(x) for x in xs)`) is rejected -- use a list comprehension `[...]` to materialize owned storage. Value / `Optional` / tuple elements keep the value slot; a `readonly` element borrows too, through the same `val_or_ref<const T>` spelling a `def`-generator uses. |
-| 7. Generator functions | **Working** | `yield` in functions and methods -> state-machine struct or lambda wrapper implementing `Iterator[T]`. Simple generators (single yield in a tail while/for-loop) use `make_generator` + lambda; a generator-loop `break`/`continue` the lambda can't express (any position in a for-over-iterable, or post-yield in a while / counter-`range` loop -- a pre-yield `break`/`continue` in a while or `range(<=2 args)` loop stays simple) routes to the shared resumable-frame `while/switch` emitter that also powers `async def`, as does every other generator -- free or method, with or without params, generic (explicit `[T]` type params) or not, with or without a tuple yield, body of leaf statements and/or `if`/`while`/`for` (including `for`/`while`-`else`; the for-loop range/begin_end peepholes are preserved), `try`/`except`/`finally` (including `yield` in `finally`, and `return` in a suspending `finally` -- the return parks into the same pending-return slot used for try-body returns, and overrides any pending exception per Python semantics), and `with`. Resumable generator frames are iterable in list/set/dict comprehensions (`[x for x in gen()]`), not just for-loops: the frame struct carries `begin()/end()` via the `next_iter_mixin` CRTP base, the same bridge simple-generator wrappers already use (a generator *expression* `(x for x in gen())` takes a separate iterator path that does not yet drive resumable sources -- see BUGS.md). Generic generators emit their templated struct + `__next__` + factory inline in the header; tuple-unpack for-loops (`for a, b in ...`) are supported, with reference elements aliasing the live container element so mutation propagates (CPython-correct). **Yield ABI is declaration-driven (like a function return):** `Iterator[T]` for a non-value `T` yields a *borrow* -- `__next__` hands out a live reference via a `val_or_ref<T>` slot, so consumer mutation propagates to the source (CPython semantics); each `yield` must root in frame-held storage (a parameter, `self` field, a frame-resident local, or loop var over a frame-held container) -- a fresh `yield Node(1)` is rejected and pointed at `Iterator[Own[T]]`. A generator's own local is frame-resident (it lives in the resumable-frame struct, stable for the generator's life), so yielding a borrow of it is sound and the consumer's in-place mutation is visible to the generator on resume -- the `os.walk` topdown-pruning contract (`for root, dirs, files in walk(p): dirs[:] = [...]`). When such a yield borrows a *loop-body-declared* local, the generator routes to the resumable path (the simple-generator lambda peephole has no frame storage for body locals, so the borrow would dangle there). A bare fixed-size list-literal local (`buf = [1, 2, 3]`) is forced off the `std::array` optimization to a real `list` when its borrow is yielded (the slot hands out a reference the consumer may resize). A yielded local that is itself a value type (an explicit `Array`, a tuple of values) stays rejected -- it has no borrowable reference storage. The same per-member check runs on a tuple yield: a fresh non-value tuple member (`yield (i, Box(i))` under `Iterator[tuple[int, Box]]`) is rejected and pointed at the element-scoped fix `Iterator[tuple[int, Own[Box]]]` (the tuple slot is borrow form `std::tuple<int, Box*>`, so a fresh member would dangle); a non-value member nested inside an *inner* tuple is rejected outright (codegen's flat tuple conversion can't represent the nested borrow slot -- nested value / `Own` members are fine). The same *fresh*-member rejection covers the *bound* form: binding a tuple with a freshly-constructed non-value member to a local and yielding/returning it by name (`t = (i, Box(i)); yield t`, or a fresh recursive-union-wrapper member) is rejected -- pointed at the `Own[...]` element fix; the fact is derived from the binding's provenance, so it propagates through a local-to-local alias (`u = t; yield u`), an alias chain (`s = r = t`), a ternary of such locals, a one-branch alias (UNION merge), and a self-assignment. A *durable* reference member SHARES: the bound local is pointer borrow form (`std::tuple<int, Box*>`), so `t = (i, b); yield t` (and the param-sourced `def gen(p: tuple[Int32, Box]): yield p` and call-returned `u = make(); yield u` forms) hand out a live borrow of `b` -- post-boundary mutation reaches the original object, matching CPython aliasing. `Iterator[Own[T]]` yields an *owned* value moved out of the frame (fresh values fine). A generator method yielding a mutable borrow of `self`'s elements is emitted non-`const` (it exposes mutable access, like `def f(self) -> T: return self.field`). The bound borrow is *ephemeral* -- valid only until the next `__next__()` -- so the consumer is barred from retaining it past the iteration step where unsound (re-yielding it onward in an outer generator, or capturing it by reference in a nested `def`); storing it into value storage (a field / container / global) copies it (safe), and returning or stashing it past its scope is caught by the existing dangling/lifetime checks. Residual: a *caller* that structurally mutates or frees the borrowed container while the generator is live is still only a non-fatal warning (see BUGS.md). Nested suspending `finally` works: the inner `AsyncFinallyExit` forwards any pending exception or pending return into the outer's parking slots before transitioning to the outer's finally entry, so both bodies run on every exit path. **Abandonment cleanup:** dropping a suspended generator (e.g. `break` out of a `for` over it) runs its pending non-suspending `finally` bodies and `with.__exit__`s via the frame destructor, innermost-first -- the analog of CPython's GeneratorExit at refcount drop; `__exit__` receives a `GeneratorExit` as `exc_val` (the CPython close contract: an exceptional exit), though its suppression return value is discarded (nothing can resume inside a destructor, so post-`with` code does not run on suppression the way CPython's would until the next yield); a `for` over a *temporary* generator destroys it at loop exit (brace-scoped), a *named* generator at its scope end, both matching CPython's drop points. Two acknowledged divergences: (1) a `finally` that itself contains `yield` cannot run inside a destructor and is skipped on abandonment, with a compile-time warning at the `yield` site (CPython runs it up to the next yield, then prints and ignores `RuntimeError("generator ignored GeneratorExit")`); (2) cleanup code that raises during destruction panics (`tpy_panic`) instead of CPython's print-to-stderr-and-continue -- fail-fast by design; (3) when several named generators with pending cleanup share one scope, their destructors run in C++ reverse-declaration order, while CPython finalizes in creation order (an implementation detail of refcounting) -- cleanup side effects that depend on cross-generator ordering will differ. Async coroutine frames share the same destructor (a Task abandoned mid-suspension runs its pending helper-based finallies); an async `finally` containing `await` is normally run via the cancellation path, but is skipped if the frame is dropped without cancellation (see BUGS.md). A `yield`/`await` inside a `match` works: the CFG builder decomposes the `match` (arm bodies become states while the type-aware dispatch -- switch / if-elif / variant-index -- is reused unchanged), and pattern-bound names (capture / field / `as`) are frame fields so they survive a suspension in the arm; the arm's subject narrowing (a bare-name subject narrowed to the matched type) is likewise re-established at the resume case. An `isinstance`-narrowed binding inside an `if`/`while` body (a non-value union param or a frame-resident union local, or polymorphic `self`) also survives a suspension: the condition's narrowing facts are stamped on every resumable block built under the narrowed region, and the cast / `std::get` is re-established at each resume case (so post-suspension subclass/arm-specific member access reads the narrowed type); the narrowing's `std::get` / `holds_alternative` unwraps the `frame_slot<variant<...>>` for a union local. Protocol-typed params (`def gen(it: Iterable[T])`) are supported: the param is captured as the deduced template arg `T_<pname>`, and a direct for-loop over it types its iterator frame field against `T_<pname>` (not the un-instantiable C++ concept) and *borrows* the iterable; when the runtime iterable is itself a generator (a self-iterator -- `__iter__` returns `*this`), the frame drives its `__next__()` in place rather than copying it into a second iterator slot (a generator is move-only, so the copy would be a deleted-ctor build error), so `def take(it: Iterable[T]): for x in it: ...` consumes a passed-in generator (`take(repeat(7, 5), 3)`) -- this is what lets `itertools.islice`/`takewhile` wrap `repeat`/`cycle`; aliasing such a param into a local once (`xs = it`) and iterating that local across a suspension is also supported *on the resumable (multi-yield) path* -- the alias is a compile-time forward to the captured param (no frame field of its own), so it reuses the same `T_<pname>` deduction. Reassigning the alias is rejected with a clean diagnostic. An *owned* static-protocol param (`Own[Iterable[T]]`) rides the same capture: the frame field is the deduced `T_<pname>` by value and the call renders `std::move(...)`, so the frame owns rather than borrows; forwarding an argument into a sub-future at such a slot on an `await` is not yet supported. A **`@dynamic`** protocol param (`def gen(s: Src)` / `readonly[Src]`, with `@dynamic class Src(Protocol)`) is supported on a generator frame: the field is the erased base reference (`Src&` / `const Src&`) the sync param already spells, so mutation through it is visible to the caller. The `async def` twin is not yet supported -- a task outlives the call site's `RefAdapter` temp that the frame would borrow -- and rejects with a construct-not-supported diagnostic (see BUGS.md). (A single-yield *simple* generator takes the lambda-peephole path, where such an alias is still mishandled, as is a *temporary* generator source -- see BUGS.md.) An explicit **view** param (`Span[T]` and its `readonly` flavours, `StrView`, `BytesView`, a `*args` pack) is captured borrow form on a generator or `async def` frame -- the field is the same view the sync signature spells, ctor-moved -- so it aliases the caller's storage across a suspension where `str`/`bytes` params are copied owned; a view LOCAL in a frame body still rejects. `Fn` (callable) params work in a generator: the concrete callable type is deduced as an `F_<pname>` template arg on the frame (same mechanism as protocol params), so a generator can take and call a predicate/callback (`def takewhile(pred: Fn[[T], bool], it): ...`). Generator methods supported (`__iter__`, custom methods), including on generic classes (`class Box[T]: def items(self) -> Iterator[T]: ...`), with unbounded or protocol-bounded type params (`class Box[T: Iterable[Int32]]: ...`). |
+| 7. Generator functions | **Working** | `yield` in functions and methods -> state-machine struct or lambda wrapper implementing `Iterator[T]`. Simple generators (single yield in a tail while/for-loop) use `make_generator` + lambda; a generator-loop `break`/`continue` the lambda can't express (any position in a for-over-iterable, or post-yield in a while / counter-`range` loop -- a pre-yield `break`/`continue` in a while or `range(<=2 args)` loop stays simple) routes to the shared resumable-frame `while/switch` emitter that also powers `async def`, as does every other generator -- free or method, with or without params, generic (explicit `[T]` type params) or not, with or without a tuple yield, body of leaf statements and/or `if`/`while`/`for` (including `for`/`while`-`else`; the for-loop range/begin_end peepholes are preserved), `try`/`except`/`finally` (including `yield` in `finally`, and `return` in a suspending `finally` -- the return parks into the same pending-return slot used for try-body returns, and overrides any pending exception per Python semantics), and `with`. Resumable generator frames are iterable in list/set/dict comprehensions (`[x for x in gen()]`), not just for-loops: the frame struct carries `begin()/end()` via the `next_iter_mixin` CRTP base, the same bridge simple-generator wrappers already use (a generator *expression* `(x for x in gen())` takes a separate iterator path that does not yet drive resumable sources -- see BUGS.md). Generic generators emit their templated struct + `__next__` + factory inline in the header; tuple-unpack for-loops (`for a, b in ...`) are supported, with reference elements aliasing the live container element so mutation propagates (CPython-correct). **Yield ABI is declaration-driven (like a function return):** `Iterator[T]` for a non-value `T` yields a *borrow* -- `__next__` hands out a live reference via a `val_or_ref<T>` slot, so consumer mutation propagates to the source (CPython semantics); each `yield` must root in frame-held storage (a parameter, `self` field, a frame-resident local, or loop var over a frame-held container) -- a fresh `yield Node(1)` is rejected and pointed at `Iterator[Own[T]]`. A generator's own local is frame-resident (it lives in the resumable-frame struct, stable for the generator's life), so yielding a borrow of it is sound and the consumer's in-place mutation is visible to the generator on resume -- the `os.walk` topdown-pruning contract (`for root, dirs, files in walk(p): dirs[:] = [...]`). When such a yield borrows a *loop-body-declared* local, the generator routes to the resumable path (the simple-generator lambda peephole has no frame storage for body locals, so the borrow would dangle there). A bare fixed-size list-literal local (`buf = [1, 2, 3]`) is forced off the `std::array` optimization to a real `list` when its borrow is yielded (the slot hands out a reference the consumer may resize). A yielded local that is itself a value type (an explicit `Array`, a tuple of values) stays rejected -- it has no borrowable reference storage. The same per-member check runs on a tuple yield: a fresh non-value tuple member (`yield (i, Box(i))` under `Iterator[tuple[int, Box]]`) is rejected and pointed at the element-scoped fix `Iterator[tuple[int, Own[Box]]]` (the tuple slot is borrow form `std::tuple<int, Box*>`, so a fresh member would dangle); a non-value member nested inside an *inner* tuple is rejected outright (codegen's flat tuple conversion can't represent the nested borrow slot -- nested value / `Own` members are fine). The same *fresh*-member rejection covers the *bound* form: binding a tuple with a freshly-constructed non-value member to a local and yielding/returning it by name (`t = (i, Box(i)); yield t`, or a fresh recursive-union-wrapper member) is rejected -- pointed at the `Own[...]` element fix; the fact is derived from the binding's provenance, so it propagates through a local-to-local alias (`u = t; yield u`), an alias chain (`s = r = t`), a ternary of such locals, a one-branch alias (UNION merge), and a self-assignment. A *durable* reference member SHARES: the bound local is pointer borrow form (`std::tuple<int, Box*>`), so `t = (i, b); yield t` (and the param-sourced `def gen(p: tuple[int32, Box]): yield p` and call-returned `u = make(); yield u` forms) hand out a live borrow of `b` -- post-boundary mutation reaches the original object, matching CPython aliasing. `Iterator[Own[T]]` yields an *owned* value moved out of the frame (fresh values fine). A generator method yielding a mutable borrow of `self`'s elements is emitted non-`const` (it exposes mutable access, like `def f(self) -> T: return self.field`). The bound borrow is *ephemeral* -- valid only until the next `__next__()` -- so the consumer is barred from retaining it past the iteration step where unsound (re-yielding it onward in an outer generator, or capturing it by reference in a nested `def`); storing it into value storage (a field / container / global) copies it (safe), and returning or stashing it past its scope is caught by the existing dangling/lifetime checks. Residual: a *caller* that structurally mutates or frees the borrowed container while the generator is live is still only a non-fatal warning (see BUGS.md). Nested suspending `finally` works: the inner `AsyncFinallyExit` forwards any pending exception or pending return into the outer's parking slots before transitioning to the outer's finally entry, so both bodies run on every exit path. **Abandonment cleanup:** dropping a suspended generator (e.g. `break` out of a `for` over it) runs its pending non-suspending `finally` bodies and `with.__exit__`s via the frame destructor, innermost-first -- the analog of CPython's GeneratorExit at refcount drop; `__exit__` receives a `GeneratorExit` as `exc_val` (the CPython close contract: an exceptional exit), though its suppression return value is discarded (nothing can resume inside a destructor, so post-`with` code does not run on suppression the way CPython's would until the next yield); a `for` over a *temporary* generator destroys it at loop exit (brace-scoped), a *named* generator at its scope end, both matching CPython's drop points. Two acknowledged divergences: (1) a `finally` that itself contains `yield` cannot run inside a destructor and is skipped on abandonment, with a compile-time warning at the `yield` site (CPython runs it up to the next yield, then prints and ignores `RuntimeError("generator ignored GeneratorExit")`); (2) cleanup code that raises during destruction panics (`tpy_panic`) instead of CPython's print-to-stderr-and-continue -- fail-fast by design; (3) when several named generators with pending cleanup share one scope, their destructors run in C++ reverse-declaration order, while CPython finalizes in creation order (an implementation detail of refcounting) -- cleanup side effects that depend on cross-generator ordering will differ. Async coroutine frames share the same destructor (a Task abandoned mid-suspension runs its pending helper-based finallies); an async `finally` containing `await` is normally run via the cancellation path, but is skipped if the frame is dropped without cancellation (see BUGS.md). A `yield`/`await` inside a `match` works: the CFG builder decomposes the `match` (arm bodies become states while the type-aware dispatch -- switch / if-elif / variant-index -- is reused unchanged), and pattern-bound names (capture / field / `as`) are frame fields so they survive a suspension in the arm; the arm's subject narrowing (a bare-name subject narrowed to the matched type) is likewise re-established at the resume case. An `isinstance`-narrowed binding inside an `if`/`while` body (a non-value union param or a frame-resident union local, or polymorphic `self`) also survives a suspension: the condition's narrowing facts are stamped on every resumable block built under the narrowed region, and the cast / `std::get` is re-established at each resume case (so post-suspension subclass/arm-specific member access reads the narrowed type); the narrowing's `std::get` / `holds_alternative` unwraps the `frame_slot<variant<...>>` for a union local. Protocol-typed params (`def gen(it: Iterable[T])`) are supported: the param is captured as the deduced template arg `T_<pname>`, and a direct for-loop over it types its iterator frame field against `T_<pname>` (not the un-instantiable C++ concept) and *borrows* the iterable; when the runtime iterable is itself a generator (a self-iterator -- `__iter__` returns `*this`), the frame drives its `__next__()` in place rather than copying it into a second iterator slot (a generator is move-only, so the copy would be a deleted-ctor build error), so `def take(it: Iterable[T]): for x in it: ...` consumes a passed-in generator (`take(repeat(7, 5), 3)`) -- this is what lets `itertools.islice`/`takewhile` wrap `repeat`/`cycle`; aliasing such a param into a local once (`xs = it`) and iterating that local across a suspension is also supported *on the resumable (multi-yield) path* -- the alias is a compile-time forward to the captured param (no frame field of its own), so it reuses the same `T_<pname>` deduction. Reassigning the alias is rejected with a clean diagnostic. An *owned* static-protocol param (`Own[Iterable[T]]`) rides the same capture: the frame field is the deduced `T_<pname>` by value and the call renders `std::move(...)`, so the frame owns rather than borrows; forwarding an argument into a sub-future at such a slot on an `await` is not yet supported. A **`@dynamic`** protocol param (`def gen(s: Src)` / `readonly[Src]`, with `@dynamic class Src(Protocol)`) is supported on a generator frame: the field is the erased base reference (`Src&` / `const Src&`) the sync param already spells, so mutation through it is visible to the caller. The `async def` twin is not yet supported -- a task outlives the call site's `RefAdapter` temp that the frame would borrow -- and rejects with a construct-not-supported diagnostic (see BUGS.md). (A single-yield *simple* generator takes the lambda-peephole path, where such an alias is still mishandled, as is a *temporary* generator source -- see BUGS.md.) An explicit **view** param (`Span[T]` and its `readonly` flavours, `StrView`, `BytesView`, a `*args` pack) is captured borrow form on a generator or `async def` frame -- the field is the same view the sync signature spells, ctor-moved -- so it aliases the caller's storage across a suspension where `str`/`bytes` params are copied owned; a view LOCAL in a frame body still rejects. `Fn` (callable) params work in a generator: the concrete callable type is deduced as an `F_<pname>` template arg on the frame (same mechanism as protocol params), so a generator can take and call a predicate/callback (`def takewhile(pred: Fn[[T], bool], it): ...`). Generator methods supported (`__iter__`, custom methods), including on generic classes (`class Box[T]: def items(self) -> Iterator[T]: ...`), with unbounded or protocol-bounded type params (`class Box[T: Iterable[int32]]: ...`). |
 | 8. Iterator combinators | **Working** | `enumerate()`, `zip()`, `reversed()`, `map()`, `filter()`. `map` supports 1-5 iterables. `filter(None, iterable)` for truthiness filtering |
 
 See [docs/ITERATOR_DESIGN.md](ITERATOR_DESIGN.md) for the full iterator design document.
@@ -3388,20 +3391,20 @@ The compiler auto-applies `@error_return(StopIteration)`, producing `std::expect
 
 ```python
 from __future__ import annotations
-from tpy import Int32
+from tpy import int32
 
 class Counter:
-    current: Int32
-    limit: Int32
+    current: int32
+    limit: int32
 
-    def __init__(self, limit: Int32) -> None:
+    def __init__(self, limit: int32) -> None:
         self.current = 0
         self.limit = limit
 
     def __iter__(self) -> Counter:
         return self
 
-    def __next__(self) -> Int32:
+    def __next__(self) -> int32:
         if self.current < self.limit:
             result = self.current
             self.current += 1
@@ -3416,7 +3419,7 @@ for x in Counter(5):
 
 ```python
 class NumberRange:
-    def __init__(self, start: Int32, limit: Int32) -> None:
+    def __init__(self, start: int32, limit: int32) -> None:
         self.start = start
         self.limit = limit
 
@@ -3439,16 +3442,16 @@ class NumberRange:
 
 ```python
 from typing import Iterator, Iterable
-from tpy import Int32
+from tpy import int32
 
-def sum_iter(it: Iterator[Int32]) -> Int32:
-    total: Int32 = 0
+def sum_iter(it: Iterator[int32]) -> int32:
+    total: int32 = 0
     for x in it:
         total += x
     return total
 
-def sum_all(items: Iterable[Int32]) -> Int32:
-    total: Int32 = 0
+def sum_all(items: Iterable[int32]) -> int32:
+    total: int32 = 0
     for x in items:
         total += x
     return total
@@ -3457,7 +3460,7 @@ def sum_all(items: Iterable[Int32]) -> Int32:
 **`iter()` builtin**: Calls `x.__iter__()`, returns `Iterator[T]`. Works on any type with an `__iter__` method.
 
 ```python
-it: Iterator[Int32] = iter(Counter(5))
+it: Iterator[int32] = iter(Counter(5))
 ```
 
 **Explicit `__next__()` calls**: Since `__next__` is `@error_return(StopIteration)`, direct calls require `try/except`:
@@ -3470,13 +3473,13 @@ except StopIteration:
     print("exhausted")
 ```
 
-**Inherited iterators**: Child classes that inherit `__next__` from a parent satisfy `Iterator[T]` protocol and work with `list()`/`set()`/`dict()` constructors. For example, `DoubleCounter(Counter)` can be passed to `Iterator[Int32]` params even though `__next__` is defined on `Counter`.
+**Inherited iterators**: Child classes that inherit `__next__` from a parent satisfy `Iterator[T]` protocol and work with `list()`/`set()`/`dict()` constructors. For example, `DoubleCounter(Counter)` can be passed to `Iterator[int32]` params even though `__next__` is defined on `Counter`.
 
 **Missing `raise StopIteration` warning**: If a `__next__` method contains no `raise StopIteration` on any code path, the compiler emits a warning. Such iterators never signal termination and will loop forever when used in `for` loops without an explicit `break`.
 
 **Auto-synthesis of `__iter__`**: Types that define `__next__` but not `__iter__` automatically get `__iter__` synthesized, returning `self`. This matches Python's convention where iterators are their own iterables.
 
-**Built-in `Iterable[T]` conformance**: All standard container and string types conform to `Iterable[T]`: `list[T]`, `Array[T, N]`, `Span[T]`, `Span[readonly[T]]`, `Range[T]`, `str`, `String`, `StrView` (as `Iterable[Char]`), `dict[K,V]` (as `Iterable[K]`), `dict_keys`, `dict_values`, `dict_items`. This enables passing any builtin container to generic functions accepting `Iterable[T]`, calling `__iter__()` explicitly, and using the `iter()` builtin. Direct `for` loops over these types still use fast range-based C++ iteration (`NativeIterable`) as an optimization.
+**Built-in `Iterable[T]` conformance**: All standard container and string types conform to `Iterable[T]`: `list[T]`, `Array[T, N]`, `Span[T]`, `Span[readonly[T]]`, `Range[T]`, `str`, `String`, `StrView` (as `Iterable[char]`), `dict[K,V]` (as `Iterable[K]`), `dict_keys`, `dict_values`, `dict_items`. This enables passing any builtin container to generic functions accepting `Iterable[T]`, calling `__iter__()` explicitly, and using the `iter()` builtin. Direct `for` loops over these types still use fast range-based C++ iteration (`NativeIterable`) as an optimization.
 
 #### Working: `__span__` Protocol (Zero-Cost User-Defined Iteration)
 
@@ -3484,15 +3487,15 @@ Types that define `__span__(self) -> Span[T]` or `__span__(self) -> Span[readonl
 C++ range-based for iteration, avoiding iterator object allocation:
 
 ```python
-from tpy import Int32, Span
+from tpy import int32, Span
 
 class IntBuffer:
-    _data: list[Int32]
+    _data: list[int32]
 
     def __init__(self) -> None:
         self._data = [10, 20, 30]
 
-    def __span__(self) -> Span[Int32]:
+    def __span__(self) -> Span[int32]:
         return self._data
 
 buf = IntBuffer()
@@ -3520,7 +3523,7 @@ without any decorator produces both halves. Value-typed returns stay single-over
 Use `@readonly` to opt back into a strict const-only contract.
 
 **Usage-dependent receiver const-ness**: a parameter read only *through* an `@auto_readonly`
-accessor (`Box.get`, `Rc.get`, `Deref`) keeps a `const` receiver -- `def read(o: Outer) -> Int32: return o.b.get().v`
+accessor (`Box.get`, `Rc.get`, `Deref`) keeps a `const` receiver -- `def read(o: Outer) -> int32: return o.b.get().v`
 emits `const Outer& o`. A mutation through the result (`o.b.get().v = 9`, `o.b.get().bump()`)
 demotes it to `Outer&`. C++ overload resolution picks `get()` vs `get() const` from the
 receiver. (Binding the result to a local, `x = o.b.get()`, keeps the receiver mutable for now;
@@ -3560,24 +3563,24 @@ a span and implements `Iterable[T]`/`Iterator[T]`/`NativeIterable[T]`.
 `__span__()`. It enables writing generic functions that accept any span-producing type:
 
 ```python
-from tpy import Int32, Span, Spannable
+from tpy import int32, Span, Spannable
 
 class Buffer:
-    _data: list[Int32]
+    _data: list[int32]
     def __init__(self) -> None:
         self._data = [1, 2, 3]
-    def __span__(self) -> Span[Int32]:
+    def __span__(self) -> Span[int32]:
         return self._data
 
-def sum_all(c: Spannable[Int32]) -> Int32:
-    total: Int32 = 0
+def sum_all(c: Spannable[int32]) -> int32:
+    total: int32 = 0
     for x in c:
         total += x
     return total
 
 # Works with user types, list, Array, Span, Span[readonly[T]]
 print(sum_all(Buffer()))           # 6
-data: list[Int32] = [10, 20, 30]
+data: list[int32] = [10, 20, 30]
 print(sum_all(data))               # 60
 ```
 
@@ -3595,10 +3598,10 @@ the readonly protocol via covariant return (the compiler auto-generates a const 
 
 ```python
 from typing import Iterable
-from tpy import Int32
+from tpy import int32
 
-def sum_generic[T: Iterable[Int32]](items: T) -> Int32:
-    total: Int32 = 0
+def sum_generic[T: Iterable[int32]](items: T) -> int32:
+    total: int32 = 0
     for x in items:
         total += x
     return total
@@ -3613,19 +3616,19 @@ def sum_generic[T: Iterable[Int32]](items: T) -> Int32:
 Types extending `Spannable[T]` (which provides `__span__() -> Span[readonly[T]]`) can be implicitly coerced to `Span[T]`. This unifies span coercion with the `Spannable` protocol -- no separate marker protocol is needed.
 
 ```python
-from tpy import Int32, Span, Array
+from tpy import int32, Span, Array
 
-def sum_span(values: Span[Int32]) -> Int32:
-    total: Int32 = 0
+def sum_span(values: Span[int32]) -> int32:
+    total: int32 = 0
     for v in values:
         total += v
     return total
 
 # All these work - Array, list extend Spannable[T]
-arr: Array[Int32, 3] = [1, 2, 3]
+arr: Array[int32, 3] = [1, 2, 3]
 sum_span(arr)  # OK
 
-lst: list[Int32] = [4, 5, 6]
+lst: list[int32] = [4, 5, 6]
 sum_span(lst)  # OK
 
 # str does NOT extend Spannable - this is an error
@@ -3635,7 +3638,7 @@ sum_span(lst)  # OK
 
 **Key points:**
 - **Built-in conformance**: `list[T]`, `Array[T, N]`, `Span[T]` extend `Spannable[T]`
-- **str excluded**: `str` iterates over `Char` but doesn't extend `Spannable` (design choice)
+- **str excluded**: `str` iterates over `char` but doesn't extend `Spannable` (design choice)
 - **Zero overhead**: Uses C++ `std::span` implicit construction from contiguous ranges
 
 #### Compiler Traits Summary
@@ -3693,7 +3696,7 @@ no-op for non-`Any` sources and a checked `any_cast_or_panic` when the source is
     - Conversion into that read borrow, by how the SOURCE is bound: a storage-form name (a `list[A | B]` element, an `Own[A | B]` param) takes `::tpy::to_const_ptr_variant(x)`, a mutable borrow takes the type's own `x.as_const()`, and a name already bound with const pointees passes bare -- two helpers and the bare pass, because a narrower union at a wider union slot never reaches a render (it rejects at the argument gate)
     - Conversion out of storage into the mutable borrow: `::tpy::to_ptr_variant()`
     - **Limitation**: a `readonly[A | B]` argument is still rejected at a plain `A | B` parameter (`Cannot pass readonly[A | B] as mutable A | B`) although the two now render the same deep-const borrow -- the readonly rule reads the annotation, not the rendered form (`BUGS.md#readonly-union-arg-at-inferred-const-slot`)
-    - Value-type unions (`Int32 | str`) use `::tpy::Union<...>` everywhere (no pointers)
+    - Value-type unions (`int32 | str`) use `::tpy::Union<...>` everywhere (no pointers)
   - Two-way, three-way, and n-way unions in annotations (function params, returns, local variables)
   - Canonical member ordering (sorted by type name, `None`/`std::monostate` always first)
   - `A | None` with single non-None type still produces `Optional[T]` (backward compatible)
@@ -3722,7 +3725,7 @@ no-op for non-`Any` sources and a checked `any_cast_or_panic` when the source is
   - Negative (else-branch) narrowing: remaining union members after isinstance check
   - Chained elif isinstance for multi-way branching (3+ member unions) -- full codegen support for 2-way, 3-way, and n-way elif chains
   - Narrowed variables can be used for field access, method calls, and passed to functions expecting the member type
-  - ... and passed on where the UNION itself is expected (`if isinstance(v, A): total(v)` with `total(u: A | B)`): the narrowed binding is the member-typed extraction alias, so a pointer-variant slot re-lifts its address (`::tpy::Union<A*, B*>{&(__v)}` -- the same lift a plain member-typed name takes, and the address-of the union RETURN position already emits). The callee therefore aliases the caller's object, matching CPython. Covers the isinstance, `match`-arm and inline-ternary narrowings, mutable and `readonly[...]` slots, and free-function / constructor / method-body / module-level / comprehension / `with` / `try`-`finally` / `@error_return` / generator / async positions -- a generator or async frame re-establishes the alias per resume state, so the lift renders on both sides of a `yield` or `await`. A VALUE union (`Int32 | Float64`) takes the same fact through its own form: the narrowed name is the member-typed alias and the variant's converting constructor absorbs it, so the arg passes BARE with no `std::variant<...> __tmp_N` temp (the `if` and `match` forms; the inline-ternary form of a value union still rejects). Two value-union shapes stay out: the inline-ternary narrowing (BUGS.md#inline-narrowed-value-union-arg-rejects) and a `str` member, which never reaches the bare-pass row at all -- the narrowed alias is a `std::string_view` while the variant member is an owned `std::string`, so the arg is rejected outright rather than mis-rendered (BUGS.md#value-union-str-view-insert). A METHOD's pointer-variant parameter has no member-lift row (loud reject), and a nested def capturing the narrowed name does not lower at all -- see BUGS.md
+  - ... and passed on where the UNION itself is expected (`if isinstance(v, A): total(v)` with `total(u: A | B)`): the narrowed binding is the member-typed extraction alias, so a pointer-variant slot re-lifts its address (`::tpy::Union<A*, B*>{&(__v)}` -- the same lift a plain member-typed name takes, and the address-of the union RETURN position already emits). The callee therefore aliases the caller's object, matching CPython. Covers the isinstance, `match`-arm and inline-ternary narrowings, mutable and `readonly[...]` slots, and free-function / constructor / method-body / module-level / comprehension / `with` / `try`-`finally` / `@error_return` / generator / async positions -- a generator or async frame re-establishes the alias per resume state, so the lift renders on both sides of a `yield` or `await`. A VALUE union (`int32 | float64`) takes the same fact through its own form: the narrowed name is the member-typed alias and the variant's converting constructor absorbs it, so the arg passes BARE with no `std::variant<...> __tmp_N` temp (the `if` and `match` forms; the inline-ternary form of a value union still rejects). Two value-union shapes stay out: the inline-ternary narrowing (BUGS.md#inline-narrowed-value-union-arg-rejects) and a `str` member, which never reaches the bare-pass row at all -- the narrowed alias is a `std::string_view` while the variant member is an owned `std::string`, so the arg is rejected outright rather than mis-rendered (BUGS.md#value-union-str-view-insert). A METHOD's pointer-variant parameter has no member-lift row (loud reject), and a nested def capturing the narrowed name does not lower at all -- see BUGS.md
   - Implicit union wrapping at call sites: passing `A` to a parameter of type `A | B` auto-wraps into `std::variant`, including rvalue constructors (e.g. `f(Dog("Rex"))` materializes a temp slot for the rvalue)
   - `std::get<T>` extraction emitted once at block entry for efficient narrowed access
   - `while isinstance(x, T)` narrows `x` to `T` inside the loop body (same extraction as if-blocks)
@@ -3730,7 +3733,7 @@ no-op for non-`Any` sources and a checked `any_cast_or_panic` when the source is
   - Assignment narrowing is cleared on reassignment (`v = B(...)` clears the `A` narrowing)
   - Value-type semantics: all-value unions (`int | bool`) pass as `const&`; unions with records use the borrow form `::tpy::Union<T*...>` (by value, zero-copy)
   - Nullable unions: `A | B | None` maps to `::tpy::Union<A, B, std::monostate>` at a storage position, `::tpy::Union<A*, B*, std::monostate>` at a borrow one
-  - **Comparison is BY VALUE, across alternatives** (CPython semantics): `same(a: Int32 | Float64, b: Int32 | Float64)` returning `a == b` answers True for `same(1, 1.0)`. The type carries the rule, not the compiler: every union at a STORAGE position renders `::tpy::Union<...>` -- a value union everywhere, a REFERENCE union at a field, a container element, an `Own` slot or a return -- a `std::variant` that declares all six comparison operators over a per-alternative-pair leaf, so the compare emits the bare `(a == b)` at every position. The leaf is the monomorphic twin's answer for that pair -- a mixed-sign integer pair goes through `std::cmp_equal`, an `int` against a float through `static_cast<double>` -- so a union never disagrees with the same comparison written on plain variables. Because the ELEMENT compares correctly, every container does too with no help: `list`, `Array`, `tuple`, nested combinations and `dict` values all answer Python's way through their own standard operators. The recursive-alias wrapper's defaulted `operator==` compares a `::tpy::Union` member and inherits the same rule. A REFERENCE union's container compare inherits it too: `list[Dog | Int32 | Float64]` holding 1 equals one holding 1.0, where the bare variant compared the alternative INDEX first and answered False. A reference union at a BORROW position -- a parameter, a local, a comprehension or a generator frame -- answers through its own type, `::tpy::Union<A*, B*>`, whose per-alternative-PAIR leaf recurses into the same value leaf ON THE POINTEES and falls back to IDENTITY for a same-type pair whose type defines no `__eq__`. That fallback is Python's own, and it is representable only there: a storage slot holds a COPY, so its address is not the object's, and such a pack stays a build-time refusal naming the missing `__eq__`. Both operands must be BOUND as the borrow form -- a `for e in xs` / comprehension loop variable binds the container's storage element, which is a different C++ type, and that pair still rejects (`BUGS.md#ref-union-loop-var-vs-borrow-compare`). An ordering whose alternative pair Python cannot order (`Int32 | str` holding an int against a str) raises `TypeError` at runtime, as CPython does; a pair of one type that defines no equality at all does not compile. At the type level a union still has no `Equatable` / `Hashable` conformance, so a union against one of its own members, `in` over `list[union]`, and a union dict key are all rejected (see `BUGS.md#value-union-no-equatable-conformance`)
+  - **Comparison is BY VALUE, across alternatives** (CPython semantics): `same(a: int32 | float64, b: int32 | float64)` returning `a == b` answers True for `same(1, 1.0)`. The type carries the rule, not the compiler: every union at a STORAGE position renders `::tpy::Union<...>` -- a value union everywhere, a REFERENCE union at a field, a container element, an `Own` slot or a return -- a `std::variant` that declares all six comparison operators over a per-alternative-pair leaf, so the compare emits the bare `(a == b)` at every position. The leaf is the monomorphic twin's answer for that pair -- a mixed-sign integer pair goes through `std::cmp_equal`, an `int` against a float through `static_cast<double>` -- so a union never disagrees with the same comparison written on plain variables. Because the ELEMENT compares correctly, every container does too with no help: `list`, `Array`, `tuple`, nested combinations and `dict` values all answer Python's way through their own standard operators. The recursive-alias wrapper's defaulted `operator==` compares a `::tpy::Union` member and inherits the same rule. A REFERENCE union's container compare inherits it too: `list[Dog | int32 | float64]` holding 1 equals one holding 1.0, where the bare variant compared the alternative INDEX first and answered False. A reference union at a BORROW position -- a parameter, a local, a comprehension or a generator frame -- answers through its own type, `::tpy::Union<A*, B*>`, whose per-alternative-PAIR leaf recurses into the same value leaf ON THE POINTEES and falls back to IDENTITY for a same-type pair whose type defines no `__eq__`. That fallback is Python's own, and it is representable only there: a storage slot holds a COPY, so its address is not the object's, and such a pack stays a build-time refusal naming the missing `__eq__`. Both operands must be BOUND as the borrow form -- a `for e in xs` / comprehension loop variable binds the container's storage element, which is a different C++ type, and that pair still rejects (`BUGS.md#ref-union-loop-var-vs-borrow-compare`). An ordering whose alternative pair Python cannot order (`int32 | str` holding an int against a str) raises `TypeError` at runtime, as CPython does; a pair of one type that defines no equality at all does not compile. At the type level a union still has no `Equatable` / `Hashable` conformance, so a union against one of its own members, `in` over `list[union]`, and a union dict key are all rejected (see `BUGS.md#value-union-no-equatable-conformance`)
   - `v is None` / `v is not None` on nullable unions: `std::holds_alternative<std::monostate>(v)`
   - `is not None` narrows to remaining non-None members; chained isinstance further narrows
   - Field assignment: `obj.field = local` where field is value-variant and local is pointer-variant auto-converts via `::tpy::to_value_variant()` (copies the active member into field storage, emits copy warning). The wrap is gated on the source being structurally a pointer-variant (ptr_variant local, union param, function call returning a non-value union) -- bare alternative sources (constructor `A(1)`, field access of a value-variant field, etc.) construct the value-variant directly and skip the wrap.
@@ -3746,8 +3749,8 @@ no-op for non-`Any` sources and a checked `any_cast_or_panic` when the source is
   - Type aliases can be imported cross-module: `from shapes import Shape`
   - **Recursive type aliases**: `type Tree = int | list[Tree]` -- self-referencing union aliases compile to a C++ wrapper struct with a `.value` variant field and a forwarding constructor. Safety: every recursive path must go through an indirecting container. The compiler treats two sources as indirecting: (a) `Optional`/`Ptr` structural wrappers; (b) types declared with `@native(..., indirecting=True)` (covers `list`/`dict`/`set` plus user opt-ins). User TPy records (e.g. `tplib.Box`) auto-deduce indirection structurally -- any record whose field set contains a `Ptr`-typed (or otherwise indirecting) field breaks the cycle without compiler-side hard-coding. Direct recursion (`type Bad = int | Bad`) and fixed-size recursion (`type Bad = str | tuple[Bad, int]`) are rejected. A union naming `None` directly (`type Nest = None | list[Nest]`) is rejected at parse time as well, although the generic spelling of the same type -- `Tree[None]` for `type Tree[T] = T | list[Tree[T]]` -- compiles and runs; the two spellings disagreeing is a known gap, see `BUGS.md`. The alias name is callable as a constructor: `Tree(42)`. isinstance narrowing and match/case work on recursive unions. A recursive union is usable as a record field, constructor argument, and function / method / structural-protocol-method parameter; the parameter's C++ const-ness is inferred like a record param (read-only use -> `const X&`, returned-by-reference or mutated -> `X&`), so `def wrap(v: V) -> V: return v` works without a `readonly[V]` annotation. Returning a non-generic recursive union by value from a *record method* is a known codegen-ordering gap -- see `BUGS.md`; free-function returns work.
   - **Annotation-driven inference**: Nested list and dict literals infer their element types from the target annotation. `x: Tree = [1, [3, 4]]` infers `[3, 4]` as `list[Tree]` rather than `list[int]`; `d: JsonValue = {"a": 1, "b": {"c": 2}}` infers the inner dict as `dict[str, JsonValue]`. Works with variable annotations, `list[Tree]`/`dict[str, JsonValue]` annotations, and function parameter types. Supports arbitrary nesting depth.
-  - **Generic non-recursive aliases**: `type Pair[T] = tuple[T, T]`, `type Result[T, E] = T | E`, `type DictView[K, V] = dict[K, V] | None`. Substitution happens at parse-resolution: a use site `Pair[Int32]` is rewritten to the expanded body (`tuple[Int32, Int32]`) for sema and codegen. The alias name has no C++-level identity; generated C++ uses the expanded form directly. Works in every position (local, parameter, return, field, container element, nested `Pair[Pair[T]]`, alias-of-alias composition `IntPair = Pair[Int32]`). Cross-module imports work in both short-name (`from lib import Pair`) and qualified (`lib.Pair[Int32]`) forms. Diagnostics: arity mismatch (`Pair[A, B]` for a single-arg alias) and PEP 695 bound syntax (`Pair[T: Hashable]`) are rejected at parse time. `isinstance(x, Pair)` on a bare generic alias is rejected -- generic aliases have no runtime identity; narrow against the expanded members instead.
-  - **Generic recursive aliases**: `type Tree[T] = T | list[Tree[T]]`, `type DictTree[K, V] = V | dict[K, DictTree[K, V]]`. Unlike non-recursive generic aliases (expanded at use sites), a generic *recursive* alias has C++-level nominal identity: codegen emits one `template<typename ...> struct Tree { std::variant<...> value; ... };` per alias name, and a use site `Tree[Int32]` renders `Tree<int32_t>`. The default ctor and `operator==` are `requires`-constrained so an instantiation with a non-default-constructible / non-comparable arg loses just that member (clean use-site error) rather than an ill-formed struct. v1 supports **identity recursion only**: each recursive position must reuse the alias's declared type parameters positionally (`Tree[T]`, not `Tree[list[T]]`, `Tree[int]`, or swapped `Pair[V, K]`) -- violations are rejected with a precise diagnostic. Construction (`t: Tree[int] = [1, [2, 3], 4]`), `match`/`case` dispatch (`case list()` + `case _` for the leaf), recursion, equality, and printing all work; multiple instantiations of one alias (`Tree[int]`, `Tree[str]`) share the single template. Cross-module use works via all import forms -- `from m import Tree`, aliased `from m import Tree as T2`, and qualified `import m; m.Tree[...]`; a local alias and a same-short-named imported one stay distinct (identity is keyed by the defining module's qualified name, so the renders never collide). A generic recursive alias instance is usable as a record field, constructor argument, and method / structural-protocol-method parameter and return (the protocol must be defined in a *separate* module from the alias -- a same-module protocol, structural or `@dynamic`, whose method is typed with the alias currently fails the C++ build because the protocol's concept / base / adapter is emitted before the wrapper struct; see `BUGS.md`). **Return convention** (reference-type, matching `list` / `dict` / record): a bare `-> Tree[T]` return lowers to `Tree<T>&`, so a fresh value must be returned as `Own[Tree[T]]` (lowers by value / move) -- returning a fresh value bare is rejected at compile time. A field / parameter accessor (`def get(self) -> Tree[int]: return self.t`) returns the reference directly; `readonly[Tree[T]]` returns `const Tree<T>&`. A wrapper parameter's const-ness is inferred like a record param (read-only use -> `const Tree<T>&`; returned-by-reference or mutated -> `Tree<T>&`), so a wrapper param can be returned by reference (`def f(e: Tree[T]) -> Tree[T]: return e`). **Limitations**: use `match`/`case` for dispatch -- `isinstance(x, Tree)` on the recursive form is rejected (generic aliases have no runtime identity) and bare `isinstance(x, list)` narrowing does not reach a *generic* recursive-alias subject (its isinstance path stays on the non-union branch; bare-generic narrowing does work for plain and non-generic recursive unions). Matching/binding the bare type-parameter leaf needs a concrete-leaf class pattern (`case int()`) -- but only where the leaf is a single type: when the type argument is itself a union (`Tree[Int32 | str]`), no member of that leaf union can be named in a class pattern, because the wrapper's variant carries one slot for the whole leaf rather than one per member (see `BUGS.md`). A fully generic `[T]` traversal uses `case _` for the leaf (no value bound). Generic-class constructor inference through a nested `Box[Tree[T]]` arg (annotate explicitly) and mutual recursion across generic aliases (rejected) are follow-ups; see `BUGS.md` and `docs/GENERIC_RECURSIVE_ALIASES_DESIGN.md`. The non-generic recursive union case (`type Expr = Lit | BinOp`) follows the same return and param conventions: `def f(e: Expr) -> Expr: return e` works (the param const-infers to `Expr&` because it is returned by reference), and a self-mutating method returning the param compiles too. **Locals & `match` subjects bind by reference (no copy, aliasing works):** a wrapper local from a reference source (`v = h.view()`, `g = h.get()`) binds `Tree<T>&` (not a copy of the variant tree), and a `match h.get()` subject binds by reference -- so reads avoid the copy and caller mutations through the local / `match` arm reach the field (CPython aliasing), exactly like `list` / `dict` / record. A fresh value (`t = [1, 2]`) still binds by value.
+  - **Generic non-recursive aliases**: `type Pair[T] = tuple[T, T]`, `type Result[T, E] = T | E`, `type DictView[K, V] = dict[K, V] | None`. Substitution happens at parse-resolution: a use site `Pair[int32]` is rewritten to the expanded body (`tuple[int32, int32]`) for sema and codegen. The alias name has no C++-level identity; generated C++ uses the expanded form directly. Works in every position (local, parameter, return, field, container element, nested `Pair[Pair[T]]`, alias-of-alias composition `IntPair = Pair[int32]`). Cross-module imports work in both short-name (`from lib import Pair`) and qualified (`lib.Pair[int32]`) forms. Diagnostics: arity mismatch (`Pair[A, B]` for a single-arg alias) and PEP 695 bound syntax (`Pair[T: Hashable]`) are rejected at parse time. `isinstance(x, Pair)` on a bare generic alias is rejected -- generic aliases have no runtime identity; narrow against the expanded members instead.
+  - **Generic recursive aliases**: `type Tree[T] = T | list[Tree[T]]`, `type DictTree[K, V] = V | dict[K, DictTree[K, V]]`. Unlike non-recursive generic aliases (expanded at use sites), a generic *recursive* alias has C++-level nominal identity: codegen emits one `template<typename ...> struct Tree { std::variant<...> value; ... };` per alias name, and a use site `Tree[int32]` renders `Tree<int32_t>`. The default ctor and `operator==` are `requires`-constrained so an instantiation with a non-default-constructible / non-comparable arg loses just that member (clean use-site error) rather than an ill-formed struct. v1 supports **identity recursion only**: each recursive position must reuse the alias's declared type parameters positionally (`Tree[T]`, not `Tree[list[T]]`, `Tree[int]`, or swapped `Pair[V, K]`) -- violations are rejected with a precise diagnostic. Construction (`t: Tree[int] = [1, [2, 3], 4]`), `match`/`case` dispatch (`case list()` + `case _` for the leaf), recursion, equality, and printing all work; multiple instantiations of one alias (`Tree[int]`, `Tree[str]`) share the single template. Cross-module use works via all import forms -- `from m import Tree`, aliased `from m import Tree as T2`, and qualified `import m; m.Tree[...]`; a local alias and a same-short-named imported one stay distinct (identity is keyed by the defining module's qualified name, so the renders never collide). A generic recursive alias instance is usable as a record field, constructor argument, and method / structural-protocol-method parameter and return (the protocol must be defined in a *separate* module from the alias -- a same-module protocol, structural or `@dynamic`, whose method is typed with the alias currently fails the C++ build because the protocol's concept / base / adapter is emitted before the wrapper struct; see `BUGS.md`). **Return convention** (reference-type, matching `list` / `dict` / record): a bare `-> Tree[T]` return lowers to `Tree<T>&`, so a fresh value must be returned as `Own[Tree[T]]` (lowers by value / move) -- returning a fresh value bare is rejected at compile time. A field / parameter accessor (`def get(self) -> Tree[int]: return self.t`) returns the reference directly; `readonly[Tree[T]]` returns `const Tree<T>&`. A wrapper parameter's const-ness is inferred like a record param (read-only use -> `const Tree<T>&`; returned-by-reference or mutated -> `Tree<T>&`), so a wrapper param can be returned by reference (`def f(e: Tree[T]) -> Tree[T]: return e`). **Limitations**: use `match`/`case` for dispatch -- `isinstance(x, Tree)` on the recursive form is rejected (generic aliases have no runtime identity) and bare `isinstance(x, list)` narrowing does not reach a *generic* recursive-alias subject (its isinstance path stays on the non-union branch; bare-generic narrowing does work for plain and non-generic recursive unions). Matching/binding the bare type-parameter leaf needs a concrete-leaf class pattern (`case int()`) -- but only where the leaf is a single type: when the type argument is itself a union (`Tree[int32 | str]`), no member of that leaf union can be named in a class pattern, because the wrapper's variant carries one slot for the whole leaf rather than one per member (see `BUGS.md`). A fully generic `[T]` traversal uses `case _` for the leaf (no value bound). Generic-class constructor inference through a nested `Box[Tree[T]]` arg (annotate explicitly) and mutual recursion across generic aliases (rejected) are follow-ups; see `BUGS.md` and `docs/GENERIC_RECURSIVE_ALIASES_DESIGN.md`. The non-generic recursive union case (`type Expr = Lit | BinOp`) follows the same return and param conventions: `def f(e: Expr) -> Expr: return e` works (the param const-infers to `Expr&` because it is returned by reference), and a self-mutating method returning the param compiles too. **Locals & `match` subjects bind by reference (no copy, aliasing works):** a wrapper local from a reference source (`v = h.view()`, `g = h.get()`) binds `Tree<T>&` (not a copy of the variant tree), and a `match h.get()` subject binds by reference -- so reads avoid the copy and caller mutations through the local / `match` arm reach the field (CPython aliasing), exactly like `list` / `dict` / record. A fresh value (`t = [1, 2]`) still binds by value.
   - **Mutual recursion** (D20): Union aliases can reference classes whose fields reference back through any indirecting container (`list`/`dict`/`set` via the `@native(indirecting=True)` flag; `Optional`/`Ptr` structurally; user records like `tplib.Box` that own a `Ptr`-typed field). This enables AST-style data structures:
     ```python
     from tplib import Box
@@ -3759,7 +3762,7 @@ no-op for non-`Any` sources and a checked `any_cast_or_panic` when the source is
         right: Box[Expr]
     ```
     The compiler detects cross-type cycles, validates indirection, and generates a C++ wrapper struct that can be forward-declared. `Box(Lit(1))` auto-coerces to `Box[Expr]` via the wrapper's implicit constructor. Works with `isinstance`, `match`/`case`, and mixed unions (primitives + records). Both source orderings supported (alias first or classes first). Cross-module mutual recursion is not yet supported.
-  - **Cross-module argument coercion**: a function whose parameter is a recursive-union alias defined in another module (e.g. `json.dumps(obj: JsonValue)`) accepts a container *literal* without the caller importing the alias -- `json.dumps([1, 2, 3])` / `json.dumps({"a": 1})` work from `import json` alone, including empty `[]`/`{}`, `None` elements, and arbitrary nesting (`json.dumps([1, None, {"k": None}])`). A concrete container *variable* (`d: dict[str, Int32]`, `xs: list[Int32]`) is **intentionally NOT** implicitly converted: it has a different C++ representation (`ordered_map<string, int32_t>` vs the wrapper's `ordered_map<string, JsonValue>`) that cannot alias, so accepting it would mean a silent element-wise **O(n) deep copy** at the call boundary -- a hidden cost TPy declines to insert (and an aliasing reference type would also diverge from CPython's pass-by-reference). The compiler rejects it with a diagnostic pointing at the explicit alternatives: build it as the alias directly (`d: JsonValue = {...}`) or pass a container literal. This is a deliberate design choice, not a missing feature; the zero-copy answer is to serialize the typed container in place (planned -- see `TODO.md`), which avoids the wrapper entirely. See `BUGS.md` for the tuple input limitation.
+  - **Cross-module argument coercion**: a function whose parameter is a recursive-union alias defined in another module (e.g. `json.dumps(obj: JsonValue)`) accepts a container *literal* without the caller importing the alias -- `json.dumps([1, 2, 3])` / `json.dumps({"a": 1})` work from `import json` alone, including empty `[]`/`{}`, `None` elements, and arbitrary nesting (`json.dumps([1, None, {"k": None}])`). A concrete container *variable* (`d: dict[str, int32]`, `xs: list[int32]`) is **intentionally NOT** implicitly converted: it has a different C++ representation (`ordered_map<string, int32_t>` vs the wrapper's `ordered_map<string, JsonValue>`) that cannot alias, so accepting it would mean a silent element-wise **O(n) deep copy** at the call boundary -- a hidden cost TPy declines to insert (and an aliasing reference type would also diverge from CPython's pass-by-reference). The compiler rejects it with a diagnostic pointing at the explicit alternatives: build it as the alias directly (`d: JsonValue = {...}`) or pass a container literal. This is a deliberate design choice, not a missing feature; the zero-copy answer is to serialize the typed container in place (planned -- see `TODO.md`), which avoids the wrapper entirely. See `BUGS.md` for the tuple input limitation.
   - **Limitations**: Non-generic mutual type-alias recursion (`type A = list[B]; type B = list[A]`) is silently accepted by the compiler but generates C++ that fails to compile -- each `using` declaration references the other before it is defined. Use a recursive-union wrapper (as in the `Expr` / `Lit` / `BinOp` example above) for mutually-recursive types instead.
   - **Working**: Recursive *records* through an indirecting container -- a class whose field cycles back to itself (or mutually, `A`/`B`) via `list`/`dict`/`set`/`Ptr`/`Rc[T] | None` compiles (a tree node `children: list[Node]`; `A.bs: list[B]` + `B.as_: list[A]`). The container provides the size indirection the cycle needs. Storing a borrowed value into such a field copies it into the container (the standard value-into-container copy warning); for shared mutation use `Ptr`/`Rc`. The **inline** self-embedding forms -- a direct `nxt: Node` field, or `opt: Node | None` (an inline `std::optional<Node>`, which stores `Node` by value) -- are infinite-size and not yet cleanly rejected (they crash or emit invalid C++; see `BUGS.md`); use a container, `Ptr`, or `Rc` to break the cycle.
   - **Not yet supported**: `isinstance(x, Protocol)` on concrete-typed variables
@@ -3775,7 +3778,7 @@ no-op for non-`Any` sources and a checked `any_cast_or_panic` when the source is
     - Exhaustiveness check: stubs must cover all union variants per parameter when all stubs include that parameter (missing variants are a sema error). Short-arity stubs that skip a parameter are covered by the impl's default.
     - `isinstance(x, T)` checks in if/elif/else are statically resolved to `true`/`false` per overload
     - `match`/`case` on union subjects selects only the matching arm per overload
-    - Call-site overload resolution (the same for both decorators) is tier-ranked in two passes (`sema/overloads.py`, see `docs/OVERLOAD_DESIGN.md#call-resolution` for the full algorithm). First pass: each candidate classifies every arg into a `(tier, widening_cost)` pair, strongest-first tiers being `EXACT_CONCRETE > EXACT_GENERIC_SHAPE > PROTOCOL_EXPLICIT > PROTOCOL_STRUCTURAL > GENERIC_PROTOCOL_EXPLICIT > GENERIC_PROTOCOL_STRUCTURAL > GENERIC_WILDCARD`; candidates are sorted by aggregate tier counts with widening cost as the tiebreaker, and genuine ties become an `Ambiguous overload for 'f': ...` diagnostic rather than a declaration-order pick. Second pass (coercion fallback) runs only when no strict match exists. Concrete overloads always rank above equally-matching generics, so stub order cannot change the winner. Empty-container literals carry an `UnknownElementType` placeholder for their element type; ranking against multi-overload builtins (e.g. `sum([])`) treats it as `default_int_type` so `sum([]) == 0` picks the `Int32` overload at cost 0. Single-generic builtins (`sorted`, `all`, `any`, `iter`, `enumerate`, `reversed`) and user-defined generics use a different mechanism -- see `@type_param_default` below.
+    - Call-site overload resolution (the same for both decorators) is tier-ranked in two passes (`sema/overloads.py`, see `docs/OVERLOAD_DESIGN.md#call-resolution` for the full algorithm). First pass: each candidate classifies every arg into a `(tier, widening_cost)` pair, strongest-first tiers being `EXACT_CONCRETE > EXACT_GENERIC_SHAPE > PROTOCOL_EXPLICIT > PROTOCOL_STRUCTURAL > GENERIC_PROTOCOL_EXPLICIT > GENERIC_PROTOCOL_STRUCTURAL > GENERIC_WILDCARD`; candidates are sorted by aggregate tier counts with widening cost as the tiebreaker, and genuine ties become an `Ambiguous overload for 'f': ...` diagnostic rather than a declaration-order pick. Second pass (coercion fallback) runs only when no strict match exists. Concrete overloads always rank above equally-matching generics, so stub order cannot change the winner. Empty-container literals carry an `UnknownElementType` placeholder for their element type; ranking against multi-overload builtins (e.g. `sum([])`) treats it as `default_int_type` so `sum([]) == 0` picks the `int32` overload at cost 0. Single-generic builtins (`sorted`, `all`, `any`, `iter`, `enumerate`, `reversed`) and user-defined generics use a different mechanism -- see `@type_param_default` below.
     - `Literal["r", "w", ...]` parameter annotations for literal-value-based dispatch: `open(path, "rb")` can resolve to a different return type than `open(path, "r")`. Supports string, integer (including negative), and bool values. Multiple values per `Literal[...]` annotation supported. Mixed value types in a single `Literal[...]` are rejected. Literal arguments and `Literal`-annotated locals dispatch to `Literal` overloads (`x: Literal["rb"] = "rb"; pick(x)` picks the Literal specialization, and the dispatch survives branch joins where every assigned value stays in the declared set); unannotated variables fall through to plain type overloads. Out-of-set assignments to a `Literal`-annotated local are rejected at compile time (`m: Literal["r", "w"] = "wb"` and the reassignment counterpart both error). `Literal[str]`-annotated locals also use view-storage (`std::string_view`) when every bound value is a string-literal AST node -- view inference widens to owned `std::string` when a Literal-returning function call (or other non-view-safe Literal-typed source) is bound. Non-Literal-typed RHS (`m: Literal["r", "w"] = some_str_func()`) is rejected at compile time: sema cannot prove the runtime value is in the declared set, and accepting it would miscompile via Literal-specialized dispatch. Augmented assignment on a `Literal[...]`-annotated local (`m += "x"`) is rejected outright -- the result is rarely in the declared value set and the local's view storage couldn't hold a new owned string anyway. `Literal[str]` in return position also emits `std::string_view` (every value is a static-lifetime literal), so callers binding the return into a `Literal[...]` local get view storage end-to-end with no heap allocation. Equality narrowing on `Literal`-typed parameters: `if mode == "rb":` narrows to `Literal["rb"]`, enabling dispatch to more specific stubs within branches. `match`/`case` on `Literal`-typed parameters with exhaustiveness checking and subject narrowing per arm. Literal overload flattening: each stub gets a per-literal C++ specialization with name mangling and dead branch elimination, enabling different return types per literal value for both functions and methods. Multi-value dead branch elimination: `or`/`and` chains (`mode == "r" or mode == "w"`) and `in`/`not in` operators (`mode in {"r", "w"}`) are folded when all values of a multi-value `Literal` are covered or contradicted. Requires `from typing import Literal`.
     - **Not** supported on `__init__` of a user-defined class: codegen emits a single constructor, so an overloaded `__init__` on a `@dataclass`/class silently keeps only the first stub (a known bug, see BUGS.md). Use a single constructor or a classmethod factory. (The builtin exception family overloads `__init__` via `@dispatch` + `@cpp_template` variants, a separate `@native` path.)
     - `from typing import overload` / `from tpy import dispatch` import required
@@ -3799,7 +3802,7 @@ no-op for non-`Any` sources and a checked `any_cast_or_panic` when the source is
   - Inside a tuple: same rule applies per element. `tuple[T | None, ...]` returns / params / locals lower to `std::tuple<T*, ...>`; fields and container elements lower to `std::tuple<std::optional<T>, ...>`. Element-wise conversion at boundaries via `tpy::tuple_to_storage<...>` / `tpy::tuple_to_pointer<...>`. See the Tuples entry under Containers.
   - Mutation-based const inference: `T | None` borrow params whose body provably doesn't mutate through the pointer become `const T*`. Same trigger as the existing `T → const T&` inference for plain record params.
 - **Working**: `Optional[T]` from `typing` is equivalent to `T | None` at parse time
-  - `from typing import Optional` then `Optional[Int32]` produces the same type as `Int32 | None`
+  - `from typing import Optional` then `Optional[int32]` produces the same type as `int32 | None`
   - Works in all positions: parameters, returns, local annotations, class fields
 - **Working**: `T | None` in generic contexts -- the form is decided per instantiation
   - A generic PARAMETER slot is spelled `::tpy::opt_param_t<T>` (`opt_cparam_t<T>` where the slot is const): `std::optional<T>` at a value `T`, so the caller passes the value exactly as it would to the monomorphic twin, and `T*` / `const T*` at a reference `T`, so a mutation through the slot stays the caller's. A `ValueType`-bounded `T` is a value at every instantiation and keeps the spelled `std::optional<T>`.
@@ -3807,7 +3810,7 @@ no-op for non-`Any` sources and a checked `any_cast_or_panic` when the source is
   - A generic RETURN slot is still committed to `T*` for every instantiation (an optional return cannot alias the field it reads), so a `T | None` parameter cannot be returned directly from a `T | None` return -- see `BUGS.md`.
   - The body's reads are form-neutral: `*o` and `o->x` read both forms, and `o is None` renders `::tpy::opt_has_value(o)`.
   - `None` literals in generic Optional positions emit `std::nullopt` at a value `T` and `nullptr` at a reference one
-- **Working**: `T | None` for value types (`Int32 | None`, `bool | None`, `float | None`) → `std::optional<T>`
+- **Working**: `T | None` for value types (`int32 | None`, `bool | None`, `float | None`) → `std::optional<T>`
   - Variables, parameters, returns use `std::optional<T>` directly
   - `x is None` / `x is not None` → `.has_value()` checks
   - Truthiness checks (`if x`, `assert x`, `while x`) narrow on true path, with warning about falsy non-None values
@@ -3818,7 +3821,7 @@ no-op for non-`Any` sources and a checked `any_cast_or_panic` when the source is
   - `x = None; x = make_point()` works from function/method return types
   - Bare `x = None` without later type anchor is an error
 - **Working**: Literal anchoring for unannotated reassignment
-  - `x = 0; x = Int32(666)` infers `Int32` (if previous literals fit Int32 range)
+  - `x = 0; x = int32(666)` infers `int32` (if previous literals fit int32 range)
   - `x = 0; x = True` is rejected (no implicit int/bool merge)
 - **Working**: Auto inference rules (reassignment)
   - Inference is per variable within its binding scope, across all writes.
@@ -3826,24 +3829,24 @@ no-op for non-`Any` sources and a checked `any_cast_or_panic` when the source is
   - Conflicting explicit annotations are an error.
   - `None` seeds optional inference: `x = None; x = T(...)` infers `T | None`.
   - Bare `x = None` with no later concrete anchor is an error.
-  - Literal-seeded variables default to the configured default integer type (`--default-int`, default: `Int32`) and may be refined by later writes.
+  - Literal-seeded variables default to the configured default integer type (`--default-int`, default: `int32`) and may be refined by later writes.
   - `bool` does not auto-merge with numeric families during inference.
-  - Augmented assignment currently does not perform literal anchoring (`x = 0; x += Int32(5)` remains `int`/`BigInt`).
-  - For `x = 0` style literal-seeded vars, `x += Int32(...)` emits a warning that augmented assignment does not narrow the variable type.
-  - The warning also applies when RHS is a function returning `Int32`; explicit `int` anchors (`x: int = 0`, `x = int(0)`) do not warn.
+  - Augmented assignment currently does not perform literal anchoring (`x = 0; x += int32(5)` remains `int`/`BigInt`).
+  - For `x = 0` style literal-seeded vars, `x += int32(...)` emits a warning that augmented assignment does not narrow the variable type.
+  - The warning also applies when RHS is a function returning `int32`; explicit `int` anchors (`x: int = 0`, `x = int(0)`) do not warn.
 - **Working**: Numeric widening across reassignments
-  - `x = Int32(1); x = Int64(2)` infers `Int64` (same-sign, wider wins)
-  - `x = Int32(1); x = 1.5` infers `float` (any integer + float -> float)
-  - `x = 1.5; x = Int32(1)` stays `float` (bidirectional -- order doesn't matter)
-  - `x = Int32(1); x = int(2)` infers `int`/BigInt (FixedInt + BigInt -> BigInt)
-  - `x = UInt8(1); x = Int32(2)` infers `Int32` (unsigned -> wider signed)
-  - Mixed sign same width is an error: `x = Int32(1); x = UInt32(2)` (requires annotation)
-  - Bool mixed with numeric is an error: `x = True; x = Int32(1)` (requires annotation)
+  - `x = int32(1); x = int64(2)` infers `int64` (same-sign, wider wins)
+  - `x = int32(1); x = 1.5` infers `float` (any integer + float -> float)
+  - `x = 1.5; x = int32(1)` stays `float` (bidirectional -- order doesn't matter)
+  - `x = int32(1); x = int(2)` infers `int`/BigInt (FixedInt + BigInt -> BigInt)
+  - `x = uint8(1); x = int32(2)` infers `int32` (unsigned -> wider signed)
+  - Mixed sign same width is an error: `x = int32(1); x = uint32(2)` (requires annotation)
+  - Bool mixed with numeric is an error: `x = True; x = int32(1)` (requires annotation)
 - **Working**: Optional class members (`self.field: T | None`) → `std::optional<T>` inline storage
   - Field access through optional (`obj.field.x`) works via `std::optional::operator->()`
   - `is None` / `is not None` checks use `.has_value()`
   - Boundary conversions between `std::optional<T>` fields and `T*` pointer-locals handled automatically
-- **Working**: Optional-aware operator checks for value-consuming expressions (e.g., `x + 1` where `x: Int32 | None`)
+- **Working**: Optional-aware operator checks for value-consuming expressions (e.g., `x + 1` where `x: int32 | None`)
   - Unproven use emits warning and inserts runtime null checks
   - Proven non-None paths (guard/assert narrowed) emit unchecked unwraps
 - **Working**: None-safe `==`/`!=` for Optional value types
@@ -3916,7 +3919,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 
 ### Arithmetic
 - **Working**: `+`, `-`, `*`, `//`, `%`, `/`, unary `-`
-- **Working**: `**` (power) for `int`, `Int32`, and `float`
+- **Working**: `**` (power) for `int`, `int32`, and `float`
 - **Working**: `**` with negative integer exponent (e.g., `2 ** -3`) - compiles but panics at runtime (use `2.0 ** -3` for float result)
 
 ### Comparison
@@ -3924,7 +3927,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 - **Working**: Chained comparisons (`a < b < c`, `a <= b <= c`, `1 < x < 10`, etc.) -- each operand evaluated exactly once, with the trailing operands short-circuited. An operand that only looks inert -- a `@property` or `__getattr__` access, which is a method call behind field-access syntax -- binds to a temp like any other call rather than being duplicated into both of the pairs it joins. Operand *order* is not guaranteed to match CPython's left-to-right when a sibling operand can assign to another, nor within a single two-operand expression like `f() + g()` (both tracked in BUGS.md).
 - **Working**: `is`, `is not` (identity comparison with `None`, enum values, and bool literals `True`/`False`)
 - **Working**: Mixed `int`/`float` comparisons (BigInt promoted to double)
-- **Working**: Mixed-sign fixed-int comparisons (e.g. `Int32 < UInt32`, `Int64 >= UInt64`) -- codegen routes through `std::cmp_*` so the result is mathematically correct regardless of value range (no signed-to-unsigned reinterpretation surprises). Sema emits a warning at the comparison site naming both types and suggesting an explicit cast, except when one side is a literal or a literal-seeded local that retro-widens to the other side's type (those resolve to same-sign and don't warn).
+- **Working**: Mixed-sign fixed-int comparisons (e.g. `int32 < uint32`, `int64 >= uint64`) -- codegen routes through `std::cmp_*` so the result is mathematically correct regardless of value range (no signed-to-unsigned reinterpretation surprises). Sema emits a warning at the comparison site naming both types and suggesting an explicit cast, except when one side is a literal or a literal-seeded local that retro-widens to the other side's type (those resolve to same-sign and don't warn).
 
 ### Membership
 - **Working**: `in`, `not in` (for list, Array, Span, str, tuple literals)
@@ -3965,7 +3968,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 - **Working**: Reassigning scalar range targets inside the body does not affect iteration, matching Python. Direct assignment, augmented assignment, walrus writes and accepted nested scalar target reuse use private induction. Existing target storage and post-loop values are preserved. Nested tuple-target reuse remains an admission gap (`BUGS.md#nested-tuple-loop-target-reuse-rejected`).
 - **Working**: Const-ref loop variable binding -- when the loop body never mutates the loop variable (no field writes, no non-`@readonly` method calls, no passing to mutable parameters, no address-of), codegen emits `const auto&` instead of `auto&&`. Value types always use typed copies regardless. Parameter mutation inference (see [Implementation Notes](#parameter-mutation-inference-partial)) refines "passing to mutable parameters": if the callee is known not to mutate a specific parameter, passing the loop variable there does not force mutable binding.
 - **Working**: `for/else`, `while/else` -- else block runs when loop completes without `break`; `break` emits `goto` past the else body
-- **Working**: Loop variable and body-declared variables visible after the loop (matching CPython scoping). Only hoisted when actually referenced after the loop -- no codegen change for variables used only inside the loop. Range counter loops use a hidden counter so the user variable holds the last-yielded value (not the C++ post-increment overshoot). A name first declared in the body and only *assigned* after the loop needs no hoist: the block's declarations are revoked at its close, so the later assignment declares the function-scope local itself. Since a block is not a scope in Python, the same holds for the other block-emitting statements -- `while` bodies, `for`/`while` `else` clauses, `match` arms, and `try` / `except` bodies. One gap: a name first declared in a `try`'s `else` body and assigned after the `try` is still rejected by the C++ build (see BUGS.md). Because it is one local, it also carries **one type**: assigning a value the earlier declaration's type cannot hold is rejected (`Type mismatch in reassignment to 'n'`), the same rule a same-scope reassignment already follows -- coercions such as `Int32` into an `int` local still apply. TPy has no re-declaration/shadowing: a name cannot take a second type by crossing a block boundary any more than it can within one scope. The loop *variable* is exempt, since its type comes from the iterable rather than from the user -- `for p in points: ...` followed by `p = Point(9)` binds a fresh local, matching CPython.
+- **Working**: Loop variable and body-declared variables visible after the loop (matching CPython scoping). Only hoisted when actually referenced after the loop -- no codegen change for variables used only inside the loop. Range counter loops use a hidden counter so the user variable holds the last-yielded value (not the C++ post-increment overshoot). A name first declared in the body and only *assigned* after the loop needs no hoist: the block's declarations are revoked at its close, so the later assignment declares the function-scope local itself. Since a block is not a scope in Python, the same holds for the other block-emitting statements -- `while` bodies, `for`/`while` `else` clauses, `match` arms, and `try` / `except` bodies. One gap: a name first declared in a `try`'s `else` body and assigned after the `try` is still rejected by the C++ build (see BUGS.md). Because it is one local, it also carries **one type**: assigning a value the earlier declaration's type cannot hold is rejected (`Type mismatch in reassignment to 'n'`), the same rule a same-scope reassignment already follows -- coercions such as `int32` into an `int` local still apply. TPy has no re-declaration/shadowing: a name cannot take a second type by crossing a block boundary any more than it can within one scope. The loop *variable* is exempt, since its type comes from the iterable rather than from the user -- `for p in points: ...` followed by `p = Point(9)` binds a fresh local, matching CPython.
 
 ### `with` Statement (Context Managers)
 - **Working**: `with expr as var:` -- duck-typed context manager protocol via `__enter__`/`__exit__` methods
@@ -3987,7 +3990,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 - **Working**: `del obj[key]` -- element deletion via `__delitem__` dunder (dict, list, user types)
 - **Working**: `del x` -- variable unbinding. Use after del is a compile-time error. Re-assignment after del is supported. Works on locals, parameters, globals, nonlocals, loop variables, generators, and module-level variables. Early destruction (move-sink) is only emitted when the variable is the sole owner of its value; aliases, alias sources, parameters, and globals just unbind the name without destroying. Limitation: pointer-locals that were initially aliases (e.g. `a = b; a = new_value; del a`) skip early destruction conservatively, even after reassignment to an owned value.
 - **Working**: `match`/`case` -- structural pattern matching
-  - **Union subjects**: class patterns (`case Circle():`, `case Circle(radius=r):`), primitive type patterns (`case Int32():`, `case str():`), container type patterns (`case list():`), parameterized record patterns (`case Box():`), subject narrowing, `switch (s.index())` codegen with `std::get<N>`. **Literal field-value sub-patterns** (`case Dog(legs=4):`) compare the field after the variant index matches: the arm becomes conditional (routed to the guarded switch path, `if (__case.legs == 4)`), falls through to a later `Dog()` / `_` arm when it fails, and does not count toward exhaustiveness. `field=None` on a nullable field tests its storage repr (`!opt.has_value()` for an optional field, `std::holds_alternative<std::monostate>` for a union-with-None field); `=None` on a non-nullable field is rejected (can never match). **Nested type sub-patterns** for disambiguating parameterized union members: `case Box(value=str() as v):` on `Box[str] | Box[Int32]` resolves to `Box[str]` at compile time via recursive field type matching. Also works on union-typed record fields (`case Wrapper(pet=Cat() as c):` where `pet: Cat | Dog`) with `std::holds_alternative`/`std::get` codegen. Supports arbitrary nesting depth and mixed combinations (type-param x type-param, type-param x union-field, union-field x type-param, union-field x union-field).
+  - **Union subjects**: class patterns (`case Circle():`, `case Circle(radius=r):`), primitive type patterns (`case int32():`, `case str():`), container type patterns (`case list():`), parameterized record patterns (`case Box():`), subject narrowing, `switch (s.index())` codegen with `std::get<N>`. **Literal field-value sub-patterns** (`case Dog(legs=4):`) compare the field after the variant index matches: the arm becomes conditional (routed to the guarded switch path, `if (__case.legs == 4)`), falls through to a later `Dog()` / `_` arm when it fails, and does not count toward exhaustiveness. `field=None` on a nullable field tests its storage repr (`!opt.has_value()` for an optional field, `std::holds_alternative<std::monostate>` for a union-with-None field); `=None` on a non-nullable field is rejected (can never match). **Nested type sub-patterns** for disambiguating parameterized union members: `case Box(value=str() as v):` on `Box[str] | Box[int32]` resolves to `Box[str]` at compile time via recursive field type matching. Also works on union-typed record fields (`case Wrapper(pet=Cat() as c):` where `pet: Cat | Dog`) with `std::holds_alternative`/`std::get` codegen. Supports arbitrary nesting depth and mixed combinations (type-param x type-param, type-param x union-field, union-field x type-param, union-field x union-field).
   - **Enum subjects**: value patterns (`case Color.Red:`), `switch` codegen
   - **Literal subjects** (`Literal["r", "w"]`, `Literal[1, 2, 3]`): match on `Literal`-typed parameters with exhaustiveness warnings for missing values, subject narrowing in each arm (e.g. `case "r" | "w":` narrows to `Literal["r", "w"]`), enabling overload dispatch from match bodies. Codegen routes to str switch/if-elif or int/bool switch based on base type.
   - **Primitive subjects** (`int`, `bool`): literal patterns, `switch` codegen; (`str`): switch-based dispatch for 5+ unguarded literal cases (best length/char discriminator, computed over UTF-8 bytes so non-ASCII literals dispatch correctly), if/elif fallback below threshold; (`float`): if/elif fallback. A NON-LVALUE subject (`match f():`, `match a + b:`) materializes into an owned dispatch local (`auto __match_subject_N = <expr>;`) so every arm reads one stable copy; lvalue subjects keep the `auto&` bind
@@ -4001,7 +4004,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
   - Or-patterns (`case Dog() | Cat():`) with `switch` case fallthrough; with bindings (`case Dog(name=n) | Cat(name=n):`) via body duplication in switch (str/float fall back to if/elif with `||`). A **parenthesized alternative group** (`case (Dog() | Cat()) | Bird():`) is flattened into its parent's alternative list at parse time, at any nesting depth, so it behaves exactly as the flat spelling -- CPython's own compiler treats the group boundary as transparent too. An `as` inside a group (`case ((Dog() | Cat()) as p) | Bird():`) is a binding boundary and is NOT flattened. An alternative list containing the wildcard (`case 1 | _:`) is irrefutable, so the whole group IS the catch-all arm (the switch `default:` / the chain's `else`) and no alternative renders a label -- handled on the scalar, str-switch and union tiers; a GUARDED irrefutable group (`case 1 | _ if flag:`) is deliberately rejected on every tier, since a label-less group lands in the C++ `default:` regardless of source position (`BUGS.md#guarded-wildcard-switch-default`)
   - Guard clauses (`case Dog(name=n) if n == "Rex":`) with `goto`-based fallthrough for unions, records, str/float/bool chains, and Optional subjects: bindings are emitted before the guard (a guard may read its own captures), and a failed guard falls through to later arms -- including a duplicate-literal arm after a guarded one. Enums/int/bool use `switch` with if/else guard chains + `goto` to default
   - `break`/`continue` inside match arms target the enclosing Python loop (a `break` in a switch-lowered arm jumps past the loop instead of exiting the C++ switch)
-  - Pattern-binding storage: a free-copy-scalar binding (fixed int, bool, `Char`, float, enum) is bound *by value* (a durable snapshot that survives subject mutation in the arm, matching CPython at zero cost); every other binding (heap-backed `str`/`BigInt`, views, reference types) is a zero-cost `auto&` borrow into the subject's storage. Mutating that storage in a non-scalar binding's arm dangles the borrow where CPython keeps the old object alive, and is warned: assignment to the subject path/owner prefix or an invalidating container method (synchronously), and a non-readonly method call on the subject prefix (deferred until readonly is settled). The binding form is one sema fact read by both codegen and the warning, so a scalar is never silently aliased; mutation through an alias of the subject (or an opaque unknown-readonly method) still evades the warning, and the full borrow-tracker treatment is tracked in BUGS.md. **Capture rebinds**: if the arm REBINDS the capture NAME itself (`for v in xs`, `v = ...`, aug-assign, walrus, `with ... as v`, unpack), the `auto&` alias would write THROUGH into the subject where CPython rebinds a fresh local -- so a value-typed capture is instead forced *by value* (the copy absorbs the rebind, matching CPython), and a reference-typed capture -- or a tuple with reference-typed elements, which aliases the same way -- is *rejected* (the parity-correct alias-until-rebind-then-reseat local is not yet modeled; neither a copy nor the alias matches). A rebound capture is also HOISTED (added to the match's branch-decl predecl set), so it declares once in the enclosing scope and both its binding and every rebind emit assignments -- this covers the bare-name, walrus, aug-assign, for-loop-var and tuple-unpack forms, and rebinds nested in an inner block, matching CPython, where `match` is not its own scope and the capture is an ordinary function local. (Two carve-outs: a `with ... as <capture>` rebind is still blocked by a separate pre-existing gap in the `with`-as target emit for predeclared locals -- see BUGS.md -- and a capture name bound at DIFFERENT types across arms keeps its per-arm block-scoped binding, since one hoisted slot cannot hold both types.) A **nested `match` reusing an outer arm's capture name** rebinds it the same way (a `match` is not its own scope either), so it hoists too -- but it is not a write-through: a capture bind re-seats (pointer form) or assigns (value form) the binding itself, so unlike the rebind forms above it neither forces a value-typed capture by value nor rejects a reference-typed one. A reference capture hoists to a pointer local that every bind re-seats, so the inner subject's value flows out of the outer arm and post-re-seat mutation of it is visible through the capture -- matching CPython. One slot serves every bind, so its const-ness is the OR over all binding subjects, and they must agree on the TYPE -- a nested match binding the name at a different type is rejected at the nested capture (mirroring the cross-arm rule; without it C++ truncates silently wherever an implicit conversion exists). Field/subscript writes through the capture (`v.x = 1`, `v[0] = 1`) are legitimate CPython-visible aliasing and do NOT count as rebinds; a comprehension's own loop var (`[v for v in ...]`) is a separate scope and does not either
+  - Pattern-binding storage: a free-copy-scalar binding (fixed int, bool, `char`, float, enum) is bound *by value* (a durable snapshot that survives subject mutation in the arm, matching CPython at zero cost); every other binding (heap-backed `str`/`BigInt`, views, reference types) is a zero-cost `auto&` borrow into the subject's storage. Mutating that storage in a non-scalar binding's arm dangles the borrow where CPython keeps the old object alive, and is warned: assignment to the subject path/owner prefix or an invalidating container method (synchronously), and a non-readonly method call on the subject prefix (deferred until readonly is settled). The binding form is one sema fact read by both codegen and the warning, so a scalar is never silently aliased; mutation through an alias of the subject (or an opaque unknown-readonly method) still evades the warning, and the full borrow-tracker treatment is tracked in BUGS.md. **Capture rebinds**: if the arm REBINDS the capture NAME itself (`for v in xs`, `v = ...`, aug-assign, walrus, `with ... as v`, unpack), the `auto&` alias would write THROUGH into the subject where CPython rebinds a fresh local -- so a value-typed capture is instead forced *by value* (the copy absorbs the rebind, matching CPython), and a reference-typed capture -- or a tuple with reference-typed elements, which aliases the same way -- is *rejected* (the parity-correct alias-until-rebind-then-reseat local is not yet modeled; neither a copy nor the alias matches). A rebound capture is also HOISTED (added to the match's branch-decl predecl set), so it declares once in the enclosing scope and both its binding and every rebind emit assignments -- this covers the bare-name, walrus, aug-assign, for-loop-var and tuple-unpack forms, and rebinds nested in an inner block, matching CPython, where `match` is not its own scope and the capture is an ordinary function local. (Two carve-outs: a `with ... as <capture>` rebind is still blocked by a separate pre-existing gap in the `with`-as target emit for predeclared locals -- see BUGS.md -- and a capture name bound at DIFFERENT types across arms keeps its per-arm block-scoped binding, since one hoisted slot cannot hold both types.) A **nested `match` reusing an outer arm's capture name** rebinds it the same way (a `match` is not its own scope either), so it hoists too -- but it is not a write-through: a capture bind re-seats (pointer form) or assigns (value form) the binding itself, so unlike the rebind forms above it neither forces a value-typed capture by value nor rejects a reference-typed one. A reference capture hoists to a pointer local that every bind re-seats, so the inner subject's value flows out of the outer arm and post-re-seat mutation of it is visible through the capture -- matching CPython. One slot serves every bind, so its const-ness is the OR over all binding subjects, and they must agree on the TYPE -- a nested match binding the name at a different type is rejected at the nested capture (mirroring the cross-arm rule; without it C++ truncates silently wherever an implicit conversion exists). Field/subscript writes through the capture (`v.x = 1`, `v[0] = 1`) are legitimate CPython-visible aliasing and do NOT count as rebinds; a comprehension's own loop var (`[v for v in ...]`) is a separate scope and does not either
   - Error diagnostics: non-member type, duplicate case, type mismatch, unreachable case after wildcard, unreachable value-side arm after an Optional class catch-all, type-changing Optional capture of an existing variable, `as` binding on `case None:` (NoneType is monostate -- no value to bind; declared divergence, CPython binds None), too many positional patterns, positional/keyword overlap, or-pattern variable name mismatch, wrong class for record subject, reference-type capture rebound in the arm (the alias would corrupt the matched object), literal pattern of a kind the subject type cannot match (including inside a class pattern's field sub-pattern), and literal kinds TPy cannot render against an otherwise-compatible subject -- a `bytes` literal against a `bytes` subject and an `int` literal against an `IntEnum` -- which CPython WOULD match and which are reported as not-yet-implemented with a guard-based workaround
   - Exhaustiveness warnings for unions (missing member types), enums (missing values), booleans (missing True/False), optionals (missing None and/or the missing value side), Literal types (missing literal values), records (no unconditional catch-all arm), and non-enumerable scalar subjects (`int`/`str`/`float` literal arms cannot prove coverage -- a catch-all is required). A non-exhaustive match falls through (no `std::unreachable()` tail) and joins the pre-match flow state
 
@@ -4014,16 +4017,16 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 - **Working**: End-of-body return enforcement -- a function whose declared return type can hold `None` falls through to Python's implicit `return None` (materialized by sema; works in sync, owned-record, and async forms); a return type that cannot hold `None` makes a reachable end of body a compile error (mypy's "missing return" rule -- the C++ body would return garbage). Generators are exempt (fall-through is StopIteration). Terminators: `while True:` without a loop-level `break`, a trailing `assert False` (TPy never strips asserts, so there is no CPython `-O` analog where the assert would vanish and the function would return None), and a `try` whose `finally` body itself returns/raises. A trailing call to a never-returning function is not recognized yet (no `NoReturn` type -- see TODO.md), end with `raise` instead.
 - **Working**: Reassigning function parameters (const-ref params like `int`/`str` auto-emit by value when reassigned)
 - **Working**: C++ keyword escaping -- Python identifiers that clash with C++ reserved words (e.g., `default`, `class`, `namespace`) are automatically mangled in generated code
-- **Working**: Default parameter values -- constant expressions (literals, `None`, fixed-int constructors), **enum members** (`def f(order: MemoryOrder = MemoryOrder.SEQ_CST)` emits the scoped C++ enumerator `MemoryOrder::seq_cst`, qualified for cross-module enums and honoring `@native` member renames), and references to module-level `Final[T]` constants (same module or imported). Maps to a C++ default argument where one can express the binding, and is otherwise materialized at the call site: a default has no C++ spelling when a later parameter lacks one (C++ requires defaults to be trailing, Python does not -- `def f(a, b=10, *, c)`, and likewise a fixed positional ahead of `*args`), or when its type would instantiate a class template over a record still incomplete at the declaration (a value-form `T | None` / value union of a record, including under `Own[...]`, which forces the value form whatever the inner representation says). That second case applies to FREE functions only: a member's declaration sits inside the record, where the alternatives are already defined, so a member keeps its C++ default -- a member whose union forward-references a record defined LATER in the module is a known residual (see BUGS.md). A materialized default currently resolves its name in the CALLER's scope rather than the module that wrote it, so a cross-module `Final` constant shadowed by a same-named name at the call site silently takes the wrong value (see BUGS.md); cross-module Final references otherwise emit the qualified C++ name. A default is type-checked against the slot it initializes, by the same rules and in the same words as the equivalent `x: T = <const>` assignment: `def f(n: Int32 = None)`, `def f(s: str = 5)` and an out-of-range `def f(x: Int8 = 200)` are all rejected at the `def`. The check covers free functions, methods, `__init__`, both halves of an `@overload` group (the stubs' and the implementation's defaults each reach the emitted specialization) and record field defaults, so the default surfaces stay consistent. Three surfaces are excluded, all of them ones where the default never reaches codegen: a `Protocol` method signature, a nested `def` -- the Protocol method silently drops the default, the nested `def` warns that it is ignored (`BUGS.md#nested-def-default-ignored`), so a call omitting the argument fails (see BUGS.md) -- and a `Protocol` field, which contributes no initializer to a conformer. An enum-member default additionally requires that the base name resolve to a registered enum and the member exist, and a `Final[T]` name is checked once its binding resolves. A default on a generic slot is deferred instead: it is legitimately polymorphic and validated at instantiation, so `def f[T](x: T = 0)` called as `f[str]()` produces a clear sema error there. `T()` default-construction syntax is supported: `def f[T](x: T = T()) -> T` maps to `T{}` in C++. Generators and `async def`s carry defaults on the canonical declaration of every C++ entity a call can land on: the factory's forward declaration for a free function, the in-class declaration for a method (never the out-of-line definition -- C++ rejects the repeat), plus the resumable frame's constructor, which an inline `await` and the synthetic `async with` / `async for` suspensions construct directly instead of going through the factory. So an omitted default applies at every call form -- named call, `create_task`, inline `await`, and a defaulted `__aenter__` / `__aexit__` / `__anext__` parameter -- on both free functions and methods, monomorphic and generic alike.
+- **Working**: Default parameter values -- constant expressions (literals, `None`, fixed-int constructors), **enum members** (`def f(order: MemoryOrder = MemoryOrder.SEQ_CST)` emits the scoped C++ enumerator `MemoryOrder::seq_cst`, qualified for cross-module enums and honoring `@native` member renames), and references to module-level `Final[T]` constants (same module or imported). Maps to a C++ default argument where one can express the binding, and is otherwise materialized at the call site: a default has no C++ spelling when a later parameter lacks one (C++ requires defaults to be trailing, Python does not -- `def f(a, b=10, *, c)`, and likewise a fixed positional ahead of `*args`), or when its type would instantiate a class template over a record still incomplete at the declaration (a value-form `T | None` / value union of a record, including under `Own[...]`, which forces the value form whatever the inner representation says). That second case applies to FREE functions only: a member's declaration sits inside the record, where the alternatives are already defined, so a member keeps its C++ default -- a member whose union forward-references a record defined LATER in the module is a known residual (see BUGS.md). A materialized default currently resolves its name in the CALLER's scope rather than the module that wrote it, so a cross-module `Final` constant shadowed by a same-named name at the call site silently takes the wrong value (see BUGS.md); cross-module Final references otherwise emit the qualified C++ name. A default is type-checked against the slot it initializes, by the same rules and in the same words as the equivalent `x: T = <const>` assignment: `def f(n: int32 = None)`, `def f(s: str = 5)` and an out-of-range `def f(x: int8 = 200)` are all rejected at the `def`. The check covers free functions, methods, `__init__`, both halves of an `@overload` group (the stubs' and the implementation's defaults each reach the emitted specialization) and record field defaults, so the default surfaces stay consistent. Three surfaces are excluded, all of them ones where the default never reaches codegen: a `Protocol` method signature, a nested `def` -- the Protocol method silently drops the default, the nested `def` warns that it is ignored (`BUGS.md#nested-def-default-ignored`), so a call omitting the argument fails (see BUGS.md) -- and a `Protocol` field, which contributes no initializer to a conformer. An enum-member default additionally requires that the base name resolve to a registered enum and the member exist, and a `Final[T]` name is checked once its binding resolves. A default on a generic slot is deferred instead: it is legitimately polymorphic and validated at instantiation, so `def f[T](x: T = 0)` called as `f[str]()` produces a clear sema error there. `T()` default-construction syntax is supported: `def f[T](x: T = T()) -> T` maps to `T{}` in C++. Generators and `async def`s carry defaults on the canonical declaration of every C++ entity a call can land on: the factory's forward declaration for a free function, the in-class declaration for a method (never the out-of-line definition -- C++ rejects the repeat), plus the resumable frame's constructor, which an inline `await` and the synthetic `async with` / `async for` suspensions construct directly instead of going through the factory. So an omitted default applies at every call form -- named call, `create_task`, inline `await`, and a defaulted `__aenter__` / `__aexit__` / `__anext__` parameter -- on both free functions and methods, monomorphic and generic alike.
 - **Working**: Keyword arguments at call sites -- `f(name="World")`, `Point(y=1, x=2)`, mixed positional+kwargs. Resolved to positional at compile time. Supported for user functions, methods, constructors, and generic functions. Not supported for overloaded builtins (e.g., `range`, `len`).
 - **Working**: Keyword-only parameters -- `def f(x: int, *, name: str = "default")`. Parameters after `*` or `*args` can only be passed by name. Enforced at compile time for module-level functions and methods; a NESTED def drops the marker and accepts a positional call CPython rejects (`BUGS.md#nested-def-kwonly-marker-dropped`); no C++ codegen changes (keyword-only is a Python-level constraint).
-- **Working**: Positional-only parameters -- `def f(a: Int32, /, b: Int32 = 5)`. Params before `/` bind positionally with correctly aligned defaults; passing one by keyword is a compile error (CPython raises TypeError). Works on free functions, methods, protocol methods, and `@overload` stubs; not enforced for record constructors (`__init__` posonly params parse correctly but constructor calls accept keywords TPy-side that CPython rejects with TypeError); lambdas reject `/`.
+- **Working**: Positional-only parameters -- `def f(a: int32, /, b: int32 = 5)`. Params before `/` bind positionally with correctly aligned defaults; passing one by keyword is a compile error (CPython raises TypeError). Works on free functions, methods, protocol methods, and `@overload` stubs; not enforced for record constructors (`__init__` posonly params parse correctly but constructor calls accept keywords TPy-side that CPython rejects with TypeError); lambdas reject `/`.
 - **Working**: `for` over an existing local rebinds it (CPython: the var holds the last element after the loop); rebinding with a different element type is a compile error. Fresh loop vars stay loop-scoped in C++; comprehension vars are Python-scoped (never rebind).
 - **Working**: Multi-target assignment (`a = b = expr`) evaluates the value once and assigns targets left-to-right (CPython order), preserving reference aliasing.
 - **Working**: `__all__` with literal `+=` extension; `__all__` statements are compile-time export metadata and emit no runtime code. Dynamic mutation (non-literal `+=`, `.append(...)`) is a compile error.
 - **Declared divergence**: `raise E(...) from cause` warns and drops the cause -- TPy's exception model has no `__cause__`/`__context__` chaining. Remove the clause to silence the warning.
 - An `assert` message containing `await` is evaluated only on failure (desugared to an explicit conditional, matching CPython); `await` in a match-case guard is rejected with a bind-before-the-match hint.
-- **Working**: Homogeneous `*args: T` -- `def f(*args: Int32)`. Type annotation required. Inside the body, `args` has the distinct body-view type `varargs[T]` (sema-level; **not** `Span[T]`), supporting `len()`, indexing, iteration, and slicing (`args[1:]`, `args[i:j]`, etc.); a slice stays a `varargs[T]`. At call sites, trailing positional args are packed into a stack array. Works with fixed positional params before `*args` and keyword-only params after. C++ codegen uses `tpy::varargs<T>` -- a dual-mode span that stores value types directly (like `std::span<T>`) and non-value types via pointer indirection for correct reference semantics. Because `tpy::varargs<T>` has no conversion to `std::span<T>`, **passing a vararg (or a slice of it) where a `Span[T]` is expected is rejected at sema** with a clean type-mismatch (not a C++ build error). `varargs[T]` is compiler-internal and **not user-spellable** -- users write `*args: T`, never `varargs[T]` in an annotation. Mutations through `*args` to non-value types are visible to the caller. Works with `@nocopy` types (no copies made). Supported on free functions, module-qualified functions, and instance methods alike.
+- **Working**: Homogeneous `*args: T` -- `def f(*args: int32)`. Type annotation required. Inside the body, `args` has the distinct body-view type `varargs[T]` (sema-level; **not** `Span[T]`), supporting `len()`, indexing, iteration, and slicing (`args[1:]`, `args[i:j]`, etc.); a slice stays a `varargs[T]`. At call sites, trailing positional args are packed into a stack array. Works with fixed positional params before `*args` and keyword-only params after. C++ codegen uses `tpy::varargs<T>` -- a dual-mode span that stores value types directly (like `std::span<T>`) and non-value types via pointer indirection for correct reference semantics. Because `tpy::varargs<T>` has no conversion to `std::span<T>`, **passing a vararg (or a slice of it) where a `Span[T]` is expected is rejected at sema** with a clean type-mismatch (not a C++ build error). `varargs[T]` is compiler-internal and **not user-spellable** -- users write `*args: T`, never `varargs[T]` in an annotation. Mutations through `*args` to non-value types are visible to the caller. Works with `@nocopy` types (no copies made). Supported on free functions, module-qualified functions, and instance methods alike.
 - **Working**: Readonly `*args` -- `def f(*items: readonly[T])` is a genuinely-readonly vararg: codegen emits `tpy::varargs<const T>` (const element access), so the body cannot mutate elements -- a write through a reference element is rejected at sema (`Cannot mutate readonly reference`), with C++ const as the backstop, same as `Span[readonly[T]]`. Mutable args may be passed in (adding const is safe). The readonly slot is what makes unpacking a readonly source legal (see the unpacking entry below). The slot is **auto-inferred** to readonly when the body doesn't mutate the vararg (parallel to the existing non-vararg ref-param auto-const inference, propagating across vararg forwarding via Phase-2 mutation propagation). Plain `*args: T` whose body mutates an element keeps the mutable slot.
 - **Working**: `*list` unpacking at call sites -- `f(*my_list)` passes a list/array/span to a `*args` function. Zero-cost for contiguous containers (direct span mode). Supports forwarding: `def g(*args: T): f(*args)`. The unpacked element type must be compatible with the `*args` slot: into a **mutable** slot a `Span[readonly[T]]` source is rejected (the slot exposes mutable element access, so aliasing readonly data is unsafe), and into a **readonly** slot (`*items: readonly[T]`) a readonly source is accepted (the const-span source constructs `varargs<const T>` directly). Any element type that would need a per-element conversion is rejected. All rejections are clean diagnostics, not C++-build errors. (Forwarding a `*args` parameter is exempt from the readonly check: it carries the `varargs[readonly[T]]` body-view type but its runtime form is the mutable `tpy::varargs<T>`, forwarded via the varargs copy- or const-view ctor.)
 - **Working**: Generic `*args` -- `def first[T](*args: T) -> T` infers `T` from call-site arg types. The body can iterate the pack directly (`for x in args`) and after a slice (`for x in args[1:]`); the element binds as the type param `T`.
@@ -4055,14 +4058,14 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
   - Phase 2 propagates `self_mutated` through the call graph via call edges: `self.method()`, `self.field.method()`, `super().method()`, and for-each iteration over self fields are all deferred to Phase 2, which only marks self as mutated when the callee actually mutates its self
   - Post-pass (`infer_method_const`) marks all non-self-mutating methods as `is_readonly`, and the codegen sync pass copies the flag to AST nodes
   - Exceptions: `__init__`, `__del__`, in-place operators, consuming methods (`Own[Self]` receiver), the mutable clone of an `@auto_readonly` pair (its const sibling already exists, so flipping the mutable to const would create duplicate signatures), and methods that override non-const C++ virtuals from `@dynamic` protocols are never inferred const
-  - Methods whose return value borrows from `self` (e.g. `def get(self) -> Span[Int32]: return self.field`) are skipped to avoid silently degrading the declared mutable return type to its readonly counterpart -- with one exception: when the return type is an inherently-const view (`StrView`, `BytesView`, `Span[readonly[T]]`, `SpanIter[readonly[T]]`), const-ifying the method does not change the return type, and auto-const fires
+  - Methods whose return value borrows from `self` (e.g. `def get(self) -> Span[int32]: return self.field`) are skipped to avoid silently degrading the declared mutable return type to its readonly counterpart -- with one exception: when the return type is an inherently-const view (`StrView`, `BytesView`, `Span[readonly[T]]`, `SpanIter[readonly[T]]`), const-ifying the method does not change the return type, and auto-const fires
   - `@readonly(False)` opts out of const inference for a specific method
   - Limitation: container-mediated aliases not tracked (e.g., `[param]` into list then iterate)
 - **Working**: `readonly[T]` type modifier (per-parameter constness)
   - `readonly[T]` on a parameter means "immutable reference to T", maps to `const T&` in C++
   - Prevents: field writes, subscript writes, non-readonly method calls, passing to mutable `T` param
   - Local alias deduction: `alias = readonly_param` inherits readonly status for non-value types
-  - `readonly[Int32]` (value types) is a no-op -- copies are always safe
+  - `readonly[int32]` (value types) is a no-op -- copies are always safe
   - `readonly[T | None]` and `readonly[T] | None` normalize to the same C++ type (`const T*`)
   - `readonly[Protocol]` generates `const T_name&` for template protocol params
   - `readonly[T]` on a field declaration makes the field immutable after `__init__` -- assignment outside `__init__` is rejected at sema time (C++ codegen does not emit `const` on the field, since const fields break move/copy assignment)
@@ -4122,11 +4125,11 @@ p = first(points)      # T inferred as Point from list[Point]
 ```
 Inference also accepts coercible concrete arguments on generic calls when type
 parameters are inferred from other arguments. Example: if a generic function
-has `delta: Int64`, passing `Int32` for `delta` is accepted via normal
+has `delta: int64`, passing `int32` for `delta` is accepted via normal
 argument coercion. The same per-element coercion applies when `T` is itself a
 compound shape (`tuple`, `list`, `dict`, `set`): for `heappush[T: Comparable]`
-called as `heappush(pq, (3, "third"))` where `pq: list[tuple[Int32, str]]`,
-the literal `3` inside the second-arg tuple coerces to `Int32` to match the
+called as `heappush(pq, (3, "third"))` where `pq: list[tuple[int32, str]]`,
+the literal `3` inside the second-arg tuple coerces to `int32` to match the
 slot in the already-determined `T`.
 
 **Protocol-typed args**: when a callee parameter is a generic protocol
@@ -4170,18 +4173,18 @@ def make_box[T]() -> Own[Container[T]]:
     return Container[T]()
 
 # Assignment context: T inferred from annotation
-b: Container[Int32] = make_box()     # T = Int32
+b: Container[int32] = make_box()     # T = int32
 
 # Record constructor context: T inferred from annotation
-c: Container[Int32] = Container()    # T = Int32
+c: Container[int32] = Container()    # T = int32
 
 # Return context: T inferred from enclosing function return type
-def get_box() -> Own[Container[Int32]]:
-    return make_box()                # T = Int32
+def get_box() -> Own[Container[int32]]:
+    return make_box()                # T = int32
 ```
 
 Contextual inference also unwraps `Own[T]` on both sides, so `Own[Container[T]]`
-matches `Container[Int32]` correctly. If no context is available, inference
+matches `Container[int32]` correctly. If no context is available, inference
 still fails and explicit type arguments are required.
 
 **Nested call context**: parameter types from outer calls flow as hints to inner
@@ -4193,11 +4196,11 @@ compiler infer the rest from arguments or context:
 
 ```python
 from tpy.unsafe import unsafe_cast
-q = unsafe_cast[UInt32](p)  # T=UInt32 explicit, U=Int32 from arg
+q = unsafe_cast[uint32](p)  # T=uint32 explicit, U=int32 from arg
 
 # Also works with module.func[T](args) syntax
 import tpy.unsafe as m
-q = m.unsafe_cast[UInt32](p)
+q = m.unsafe_cast[uint32](p)
 ```
 
 **`_` wildcard type arguments**: use `_` as a placeholder in any type argument
@@ -4205,10 +4208,10 @@ position to let the compiler infer that parameter. Works in functions,
 constructors, and methods. `f[_]()` is equivalent to `f()` (full inference).
 
 ```python
-pair_func[_, Int64](Int32(5), Int64(20))  # T inferred from arg
-triple[Int32, _, Int64](a, b, c)          # B inferred from arg
-Box[_](Int32(42))                         # T = Int32 from constructor arg
-m.transform[_, Int64](x, Int64(100))      # method-level wildcard
+pair_func[_, int64](int32(5), int64(20))  # T inferred from arg
+triple[int32, _, int64](a, b, c)          # B inferred from arg
+Box[_](int32(42))                         # T = int32 from constructor arg
+m.transform[_, int64](x, int64(100))      # method-level wildcard
 ```
 
 **Deferred generic instance inference**: when a generic type is constructed without
@@ -4223,8 +4226,8 @@ class Container[T]:
     def get(self) -> T: ...
 
 c = Container()      # T unknown -- defer
-c.set(Int32(10))     # T = Int32, eagerly resolved
-x = c.get()          # normal: x is Int32
+c.set(int32(10))     # T = int32, eagerly resolved
+x = c.get()          # normal: x is int32
 ```
 
 Type parameters can also be resolved from expected-type context -- passing to
@@ -4232,9 +4235,9 @@ a function with a typed parameter or returning where the function's return type
 is known:
 
 ```python
-def consume(c: Container[Int32]) -> None: ...
+def consume(c: Container[int32]) -> None: ...
 c = Container()      # T unknown -- defer
-consume(c)           # T = Int32, resolved from parameter type
+consume(c)           # T = int32, resolved from parameter type
 ```
 
 The pending type is eagerly resolved the moment all type parameters are
@@ -4250,14 +4253,14 @@ or subscript targets (`items[i] = expr`). See
 
 ```python
 # Explicit type argument
-result: Int32 = first[Int32](nums)
+result: int32 = first[int32](nums)
 
 # Required when inference would be ambiguous
 def identity[T](x: T) -> T:
     return x
 
 # Type annotation provides hint for inference
-y: Int32 = identity(42)  # T inferred as Int32 from annotation
+y: int32 = identity(42)  # T inferred as int32 from annotation
 ```
 
 Generated C++ (template functions):
@@ -4293,10 +4296,10 @@ the `Ptr[U] -> Ptr[B]` upcast (see "Bounded type-parameter coercion" above).
 
 ```python
 from typing import Sized
-from tpy import Int32, Comparable
+from tpy import int32, Comparable
 
 # Function with bounded type parameter
-def get_length[T: Sized](items: T) -> Int32:
+def get_length[T: Sized](items: T) -> int32:
     return len(items)  # OK: T conforms to Sized, so len() works
 
 # Class with bounded type parameter
@@ -4308,7 +4311,7 @@ class SortedContainer[T: Comparable]:
         ...
 
 # Multiple bounds on different type parameters
-def process[T: Sized, U: Comparable](items: T, key: U) -> Int32:
+def process[T: Sized, U: Comparable](items: T, key: U) -> int32:
     return len(items)
 ```
 
@@ -4316,7 +4319,7 @@ def process[T: Sized, U: Comparable](items: T, key: U) -> Int32:
 
 ```python
 from typing import Protocol, Self
-from tpy import Int32, Own
+from tpy import int32, Own
 
 class Clonable(Protocol):
     def clone(self) -> Own[Self]: ...
@@ -4359,7 +4362,7 @@ class Converter:
     def identity[U](self, val: U) -> U:
         return val
 ```
-Supports inference from arguments (`c.identity(42)`) and explicit type args (`c.identity[Int32](42)`).
+Supports inference from arguments (`c.identity(42)`) and explicit type args (`c.identity[int32](42)`).
 
 **Per-Method Bounds**: Methods on generic classes can add extra bounds to class type params:
 ```python
@@ -4378,11 +4381,11 @@ from tpy.extern import type_param_default, DefaultInt
 def f[T](xs: Iterable[T]) -> str:
     return "ok"
 
-f([])           # T defaults to the configured --default-int (Int32)
-f([1, 2, 3])    # T = Int32 (inferred from elements; default not consulted)
+f([])           # T defaults to the configured --default-int (int32)
+f([1, 2, 3])    # T = int32 (inferred from elements; default not consulted)
 ```
 
-The fallback fires when (a) T was never inferred, or (b) T inferred only to `UnknownElementType`. `DefaultInt` is the sole supported sentinel today and resolves to the `--default-int` config (`Int32` by default). Bounds still apply -- the default must satisfy them.
+The fallback fires when (a) T was never inferred, or (b) T inferred only to `UnknownElementType`. `DefaultInt` is the sole supported sentinel today and resolves to the `--default-int` config (`int32` by default). Bounds still apply -- the default must satisfy them.
 
 Several stdlib generics are tagged so their empty-literal calls "just work": `sorted[T: Comparable]`, `all[T: Truthy]`, `any[T: Truthy]`, `iter[T]`, `enumerate[T]`, `reversed[T]`, plus `round[T]` and `math.frexp[T]`.
 
@@ -4433,12 +4436,12 @@ class Pair[A, B]:
         self.second = second
 
 # Instantiation - type arguments can be explicit or inferred
-box: Box[Int32] = Box[Int32](42)  # Explicit
+box: Box[int32] = Box[int32](42)  # Explicit
 box2 = Box(42)                    # Inferred as Box[int] from argument
 pair = Pair(1, "hello")           # Inferred as Pair[int, str]
 
 # Generic methods use substituted types
-print(box.get())  # Returns Int32
+print(box.get())  # Returns int32
 print(pair.first) # Type is str
 ```
 
@@ -4468,7 +4471,7 @@ Pair<std::string, int32_t> pair{"hello", 100};
 - Inference works when all type parameters can be determined from arguments
 - Contextual inference from assignment annotation, return type, reassignment, or nested call context fills unresolved params
 - If inference fails, explicit type arguments are required
-- When mixing int literals with `Int32`, inference upgrades to `Int32`: `Same(1, x: Int32)` → `Same[Int32]`
+- When mixing int literals with `int32`, inference upgrades to `int32`: `Same(1, x: int32)` → `Same[int32]`
 - Supports inference through wrapper types: `Ptr[T]`, `Ptr[readonly[T]]`, `Own[T]`, `list[T]`
 - `Ptr[T]` arguments match `Ptr[readonly[T]]` parameters (follows coercion rules)
 
@@ -4489,7 +4492,7 @@ class Box[T]:
         return None
 
 b1 = Box.from_optional(42)              # Inferred: T = int
-b2 = Box[Int32].from_optional(None)     # Explicit: T = Int32
+b2 = Box[int32].from_optional(None)     # Explicit: T = int32
 ```
 
 Generated C++: `Box<int32_t>::from_optional(42)`, `Box<int32_t>::from_optional(std::nullopt)`.
@@ -4499,16 +4502,16 @@ Generated C++: `Box<int32_t>::from_optional(42)`, `Box<int32_t>::from_optional(s
 **Working**: Generic classes can have integer type parameters using Python 3.12+ syntax with `: int` bound:
 
 ```python
-from tpy import Int32
+from tpy import int32
 
 class Container[T, N: int]:
-    size: Int32
+    size: int32
 
     def __init__(self) -> None:
-        self.size = Int32(N)
+        self.size = int32(N)
 
-    def get_capacity(self) -> Int32:
-        return Int32(N)
+    def get_capacity(self) -> int32:
+        return int32(N)
 
 # Instantiation with integer type argument
 c: Container[str, 10] = Container[str, 10]()
@@ -4536,7 +4539,7 @@ Container<std::string, 10> c{};
 **Key points:**
 - Use `: int` bound to declare integer type parameters: `class Foo[T, N: int]`
 - Integer type parameters become `std::size_t` template parameters in C++
-- Can use `Int32(N)` to convert the integer constant to Int32 inside methods
+- Can use `int32(N)` to convert the integer constant to int32 inside methods
 - Integer type arguments are literal integers in instantiations: `Container[str, 10]`
 
 **Forwarding integer type parameters in inheritance:**
@@ -4561,7 +4564,7 @@ struct Child : Base<T, N> {
 
 **CPython compatibility:**
 - Using `N` in methods works in CPython via `__orig_class__` (available after `__init__`)
-- Using `N` in `__init__` (e.g., `self.size = Int32(N)`) is **TurboPython-only** - CPython cannot access type args during construction
+- Using `N` in `__init__` (e.g., `self.size = int32(N)`) is **TurboPython-only** - CPython cannot access type args during construction
 - `Array[T, N]` with forwarded N works as type annotation, but instantiation in `__init__` is TurboPython-only
 - Tests using `N` inside `__init__` cannot be validated against CPython
 
@@ -4570,15 +4573,15 @@ struct Child : Base<T, N> {
 **Working**: Single class inheritance with optional protocol implementations.
 
 ```python
-from tpy import Int32
+from tpy import int32
 from typing import Protocol
 
 # Base class
 class Animal:
     name: str
-    age: Int32
+    age: int32
 
-    def __init__(self, name: str, age: Int32) -> None:
+    def __init__(self, name: str, age: int32) -> None:
         self.name = name
         self.age = age
 
@@ -4589,7 +4592,7 @@ class Animal:
 class Dog(Animal):
     breed: str
 
-    def __init__(self, name: str, age: Int32, breed: str) -> None:
+    def __init__(self, name: str, age: int32, breed: str) -> None:
         super().__init__(name, age)  # Call parent constructor
         self.breed = breed           # Initialize own field
 
@@ -4656,21 +4659,21 @@ class Named:
         return self.name
 
 class Counted:
-    count: Int32
+    count: int32
 
-    def __init__(self, count: Int32) -> None:
+    def __init__(self, count: int32) -> None:
         self.count = count
 
     def inc(self) -> None:
         self.count = self.count + 1
 
 class Widget(Named, Counted):
-    def __init__(self, name: str, count: Int32) -> None:
+    def __init__(self, name: str, count: int32) -> None:
         # Every base with __init__ must be invoked explicitly.
         Named.__init__(self, name)
         Counted.__init__(self, count)
 
-w = Widget("button", Int32(5))
+w = Widget("button", int32(5))
 print(w.describe())     # inherited from Named
 w.inc()                 # inherited from Counted
 isinstance(w, Named)    # True -- folded at compile time
@@ -4708,10 +4711,10 @@ storage -- and `BaseN.field` is how the user distinguishes them.
 
 ```python
 class RateLimiter:
-    count: Int32
+    count: int32
 
 class CacheStats:
-    count: Int32
+    count: int32
 
 class Service(RateLimiter, CacheStats):
     def tick_req(self) -> None:
@@ -4845,11 +4848,11 @@ cap: Ptr[readonly[Animal]] = dp  # Ptr[Dog] -> Ptr[readonly[Animal]]
 Generic parent upcasting is supported with type argument matching:
 
 ```python
-class IntContainer(Container[Int32]):
+class IntContainer(Container[int32]):
     ...
 
-ic = IntContainer(Int32(42))
-c: Container[Int32] = ic         # upcast to generic parent
+ic = IntContainer(int32(42))
+c: Container[int32] = ic         # upcast to generic parent
 ```
 
 **Note:** Covariant containers (`list[Dog] -> list[Animal]`) are not supported -- they are unsafe because the target list could be modified with incompatible types.
@@ -4863,7 +4866,7 @@ c: Container[Int32] = ic         # upcast to generic parent
 class Dog(Animal):
     breed: str
 
-    def __init__(self, name: str, age: Int32, breed: str) -> None:
+    def __init__(self, name: str, age: int32, breed: str) -> None:
         super().__init__(name, age)  # Calls Animal.__init__
         self.breed = breed
 ```
@@ -4900,9 +4903,9 @@ class Container[T]:
     def __init__(self, value: T) -> None:
         self.value = value
 
-class LabeledContainer(Container[Int32]):
+class LabeledContainer(Container[int32]):
     label: str
-    def __init__(self, label: str, value: Int32) -> None:
+    def __init__(self, label: str, value: int32) -> None:
         super().__init__(value)  # Type-aware: calls Container<int32_t>
         self.label = label
 ```
@@ -4916,7 +4919,7 @@ class LabeledContainer(Container[Int32]):
 
 **Working**: Inheriting from generic classes with concrete type arguments:
 ```python
-from tpy import Int32
+from tpy import int32
 
 class Container[T]:
     value: T
@@ -4925,14 +4928,14 @@ class Container[T]:
     def get(self) -> T:
         return self.value
 
-class IntContainer(Container[Int32]):
-    extra: Int32
-    def __init__(self, value: Int32, extra: Int32) -> None:
-        self.value = value   # Inherited field, type is Int32 (not T)
+class IntContainer(Container[int32]):
+    extra: int32
+    def __init__(self, value: int32, extra: int32) -> None:
+        self.value = value   # Inherited field, type is int32 (not T)
         self.extra = extra
 
 c = IntContainer(42, 100)
-print(c.get())   # Returns Int32, not T
+print(c.get())   # Returns int32, not T
 ```
 
 Generated C++:
@@ -4948,7 +4951,7 @@ struct IntContainer : Container<int32_t> {
 
 **Working**: Generic child classes forwarding type parameters:
 ```python
-from tpy import Int32
+from tpy import int32
 
 class Container[T]:
     value: T
@@ -4959,12 +4962,12 @@ class Container[T]:
 
 # Forward type parameter to parent
 class Wrapper[T](Container[T]):
-    extra: Int32
-    def __init__(self, value: T, extra: Int32) -> None:
+    extra: int32
+    def __init__(self, value: T, extra: int32) -> None:
         self.value = value
         self.extra = extra
 
-w: Wrapper[str] = Wrapper[str]("hello", Int32(42))
+w: Wrapper[str] = Wrapper[str]("hello", int32(42))
 print(w.get())  # Returns str - inherited method with forwarded type
 ```
 
@@ -4981,15 +4984,15 @@ class Pair[T, U]:
     def get_second(self) -> U:
         return self.second
 
-# Forward T, fix U to Int32
-class IntPair[T](Pair[T, Int32]):
-    def __init__(self, first: T, second: Int32) -> None:
+# Forward T, fix U to int32
+class IntPair[T](Pair[T, int32]):
+    def __init__(self, first: T, second: int32) -> None:
         self.first = first
         self.second = second
 
-p: IntPair[str] = IntPair[str]("hello", Int32(42))
+p: IntPair[str] = IntPair[str]("hello", int32(42))
 print(p.get_first())   # Returns str (forwarded T)
-print(p.get_second())  # Returns Int32 (fixed U)
+print(p.get_second())  # Returns int32 (fixed U)
 ```
 
 **Working**: Nested type parameters in inheritance:
@@ -5010,23 +5013,23 @@ items: list[str] = c.get()  # Returns list[str]
 
 **Working**: Inheriting from builtin types with concrete type arguments:
 ```python
-from tpy import Int32
+from tpy import int32
 
-class IntStack(list[Int32]):
+class IntStack(list[int32]):
     name: str
 
     def __init__(self, name: str) -> None:
         self.name = name
 
-    def push(self, value: Int32) -> None:
+    def push(self, value: int32) -> None:
         self.append(value)  # Inherited from list
 
-def main() -> Int32:
+def main() -> int32:
     stack = IntStack("my_stack")
 
     # Use inherited methods
-    stack.push(Int32(10))
-    stack.push(Int32(20))
+    stack.push(int32(10))
+    stack.push(int32(20))
 
     # Use inherited __len__
     print(len(stack))  # 2
@@ -5037,7 +5040,7 @@ def main() -> Int32:
     # Access own field
     print(stack.name)  # "my_stack"
 
-    return Int32(0)
+    return int32(0)
 ```
 
 **Supported builtin parents:**
@@ -5048,17 +5051,17 @@ def main() -> Int32:
 
 **Key points:**
 - Inherited methods from builtins work automatically (e.g., `append`, `__getitem__`, `__len__`)
-- Type parameters are substituted with concrete types (e.g., `T` -> `Int32`)
+- Type parameters are substituted with concrete types (e.g., `T` -> `int32`)
 - No `super().__init__()` needed - the C++ base default constructor runs automatically.
   Calling it explicitly to seed the base also works (`super().__init__([1, 2, 3])`)
 - Can add custom fields and methods to the child class
 - Subscript (`stack[i]`) and `len(stack)` work on child types
 - A generic child forwarding its parameter works (`class Bag[T](list[T])`,
-  instantiated as `Bag[Int32]()`)
+  instantiated as `Bag[int32]()`)
 
 **Limitations:**
 - Generic parent without type args rejected (`class Child(Parent)` where `Parent[T]` is generic)
-- The child must declare an `__init__`. A bodyless child (`class Child(list[Int32]): pass`)
+- The child must declare an `__init__`. A bodyless child (`class Child(list[int32]): pass`)
   emits an inherited-constructor declaration spelled with the TPy type name and fails to
   compile
 - `super().<method>()` into a builtin base does not compile: the call spells the TPy method
@@ -5075,7 +5078,7 @@ class or protocol method. The compiler verifies that the annotated method actual
 typos and stale overrides into hard errors.
 
 ```python
-from tpy import Int32
+from tpy import int32
 from typing import override
 
 class Animal:
@@ -5160,7 +5163,7 @@ class Bad:
 **Working**: Classes can declare protocol implementations explicitly.
 
 ```python
-from tpy import Int32
+from tpy import int32
 from typing import Protocol
 
 # Define a protocol
@@ -5171,9 +5174,9 @@ class Printable(Protocol):
 # Explicit protocol implementation
 class Person(Printable):
     name: str
-    age: Int32
+    age: int32
 
-    def __init__(self, name: str, age: Int32) -> None:
+    def __init__(self, name: str, age: int32) -> None:
         self.name = name
         self.age = age
 
@@ -5193,12 +5196,12 @@ class Describable(Protocol):
     def describe(self) -> str: ...
 
 class Measurable(Protocol):
-    def size(self) -> Int32: ...
+    def size(self) -> int32: ...
 
 # Implement multiple protocols
 class Box(Printable, Describable, Measurable):
-    width: Int32
-    height: Int32
+    width: int32
+    height: int32
 
     def __str__(self) -> str:
         return "Box"
@@ -5206,7 +5209,7 @@ class Box(Printable, Describable, Measurable):
     def describe(self) -> str:
         return "A rectangular box"
 
-    def size(self) -> Int32:
+    def size(self) -> int32:
         return self.width * self.height
 ```
 
@@ -5216,7 +5219,7 @@ class Box(Printable, Describable, Measurable):
 class Car(Vehicle, Printable, Measurable):
     model: str
 
-    def __init__(self, brand: str, year: Int32, model: str) -> None:
+    def __init__(self, brand: str, year: int32, model: str) -> None:
         self.brand = brand  # From Vehicle
         self.year = year    # From Vehicle
         self.model = model
@@ -5224,7 +5227,7 @@ class Car(Vehicle, Printable, Measurable):
     def __str__(self) -> str:
         return self.model
 
-    def weight(self) -> Int32:
+    def weight(self) -> int32:
         return 1500
 ```
 
@@ -5262,7 +5265,7 @@ class Car(Vehicle, Printable, Measurable):
 ## Built-in Functions
 
 - **Working**: `print()`, `len()`, `hash()`, `range()`, `chr()`, `ord()`, `pow()`, `round()`, `divmod()`, `next()`, `copy()` -- most builtins (`len`, `repr`, `hash`, `chr`, `ord`, `abs`, `min`, `max`, `pow`, `divmod`, `next`) defined in `lib/tpy/builtins/` via `@native`/`@cpp_template`
-  - `print(*args, sep=" ", end="\n", file=sys.stdout, flush=False)`. `sep`/`end` accept any string-typed expression (literal or runtime). `file=` accepts any value satisfying the `Writable` protocol (`write(str) -> Int32` + `flush() -> None`); `sys.stdout`, `sys.stderr`, `open(...)` results, and user records all qualify. `flush=` requires a bool literal.
+  - `print(*args, sep=" ", end="\n", file=sys.stdout, flush=False)`. `sep`/`end` accept any string-typed expression (literal or runtime). `file=` accepts any value satisfying the `Writable` protocol (`write(str) -> int32` + `flush() -> None`); `sys.stdout`, `sys.stderr`, `open(...)` results, and user records all qualify. `flush=` requires a bool literal.
   - Container printing matches Python format: bools as `True`/`False`, floats with `.0`, strings in `'quotes'`
 - **Working**: `str()`, `repr()`, f-strings on containers (tuple, list, dict, Array, Span) -- uses runtime to_str helpers matching `print()` format
   - Generic type parameters use `ValuePrinter` for runtime dispatch (bool/float correctly formatted)
@@ -5284,31 +5287,31 @@ class Car(Vehicle, Printable, Measurable):
   - Explicit annotation (`z: list[T] = [v]*N`) always produces `list[T]`
   - Inline repeat cannot be passed directly to `Span` -- assign to a variable first
 - **Working**: Negative indexing for list, Array, Span: `items[-1]` (last element)
-- **Working**: `hash(x)` → `UInt64` hash value. Works on all `Hashable` types (str, int, fixed ints, float, bool, Char, Enum). Uses `tpy::__hash__()` free function dispatch.
+- **Working**: `hash(x)` → `uint64` hash value. Works on all `Hashable` types (str, int, fixed ints, float, bool, char, Enum). Uses `tpy::__hash__()` free function dispatch.
 - **Working**: `abs()`, `min()`, `max()`, `pow()`, `round()`, `divmod()` for numeric types. `abs(x)` also dispatches to a user type's `__abs__` (mirroring CPython's `abs()` -> `x.__abs__()`).
-- **Working**: `sorted()` / `min()` / `max()` with a `key=` callable, including inside a generic function over a generic-element container (`def ranked[T](pairs: list[tuple[T, Int32]]): return sorted(pairs, key=lambda p: -p[1])`) for **value-type** keys (str/int/...). Sort is stable; `min`/`max` return the first element on a tie (CPython parity).
+- **Working**: `sorted()` / `min()` / `max()` with a `key=` callable, including inside a generic function over a generic-element container (`def ranked[T](pairs: list[tuple[T, int32]]): return sorted(pairs, key=lambda p: -p[1])`) for **value-type** keys (str/int/...). Sort is stable; `min`/`max` return the first element on a tie (CPython parity).
   - **Limitation**: a `key=` lambda over a *reference-type* generic element (`T` a class/record) fails the C++ build (borrow-vs-storage tuple-form mismatch); see BUGS.md. Value-type keys are unaffected.
-- **Working**: `ord(c)` accepts `Char` (zero-cost) and `str` (runtime length-1 check; raises `TypeError` -- catchable -- with CPython-aligned `expected a character, but string of length N found`)
+- **Working**: `ord(c)` accepts `char` (zero-cost) and `str` (runtime length-1 check; raises `TypeError` -- catchable -- with CPython-aligned `expected a character, but string of length N found`)
   - `round(x)` uses banker's rounding (round half to even, matching Python)
   - `round[T](x)` is generic: return type defaults to `default_int`, can be inferred from context
   - `divmod(a, b)` returns `tuple[T, T]` with Python floor-division semantics
 - **Working**: String slicing: `s[1:3]` -> `StrView` (zero-copy), `s[::2]` -> owned `str`. Python clamping semantics, negative indices, negative step
 - **Working**: Container slicing: `items[1:3]` -> `Span[T]` (zero-copy), `items[::2]` -> owned `list[T]`. Supports `list[T]`, `Array[T,N]`, `Span[T]`, `Span[readonly[T]]`
 - **Working**: Bytes slicing: `b[1:3]` -> `BytesView` (zero-copy), `b[::2]` -> owned `bytes`
-- **Working**: User-type slicing via `@overload __getitem__(self, index: basic_slice)` or `__getitem__(self, index: slice)`. `basic_slice` has `start`/`stop` (`Optional[Int32]`), maps to `tpy::BasicSlice`. `slice` adds `step`, maps to `tpy::Slice`. `basic_slice` coerces to `slice`
-- **Working**: `basic_slice(start, stop)` and `slice(start, stop, step)` constructors. Args are `Int32 | None`. `slice` is a Python builtin (no import needed), `basic_slice` requires `from tpy import basic_slice`
+- **Working**: User-type slicing via `@overload __getitem__(self, index: basic_slice)` or `__getitem__(self, index: slice)`. `basic_slice` has `start`/`stop` (`Optional[int32]`), maps to `tpy::BasicSlice`. `slice` adds `step`, maps to `tpy::Slice`. `basic_slice` coerces to `slice`
+- **Working**: `basic_slice(start, stop)` and `slice(start, stop, step)` constructors. Args are `int32 | None`. `slice` is a Python builtin (no import needed), `basic_slice` requires `from tpy import basic_slice`
 - **Working**: `isinstance(x, T)` → compile-time type narrowing for union types (`std::holds_alternative<T>` + `std::get<T>`)
 - **Working**: `isinstance(x, Protocol)` → compile-time protocol check on protocol-typed template params (`if constexpr (Concept<T_x>)`)
 - **Open**: `type()` → compile-time type info
 - **Working**: `list()` → empty list constructor (requires type annotation), `list(iterable)` from Iterable containers, `list(range(...))`, `list(iterator)` from Iterator
 - **Working**: `int(float)` → truncates toward zero; raises `ValueError` on NaN, `OverflowError` on infinity (both catchable; messages match CPython)
-- **Working**: `float(int)`, `float(Int32)` → converts to float
+- **Working**: `float(int)`, `float(int32)` → converts to float
 - **Working**: `str()` → string conversions for scalars, containers, and any type with `__str__` or `__repr__` (see below)
 - **Working**: `int(str)` → string-to-int parsing (via `BigInt::from_str`)
 - **Working**: `iter(x)` → calls `x.__iter__()`, returns `Iterator[T]`
 - **Working**: `make_default[T]()` / `make_default()` → default-constructs `T` (maps to `T{}` in C++). Requires `T: Default`. Type can be explicit or inferred from context. Portable alternative to `T()`.
 - **Working**: `open(path)`, `open(path, mode)` -> `TextIO` or `BinaryIO` file handle. Text modes (`"r"`, `"w"`, `"a"`, `"x"` and variants) return `TextIO` with methods: `read(size=-1)`, `write()`, `readline()`, `readlines()`, `close()`. Binary modes (`"rb"`, `"wb"`, `"ab"`, `"xb"` and variants) return `BinaryIO` with methods: `read(size=-1)`, `readline()`, `readlines()`, `write()`, `close()`. `read(size)` returns at most `size` bytes (`size < 0` reads all remaining). Mode dispatch uses `Literal` string overloads -- binary vs text is resolved at compile time. Context manager (`with open(...) as f:`). Variable (non-literal) mode falls back to `TextIO`. Raises the errno-mapped `OSError` subclass (catchable) when the file cannot be opened -- `FileNotFoundError` for a missing path, `PermissionError` on EACCES, etc., via the shared PEP 3151 table, with `.errno`/`.strerror`/`.filename` populated and CPython-exact `str(e)` text -- `ValueError` (catchable) on an unsupported mode string, and `OSError` (catchable) when an operation does not match the file's mode (e.g. `f.read()` on a write-only handle; CPython raises `io.UnsupportedOperation`, which is `OSError + ValueError` via diamond MI -- TPy routes to `OSError` alone since diamond inheritance is not supported). One known hole in the errno mapping: opening a DIRECTORY succeeds instead of raising `IsADirectoryError` as CPython does (filed in `BUGS.md`), so a `try`/`except OSError` around `open()` does not catch that case. `readline()`/`readlines()` preserve trailing newlines (Python compat). TPy-specific alternatives: `open_text(path)` / `open_text(path, mode)` -> `TextIO` and `open_binary(path)` / `open_binary(path, mode)` -> `BinaryIO` -- explicit, non-overloaded functions that don't rely on Literal dispatch (`from tpy import open_text, open_binary`).
-- **Working**: `enumerate(iterable)`, `enumerate(iterable, start)` → `Iterator[tuple[Int32, T]]`. Supports lvalue and rvalue iterables (owning iterator prevents dangling).
+- **Working**: `enumerate(iterable)`, `enumerate(iterable, start)` → `Iterator[tuple[int32, T]]`. Supports lvalue and rvalue iterables (owning iterator prevents dangling).
 - **Working**: `zip(iter1, iter2, ...)` → `Iterator[tuple[T1, T2, ...]]`. Overloads for 2-5 iterables. Stops at shortest. Supports lvalue and rvalue iterables. Combinator composition: `zip(map(...), map(...))` works -- owning variant stores iterators by value to prevent dangling references.
 - **Working**: `map(fn, iterable, ...)` → `Iterator[U]`. Single and multi-iterable (up to 5). Accepts named functions, lambdas, generic functions, and `Callable`-typed variables. Lazy evaluation. Supports lvalue and rvalue iterables. Reference preservation: when `fn` returns by reference, `map` yields `val_or_ref<T>` so mutations propagate to the original container. Mixed `Ref`/`Own` params forwarded correctly via `fn_param_t` traits. Combinator composition: `enumerate(map(...))`, `filter(map(...))`, `map(filter(...))` work.
 - **Working**: `filter(fn, iterable)` → `Iterator[T]`. Accepts named functions, lambdas, and `Callable`-typed variables. Lazy evaluation. Direct iteration for containers preserves element references for non-value types. Limitations: `filter(None, ...)` not supported.
@@ -5324,9 +5327,9 @@ x: list[int] = []            # same - empty literal infers from annotation
 
 # Empty list with inference from usage (inside functions)
 xs = []                      # element type inferred from subsequent usage
-xs.append(42)                # → list[Int32], inferred from append argument
+xs.append(42)                # → list[int32], inferred from append argument
 ys = list()                  # same with list() constructor
-ys.append(42)                # → list[Int32]
+ys.append(42)                # → list[int32]
 
 # Bare list()/[] with no usage that reveals element type → error
 x = []                       # error if never appended to or passed to typed param
@@ -5382,8 +5385,8 @@ b = bool()        # → False (default)
 b = bool(True)    # → True (identity)
 b = bool(0)       # → False
 b = bool(42)      # → True (non-zero)
-b = bool(Int32(0))  # → False
-b = bool(Int32(1))  # → True
+b = bool(int32(0))  # → False
+b = bool(int32(1))  # → True
 
 # User-defined __bool__() dispatch
 class Container:
@@ -5400,12 +5403,12 @@ b = bool(c)       # → True (calls c.__bool__())
 Used to make value copies explicit — both for returning lvalues as `Own[T]` and for acknowledging implicit copies when assigning to record fields:
 
 ```python
-from tpy import Int32, Own, copy
+from tpy import int32, Own, copy
 
 class Box:
-    value: Int32
+    value: int32
 
-def take_value(b: Box) -> Own[Int32]:
+def take_value(b: Box) -> Own[int32]:
     return copy(b.value)  # Explicit copy required for lvalue
 
 def make_box() -> Own[Box]:
@@ -5432,7 +5435,7 @@ s = str()         # → "" (empty string)
 s = str("hello")  # → "hello" (identity)
 s = str(True)     # → "True"
 s = str(False)    # → "False"
-s = str(c)        # → single-char string from Char
+s = str(c)        # → single-char string from char
 
 # Numeric conversions
 s = str(42)       # → "42" - safe (str is owned std::string)
@@ -5449,15 +5452,15 @@ s = repr([1, 2, 3])          # → "[1, 2, 3]" (same as str for containers)
 
 ## Modules & Imports
 
-- **Working**: `from tpy import ...` (built-in types like `Int32`, `Span`, `Array`)
-  - **Note**: tpy types require explicit import -- using `Int32` without `from tpy import Int32` produces an error with a helpful suggestion
+- **Working**: `from tpy import ...` (built-in types like `int32`, `Span`, `Array`)
+  - **Note**: tpy types require explicit import -- using `int32` without `from tpy import int32` produces an error with a helpful suggestion
 - **Working**: `from typing import ...` (type annotations like `Optional`, `Protocol`, `Self`, `Sized`, `Sequence`, `MutableSequence`, `Iterator`, `Iterable`)
   - **Note**: typing names require explicit import -- using `Optional` without `from typing import Optional` produces an error with a helpful suggestion
 - **Working**: `import time` and `from time import time`
-- **Working**: Import aliases: `from time import time as get_time`, `from tpy import Int32 as I32`, `from typing import Optional as Opt`
+- **Working**: Import aliases: `from time import time as get_time`, `from tpy import int32 as I32`, `from typing import Optional as Opt`
   - Aliases work for both type annotations (`x: I32`, `x: Opt[I32]`) and constructor calls (`I32(42)`)
 - **Working**: Module-level aliases: `import time as t`, `import tpy as tp`, `import typing as t`
-  - Qualified type annotations work: `tp.Int32`, `t.Optional[tp.Int32]`, `typing.Protocol`
+  - Qualified type annotations work: `tp.int32`, `t.Optional[tp.int32]`, `typing.Protocol`
 - **Working**: Submodule namespace binding -- `from pkg import submod` binds `submod` as a usable namespace. Qualified calls (`submod.fn(...)`), record constructors (`submod.RecordName(...)`), and type annotations (`field: submod.RecordName`) all resolve through the submodule's exports. Aliased form (`from pkg import submod as alias`) works the same way.
 - **Working**: `import pkg.sub` then `pkg.sub.X` for both function calls and variable / constant access (`pkg.sub.fn()`, `pkg.sub.CONST`).
 - **Working**: `import sys` - system module with `sys.argv`, `sys.stdout`, `sys.stderr`, `sys.exit(code)`, `sys.maxsize`, `sys.byteorder`, `sys.maxunicode`
@@ -5472,7 +5475,7 @@ s = repr([1, 2, 3])          # → "[1, 2, 3]" (same as str for containers)
 - **Working**: `tplib.Box[T]` -- heap-allocated owning container (via `from tplib import Box`)
 - **Working**: `tplib.ArrayList[T, N]` -- fixed-capacity list with ownership-correct element lifecycle (iterable via `for x in list`). Movable for any element type, including non-trivially-relocatable ones (e.g. a record with a `str` field), via a `__move__` relocating-move ctor that relocates the live prefix `[0, _size)` through `UninitArrayStorage.relocate_from` (a `memcpy` for a trivially-relocatable element, element-wise move otherwise) -- an O(N) cost inherent to inline storage (the heap-backed builtin `list` moves in O(1)).
 - **Working**: `tplib.FixStr[N]` -- fixed-capacity string with stack-allocated storage (char-level operations, `__str__` for zero-copy printing)
-- **Working**: `tplib.json` -- JSON parsing/serialization library: `JsonReader` (pull parser), `JsonWriter` (serializer), `@model` class macro for pydantic-style typed JSON with `from_json`/`to_json`/`try_from_json`. File I/O via `save_json(path, indent=0)`, `load_json(path)` (panics on error), and `try_load_json(path)` (propagates `JsonError`). Supports `str`, `bool`, `int`/`Int32`/`Int64`/`BigInt`, `float`/`Float32`, enums, `Optional[T]`, `list[T]`, `dict[str, V]`, `tuple[T, ...]`, nested `@model` records, model inheritance (single + multi-level, with defaults and optionals), field renaming via `field(alias="jsonKey")`, and user-defined types implementing `__json_encode__`/`__json_decode__`. Pretty printing via `JsonWriter(indent=2)` or `obj.to_json(indent=2)`. `JsonError` carries `message` and `pos` fields with a `describe(data)` helper for human-readable error context.
+- **Working**: `tplib.json` -- JSON parsing/serialization library: `JsonReader` (pull parser), `JsonWriter` (serializer), `@model` class macro for pydantic-style typed JSON with `from_json`/`to_json`/`try_from_json`. File I/O via `save_json(path, indent=0)`, `load_json(path)` (panics on error), and `try_load_json(path)` (propagates `JsonError`). Supports `str`, `bool`, `int`/`int32`/`int64`/`BigInt`, `float`/`float32`, enums, `Optional[T]`, `list[T]`, `dict[str, V]`, `tuple[T, ...]`, nested `@model` records, model inheritance (single + multi-level, with defaults and optionals), field renaming via `field(alias="jsonKey")`, and user-defined types implementing `__json_encode__`/`__json_decode__`. Pretty printing via `JsonWriter(indent=2)` or `obj.to_json(indent=2)`. `JsonError` carries `message` and `pos` fields with a `describe(data)` helper for human-readable error context.
 - **Working**: `bisect` module -- array bisection algorithms (via `from bisect import bisect_left`)
 - **Working**: `from module import *` -- star imports from user modules, `tpy`, `builtins`, and `typing`
   - Respects `__all__` if defined; must be a compile-time literal (list / tuple of string literals; set literals work in TPy but break under CPython, whose star-import machinery does `__all__[i]` and rejects sets -- prefer list / tuple for dual-target code). A non-literal `__all__` is a parse-time error in the module that defines it, regardless of whether any consumer uses `from M import *`. The empty form `__all__ = []` (the Python idiom for "export nothing") is accepted as `list[str]` without an annotation.
@@ -5486,28 +5489,28 @@ TurboPython supports importing from other `.py` files in the same directory:
 
 ```python
 # utils.py
-from tpy import Int32
+from tpy import int32
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32):
+    def __init__(self, x: int32, y: int32):
         self.x = x
         self.y = y
 
-def add(a: Int32, b: Int32) -> Int32:
+def add(a: int32, b: int32) -> int32:
     return a + b
 
-MAX: Int32 = Int32(100)
+MAX: int32 = int32(100)
 ```
 
 ```python
 # main.py
-from tpy import Int32
+from tpy import int32
 from utils import Point, add, MAX
 
-p = Point(Int32(1), Int32(2))
+p = Point(int32(1), int32(2))
 result = add(p.x, p.y)
 print(MAX)  # 100
 ```
@@ -5630,7 +5633,7 @@ Every module exposes its imports as module attributes -- there is no facade vs. 
 
 ```python
 # utils.py - regular flat module, no special directive
-from tpy import Int32
+from tpy import int32
 from .helpers import add, Point   # plain re-export
 ```
 
@@ -5700,9 +5703,9 @@ TurboPython has two library search roots that provide reusable modules:
 
 ```python
 from tplib import Box
-from tpy import Int32
+from tpy import int32
 
-b = Box[Int32](42)
+b = Box[int32](42)
 print(b.get())    # 42
 b.set(100)
 print(b.get())    # 100
@@ -5774,11 +5777,11 @@ hashable covariant value-type element.
 
 ```python
 from bisect import bisect_left, insort_left
-from tpy import Int32
+from tpy import int32
 
-a: list[Int32] = [1, 3, 5, 7]
-pos = bisect_left(a, Int32(4))  # 2
-insort_left(a, Int32(4))        # a = [1, 3, 4, 5, 7]
+a: list[int32] = [1, 3, 5, 7]
+pos = bisect_left(a, int32(4))  # 2
+insort_left(a, int32(4))        # a = [1, 3, 4, 5, 7]
 ```
 
 ### Standard Library Modules
@@ -5807,7 +5810,7 @@ Currently working with a stable surface:
 | `struct` | Partial (`unpack`, `unpack_from`, `calcsize`) via compile-time macros |
 | `enum` | Partial (`Enum`, `IntEnum`, `auto()`) via class macro |
 | `dataclasses` | Partial (~80%; `@dataclass(frozen, order)`, `field()`, `asdict()`, `astuple()`, `__post_init__`) via class macro |
-| `argparse` | Partial (~88%; `ArgumentParser` with `prog=`/`usage=`/`epilog=`/`add_help=`, all 7 actions, all 4 nargs forms, `type=int\|float\|str\|Float32` + fixed-width ints + custom records via `@staticmethod from_arg`, `choices`/`required`/`dest`/`help`/`metavar`, scalar + list-literal defaults, `Optional[T]` / `Optional[list[T]]` for absent flags, bare `parse_args()` reads `sys.argv[1:]`, `--help`/`-h` auto-generation with CPython-style 80-col usage wrap, parse errors via stderr + `sys.exit(2)`, subparsers via `add_subparsers()` + `add_parser()` with flat per-sub fields exposed as `Optional[T]` on the top namespace) via builder-trace macro. Open: mutually-exclusive groups, runtime-derived `prog` default, terminal-width-aware help wrap, typed-union escape hatch on subparsers (sema phasing wall lifted by the pre-pass-6 builder-trace move; remaining work is private-record reachability + per-sub forwarder emission, tracked in MACRO_DESIGN.md) |
+| `argparse` | Partial (~88%; `ArgumentParser` with `prog=`/`usage=`/`epilog=`/`add_help=`, all 7 actions, all 4 nargs forms, `type=int\|float\|str\|float32` + fixed-width ints + custom records via `@staticmethod from_arg`, `choices`/`required`/`dest`/`help`/`metavar`, scalar + list-literal defaults, `Optional[T]` / `Optional[list[T]]` for absent flags, bare `parse_args()` reads `sys.argv[1:]`, `--help`/`-h` auto-generation with CPython-style 80-col usage wrap, parse errors via stderr + `sys.exit(2)`, subparsers via `add_subparsers()` + `add_parser()` with flat per-sub fields exposed as `Optional[T]` on the top namespace) via builder-trace macro. Open: mutually-exclusive groups, runtime-derived `prog` default, terminal-width-aware help wrap, typed-union escape hatch on subparsers (sema phasing wall lifted by the pre-pass-6 builder-trace move; remaining work is private-record reachability + per-sub forwarder emission, tracked in MACRO_DESIGN.md) |
 | `typing` | Partial (`Protocol`, `Self`, `Sized`, `Iterator`, `Iterable`, `TypedDict`, `Unpack`, etc.) |
 | `collections` | Partial. `Counter` v1: `Counter()` / `Counter(iterable)`, `c[key]` (missing -> 0), `len`, `in`, `total()`, `most_common(n)`, `update`/`subtract`. `elements()` and `+ - & |` deferred (filed compiler blockers); pure TPy over `dict[T, int]`. **Divergence:** `Counter(mapping)` counts the mapping's *keys*, not its values (`Counter({"a": 3})` -> a=1, not a=3) -- seed counts via `c = Counter(); c[k] = n` instead. `update`/`subtract` take a `Counter` only (not an arbitrary iterable/kwargs) |
 | `os` | Partial (~72%). Filesystem queries (`getcwd`/`chdir`/`listdir`/`scandir`/`getenv`) + `stat`/`lstat`/`fstat` -> `stat_result` and `scandir` -> `DirEntry`; mutating ops (`mkdir`/`makedirs`/`rmdir`/`removedirs`/`remove`/`unlink`/`rename`/`replace`/`symlink`/`readlink`/`link`/`truncate`/`ftruncate`/`chmod`/`chown`/`utime`/`fsync`) over raw POSIX; low-level fd I/O (`open`/`close`/`read`/`write`/`lseek`/`pipe`/`dup`/`dup2` + `O_*`/`SEEK_*`), `access`(+`*_OK`), `urandom`; process/system queries (`getpid`/`getppid`/`getuid` family/`getlogin`/`umask`/`cpu_count`/`strerror`/`isatty`/`get_terminal_size`), `fspath`, + module constants (`name`/`sep`/...). Syscall errors map to the CPython OSError subclass via the shared PEP 3151 table and carry the structured `.errno`/`.strerror`/`.filename` attributes with CPython-exact `str(e)` text (`"[Errno N] strerror: 'path'"`; `rename`/`replace`/`link`/`symlink` also set `.filename2`), so `e.errno == errno.ENOENT` works after any file op. `os.environ` is a snapshot mapping (+`pop`/`setdefault`/`update`/`clear`/`copy`); `putenv`/`unsetenv` are libc-only (matching CPython). `walk` (topdown + bottomup + `followlinks` + `onerror` callback + default error-skip), process spawning deferred. See STDLIB_ROADMAP.md |
@@ -5828,7 +5831,7 @@ from time import time, time_ns, sleep, perf_counter, perf_counter_ns,
 
 # Wall-clock time
 t = time.time()              # → double, seconds since epoch
-tn = time.time_ns()          # → Int64, nanoseconds since epoch
+tn = time.time_ns()          # → int64, nanoseconds since epoch
 time.sleep(0.5)              # suspend for 500ms
 
 # Monotonic clock (use for elapsed-time measurements; CPython ties
@@ -5837,9 +5840,9 @@ start = time.perf_counter()
 # ... do work ...
 elapsed = time.perf_counter() - start
 
-start_ns = time.perf_counter_ns()    # → Int64
+start_ns = time.perf_counter_ns()    # → int64
 m = time.monotonic()                 # → double, alias of perf_counter
-mn = time.monotonic_ns()             # → Int64
+mn = time.monotonic_ns()             # → int64
 
 # Process CPU time (~1us resolution; CPython uses ns via
 # CLOCK_PROCESS_CPUTIME_ID, see STDLIB_ROADMAP.md)
@@ -5915,11 +5918,11 @@ Two decorators for native interop, imported from `tpy.extern`:
 
 ```python
 from tpy.extern import native, export
-from tpy import Int32
+from tpy import int32
 
 # Import a C++ function
 @native
-def global_func(x: Int32) -> Int32: ...
+def global_func(x: int32) -> int32: ...
 
 # Import a C++ function with qualified name
 @native("physics::calculate_force")
@@ -5927,19 +5930,19 @@ def calc_force(mass: float, accel: float) -> float: ...
 
 # Import a C function (binding="C" for extern "C" linkage)
 @native(binding="C")
-def abs(x: Int32) -> Int32: ...
+def abs(x: int32) -> int32: ...
 
 # Import a C function with renamed symbol
 @native("clock", binding="C")
-def get_clock() -> Int32: ...
+def get_clock() -> int32: ...
 
 # Narrowing C++ return: cpp_return_type signals codegen to insert
 # static_cast<DECLARED>(...) when the C++ side returns a wider type.
 # `@native` is otherwise an exact-match binding -- the TPy signature
-# must match C++ -- so this is the escape hatch for size_t -> Int32
+# must match C++ -- so this is the escape hatch for size_t -> int32
 # patterns without dropping to @cpp_template.
-@native("std::strlen", binding="C", cpp_return_type=UInt64)
-def strlen(s: Ptr[readonly[Char]]) -> Int32: ...
+@native("std::strlen", binding="C", cpp_return_type=uint64)
+def strlen(s: Ptr[readonly[char]]) -> int32: ...
 
 # Export a TPy function with C linkage
 @export(binding="C")
@@ -5948,7 +5951,7 @@ def app_init() -> None:
 
 # Export with renamed symbol
 @export("app_tick", binding="C")
-def game_tick(time: Int32) -> None:
+def game_tick(time: int32) -> None:
     print(time)
 ```
 
@@ -5959,33 +5962,33 @@ Cross-module imports of native functions work normally -- the compiler re-declar
 
 A `binding="C"` signature is emitted verbatim into an `extern "C"` declaration, so every type in it has to be one a C caller can spell. Sema enforces an allow-list on `@native(binding="C")`, `@export(binding="C")`, and `native_global(..., binding="C")`:
 
-- **Permitted:** fixed-width integers (`Int8`..`UInt64`), `Float32`, `float`, `bool`, `Char`, `Ptr[T]` for any `T` (including `Ptr[None]` -> `void*` and a pointer to a `@native(binding="C")` struct), `@native` enums (the bound C/C++ header owns the spelling), and `None` in return position (`void`). `readonly[...]` around any of these is permitted.
-- **`Ptr[T]` is unconditional in the pointee** -- a pointer is an opaque handle at the ABI whatever it addresses, so `Ptr[list[Int32]]` is accepted and emits `std::vector<int32_t>*` into the declaration. That spelling is C++, not C: a C consumer declares `void*` for any pointee it cannot name. The gate constrains what crosses *by value*, not what a pointer may address.
+- **Permitted:** fixed-width integers (`int8`..`uint64`), `float32`, `float`, `bool`, `char`, `Ptr[T]` for any `T` (including `Ptr[None]` -> `void*` and a pointer to a `@native(binding="C")` struct), `@native` enums (the bound C/C++ header owns the spelling), and `None` in return position (`void`). `readonly[...]` around any of these is permitted.
+- **`Ptr[T]` is unconditional in the pointee** -- a pointer is an opaque handle at the ABI whatever it addresses, so `Ptr[list[int32]]` is accepted and emits `std::vector<int32_t>*` into the declaration. That spelling is C++, not C: a C consumer declares `void*` for any pointee it cannot name. The gate constrains what crosses *by value*, not what a pointer may address.
 - **Rejected:** `int` (`BigInt`), `str` / `StrView` / `String`, `bytes` / `bytearray`, `list` / `Span` / `Array`, `tuple`, `Optional`, unions, TPy classes, a plain (non-`@native`) enum, a `@native(binding="C")` struct passed **by value** (it emits `S&`, a C++ reference) and `Own[S]` (`S&&`). `*args` is rejected too -- variadic C functions are not supported.
 
 Without the gate these passed *by value* as C++ types no C header can express (`const ::tpy::BigInt&`, `std::vector<int32_t>&`, `::SDL_Rect&`) or -- worse -- a signature that compiled and silently misbehaved: a `str` param respells to `const char*` at the signature while the body still renders against `std::string_view`, so `s == "hello"` became a raw pointer comparison that is always false.
 
 `@native(binding="C")` class fields and stub methods are deliberately **not** gated: tpyc emits nothing for them (they mirror a declaration the author's C header owns), so they keep the ordinary `@native` "the author asserts the C side" contract. Only what tpyc itself writes into an `extern "C"` declaration is checked.
 
-There is no marshaling layer, so a string or buffer is converted by hand. A C string crosses as `Ptr[readonly[UInt8]]` plus the `tpy.unsafe` pair:
+There is no marshaling layer, so a string or buffer is converted by hand. A C string crosses as `Ptr[readonly[uint8]]` plus the `tpy.unsafe` pair:
 
 ```python
-from tpy import Int32, Ptr, String, UInt8, readonly
+from tpy import int32, Ptr, String, uint8, readonly
 from tpy.extern import export, native
 from tpy.unsafe import unsafe_cstr, unsafe_str_from_cstr
 
 @export(binding="C")
-def greet(name: Ptr[readonly[UInt8]]) -> None:
+def greet(name: Ptr[readonly[uint8]]) -> None:
     print(unsafe_str_from_cstr(name))    # const char* -> owned str
 
 @native("puts", binding="C")
-def puts(s: Ptr[readonly[UInt8]]) -> Int32: ...
+def puts(s: Ptr[readonly[uint8]]) -> int32: ...
 
 def shout(msg: String) -> None:
     puts(unsafe_cstr(msg))               # String -> null-terminated const char*
 ```
 
-`unsafe_cstr` takes `String` (owned), not `str`: only the owned form carries the null terminator, while `unsafe_ptr`'s `str` overload points into view storage that has none. Its result is valid only while the `String` lives, so bind the string to a name before the call rather than building it inline. Byte buffers and sequences take the same hand-written shape -- `Ptr[readonly[UInt8]]` / `Ptr[T]` plus an explicit length parameter.
+`unsafe_cstr` takes `String` (owned), not `str`: only the owned form carries the null terminator, while `unsafe_ptr`'s `str` overload points into view storage that has none. Its result is valid only while the `String` lives, so bind the string to a name before the call rather than building it inline. Byte buffers and sequences take the same hand-written shape -- `Ptr[readonly[uint8]]` / `Ptr[T]` plus an explicit length parameter.
 
 ### Inline C++ templates -- `@cpp_template` (Working)
 
@@ -5993,7 +5996,7 @@ def shout(msg: String) -> None:
 
 ```python
 @cpp_template("static_cast<char>({0})")
-def to_char(i: Int32) -> Char: ...
+def to_char(i: int32) -> char: ...
 ```
 
 - **A runtime-value placeholder may appear at most once.** Because substitution is textual paste (no evaluate-once binding), repeating `{self}` or a `{N}` would evaluate that argument twice -- a C-macro footgun (`SQUARE(i++)`): side effects run twice, and a repeated side-effecting subscript receiver makes `std::stable_sort(x.begin(), x.end())` undefined (the two evaluations can view different containers). The compiler rejects a repeated value placeholder at parse time and points at `@native`. Repeated *type* placeholders (`{T}`, `{cpp}`) stay legal -- they are inert. When you need to reference an evaluated argument more than once, use `@native` to bind a typed C++ helper (evaluate-once by construction).
@@ -6004,15 +6007,15 @@ Import existing C++ classes and C structs so TPy code can declare their fields, 
 
 ```python
 from tpy.extern import native, native_field
-from tpy import Int32, Float
+from tpy import int32, Float
 
 # @native -- C++ class import (constructor call syntax)
 @native
 class Vec2:
-    x: Int32 = native_field("m_x")     # field rename: v.x -> v.m_x
-    y: Int32 = native_field("m_y")
-    def sum(self) -> Int32: ...        # stub method (... body)
-    def dot(self, other: Vec2) -> Int32: ...
+    x: int32 = native_field("m_x")     # field rename: v.x -> v.m_x
+    y: int32 = native_field("m_y")
+    def sum(self) -> int32: ...        # stub method (... body)
+    def dot(self, other: Vec2) -> int32: ...
     @staticmethod
     def zero() -> Vec2: ...            # static method
 
@@ -6028,18 +6031,18 @@ class PhysVec:
 # C struct import (aggregate init syntax)
 @native(binding="C")
 class Point:
-    x: Int32
-    y: Int32
-    def manhattan(self) -> Int32: ...
+    x: int32
+    y: int32
+    def manhattan(self) -> int32: ...
 
 # C struct with rename
 @native("SDL_Rect", binding="C")
 class Rect:
-    x: Int32
-    y: Int32
-    w: Int32
-    h: Int32
-    def area(self) -> Int32: ...
+    x: int32
+    y: int32
+    w: int32
+    h: int32
+    def area(self) -> int32: ...
 
 # Opaque handle -- no fields
 @native("SDL_Window")
@@ -6053,7 +6056,7 @@ Generated C++:
 - Methods on native classes must have `...` body (stub declarations); methods with real bodies produce a parse error
 - `@native("cpp_name")` on methods allows renaming individual methods (generates `obj.cpp_name(args)`)
 - `@native("ns::func", function=True)` on methods generates a free function call with self as first arg: `::ns::func(obj, args)`
-- `native_field("cpp_name")` in a field's default-value slot renames individual fields (e.g. `x: Int32 = native_field("m_x")` emits `v.m_x`); rejected on non-`@native` classes
+- `native_field("cpp_name")` in a field's default-value slot renames individual fields (e.g. `x: int32 = native_field("m_x")` emits `v.m_x`); rejected on non-`@native` classes
 - `@property` composes with `@native`/`@cpp_template` on native class methods -- property access syntax (`obj.prop`, `obj.prop = x`) desugars to the native/template method call
 
 ### Final Constants (Working)
@@ -6062,27 +6065,27 @@ Compile-time constant globals using `Final[T]` from Python's `typing` module:
 
 ```python
 from typing import Final
-from tpy import Int32, Int64, Float32, Char
+from tpy import int32, int64, float32, char
 
-MAX_SIZE: Final[Int32] = 100
+MAX_SIZE: Final[int32] = 100
 PI: Final[float] = 3.14159
 DEBUG: Final[bool] = True
 NAME: Final[str] = "hello"
-LETTER: Final[Char] = "A"
-BASE: Final[Int32] = 10
-ALIAS: Final[Int32] = BASE  # cross-reference to another Final
+LETTER: Final[char] = "A"
+BASE: Final[int32] = 10
+ALIAS: Final[int32] = BASE  # cross-reference to another Final
 BIG: Final[int] = 1000000   # BigInt
-OFFSET: Final[Int32] = BASE + 5  # arithmetic on constants
-HALF: Final[Float32] = Float32(0.5)  # type constructor
-WIDE: Final[Int64] = Int64(BASE)  # cross-type cast
-VERSION: Final[tuple[Int32, Int32, Int32]] = (1, 2, 3)
+OFFSET: Final[int32] = BASE + 5  # arithmetic on constants
+HALF: Final[float32] = float32(0.5)  # type constructor
+WIDE: Final[int64] = int64(BASE)  # cross-type cast
+VERSION: Final[tuple[int32, int32, int32]] = (1, 2, 3)
 ```
 
 **Semantics** (stricter than Python's `Final`):
 - Frozen binding: cannot be reassigned at module level, cannot use `global X` in functions
 - Immutable value: treated as readonly (no mutation through the binding)
 - Local shadowing allowed: functions can declare local variables with the same name
-- Initializer must be a compile-time constant: literal, reference to a previously declared Final, constant arithmetic, primitive type constructor (`Int32(x)`, `Float32(x)`, etc.) with a constant argument, tuple of constants, or `@call_macro` expansion that reduces to a constant (no forward references)
+- Initializer must be a compile-time constant: literal, reference to a previously declared Final, constant arithmetic, primitive type constructor (`int32(x)`, `float32(x)`, etc.) with a constant argument, tuple of constants, or `@call_macro` expansion that reduces to a constant (no forward references)
 
 **C++ mapping:**
 - Constexpr-eligible types (fixed-width integers, float, bool, char, str): `inline constexpr T NAME = VALUE;` in header
@@ -6090,7 +6093,7 @@ VERSION: Final[tuple[Int32, Int32, Int32]] = (1, 2, 3)
 
 **Restrictions (v1):**
 - Module level (class-level `Final[T] = value` is documented in the next section; not yet supported in function bodies)
-- Supported types: primitives (int, float, bool, str, StrView, Char, IntN) and tuple (no `Final[list[T]]`, `Final[SomeRecord]`)
+- Supported types: primitives (int, float, bool, str, StrView, char, IntN) and tuple (no `Final[list[T]]`, `Final[SomeRecord]`)
 - Must use explicit type: `Final[T]` (bare `Final` not yet supported)
 - A record-typed module constant is spelled as a plain annotated global (`UTC: timezone = timezone(timedelta())` in the datetime stdlib is the model); it is exportable and importable but not `Final`-frozen. The ALL_CAPS-without-Final warning deliberately skips types `Final[T]` cannot wrap. Extending `Final` to value-type records is filed in TODO.md.
 
@@ -6104,12 +6107,12 @@ through an instance, or through a child class all resolve to the
 
 ```python
 from typing import ClassVar, Final
-from tpy import Int32
+from tpy import int32
 
 class HttpClient:
-    TIMEOUT: Final[Int32] = 30
+    TIMEOUT: Final[int32] = 30
     DEFAULT_HEADERS: Final[str] = "User-Agent: tpy"
-    instances: ClassVar[Int32] = 0          # mutable class-scoped slot
+    instances: ClassVar[int32] = 0          # mutable class-scoped slot
 
     def __init__(self) -> None:
         HttpClient.instances += 1
@@ -6134,7 +6137,7 @@ HttpClient.instances = 0               # mutation OK on ClassVar (rejected on Fi
 @native
 class BuildOpts:
     FLAG: Final[bool]                              # binds to ::x::core::BuildOpts::FLAG
-    KMAX: Final[Int32] = native_field("kMax")      # rename: emits ::x::core::BuildOpts::kMax
+    KMAX: Final[int32] = native_field("kMax")      # rename: emits ::x::core::BuildOpts::kMax
 ```
 
 **Semantics:**
@@ -6182,7 +6185,7 @@ class BuildOpts:
 
 **C++ mapping (regular classes):**
 - `Final[T] = value` -> `static constexpr T NAME = VALUE;` (constexpr-eligible
-  types: numeric, Char, StrView, bool, literal-tuple)
+  types: numeric, char, StrView, bool, literal-tuple)
 - `ClassVar[T] = value` -> `static inline T NAME = VALUE;` (mutable, with
   C++17+ well-defined cross-TU semantics)
 - `@native` classes don't emit class-body declarations; the user's header
@@ -6194,10 +6197,10 @@ class BuildOpts:
   `native_field`
 
 **Restrictions:**
-- `Final[T]` allow-list: numeric / `Char` / `StrView` / `bool` / tuple
+- `Final[T]` allow-list: numeric / `char` / `StrView` / `bool` / tuple
   (same as module-level Final). `Final[str]` rewrites to `StrView` since
   string literals have static lifetime.
-- `ClassVar[T]` allow-list: numeric / `Char` / `bool` / tuple-of-allowed
+- `ClassVar[T]` allow-list: numeric / `char` / `bool` / tuple-of-allowed
   (tighter than Final). `StrView` and `str` are rejected -- a write
   `C.X = make_string()` would store a view into a temporary's storage and
   dangle. Use `Final[StrView]` for read-only string constants.
@@ -6218,9 +6221,9 @@ class BuildOpts:
   TPy can diverge. T-dependent forms (`Final[T]`, initializers like
   `T()`) are deferred. Bare class-name access (`C.X`) and access
   through a non-generic subclass of a generic ancestor
-  (`class Child(C[Int32]): pass; obj: Child; obj.X`) are rejected --
+  (`class Child(C[int32]): pass; obj: Child; obj.X`) are rejected --
   access via an instance of the parameterized class
-  (`obj: C[Int32]; obj.X`) or inside a method (`self.X`) instead
+  (`obj: C[int32]; obj.X`) or inside a method (`self.X`) instead
 
 See `docs/CLASSVAR_DESIGN.md` for the full 10-phase plan and edge-case
 table.
@@ -6231,20 +6234,20 @@ Import extern C/C++ global variables:
 
 ```python
 from tpy.extern import native_global
-from tpy import Int32, Ptr, Int16
+from tpy import int32, Ptr, int16
 
 # C global (extern "C")
-frame_count: Int32 = native_global("DG_FrameCount", binding="C")
+frame_count: int32 = native_global("DG_FrameCount", binding="C")
 
 # C global without rename (Python name = C name)
-tick: Int32 = native_global(binding="C")
+tick: int32 = native_global(binding="C")
 
 # C array global (extern "C" T name[]) -- for C arrays that decay to pointers
-scores: Ptr[Int16] = native_global("g_scores", binding="C", array=True)
+scores: Ptr[int16] = native_global("g_scores", binding="C", array=True)
 
 # C++ global (possibly namespaced)
-score: Int32 = native_global("engine::score")
-lives: Int32 = native_global()
+score: int32 = native_global("engine::score")
+lives: int32 = native_global()
 ```
 
 
@@ -6366,10 +6369,10 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   default arguments, which must be trailing; that limitation is plain-TPy, not
   boundary-specific, and is tracked in `BUGS.md`.
 - **Working (the fixed-width int types + `int` + `float` + `bool`)**: functions
-  taking and returning any fixed-width int (`Int8`..`Int64` / `UInt8`..`UInt64`;
+  taking and returning any fixed-width int (`int8`..`int64` / `uint8`..`uint64`;
   the unpack splits args/kwargs into `PyObject*` slots with `from_py` owning
   every conversion -- signed and <= 32-bit-unsigned widths read a `long long` and
-  range-check against the target, `UInt64` uses the unsigned accessors),
+  range-check against the target, `uint64` uses the unsigned accessors),
   `int`/BigInt (rung 2, a two-tier int64 fast path + hex string round-trip, so
   values beyond int64 cross losslessly), `float` (rung 3, C++ `double` via
   `PyFloat_AsDouble`/`FromDouble`; `int`/`bool` args coerce through `__float__`),
@@ -6385,7 +6388,7 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   enforces the declared type/width, so the compiled extension is bounded/typed
   while the untyped TPy source (run under CPython for the parity check) is not.
   For in-range ordinary values they agree; an out-of-range int (a `2**40` passed
-  to an `Int32`), or a non-conforming exotic arg (a `complex`, a bare
+  to an `int32`), or a non-conforming exotic arg (a `complex`, a bare
   `__float__`/`__index__` object, or a non-bool passed where the source would
   return it unchanged), makes the compiled extension wider/stricter than the
   source. This is inherent to "`@export` marshals an untyped CPython arg into a
@@ -6449,7 +6452,7 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   (3) per-element scalar coercion (`list[int]` coerces `True -> 1`), so distinct
   keys can collapse (`{1, True}` -> `set[int]`). Exposed **enums and classes are
   valid TOP-LEVEL container elements** (`list[Color]`, `list[Counter]`,
-  `dict[str, Counter]`, `set[Color]`, `dict[Color, V]`, `tuple[Color, Int64]`):
+  `dict[str, Counter]`, `set[Color]`, `dict[Color, V]`, `tuple[Color, int64]`):
   each element marshals through its module type handle, copy-in/out like every
   other element. An enum element preserves the member singleton; a class element
   copies, so a mutated class-element param is the same copy cliff -- the
@@ -6721,7 +6724,7 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   reflected dunder (whichever the record defines) with the same
   wrong-type-downgrades-to-`NotImplemented` behavior, and the non-self
   operand can be a scalar/enum as well as another `@export` class (e.g.
-  `def __mul__(self, scalar: Int64)` for `vec * 3`) -- not restricted to the
+  `def __mul__(self, scalar: int64)` for `vec * 3`) -- not restricted to the
   record's own type. `__pow__`/`__rpow__` reject a real 3-argument modulus
   (`NotImplemented`, since TPy has no 3-arg `__pow__`). In-place ops mutate
   `self` and return the *same* object by construction (their slot never
@@ -6768,7 +6771,7 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   module-attribute **snapshots** taken after module init (`Final` => immutable, so
   the snapshot can't go stale). The validator rejects `@export` on a `@native`
   enum (its values come from C++) or a nested enum (only top-level module enums
-  are exposed). A `Final` constant of a non-boundary type (`Char`, `tuple`, ...)
+  are exposed). A `Final` constant of a non-boundary type (`char`, `tuple`, ...)
   is simply not part of the exposed surface -- like a non-`@export` function, it
   isn't on the `.so`. An exposed enum is also a valid `@export` **function
   param/return type**: the value crosses as its CPython member (`def f(c: Color)
@@ -6848,7 +6851,7 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
 - **Working**: Container slice `items[start:end]` -> `Span[T]` (zero-copy). Stepped `items[start:end:step]` -> owned `list[T]`. Supports list, Array, Span, Span[readonly[T]]
 - **Working**: Bytes slice `b[start:end]` -> `BytesView` (zero-copy). Stepped `b[start:end:step]` -> owned `bytes`
 - **Working**: User-type slice via `@overload __getitem__(self, index: basic_slice)` or `__getitem__(self, index: slice)` with `tpy::BasicSlice`/`tpy::Slice` dispatch. `basic_slice` coerces to `slice`
-- **Working**: `basic_slice(start, stop)` and `slice(start, stop, step)` constructors with `Int32 | None` args
+- **Working**: `basic_slice(start, stop)` and `slice(start, stop, step)` constructors with `int32 | None` args
 
 ---
 
@@ -6867,7 +6870,7 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   - Decorator on functions: `raise E` compiles to `return std::unexpected(E{})`; `raise E(args)` passes constructor arguments
   - Callers must use `try/except E` or be `@error_return(E)` themselves (auto-propagation)
   - `try/except/else` supported; `except E as e` binds the error value for field access
-  - Exception types can have data fields: `class ParseError(Exception, ReturnException): line: Int32`
+  - Exception types can have data fields: `class ParseError(Exception, ReturnException): line: int32`
   - Goto-based dispatch: error_return calls inside nested if/for work correctly
   - `except E as e` uses `std::optional<E>` for zero happy-path cost error capture
   - Branch-aware flow analysis (narrowing, init tracking, variable hoisting)
@@ -6939,7 +6942,7 @@ The full marker-layer design lives in `docs/SEND_SYNC_DESIGN.md`; Phase 2
   - Generic records answer per concrete instantiation (use-site field walk)
 - **Working**: `Send[T]` / `Sync[T]` marker wrapper types. For non-erased
   types the wrapper is a static assertion checked at resolve time
-  (`Send[Int32]` is just `Int32`; `Send[Ptr[Int32]]` is a compile error).
+  (`Send[int32]` is just `int32`; `Send[Ptr[int32]]` is a compile error).
   For erased types (`Callable[...]`, `@dynamic` protocols) the wrapper
   persists sema-side with the same C++ representation as the bare type, and
   the assertion fires at every erasing conversion against the concrete
@@ -7083,7 +7086,7 @@ Send/Sync rules for built-in types:
 
 | Type | Send | Sync | Notes |
 |------|------|------|-------|
-| Value types (Int32, bool, float, str, ...) | Yes | Yes | Copied, no aliasing |
+| Value types (int32, bool, float, str, ...) | Yes | Yes | Copied, no aliasing |
 | `bytearray` | Yes | No | Mutable buffer; same Sync rule as `list[T]` |
 | `Ptr[T]` | No | No | Raw pointer, no ownership guarantee |
 | `Ptr[readonly[T]]` | No | Yes (if T Sync) | Read-only shared access |
@@ -7418,8 +7421,8 @@ Send/Sync rules for built-in types:
   migration): the same template-header machinery folds in the
   enclosing record's `[T, ...]`, the inline factory qualifies the
   receiver as `Box<T>::take`, and `__self` is captured as `Box<T>&`.
-  Protocol-bounded class type params (`class Box[T: Iterable[Int32]]:
-  async def total(self) -> Int32: ...`) are supported: out-of-class
+  Protocol-bounded class type params (`class Box[T: Iterable[int32]]:
+  async def total(self) -> int32: ...`) are supported: out-of-class
   member-def template headers spell the matching constraint
   (`template<Iterable<int32_t> T>`, not bare `typename T`).
 - **Working (v1.5 M8)**: `asyncio.wait_for(coro, timeout)` -- race a
@@ -7606,8 +7609,8 @@ Send/Sync rules for built-in types:
 
 - **Working**: `Fn[[A, B], R]` type -- zero-cost callable parameter (C++ template + `requires` constraint). Valid in function/method parameter position only.
   ```python
-  from tpy import Fn, Int32
-  def apply(f: Fn[[Int32], Int32], x: Int32) -> Int32:
+  from tpy import Fn, int32
+  def apply(f: Fn[[int32], int32], x: int32) -> int32:
       return f(x)
   apply(lambda x: x + 1, 42)  # lambda inlined, zero overhead
   ```
@@ -7617,24 +7620,24 @@ Send/Sync rules for built-in types:
 - **Working**: `Callable[[A, B], R]` type -- type-erased callable (`std::function`). Valid in all positions: the callable itself binds as `const std::function<...>&` (params), or by value in fields/returns/containers/locals. The `std::function`'s own param types (`A`, `B`) spell mutable by default for non-value types -- see the callable-value-call bullet above for the mutability contract. `Callable | None` maps to `std::optional<std::function<...>>` with `is not None` narrowing for both fields and parameters; a lambda literal, a function by name, or `None` may be passed directly to a `Callable[...] | None` parameter (the optional wrapper is unwrapped to recover the callable shape for arg inference, then the value coerces back into the optional slot).
   ```python
   from typing import Callable
-  from tpy import Int32
-  def make_adder(n: Int32) -> Callable[[Int32], Int32]:
+  from tpy import int32
+  def make_adder(n: int32) -> Callable[[int32], int32]:
       return lambda x: x + n  # captures n by value
   class Button:
-      on_click: Callable[[Int32], None]
-  def maybe_apply(f: Callable[[Int32], Int32] | None, x: Int32) -> Int32:
+      on_click: Callable[[int32], None]
+  def maybe_apply(f: Callable[[int32], int32] | None, x: int32) -> int32:
       if f is not None:
           return f(x)  # narrowed to Callable, emits .value()()
       return x
   ```
-- **Working**: `Callable` -> `Fn` implicit coercion -- `Callable`-typed variables can be passed where `Fn` parameters are expected. In C++, `std::function` satisfies template `requires` clauses. Works with user-defined functions, builtins (`map`, `filter`), and overload resolution. Signature compatibility uses standard function-type variance: params are contravariant (a callback accepting `Int32 | None` satisfies `Fn[[Int32], R]`; one accepting only `Int32` does NOT satisfy `Fn[[Int32 | None], R]`), returns covariant; a void contract accepts any return. A class with multiple `__call__` overloads satisfies an `Fn`/`Callable` contract when any overload's signature does (first declared match wins); no match is a located error listing the candidates.
-- **Working**: Calls through callable VALUES (Fn/Callable params, locals, fields) run the same arg pipeline as direct calls -- coercions are applied (a plain `int` local narrows into an `Int32` callback param), `Own[T]` consumption and readonly checks run, and the callee is treated as an opaque, potentially-mutating function: reference args bound to non-readonly callable params are conservatively marked mutated (the borrowed-container warning fires like a direct call; a method calling a mutating `Callable` field is inferred non-const). Non-value callable params spell mutable in C++ (`std::function<void(std::vector<int32_t>&)>`), so callbacks that mutate compile and the mutation is caller-visible (CPython semantics). The explicit non-mutating contract is `readonly[...]` inside the param list -- `Callable[[readonly[list[Int32]]], None]` keeps the const spelling, accepts borrowed containers without warnings, and rejects mutating callbacks at the assignment boundary. Exception: bare generic slots (`Fn[[T], R]`) are not conservatively marked (a value-typed instantiation cannot mutate; the generic combinator corpus keeps const params).
-- **Working**: Named function references as callable values -- pass functions by name to `Fn`/`Callable` params or assign to `Callable` locals/fields. Overload resolution selects the matching signature. Cross-module functions use qualified C++ names. Generic functions are supported -- type parameters are inferred from the hint signature (e.g. `identity[T]` with `Fn[[Int32], Int32]` infers `T=Int32`); bounded type params are validated. **Limitation**: generic function refs with `str` type args are rejected because `str` uses `string_view` for params while generic functions use `const string&` via `param_val_or_ref_t<T>` -- use a lambda instead.
+- **Working**: `Callable` -> `Fn` implicit coercion -- `Callable`-typed variables can be passed where `Fn` parameters are expected. In C++, `std::function` satisfies template `requires` clauses. Works with user-defined functions, builtins (`map`, `filter`), and overload resolution. Signature compatibility uses standard function-type variance: params are contravariant (a callback accepting `int32 | None` satisfies `Fn[[int32], R]`; one accepting only `int32` does NOT satisfy `Fn[[int32 | None], R]`), returns covariant; a void contract accepts any return. A class with multiple `__call__` overloads satisfies an `Fn`/`Callable` contract when any overload's signature does (first declared match wins); no match is a located error listing the candidates.
+- **Working**: Calls through callable VALUES (Fn/Callable params, locals, fields) run the same arg pipeline as direct calls -- coercions are applied (a plain `int` local narrows into an `int32` callback param), `Own[T]` consumption and readonly checks run, and the callee is treated as an opaque, potentially-mutating function: reference args bound to non-readonly callable params are conservatively marked mutated (the borrowed-container warning fires like a direct call; a method calling a mutating `Callable` field is inferred non-const). Non-value callable params spell mutable in C++ (`std::function<void(std::vector<int32_t>&)>`), so callbacks that mutate compile and the mutation is caller-visible (CPython semantics). The explicit non-mutating contract is `readonly[...]` inside the param list -- `Callable[[readonly[list[int32]]], None]` keeps the const spelling, accepts borrowed containers without warnings, and rejects mutating callbacks at the assignment boundary. Exception: bare generic slots (`Fn[[T], R]`) are not conservatively marked (a value-typed instantiation cannot mutate; the generic combinator corpus keeps const params).
+- **Working**: Named function references as callable values -- pass functions by name to `Fn`/`Callable` params or assign to `Callable` locals/fields. Overload resolution selects the matching signature. Cross-module functions use qualified C++ names. Generic functions are supported -- type parameters are inferred from the hint signature (e.g. `identity[T]` with `Fn[[int32], int32]` infers `T=int32`); bounded type params are validated. **Limitation**: generic function refs with `str` type args are rejected because `str` uses `string_view` for params while generic functions use `const string&` via `param_val_or_ref_t<T>` -- use a lambda instead.
   ```python
-  def double(x: Int32) -> Int32:
+  def double(x: int32) -> int32:
       return x * 2
   apply(double, 42)  # pass by name, no lambda wrapper needed
-  f: Callable[[Int32], Int32] = double  # assign to Callable local
+  f: Callable[[int32], int32] = double  # assign to Callable local
   ```
 - **Working**: Nested `def` with captures and `nonlocal` keyword. Nested functions compile to
   C++ lambdas with auto-inferred captures. Non-escaping closures capture by reference;
@@ -7666,14 +7669,14 @@ Send/Sync rules for built-in types:
   `snap = x` (or `copy()`) to acknowledge the snapshot. In-place mutation of a captured object
   is not yet warned (tracked in `BUGS.md`).
   ```python
-  def make_adder(n: Int32) -> Callable[[Int32], Int32]:
-      def add(x: Int32) -> Int32:
+  def make_adder(n: int32) -> Callable[[int32], int32]:
+      def add(x: int32) -> int32:
           return x + n  # captures 'n' by value (escaping)
       return add
 
-  def process(items: list[Int32]) -> Int32:
-      total: Int32 = 0
-      def accumulate(x: Int32) -> None:
+  def process(items: list[int32]) -> int32:
+      total: int32 = 0
+      def accumulate(x: int32) -> None:
           nonlocal total
           total += x  # mutable capture by reference
       for item in items:
@@ -7683,12 +7686,12 @@ Send/Sync rules for built-in types:
 - **Working**: Callable classes (`__call__`) -- classes with `__call__` method compile to C++ structs with `operator()`. Instances can be called with `obj(args)` syntax and passed to `Fn`/`Callable` parameters (signature validated at compile time). Supports `@readonly`, mutable state, and recursive `self(args)`.
   ```python
   class Adder:
-      offset: Int32
-      def __init__(self, offset: Int32):
+      offset: int32
+      def __init__(self, offset: int32):
           self.offset = offset
-      def __call__(self, x: Int32) -> Int32:
+      def __call__(self, x: int32) -> int32:
           return x + self.offset
-  def apply(f: Fn[[Int32], Int32], x: Int32) -> Int32:
+  def apply(f: Fn[[int32], int32], x: int32) -> int32:
       return f(x)
   a = Adder(10)
   print(a(5))         # 15 -- direct call
@@ -7697,8 +7700,8 @@ Send/Sync rules for built-in types:
 - **Working**: Expression callees -- call results of arbitrary expressions, not just named functions. Supports chained calls (`make_adder(10)(5)`), subscript calls (`callbacks[0](x)`), and any expression evaluating to `Callable`, `Fn`, or a type with `__call__`. Generates `(callee_expr)(args)` in C++.
   ```python
   from typing import Callable
-  from tpy import Int32
-  fns: list[Callable[[Int32], Int32]] = [make_adder(1), make_negator()]
+  from tpy import int32
+  fns: list[Callable[[int32], int32]] = [make_adder(1), make_negator()]
   print(fns[0](100))       # subscript call: 101
   print(make_adder(10)(5))  # chained call: 15
   ```
@@ -7713,15 +7716,15 @@ Send/Sync rules for built-in types:
   ```python
   @derive(Eq, Hash)  # generates __eq__ and __hash__ at compile time
   class Point:
-      x: Int32
-      y: Int32
+      x: int32
+      y: int32
   ```
 - **Open**: Annotations as compile-time hooks
   ```python
   @serialize("json")  # generates serialization code
   class Config:
       name: str
-      value: Int32
+      value: int32
   ```
 - **Phase 1 done**: Class macro system running Python during compilation
   - `# tpy: macro_module` directive marks modules as compile-time-only
@@ -7751,7 +7754,7 @@ Send/Sync rules for built-in types:
   - Full v1 trace rules: tracked symbols may only appear as the receiver of registered builder method calls, may not be reassigned, escape, or be referenced inside control-flow blocks / lambdas / nested defs; exactly one terminal must be reached
   - First user: `lib/tpy/argparse.py` (see stdlib table above for the slice). v2 work tracked in `docs/MACRO_DESIGN.md`
 - **Phase 8 spike (mechanism + mutation work; motivating use case not yet built)**: Function macros (`@function_macro` on a free function or record method -- a macro that rewrites the whole function body at compile time)
-  - `FunctionMacroContext` -- read-only introspection (`function_name`, `module_qname`, `params` as resolved `(name, TypeInfo | None)`, `return_type`, `body`); `resolve_type(name)` to mint a primitive/builtin type (`bool`, `Int32`, `Float64`, ...) by name; registry-backed type introspection shared with call macros via `_MacroContextBase` (`get_field_type` / `get_method_return_type` on a record `TypeInfo` -- including inherited members -- `lookup_imported_name(name)` resolving any module-visible record/enum to a `TypeInfo` by its local name, `lookup_function_signatures(name)` returning a module-visible free function's overloads as a list of `Signature` (each with the overload's `(name, TypeInfo | None)` param list and `return_type`; `None` if the name is not a known function) so a value flowing into a typed call slot -- or returned from a typed function -- can be typed by it, the caller choosing the overload policy, and `qualified_name`; enum `TypeInfo`s expose `enum_members`); plus in-place mutation: `annotate_local(name, type)` (set a local's declared type at its introducing statement) and `replace_expr(old, new)` (identity-based replacement anywhere in the body, descending into list/dict/tuple fields)
+  - `FunctionMacroContext` -- read-only introspection (`function_name`, `module_qname`, `params` as resolved `(name, TypeInfo | None)`, `return_type`, `body`); `resolve_type(name)` to mint a primitive/builtin type (`bool`, `int32`, `float64`, ...) by name; registry-backed type introspection shared with call macros via `_MacroContextBase` (`get_field_type` / `get_method_return_type` on a record `TypeInfo` -- including inherited members -- `lookup_imported_name(name)` resolving any module-visible record/enum to a `TypeInfo` by its local name, `lookup_function_signatures(name)` returning a module-visible free function's overloads as a list of `Signature` (each with the overload's `(name, TypeInfo | None)` param list and `return_type`; `None` if the name is not a known function) so a value flowing into a typed call slot -- or returned from a typed function -- can be typed by it, the caller choosing the overload policy, and `qualified_name`; enum `TypeInfo`s expose `enum_members`); plus in-place mutation: `annotate_local(name, type)` (set a local's declared type at its introducing statement) and `replace_expr(old, new)` (identity-based replacement anywhere in the body, descending into list/dict/tuple fields)
   - Runs in pass 5.5 (`SemanticAnalyzer._expand_function_macros`), before builder-trace expansion and before body type-checking, so mutations are seen by sema. The decorator has no runtime/codegen existence
   - Applies to both source and *plugin-emitted* free functions: a source decorator is collected by the parser; a frontend plugin sets `Function.decorators=(Decorator(name="mod.fn", kwargs=...), ...)` and registers `"mod.fn"` as `MACRO` in its `decorator_manifest`, and lowering routes it into `pending_macros` -- both feed the same pass-5.5 phase. Arbitrary (non-`Expr`) per-module data the macro needs rides `FrontendModule.macro_data` (exposed as `ctx.module_data`), not decorator kwargs. See `docs/FRONTEND_PLUGIN_DESIGN.md` "Decorator registry"
   - An unrecognized *resolved* (imported) decorator on a free function or record method is treated as a function-macro reference (errors at sema if unregistered); genuinely unresolved names still error at parse
@@ -7784,8 +7787,8 @@ from tpy.model import Model
 
 class Order(Model):  # compiler sees __generate__ hook, calls it
     symbol: FixStr[8]
-    price: Float64
-    quantity: Int32
+    price: float64
+    quantity: int32
 ```
 
 The compiler's role is minimal:
@@ -7846,10 +7849,10 @@ The dream is Pydantic's ergonomics with zero-overhead C++:
 ```python
 class Order(Model):
     symbol: FixStr[8]
-    price: Float64
-    quantity: Int32
+    price: float64
+    quantity: int32
     side: Side  # enum
-    timestamp: Int64 = Field(default_factory=now)
+    timestamp: int64 = Field(default_factory=now)
 
 # Automatically generates:
 # - Validation (compile-time where possible, runtime checks where needed)
@@ -7915,7 +7918,7 @@ for i in range(len(arr)):
     x = arr[i]  # Direct arr[i] in C++ (no bounds check)
 
 # While-loop pattern also works via literal range tracking:
-i: Int32 = 0
+i: int32 = 0
 while i < len(arr):
     x = arr[i]  # Direct arr[i] (i proven in [0, len(arr)))
     i += 1      # Invalidates range fact for soundness
@@ -7931,16 +7934,16 @@ if b != 0:
 
 Range facts enter the system from:
 - `for i in range(len(arr))` -- `i in [0, len(arr)-1]`
-- Integer literal assignment (`i = 0`, `i: Int32 = 0`) -- exact value range
+- Integer literal assignment (`i = 0`, `i: int32 = 0`) -- exact value range
 - `if b != 0:` / `assert b != 0` -- `non_zero=True`
 - `if x > 0:` / `assert x >= 0` -- concrete lower bound
 - `if x < len(arr):` / `while i < len(arr):` -- symbolic upper bound
 
-**Safe unsigned cast elision**: When a signed-to-unsigned cast like `UInt32(x)` is performed and `x` is provably non-negative (and the target is at least as wide as the source), the compiler skips the runtime range check and emits a plain `static_cast`:
+**Safe unsigned cast elision**: When a signed-to-unsigned cast like `uint32(x)` is performed and `x` is provably non-negative (and the target is at least as wide as the source), the compiler skips the runtime range check and emits a plain `static_cast`:
 
 ```python
 assert offset >= 0
-u = UInt32(offset)  # static_cast (no range check)
+u = uint32(offset)  # static_cast (no range check)
 ```
 
 Range facts are invalidated on variable reassignment (including augmented assignment like `i += 1`) and merged at branch join points. Symbolic bounds referencing a container are invalidated when that container is mutated (including method calls like `.pop()`, `.clear()`).
@@ -7952,16 +7955,16 @@ The compiler automatically infers which parameters each function mutates, elimin
 **Two-phase approach**: Phase 1 (during sema) collects *local* mutation facts per function -- which params are directly mutated by field writes, subscript writes, method calls, augmented assignments, and deletes -- plus call edges recording parameter flow through function calls. Phase 2 (post-sema) builds an intra-module call graph, topologically sorts it, and propagates mutation facts transitively. Cycles are handled with monotone fixpoint iteration (mutation sets only grow). Forward calls and transitive chains are fully resolved.
 
 ```python
-def sum_items(items: list[Int32]) -> Int32:
-    total: Int32 = 0
+def sum_items(items: list[int32]) -> int32:
+    total: int32 = 0
     for x in items:
         total += x
     return total  # mutated_params = {} (items not mutated)
 
-def add_item(items: list[Int32], val: Int32) -> None:
+def add_item(items: list[int32], val: int32) -> None:
     items.append(val)  # mutated_params = {0} (items mutated via append)
 
-data: list[Int32] = [1, 2, 3]
+data: list[int32] = [1, 2, 3]
 v = data[0]
 sum_items(data)   # No warning: sum_items proven non-mutating for param 0
 add_item(data, 4) # Warning: add_item mutates param 0, borrow of 'data' active

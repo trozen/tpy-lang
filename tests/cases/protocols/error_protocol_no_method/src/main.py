@@ -1,10 +1,10 @@
 from typing import Sized
-from tpy import Int32
+from tpy import int32
 
 class NoLen:
-    value: Int32
+    value: int32
 
-def count(items: Sized) -> Int32:
+def count(items: Sized) -> int32:
     return len(items)
 
 def main() -> None:

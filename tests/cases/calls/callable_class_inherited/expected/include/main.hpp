@@ -23,7 +23,7 @@ void main();
 struct Base {
 
 
-    // def __call__(self, x: Int32) -> Int32:
+    // def __call__(self, x: int32) -> int32:
     int32_t __call__(int32_t x) const;
 
     int32_t operator()(int32_t x) const {
@@ -49,12 +49,12 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 }
 
 
-// def __call__(self, x: Int32) -> Int32:
+// def __call__(self, x: int32) -> int32:
 inline int32_t Base::__call__(int32_t x) const {
     // return x * 2
     return (::tpy::mul_check<int32_t>(x, 2));
 }
-// def apply(f: Fn[[Int32], Int32], x: Int32) -> Int32:
+// def apply(f: Fn[[int32], int32], x: int32) -> int32:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<int32_t>;

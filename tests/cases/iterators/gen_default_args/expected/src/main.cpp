@@ -42,7 +42,7 @@ std::optional<::tpyapp::main::Mode> EnumUtil<::tpyapp::main::Mode>::try_parse(st
 namespace tpyapp::main {
 
 
-// def bounded(limit: Int32 = 2) -> Iterator[Int32]:
+// def bounded(limit: int32 = 2) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_bounded::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -51,7 +51,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_bounded::__next__() {
         return 0;
     }
     case S_RESUME_0: {
-        // i: Int32 = 1
+        // i: int32 = 1
         i = 1;
         __state = S_JOIN_0;
         continue;
@@ -78,7 +78,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_bounded::__next__() {
 }
 
 
-// def bounded(limit: Int32 = 2) -> Iterator[Int32]:
+// def bounded(limit: int32 = 2) -> Iterator[int32]:
 __gen_bounded bounded(int32_t limit) {
     return __gen_bounded(limit);
 }
@@ -169,7 +169,7 @@ void main() {
     }
     // print("--")
     std::cout << "--" << "\n";
-    // nums: list[Int32] = [10, 20, 30, 40]
+    // nums: list[int32] = [10, 20, 30, 40]
     std::vector<int32_t> nums = {10, 20, 30, 40};
     // for v in head(nums):
     {
@@ -405,7 +405,7 @@ void main() {
     }
 }
 
-// def bounded_m(self, limit: Int32 = 2) -> Iterator[Int32]:
+// def bounded_m(self, limit: int32 = 2) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_Box_bounded_m::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -414,7 +414,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Box_bounded_m::__next__() {
         return __self.base;
     }
     case S_RESUME_0: {
-        // i: Int32 = 1
+        // i: int32 = 1
         i = 1;
         __state = S_JOIN_0;
         continue;
@@ -442,8 +442,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Box_bounded_m::__next__() {
 
 
 // def shapes(self, tag: str = "t", flag: bool = True, ratio: float = 0.5,
-// m: Mode = Mode.B, r: Rec | None = None, w: Int32 = Int32(3),
-// neg: Int32 = -1, f: Int32 = WIDTH) -> Iterator[Int32]:
+// m: Mode = Mode.B, r: Rec | None = None, w: int32 = int32(3),
+// neg: int32 = -1, f: int32 = WIDTH) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_Box_shapes::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {

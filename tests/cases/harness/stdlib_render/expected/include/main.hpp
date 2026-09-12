@@ -76,10 +76,10 @@ int32_t _pin_cycle_copy();
 
 // class _Cell:
 struct _Cell {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     _Cell() = default;
     explicit _Cell(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__._Cell";
@@ -91,7 +91,7 @@ inline std::ostream& operator<<(std::ostream& os, const _Cell& obj) {
 }
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline _Cell::_Cell(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

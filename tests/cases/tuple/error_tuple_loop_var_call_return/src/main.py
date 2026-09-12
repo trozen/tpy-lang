@@ -3,25 +3,25 @@
 # source the call relayed, so a source that dies with the function is
 # rejected. `pick` borrows from BOTH operands, only the first of which is
 # local -- a loop var that kept just one source would miss it.
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    val: Int32
+    val: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 
-def pick(a: list[tuple[Int32, Box]],
-         b: list[tuple[Int32, Box]]) -> list[tuple[Int32, Box]]:
+def pick(a: list[tuple[int32, Box]],
+         b: list[tuple[int32, Box]]) -> list[tuple[int32, Box]]:
     if len(a) > 0:
         return a
     return b
 
 
-def ret(p: list[tuple[Int32, Box]]) -> tuple[Int32, Box]:
-    local: list[tuple[Int32, Box]] = [(1, Box(5))]
+def ret(p: list[tuple[int32, Box]]) -> tuple[int32, Box]:
+    local: list[tuple[int32, Box]] = [(1, Box(5))]
     for v in pick(local, p):
         return v  # tpyc: error(/storage owned by the function/)
     return p[0]

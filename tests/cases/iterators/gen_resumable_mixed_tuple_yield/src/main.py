@@ -5,18 +5,18 @@
 # the body `return std::tuple<...>{...}` and the consumer's per-iteration
 # `auto __r = it.__next__()` both construct, so the ref-tuple is legal.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
 class P:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
-def pairs(items: list[P]) -> Iterator[tuple[Int32, P]]:
-    n = Int32(len(items))
-    i: Int32 = 0
+def pairs(items: list[P]) -> Iterator[tuple[int32, P]]:
+    n = int32(len(items))
+    i: int32 = 0
     while i < n:
         if i == 0:
             yield (i, items[i])

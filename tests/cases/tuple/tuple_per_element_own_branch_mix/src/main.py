@@ -1,25 +1,25 @@
 # A branch-mixed reassigned per-element-Own tuple local: one arm binds an
 # owning call, the other aliases a field; mutation hits the right storage.
-from tpy import Int32, Own, copy
+from tpy import int32, Own, copy
 
 
 class Box:
-    val: Int32
-    def __init__(self, v: Int32) -> None:
+    val: int32
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 
 class Holder:
-    pair: tuple[Int32, Box]
+    pair: tuple[int32, Box]
     def __init__(self, b: Box) -> None:
         self.pair = (77, copy(b))
 
 
-def make_pair(v: Int32) -> tuple[Int32, Own[Box]]:
+def make_pair(v: int32) -> tuple[int32, Own[Box]]:
     return (v, Box(v))
 
 
-def use(h: Holder, c: bool) -> Int32:
+def use(h: Holder, c: bool) -> int32:
     if c:
         t = make_pair(9)
     else:

@@ -5,43 +5,43 @@
 # (re-checked at resume -- observed via mutation between next() calls),
 # local-bind escape carrying the fact across suspensions, the first yield
 # of a try body, a local-bind yield under a loop back-edge.
-from tpy import Int32
+from tpy import int32
 from typing import Iterator
 
 
 class Box:
-    f: Int32 | None
+    f: int32 | None
 
-    def __init__(self, v: Int32 | None) -> None:
+    def __init__(self, v: int32 | None) -> None:
         self.f = v
 
-    def gen_field(self) -> Iterator[Int32]:
+    def gen_field(self) -> Iterator[int32]:
         if self.f is not None:
             yield self.f
         yield -1
 
-    def gen_reassign(self) -> Iterator[Int32]:
+    def gen_reassign(self) -> Iterator[int32]:
         q = 0
         if self.f is not None:
             q = self.f
         yield q
         yield -2
 
-    def gen_reguard(self) -> Iterator[Int32]:
+    def gen_reguard(self) -> Iterator[int32]:
         if self.f is not None:
             yield self.f
         if self.f is not None:
             yield self.f + 1
         yield -3
 
-    def gen_local_bind(self) -> Iterator[Int32]:
+    def gen_local_bind(self) -> Iterator[int32]:
         v = self.f
         if v is not None:
             yield v
             yield v + 1
         yield -4
 
-    def gen_try_body(self) -> Iterator[Int32]:
+    def gen_try_body(self) -> Iterator[int32]:
         # The guard survives into the try body, so its FIRST yield still
         # derefs; only handler entry kills the fact (the reject is
         # error_narrowed_field_stale_except).
@@ -53,7 +53,7 @@ class Box:
                 yield -5
         yield -6
 
-    def gen_local_bind_loop(self) -> Iterator[Int32]:
+    def gen_local_bind_loop(self) -> Iterator[int32]:
         # A local binding carries the fact across a loop back-edge that
         # crosses the yield; reading the field there instead is the reject
         # error_narrowed_field_stale_loop_yield pins.

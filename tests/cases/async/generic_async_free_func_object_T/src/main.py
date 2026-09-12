@@ -9,7 +9,7 @@
 # (a composed shape that lands in the `REF` kind, not `TYPE_PARAM`).
 import asyncio
 from typing import Protocol
-from tpy import Int32
+from tpy import int32
 
 
 class Bumpable(Protocol):
@@ -17,23 +17,23 @@ class Bumpable(Protocol):
 
 
 class Counter:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def bump(self) -> None:
         self.n = self.n + 1
 
 
-async def increment[T: Bumpable](x: T) -> Int32:
+async def increment[T: Bumpable](x: T) -> int32:
     x.bump()
-    return Int32(0)
+    return int32(0)
 
 
 async def main_coro() -> None:
-    c = Counter(Int32(10))
-    _ = await increment(c)  # tpyc: type(Int32)
+    c = Counter(int32(10))
+    _ = await increment(c)  # tpyc: type(int32)
     print(c.n)  # 11 if reference (correct), 10 if copy
 
 

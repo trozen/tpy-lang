@@ -1,9 +1,9 @@
 # pow() panics on negative exponent for fixed-width integers
-from tpy import Int32
+from tpy import int32
 
 def main() -> None:
-    a: Int32 = Int32(2)
-    b: Int32 = Int32(-1)
+    a: int32 = int32(2)
+    b: int32 = int32(-1)
     print(pow(a, b))
 
 main()

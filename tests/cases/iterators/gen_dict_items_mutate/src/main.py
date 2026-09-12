@@ -2,24 +2,24 @@
 # aliases the dict's stored object (proxy-ref iterator + borrow-form
 # tuple frame slot), so mutations inside the generator reach the dict.
 # Covers both the unpack form and the whole-tuple kv form.
-from tpy import Int32
+from tpy import int32
 from typing import Iterator
 
 
 class C:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32):
+    def __init__(self, v: int32):
         self.v = v
 
 
-def bump(d: dict[Int32, C]) -> Iterator[Int32]:
+def bump(d: dict[int32, C]) -> Iterator[int32]:
     for k, c in d.items():
         c.v = c.v + 1
         yield k
 
 
-def pairs(d: dict[Int32, C]) -> Iterator[Int32]:
+def pairs(d: dict[int32, C]) -> Iterator[int32]:
     for kv in d.items():
         kv[1].v = kv[1].v + 10
         yield kv[0]

@@ -1,6 +1,6 @@
-from tpy import Int32
+from tpy import int32
 class H:
-    opt: Int32 | None
+    opt: int32 | None
     def __init__(self) -> None:
         self.opt = 1
 def main() -> None:

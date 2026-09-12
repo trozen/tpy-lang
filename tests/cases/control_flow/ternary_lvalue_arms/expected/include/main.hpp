@@ -19,10 +19,10 @@ void main();
 
 // class Rec:
 struct Rec {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Rec() = default;
     explicit Rec(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Rec";
@@ -34,7 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const Rec& obj) {
 }
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Rec::Rec(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

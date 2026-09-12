@@ -3,7 +3,7 @@
 
 namespace tpyapp::main {
 
-// p = Pair(Int32(3), Int32(4))
+// p = Pair(int32(3), int32(4))
 Pair* p{};
 
 void __tpy_init() {
@@ -18,7 +18,7 @@ void __tpy_init() {
     // # paths after the post-Phase-8 review fix.
     // from utils import dataclass, asdict
     ::tpyapp::utils::__tpy_init();
-    // p = Pair(Int32(3), Int32(4))
+    // p = Pair(int32(3), int32(4))
     static Pair __global_slot_1 = Pair(3, 4);
     p = &__global_slot_1;
     // print(asdict(p))

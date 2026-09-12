@@ -42,7 +42,7 @@ void main() {
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
-// async def feed(self, n: Int32) -> Int32:
+// async def feed(self, n: int32) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_Pet_feed::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {

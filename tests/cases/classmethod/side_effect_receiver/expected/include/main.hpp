@@ -20,7 +20,7 @@ struct Widget {
     // self.n = n
     int32_t n;
 
-    // def __init__(self, n: Int32):
+    // def __init__(self, n: int32):
     Widget() = default;
     explicit Widget(int32_t n);
 
@@ -36,7 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
 }
 
 
-// def __init__(self, n: Int32):
+// def __init__(self, n: int32):
 inline Widget::Widget(int32_t n) : n(n) {}
 
 // @classmethod

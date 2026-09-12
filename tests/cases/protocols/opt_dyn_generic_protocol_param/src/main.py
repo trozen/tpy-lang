@@ -2,7 +2,7 @@
 # the parameterized form lowers to `const Container<int32_t>*` just like the
 # non-generic case.
 from typing import Protocol, Optional
-from tpy import Int32, dynamic
+from tpy import int32, dynamic
 
 
 @dynamic
@@ -10,17 +10,17 @@ class Container[T](Protocol):
     def get(self) -> T: ...
 
 
-class IntBox(Container[Int32]):
-    v: Int32
+class IntBox(Container[int32]):
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
-    def get(self) -> Int32:
+    def get(self) -> int32:
         return self.v
 
 
-def maybe_show(c: Optional[Container[Int32]]) -> Int32:
+def maybe_show(c: Optional[Container[int32]]) -> int32:
     if c is None:                 # tpyc: ok
         return -1
     return c.get()

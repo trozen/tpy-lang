@@ -19,12 +19,12 @@ struct Point {
     int32_t x;
     // self.y = y
     int32_t y;
-    // ORIGIN: Final[Int32] = 0
+    // ORIGIN: Final[int32] = 0
     static constexpr int32_t ORIGIN = 0;
-    // created: ClassVar[Int32] = 0
+    // created: ClassVar[int32] = 0
     static inline int32_t created = 0;
 
-    // def __init__(self, x: Int32, y: Int32):
+    // def __init__(self, x: int32, y: int32):
     Point() = default;
     explicit Point(int32_t x, int32_t y);
 
@@ -33,11 +33,11 @@ struct Point {
     static Point origin();
 
     // @classmethod
-    // def diagonal(cls, n: Int32) -> Own[Self]:
+    // def diagonal(cls, n: int32) -> Own[Self]:
     static Point diagonal(int32_t n);
 
     // @staticmethod
-    // def scaled(n: Int32, k: Int32) -> Own["Point"]:
+    // def scaled(n: int32, k: int32) -> Own["Point"]:
     static Point scaled(int32_t n, int32_t k);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
@@ -48,7 +48,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 }
 
 
-// def __init__(self, x: Int32, y: Int32):
+// def __init__(self, x: int32, y: int32):
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // @classmethod
@@ -61,14 +61,14 @@ inline Point Point::origin() {
 }
 
 // @classmethod
-// def diagonal(cls, n: Int32) -> Own[Self]:
+// def diagonal(cls, n: int32) -> Own[Self]:
 inline Point Point::diagonal(int32_t n) {
     // return cls.scaled(n, 1)
     return Point::scaled(n, 1);
 }
 
 // @staticmethod
-// def scaled(n: Int32, k: Int32) -> Own["Point"]:
+// def scaled(n: int32, k: int32) -> Own["Point"]:
 inline Point Point::scaled(int32_t n, int32_t k) {
     // return Point(n * k, n * k)
     return Point((::tpy::mul_check<int32_t>(n, k)), (::tpy::mul_check<int32_t>(n, k)));

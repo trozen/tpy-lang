@@ -4,5 +4,5 @@
 from tpy.extern import export
 
 @export(binding="C")
-def name_of() -> str:  # tpyc: error(/return type 'str' is not representable in the C ABI; use Ptr\[readonly\[UInt8\]\] and convert with tpy.unsafe.unsafe_str_from_cstr\(\)/)
+def name_of() -> str:  # tpyc: error(/return type 'str' is not representable in the C ABI; use Ptr\[readonly\[uint8\]\] and convert with tpy.unsafe.unsafe_str_from_cstr\(\)/)
     return "tpy"

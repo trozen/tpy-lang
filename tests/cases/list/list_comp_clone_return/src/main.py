@@ -8,14 +8,14 @@
 # `x.clone()` on the iter element fails -- the comprehension path doesn't
 # yet propagate loop-var mutation back to the source container the way the
 # for-loop sema does. That's a separate gap.
-from tpy import Int32, Own
+from tpy import int32, Own
 from tplib import Rc
 
 
 class Node:
-    value: Int32
+    value: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.value = v
 
 

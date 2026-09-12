@@ -19,14 +19,14 @@ void main();
 
 // class Counter:
 struct Counter {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Counter() = default;
     explicit Counter(int32_t n);
 
-    // def __enter__(self) -> Int32:
+    // def __enter__(self) -> int32:
     int32_t __enter__() const;
 
     // def __exit__(self, et, ev, tb) -> None:
@@ -41,10 +41,10 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 // class Slot:
 struct Slot {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Slot() = default;
     explicit Slot(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Slot";
@@ -60,7 +60,7 @@ struct Holder {
     // s: Slot
     Slot s;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Holder() = default;
     explicit Holder(int32_t v);
 
@@ -78,10 +78,10 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 }
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Counter::Counter(int32_t n) : n(n) {}
 
-// def __enter__(self) -> Int32:
+// def __enter__(self) -> int32:
 inline int32_t Counter::__enter__() const {
     // return self.n
     return this->n;
@@ -93,10 +93,10 @@ inline void Counter::__exit__(std::monostate et, const ::tpy::BaseException* ev,
     std::cout << "counter exit" << " " << this->n << "\n";
 }
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Slot::Slot(int32_t v) : v(v) {}
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Holder::Holder(int32_t v) : s(Slot(v)) {}
 
 // def __enter__(self) -> Slot:

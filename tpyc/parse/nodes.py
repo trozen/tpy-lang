@@ -311,8 +311,8 @@ class TpyStarUnpack(TpyExpr):
 class TpyCall(TpyExpr):
     """Function or constructor call.
 
-    For generic function calls like first[Int32](items):
-    - type_args stores the explicit type arguments (e.g., (Int32,))
+    For generic function calls like first[int32](items):
+    - type_args stores the explicit type arguments (e.g., (int32,))
     - inferred_type_args is set by sema for codegen (resolved from inference or explicit)
     """
     func: TpyExpr  # TpyName for simple calls; arbitrary TpyExpr for expression callees
@@ -1656,7 +1656,7 @@ class TpyEnum:
     name: str
     members: list[tuple[str, int, SourceLocation | None]]  # auto() already resolved to int by parser
     is_int_enum: bool = False
-    underlying_type_name: str | None = None  # e.g. "int", "Int8", "UInt32"
+    underlying_type_name: str | None = None  # e.g. "int", "int8", "uint32"
     is_native: bool = False
     native_name: str | None = None  # raw @native arg; sema normalizes to canonical ::-prefixed form
     # Per-member C++ rename map (Python name -> C++ enumerator name). Used

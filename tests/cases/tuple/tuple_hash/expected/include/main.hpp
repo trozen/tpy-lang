@@ -20,10 +20,10 @@ void test_hash_delegation();
 // @nocopy
 // class Key:
 struct Key {
-    // val: Int32
+    // val: int32
     int32_t val;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Key() = default;
     explicit Key(int32_t v);
     // non-copyable (@nocopy)
@@ -32,7 +32,7 @@ struct Key {
     Key(Key&&) = default;
     Key& operator=(Key&&) = default;
 
-    // def __hash__(self) -> UInt64:
+    // def __hash__(self) -> uint64:
     uint64_t __hash__() const;
 
     // def __eq__(self, other: Key) -> bool:
@@ -61,16 +61,16 @@ namespace tpyapp::main {
 
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
-    // y: Int32
+    // y: int32
     int32_t y;
 
-    // def __init__(self, x: Int32, y: Int32) -> None:
+    // def __init__(self, x: int32, y: int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y);
 
-    // def __hash__(self) -> UInt64:
+    // def __hash__(self) -> uint64:
     uint64_t __hash__() const;
 
     // def __eq__(self, other: Point) -> bool:
@@ -105,7 +105,7 @@ struct Edge {
     // b: Key
     Key b;
 
-    // def __init__(self, x: Int32, y: Int32) -> None:
+    // def __init__(self, x: int32, y: int32) -> None:
     Edge() = default;
     explicit Edge(int32_t x, int32_t y);
     // non-copyable (@nocopy)
@@ -114,7 +114,7 @@ struct Edge {
     Edge(Edge&&) = default;
     Edge& operator=(Edge&&) = default;
 
-    // def __hash__(self) -> UInt64:
+    // def __hash__(self) -> uint64:
     uint64_t __hash__() const;
 
     // def __eq__(self, other: Edge) -> bool:
@@ -142,12 +142,12 @@ namespace tpyapp::main {
 
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Key::Key(int32_t v) : val(v) {}
 
-// def __hash__(self) -> UInt64:
+// def __hash__(self) -> uint64:
 inline uint64_t Key::__hash__() const {
-    // return UInt64(self.val)
+    // return uint64(self.val)
     return ::tpy::int_cast_check<uint64_t>(this->val);
 }
 
@@ -157,10 +157,10 @@ inline bool Key::__eq__(const Key& other) const {
     return (this->val == other.val);
 }
 
-// def __init__(self, x: Int32, y: Int32) -> None:
+// def __init__(self, x: int32, y: int32) -> None:
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
-// def __hash__(self) -> UInt64:
+// def __hash__(self) -> uint64:
 inline uint64_t Point::__hash__() const {
     // return hash((self.x, self.y))
     return ::tpy::__hash__(std::tuple<int32_t, int32_t>{this->x, this->y});
@@ -172,10 +172,10 @@ inline bool Point::__eq__(const Point& other) const {
     return ((this->x == other.x) && (this->y == other.y));
 }
 
-// def __init__(self, x: Int32, y: Int32) -> None:
+// def __init__(self, x: int32, y: int32) -> None:
 inline Edge::Edge(int32_t x, int32_t y) : a(Key(x)), b(Key(y)) {}
 
-// def __hash__(self) -> UInt64:
+// def __hash__(self) -> uint64:
 inline uint64_t Edge::__hash__() const {
     // return hash((self.a, self.b))
     return ::tpy::__hash__(std::tuple<const Key*, const Key*>{&(this->a), &(this->b)});

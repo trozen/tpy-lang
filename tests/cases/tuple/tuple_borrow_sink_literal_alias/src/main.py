@@ -2,27 +2,27 @@
 # plain `tuple[...]` param, which the callee only reads through for the
 # duration of the call) must keep its borrow-form element slots, so the
 # literal's lvalue element ALIASES the caller's object rather than copying it.
-from tpy import Int32
+from tpy import int32
 
 
 class Item:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
-def bump_first(p: tuple[Item, Int32]) -> None:
+def bump_first(p: tuple[Item, int32]) -> None:
     # Borrowing param: writing through the element must reach the caller's
     # object, which is only true if the slot stayed a borrow.
     p[0].n = p[0].n + p[1]
 
 
-def read_pair(p: tuple[Item, Int32]) -> Int32:
+def read_pair(p: tuple[Item, int32]) -> int32:
     return p[0].n * p[1]
 
 
-def relay[T](p: tuple[T, Int32]) -> Int32:
+def relay[T](p: tuple[T, int32]) -> int32:
     return p[1]
 
 

@@ -1,29 +1,29 @@
 # repr() and f-string interpolation work on union-typed values:
 # the runtime variant overloads of __str__ / __repr__ visit the active
-# alternative and recurse. Covers a value-type union (Int32 | str), a
+# alternative and recurse. Covers a value-type union (int32 | str), a
 # 3-member union with a user record, and the !s / !r conversions.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
     def __repr__(self) -> str:
         return f"Point({self.x})"
 
 
-def make_iu() -> Int32 | str:
-    return Int32(42)
+def make_iu() -> int32 | str:
+    return int32(42)
 
 
-def make_su() -> Int32 | str:
+def make_su() -> int32 | str:
     return "hello"
 
 
-def make_3u() -> Own[Int32 | str | Point]:
+def make_3u() -> Own[int32 | str | Point]:
     return Point(7)
 
 
@@ -44,7 +44,7 @@ def main() -> None:
     print(f"{c!r}")
     # Formattable type reaches __repr__ via runtime fallback; previously
     # rejected at sema, now accepted.
-    n: Int32 = 99
+    n: int32 = 99
     print(f"{n!r}")
 
 

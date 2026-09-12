@@ -1,7 +1,7 @@
 # Return-tier sibling of exceptions/finally_local_binding: a variable first
 # bound inside the finally of a return-tier try/except must hoist (usable in
 # the duplicated emissions, visible after the try).
-from tpy import Int32, error_return, ReturnException
+from tpy import int32, error_return, ReturnException
 
 
 class MyErr(Exception, ReturnException):
@@ -9,13 +9,13 @@ class MyErr(Exception, ReturnException):
 
 
 @error_return(MyErr)
-def fallible(x: Int32) -> Int32:
+def fallible(x: int32) -> int32:
     if x < 0:
         raise MyErr
     return x * 2
 
 
-def run(x: Int32) -> None:
+def run(x: int32) -> None:
     try:
         y = fallible(x)
         print(y)

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def collect_for(xs: list[Int32]) -> Own[list[Int32]]:
+// def collect_for(xs: list[int32]) -> Own[list[int32]]:
 std::vector<int32_t> collect_for(const std::vector<int32_t>& xs) {
     // out = []
     std::vector<int32_t> out = std::vector<int32_t>{};
@@ -21,9 +21,9 @@ std::vector<int32_t> collect_for(const std::vector<int32_t>& xs) {
     return out;
 }
 
-// def widen_collect(xs: list[Int32]) -> Own[list[Int64]]:
+// def widen_collect(xs: list[int32]) -> Own[list[int64]]:
 std::vector<int64_t> widen_collect(const std::vector<int32_t>& xs) {
-    // # In-loop Int32 element must still widen to the declared Int64 -- the
+    // # In-loop int32 element must still widen to the declared int64 -- the
     // # canonical-element use-site check allows coercion, not just exact match.
     // out = []
     std::vector<int64_t> out = std::vector<int64_t>{};
@@ -40,7 +40,7 @@ std::vector<int64_t> widen_collect(const std::vector<int32_t>& xs) {
     return out;
 }
 
-// def collect_while(n: Int32) -> Own[list[Int32]]:
+// def collect_while(n: int32) -> Own[list[int32]]:
 std::vector<int32_t> collect_while(int32_t n) {
     // out = []
     std::vector<int32_t> out = std::vector<int32_t>{};
@@ -57,7 +57,7 @@ std::vector<int32_t> collect_while(int32_t n) {
     return out;
 }
 
-// def collect_cond(xs: list[Int32]) -> Own[list[Int32]]:
+// def collect_cond(xs: list[int32]) -> Own[list[int32]]:
 std::vector<int32_t> collect_cond(const std::vector<int32_t>& xs) {
     // out = []
     std::vector<int32_t> out = std::vector<int32_t>{};
@@ -77,7 +77,7 @@ std::vector<int32_t> collect_cond(const std::vector<int32_t>& xs) {
     return out;
 }
 
-// def total(ys: list[Int32]) -> Int32:
+// def total(ys: list[int32]) -> int32:
 int32_t total(const std::vector<int32_t>& ys) {
     // return len(ys)
     return ::tpy::__len__(ys);

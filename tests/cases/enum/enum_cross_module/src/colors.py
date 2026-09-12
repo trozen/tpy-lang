@@ -1,6 +1,6 @@
 # Defines an enum type for cross-module import
 from enum import Enum
-from tpy import Int32
+from tpy import int32
 
 
 class Color(Enum):
@@ -9,5 +9,5 @@ class Color(Enum):
     Blue = 2
 
 
-def color_value(c: Color) -> Int32:
+def color_value(c: Color) -> int32:
     return c.value

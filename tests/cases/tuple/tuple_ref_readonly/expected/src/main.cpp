@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // c = Container(Int32(42))
+    // c = Container(int32(42))
     Container c = Container(42);
     // w = Wrapper(c)
     Wrapper w = Wrapper(c);

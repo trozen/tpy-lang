@@ -1,7 +1,7 @@
-from tpy import Int32, Own, copy
+from tpy import int32, Own, copy
 class Point:
-    x: Int32
-    def __init__(self, x: Int32):
+    x: int32
+    def __init__(self, x: int32):
         self.x = x
 class Holder:
     value: Point | None

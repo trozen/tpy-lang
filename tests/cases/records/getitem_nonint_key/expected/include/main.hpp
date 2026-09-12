@@ -16,15 +16,15 @@ void main();
 
 // class Scores:
 struct Scores {
-    // _a: Int32
+    // _a: int32
     int32_t _a;
-    // _b: Int32
+    // _b: int32
     int32_t _b;
 
     // def __init__(self) -> None:
     Scores();
 
-    // def __getitem__(self, key: str) -> Int32:
+    // def __getitem__(self, key: str) -> int32:
     int32_t __getitem__(std::string_view key) const;
 
     int32_t operator[](std::string_view key) const {
@@ -42,7 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const Scores& obj) {
 // def __init__(self) -> None:
 inline Scores::Scores() : _a(10), _b(20) {}
 
-// def __getitem__(self, key: str) -> Int32:
+// def __getitem__(self, key: str) -> int32:
 inline int32_t Scores::__getitem__(std::string_view key) const {
     // if key == "a":
     if ((key == "a")) {

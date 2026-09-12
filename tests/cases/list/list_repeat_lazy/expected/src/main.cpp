@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def test_lazy_variable_count() -> None:
 void test_lazy_variable_count() {
-    // n: Int32 = 5
+    // n: int32 = 5
     int32_t n = 5;
     // x = [7] * n  # tpyc: type(/repeat\[/)
     ::tpy::repeat_range<int32_t> x = ::tpy::repeat_range<int32_t>(n, {7});
@@ -18,7 +18,7 @@ void test_lazy_variable_count() {
 
 // def test_lazy_for_loop() -> None:
 void test_lazy_for_loop() {
-    // n: Int32 = 3
+    // n: int32 = 3
     int32_t n = 3;
     // r = [10] * n  # tpyc: type(/repeat\[/)
     ::tpy::repeat_range<int32_t> r = ::tpy::repeat_range<int32_t>(n, {10});
@@ -48,7 +48,7 @@ void test_direct_iterable_arg() {
 // def test_print_lazy_repeat() -> None:
 void test_print_lazy_repeat() {
     // # Print on lazy repeat uses ListPrinter
-    // n: Int32 = 4
+    // n: int32 = 4
     int32_t n = 4;
     // r = [5] * n  # tpyc: type(/repeat\[/)
     ::tpy::repeat_range<int32_t> r = ::tpy::repeat_range<int32_t>(n, {5});

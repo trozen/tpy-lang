@@ -2,12 +2,12 @@
 # over-release; acquire / locked / async with are inherited.
 import asyncio
 from asyncio import BoundedSemaphore
-from tpy import Int32
+from tpy import int32
 
 
 class Counters:
-    active: Int32
-    peak: Int32
+    active: int32
+    peak: int32
 
     def __init__(self) -> None:
         self.active = 0

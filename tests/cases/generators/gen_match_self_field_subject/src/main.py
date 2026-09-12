@@ -1,16 +1,16 @@
 # A generator matching a scalar field off `self`: the subject binds the
 # frame's receiver member directly.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
 class Counter:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
-    def items(self) -> Iterator[Int32]:
+    def items(self) -> Iterator[int32]:
         # The match subject is a scalar field read off `self`.
         match self.n:
             case 0:

@@ -4,7 +4,7 @@
 # byte-matched here since the compiled wrapper's wording is our own, not
 # CPython's auto-generated one). A wrong-typed key/value is intercepted by
 # the marshaller BEFORE __getitem__/__setitem__'s body runs (the C++
-# signature requires the declared Int32/Int64), so it raises a clean
+# signature requires the declared int32/int64), so it raises a clean
 # TypeError -- the plain Python source has no such guard and would instead
 # either misbehave silently (a string key never equals an int, so
 # __getitem__'s body falls through to the last branch) or raise from deep

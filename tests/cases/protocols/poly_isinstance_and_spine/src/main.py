@@ -1,7 +1,7 @@
 # An inline poly isinstance under `and`: the left operand's dynamic cast proves
 # the narrowing, so the right operand reads the derived method directly.
 from typing import Protocol
-from tpy import Int32, dynamic
+from tpy import int32, dynamic
 
 
 @dynamic
@@ -25,7 +25,7 @@ class Dog(Pet):
         return "woof"
 
 
-def check_and(p: Pet, threshold: Int32) -> bool:
+def check_and(p: Pet, threshold: int32) -> bool:
     return isinstance(p, Dog) and len(p.bark()) > threshold
 
 

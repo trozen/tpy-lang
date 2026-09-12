@@ -7,12 +7,12 @@
 # C++ ctor + macro-emitted clone()/__raise__() through the existing
 # inheritance chain.
 from tplib import Box
-from tpy import Throwable, Int32
+from tpy import Throwable, int32
 
 
 class ParseError(Exception):
-    line: Int32
-    def __init__(self, message: str, line: Int32) -> None:
+    line: int32
+    def __init__(self, message: str, line: int32) -> None:
         self.message = message
         self.line = line
 

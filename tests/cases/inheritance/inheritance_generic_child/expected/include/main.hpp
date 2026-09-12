@@ -85,13 +85,13 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
     return os;
 }
 
-// class Wrapper[U](Container[Int32]):
+// class Wrapper[U](Container[int32]):
 template<typename U>
 struct Wrapper : Container<int32_t> {
     // extra: U
     U extra;
 
-    // def __init__(self, value: Int32, extra: U) -> None:
+    // def __init__(self, value: int32, extra: U) -> None:
     Wrapper() = default;
     explicit Wrapper(int32_t value, ::tpy::readonly_form_t<U> extra) : extra(extra) {
         // self.value = value

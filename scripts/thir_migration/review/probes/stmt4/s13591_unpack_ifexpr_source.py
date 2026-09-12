@@ -1,5 +1,5 @@
-from tpy import Int32
-def f(c: bool, t1: tuple[Int32, Int32], t2: tuple[Int32, Int32]) -> Int32:
+from tpy import int32
+def f(c: bool, t1: tuple[int32, int32], t2: tuple[int32, int32]) -> int32:
     a, b = t1 if c else t2
     return a + b
 def main() -> None:

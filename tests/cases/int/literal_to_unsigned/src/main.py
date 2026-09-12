@@ -1,36 +1,36 @@
 # Integer literals coerce to fixed-width unsigned params at call sites.
 # Happy path: direct literals, multi-arg, method receivers, all UInt widths.
-from tpy import UInt8, UInt16, UInt32, UInt64
+from tpy import uint8, uint16, uint32, uint64
 
 
-def take_u8(x: UInt8) -> UInt8:
+def take_u8(x: uint8) -> uint8:
     return x
 
 
-def take_u16(x: UInt16) -> UInt16:
+def take_u16(x: uint16) -> uint16:
     return x
 
 
-def take_u32(x: UInt32) -> UInt32:
+def take_u32(x: uint32) -> uint32:
     return x
 
 
-def take_u64(x: UInt64) -> UInt64:
+def take_u64(x: uint64) -> uint64:
     return x
 
 
-def take_pair(a: UInt64, b: UInt32) -> UInt64:
+def take_pair(a: uint64, b: uint32) -> uint64:
     return a
 
 
 class Counter:
-    n: UInt64
+    n: uint64
 
     def __init__(self) -> None:
-        self.n = UInt64(0)
+        self.n = uint64(0)
 
-    def bump(self, by: UInt32) -> UInt64:
-        self.n = self.n + UInt64(by)
+    def bump(self, by: uint32) -> uint64:
+        self.n = self.n + uint64(by)
         return self.n
 
 

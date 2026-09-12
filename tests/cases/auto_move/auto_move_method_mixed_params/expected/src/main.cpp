@@ -15,7 +15,7 @@ void main() {
     Inner i = Inner();
     // i.value = 10
     i.value = 10;
-    // h.set_with_tag(i, Int32(5))
+    // h.set_with_tag(i, int32(5))
     h.set_with_tag(std::move(i), 5);
     // print(h.inner.value)
     std::cout << h.inner.value << "\n";
@@ -37,7 +37,7 @@ void main() {
     Inner i3 = Inner();
     // i3.value = 7
     i3.value = 7;
-    // f = gh.replace_with_flag(i3, Int32(3))
+    // f = gh.replace_with_flag(i3, int32(3))
     int32_t f = gh.replace_with_flag(std::move(i3), 3);
     // print(gh.item.value)
     std::cout << gh.item.value << "\n";

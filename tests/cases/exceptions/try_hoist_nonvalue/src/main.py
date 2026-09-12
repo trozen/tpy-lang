@@ -1,17 +1,17 @@
 # Try-body variables hoisted when all except handlers terminate,
 # so they survive the C++ try{} block scope.
-from tpy import Int32
+from tpy import int32
 
 
 class Point:
-    def __init__(self, x: Int32, y: Int32) -> None:
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 
 
 def test_list_try_hoist() -> None:
     try:
-        items: list[Int32] = [1, 2, 3]
+        items: list[int32] = [1, 2, 3]
     except Exception:
         return
     print(items)
@@ -27,7 +27,7 @@ def test_record_try_hoist() -> None:
 
 def test_value_type_try_hoist() -> None:
     try:
-        x: Int32 = 42
+        x: int32 = 42
     except Exception:
         return
     print(x)

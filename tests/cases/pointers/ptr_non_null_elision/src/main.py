@@ -1,12 +1,12 @@
-from tpy import Ptr, Int32, readonly, take_ptr
+from tpy import Ptr, int32, readonly, take_ptr
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32) -> None:
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
-    def sum(self) -> Int32:
+    def sum(self) -> int32:
         return self.x + self.y
 
 def get_ptr(p: Ptr[Point]) -> Ptr[Point]:
@@ -18,7 +18,7 @@ def read_via_param(p: Ptr[Point]) -> None:
     print(p.sum())  # tpyc: non_null(p)
 
 def main() -> None:
-    pt: Point = Point(Int32(10), Int32(20))
+    pt: Point = Point(int32(10), int32(20))
     # Local Ptr from lvalue: provably non-null, skip null check
     p: Ptr[Point] = pt
     print(p.x)  # tpyc: non_null(p)
@@ -40,7 +40,7 @@ def main() -> None:
     p = get_ptr(q)
     print(p.x)  # tpyc: nullable(p)
     # Re-establish provenance
-    pt2: Point = Point(Int32(30), Int32(40))
+    pt2: Point = Point(int32(30), int32(40))
     p = take_ptr(pt2)
     print(p.x)  # tpyc: non_null(p)
     # Pass to function (param has unknown provenance inside)

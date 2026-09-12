@@ -1,13 +1,13 @@
 # A @classmethod's implicit first parameter must be spelled `cls`.
-from tpy import Int32
+from tpy import int32
 
 
 class P:
-    def __init__(self, x: Int32):
+    def __init__(self, x: int32):
         self.x = x
 
     @classmethod
-    def make(klass) -> Int32:  # tpyc: error(/must be 'cls'/)
+    def make(klass) -> int32:  # tpyc: error(/must be 'cls'/)
         return 1
 
 

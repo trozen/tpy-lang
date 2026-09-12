@@ -1,14 +1,14 @@
 # @readonly: an alias of the readonly param cannot be rebound by a
 # for-each (reference-type rebind is rejected outright).
-from tpy import Int32, readonly
+from tpy import int32, readonly
 
 class Box:
-    v: Int32
-    def __init__(self, v: Int32) -> None:
+    v: int32
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 def mut(b: Box) -> None:
-    b.v = Int32(1)
+    b.v = int32(1)
 
 @readonly
 def f(p: Box, xs: list[Box]) -> None:

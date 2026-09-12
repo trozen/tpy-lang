@@ -4,31 +4,31 @@
 namespace tpyapp::main {
 
 
-// def take_u8(x: UInt8) -> UInt8:
+// def take_u8(x: uint8) -> uint8:
 uint8_t take_u8(uint8_t x) {
     // return x
     return x;
 }
 
-// def take_u16(x: UInt16) -> UInt16:
+// def take_u16(x: uint16) -> uint16:
 uint16_t take_u16(uint16_t x) {
     // return x
     return x;
 }
 
-// def take_u32(x: UInt32) -> UInt32:
+// def take_u32(x: uint32) -> uint32:
 uint32_t take_u32(uint32_t x) {
     // return x
     return x;
 }
 
-// def take_u64(x: UInt64) -> UInt64:
+// def take_u64(x: uint64) -> uint64:
 uint64_t take_u64(uint64_t x) {
     // return x
     return x;
 }
 
-// def take_pair(a: UInt64, b: UInt32) -> UInt64:
+// def take_pair(a: uint64, b: uint32) -> uint64:
 uint64_t take_pair(uint64_t a, uint32_t b) {
     // return a
     return a;

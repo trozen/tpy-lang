@@ -2,18 +2,18 @@
 # transitive mutation via a self method defined AFTER this one (the closure's
 # self-call edge resolves in the call-graph fixpoint). Both mutations must be
 # visible on the caller's object.
-from tpy import Int32
+from tpy import int32
 
 
 class Acc:
-    total: Int32
-    count: Int32
+    total: int32
+    count: int32
 
     def __init__(self) -> None:
         self.total = 0
         self.count = 0
 
-    def collect(self, k: Int32) -> None:
+    def collect(self, k: int32) -> None:
         bonus = 1
 
         def feed() -> None:

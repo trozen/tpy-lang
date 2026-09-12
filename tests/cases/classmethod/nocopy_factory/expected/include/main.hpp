@@ -17,10 +17,10 @@ void main();
 // @nocopy
 // class Handle:
 struct Handle {
-    // fd: Int32
+    // fd: int32
     int32_t fd;
 
-    // def __init__(self, fd: Int32):
+    // def __init__(self, fd: int32):
     Handle() = default;
     explicit Handle(int32_t fd);
     // non-copyable (@nocopy)
@@ -30,7 +30,7 @@ struct Handle {
     Handle& operator=(Handle&&) = default;
 
     // @classmethod
-    // def opened(cls, fd: Int32) -> Own[Self]:
+    // def opened(cls, fd: int32) -> Own[Self]:
     static Handle opened(int32_t fd);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Handle";
 };
@@ -41,11 +41,11 @@ inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
 }
 
 
-// def __init__(self, fd: Int32):
+// def __init__(self, fd: int32):
 inline Handle::Handle(int32_t fd) : fd(fd) {}
 
 // @classmethod
-// def opened(cls, fd: Int32) -> Own[Self]:
+// def opened(cls, fd: int32) -> Own[Self]:
 inline Handle Handle::opened(int32_t fd) {
     // return cls(fd)
     return Handle(fd);

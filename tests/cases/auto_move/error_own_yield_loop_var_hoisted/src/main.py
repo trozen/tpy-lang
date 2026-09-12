@@ -3,16 +3,16 @@
 # than moving out of a variable that outlives the loop. The loop-scoped sibling
 # is pinned by tests/cases/auto_move/own_yield_loop_var_scoped.
 from typing import Iterator
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
-def gen() -> Iterator[Own[Int32]]:
+def gen() -> Iterator[Own[int32]]:
     yield 1
     yield 2
 
 
 def collect() -> None:
-    out: list[Int32] = []
+    out: list[int32] = []
     for x in gen():  # tpyc: error(/foreach\.hoist_loop_var/)
         out.append(x)
     print(x)

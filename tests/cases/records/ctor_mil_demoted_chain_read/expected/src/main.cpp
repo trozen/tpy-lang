@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // g = Grid([Int32(7)])
+    // g = Grid([int32(7)])
     Grid g = Grid({7});
     // print(g.n, g.cells[0], g.cells[1])
     std::cout << g.n << " " << ::tpy::__getitem__(g.cells, 0) << " " << ::tpy::__getitem__(g.cells, 1) << "\n";

@@ -163,7 +163,7 @@ def _match_strategy(stmt: TpyMatch, analyzer) -> 'str | None':
         return None
     if isinstance(t, UnionType) or _wrapper_union_like(t) is not None:
         # A union subject dispatches on its variant; a recursive-alias
-        # wrapper (bare `Tree` alias) and a generic instance (`Tree[Int32]`,
+        # wrapper (bare `Tree` alias) and a generic instance (`Tree[int32]`,
         # a RecursiveAliasInstanceType admitted through the genrec-track
         # accessor) both reach the variant via `.value` -- the whole flow is
         # duck-keyed (`needs_wrapper()` / `wrapper_info()`), and the M4c
@@ -335,7 +335,7 @@ def _match_field_cond(pattern: TpyClassPattern, field_name: str, value,
 def _match_capture_field_ok(ft: TpyType, analyzer) -> bool:
     """A field capture joins the arm walk as a plain declared local, so its
     type must be one the slice's name-read classification already covers:
-    value scalars, Char, registered enums, resolved str, value tuples, the
+    value scalars, char, registered enums, resolved str, value tuples, the
     reference-axis families whose binding is the plain `auto&` alias into the
     subject's field (F1 records and the builtin containers), and the VALUE-repr
     Optional families (`Optional[scalar]` / owned-inner `Optional[str]`,

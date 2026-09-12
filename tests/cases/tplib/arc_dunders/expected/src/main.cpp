@@ -6,11 +6,11 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // a = Arc.new(Int32(10))
+    // a = Arc.new(int32(10))
     ::tpystd::tplib::arc::Arc<int32_t> a = Arc<int32_t>::new_<int32_t>(10);
-    // b = Arc.new(Int32(10))   # same content, different cell
+    // b = Arc.new(int32(10))   # same content, different cell
     ::tpystd::tplib::arc::Arc<int32_t> b = Arc<int32_t>::new_<int32_t>(10);
-    // c = Arc.new(Int32(20))
+    // c = Arc.new(int32(20))
     ::tpystd::tplib::arc::Arc<int32_t> c = Arc<int32_t>::new_<int32_t>(20);
     // # Content equality (not identity): a and b are distinct cells, equal content.
     // print(a == b)             # True

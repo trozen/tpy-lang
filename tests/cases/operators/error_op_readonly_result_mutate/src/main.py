@@ -1,12 +1,12 @@
 # Mutation through the result of a readonly[...]-returning operator dunder is
 # rejected at sema: the binding is a readonly borrow of the operand.
-from tpy import Int32, readonly
+from tpy import int32, readonly
 
 
 class Acc:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
     def __add__(self, o: "Acc") -> "readonly[Acc]":

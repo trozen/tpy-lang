@@ -16,16 +16,16 @@ void main();
 
 // class Sink:
 struct Sink {
-    // n: Int32
+    // n: int32
     int32_t n;
 
     // def __init__(self) -> None:
     Sink();
 
-    // def take(self, xs: list[Int32] | None) -> Int32:
+    // def take(self, xs: list[int32] | None) -> int32:
     int32_t take(const std::vector<int32_t>* xs);
 
-    // def take_nested(self, xs: list[list[Int32]] | None) -> Int32:
+    // def take_nested(self, xs: list[list[int32]] | None) -> int32:
     int32_t take_nested(const std::vector<std::vector<int32_t>>* xs);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Sink";
 };
@@ -39,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
 // def __init__(self) -> None:
 inline Sink::Sink() : n(0) {}
 
-// def take(self, xs: list[Int32] | None) -> Int32:
+// def take(self, xs: list[int32] | None) -> int32:
 inline int32_t Sink::take(const std::vector<int32_t>* xs) {
     // if xs is not None:
     if ((xs != nullptr)) {
@@ -50,7 +50,7 @@ inline int32_t Sink::take(const std::vector<int32_t>* xs) {
     return this->n;
 }
 
-// def take_nested(self, xs: list[list[Int32]] | None) -> Int32:
+// def take_nested(self, xs: list[list[int32]] | None) -> int32:
 inline int32_t Sink::take_nested(const std::vector<std::vector<int32_t>>* xs) {
     // if xs is not None:
     if ((xs != nullptr)) {

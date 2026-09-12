@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def f(a: Int32 | None, b: Int32 | None) -> Int32:
+// def f(a: int32 | None, b: int32 | None) -> int32:
 int32_t f(std::optional<int32_t> a, std::optional<int32_t> b) {
     // assert a is not None
     if (!((a.has_value()))) ::tpy::raise_assertion_error();

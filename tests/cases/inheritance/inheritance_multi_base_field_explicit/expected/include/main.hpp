@@ -17,7 +17,7 @@ void main();
 
 // class Counter:
 struct Counter {
-    // value: Int32
+    // value: int32
     int32_t value;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
@@ -44,7 +44,7 @@ inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
 // class Combined(Counter, Tag):
 struct Combined : Counter, Tag {
 
-    // def __init__(self, n: Int32, label: str) -> None:
+    // def __init__(self, n: int32, label: str) -> None:
     Combined() = default;
     explicit Combined(int32_t n, std::string_view label);
 
@@ -59,7 +59,7 @@ inline std::ostream& operator<<(std::ostream& os, const Combined& obj) {
 }
 
 
-// def __init__(self, n: Int32, label: str) -> None:
+// def __init__(self, n: int32, label: str) -> None:
 inline Combined::Combined(int32_t n, std::string_view label) {
     // Counter.value = n  # tpyc: ok
     this->Counter::value = n;

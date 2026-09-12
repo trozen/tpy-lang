@@ -95,18 +95,18 @@ def test_scalar_widening_cost_equal_zero():
 
 
 def test_scalar_widening_cost_int_to_wider_int_uses_bit_gap():
-    # bit gap / 8: Int32 -> Int64 = (64-32)/8 = 4
+    # bit gap / 8: int32 -> int64 = (64-32)/8 = 4
     assert _scalar_widening_cost(INT32, INT64) == 4
-    # Int16 -> Int32 = (32-16)/8 = 2
+    # int16 -> int32 = (32-16)/8 = 2
     assert _scalar_widening_cost(INT16, INT32) == 2
-    # Int8 -> Int64 = 7; max(1, 7) + 0 sign penalty
+    # int8 -> int64 = 7; max(1, 7) + 0 sign penalty
     assert _scalar_widening_cost(INT8, INT64) == 7
 
 
 def test_scalar_widening_cost_cross_sign_adds_penalty():
-    # Int32 -> UInt32: gap 0, sign penalty 1, max(1, 0)+1 = 2.
+    # int32 -> uint32: gap 0, sign penalty 1, max(1, 0)+1 = 2.
     assert _scalar_widening_cost(INT32, UINT32) == 2
-    # Int32 -> UInt64: gap 4, sign penalty 1 -> 5.
+    # int32 -> uint64: gap 4, sign penalty 1 -> 5.
     assert _scalar_widening_cost(INT32, UINT64) == 5
 
 
@@ -130,7 +130,7 @@ def test_scalar_widening_cost_fixed_to_float_is_highest():
 
 
 def test_scalar_widening_cost_float_to_float_widening():
-    # Float32 -> float (f64): generic "1" since both are floats.
+    # float32 -> float (f64): generic "1" since both are floats.
     assert _scalar_widening_cost(FLOAT32, FLOAT) == 1
 
 
@@ -141,7 +141,7 @@ def test_scalar_widening_cost_int_literal_with_default_zero_cost():
 
 def test_scalar_widening_cost_int_literal_uses_default_as_proxy():
     il = IntLiteralType(value=1)
-    # IntLiteral -> Int64 under default=Int32 scores like Int32 -> Int64.
+    # IntLiteral -> int64 under default=int32 scores like int32 -> int64.
     assert _scalar_widening_cost(il, INT64, default_int_type=INT32) == 4
     assert _scalar_widening_cost(il, BIGINT, default_int_type=INT32) == 8
     assert _scalar_widening_cost(il, FLOAT, default_int_type=INT32) == 16
@@ -305,7 +305,7 @@ def test_classify_strict_int_literal_fits_fixed_int():
     assert _classify_strict_match(il, INT32, default_int_type=INT32) == (MatchTier.EXACT_CONCRETE, 0)
     int8_cost = _classify_strict_match(il, INT8, default_int_type=INT32)
     assert int8_cost is not None and int8_cost[0] == MatchTier.EXACT_CONCRETE and int8_cost[1] > 0
-    # Value out of range for Int8 -> not a match.
+    # Value out of range for int8 -> not a match.
     big = IntLiteralType(value=1000)
     assert _classify_strict_match(big, INT8) is None
 
@@ -363,7 +363,7 @@ def test_classify_strict_propagates_widening_cost_from_type_args():
     proto = NominalType("Iterable", (INT64,), is_protocol=True, _module_qname="tpy.Iterable")
     tier, cost = _classify_strict_match(_list(INT32), proto, cls, default_int_type=INT32)
     assert tier == MatchTier.PROTOCOL_EXPLICIT
-    assert cost == 4  # Int32 -> Int64 widening
+    assert cost == 4  # int32 -> int64 widening
 
 
 # --------------------------------------------------------------------------
@@ -406,5 +406,5 @@ def test_overload_ambiguity_error_carries_candidates():
     err = OverloadAmbiguityError((a, b))
     assert err.candidates == (a, b)
     msg = str(err)
-    assert "f(Int32)" in msg
-    assert "f(Int64)" in msg
+    assert "f(int32)" in msg
+    assert "f(int64)" in msg

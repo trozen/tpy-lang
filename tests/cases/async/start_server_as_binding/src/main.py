@@ -3,7 +3,7 @@
 # reading through srv and closing through srv act on the real server, so
 # serve_forever observes the close.
 import asyncio
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 async def handle(reader: Own[asyncio.StreamReader],
@@ -14,7 +14,7 @@ async def handle(reader: Own[asyncio.StreamReader],
     writer.close()
 
 
-async def client(port: Int32, msg: str) -> str:
+async def client(port: int32, msg: str) -> str:
     reader, writer = await asyncio.open_connection("127.0.0.1", port)
     writer.write(msg.encode() + b"\n")
     await writer.drain()

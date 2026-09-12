@@ -16,10 +16,10 @@ void main();
 
 // class H:
 struct H {
-    // t: tuple[Int32, Int32]
+    // t: tuple[int32, int32]
     std::tuple<int32_t, int32_t> t;
 
-    // def __init__(self, d: dict[Int32, Int32]) -> None:
+    // def __init__(self, d: dict[int32, int32]) -> None:
     H() = default;
     explicit H(const ::tpy::ordered_map<int32_t, int32_t>& d);
     static constexpr std::string_view __tpy_class_name__ = "__main__.H";
@@ -32,14 +32,14 @@ inline std::ostream& operator<<(std::ostream& os, const H& obj) {
 
 // class N:
 struct N {
-    // t: tuple[Int32, tuple[Int32, str]]
+    // t: tuple[int32, tuple[int32, str]]
     std::tuple<int32_t, std::tuple<int32_t, std::string>> t;
 
-    // def __init__(self, d: dict[Int32, Int32]) -> None:
+    // def __init__(self, d: dict[int32, int32]) -> None:
     N() = default;
     explicit N(const ::tpy::ordered_map<int32_t, int32_t>& d);
 
-    // def inner(self) -> Int32:
+    // def inner(self) -> int32:
     int32_t inner() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.N";
 };
@@ -50,7 +50,7 @@ inline std::ostream& operator<<(std::ostream& os, const N& obj) {
 }
 
 
-// def __init__(self, d: dict[Int32, Int32]) -> None:
+// def __init__(self, d: dict[int32, int32]) -> None:
 inline H::H(const ::tpy::ordered_map<int32_t, int32_t>& d) : t(std::tuple<int32_t, int32_t>{::tpy::builtin_sum<int32_t>([&d]() {
     auto& __src = d;
     return ::tpy::make_generator<int32_t>(
@@ -64,7 +64,7 @@ inline H::H(const ::tpy::ordered_map<int32_t, int32_t>& d) : t(std::tuple<int32_
     );
 }()), 1}) {}
 
-// def __init__(self, d: dict[Int32, Int32]) -> None:
+// def __init__(self, d: dict[int32, int32]) -> None:
 inline N::N(const ::tpy::ordered_map<int32_t, int32_t>& d) : t(std::tuple<int32_t, std::tuple<int32_t, std::string>>{1, std::tuple<int32_t, std::string>{::tpy::builtin_sum<int32_t>([&d]() {
     auto& __src = d;
     return ::tpy::make_generator<int32_t>(
@@ -78,7 +78,7 @@ inline N::N(const ::tpy::ordered_map<int32_t, int32_t>& d) : t(std::tuple<int32_
     );
 }()), "a"}}) {}
 
-// def inner(self) -> Int32:
+// def inner(self) -> int32:
 inline int32_t N::inner() const {
     // a, b = self.t
     auto __tup_1 = this->t;

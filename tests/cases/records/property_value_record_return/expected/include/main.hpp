@@ -16,9 +16,9 @@ void main();
 
 // class Coord(ValueType):
 struct Coord {
-    // x: Int32
+    // x: int32
     int32_t x;
-    // y: Int32
+    // y: int32
     int32_t y;
 
     // def __init__(self, x: int, y: int) -> None:
@@ -47,9 +47,9 @@ namespace tpyapp::main {
 
 // class Track:
 struct Track {
-    // _cx: Int32
+    // _cx: int32
     int32_t _cx;
-    // _cy: Int32
+    // _cy: int32
     int32_t _cy;
     // _has_goal: bool
     bool _has_goal;

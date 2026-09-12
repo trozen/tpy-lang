@@ -3,9 +3,9 @@
 
 namespace tpyapp::main {
 
-// x: Int32 = -2147483648  # INT32_MIN
+// x: int32 = -2147483648  # INT32_MIN
 int32_t x{};
-// y: Int32 = -x           # -INT32_MIN overflows, should panic
+// y: int32 = -x           # -INT32_MIN overflows, should panic
 int32_t y{};
 
 void __tpy_init() {
@@ -13,9 +13,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // x: Int32 = -2147483648  # INT32_MIN
+    // x: int32 = -2147483648  # INT32_MIN
     x = -2147483648;
-    // y: Int32 = -x           # -INT32_MIN overflows, should panic
+    // y: int32 = -x           # -INT32_MIN overflows, should panic
     y = ::tpy::neg_check<int32_t>(x);
     // print(y)
     std::cout << y << "\n";

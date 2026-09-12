@@ -1,10 +1,10 @@
-# Char(str) panics when string length != 1.
-from tpy import Char
+# char(str) panics when string length != 1.
+from tpy import char
 
 
 def main():
     s = "hello"
-    c = Char(s)
+    c = char(s)
     print(c)
 
 

@@ -43,10 +43,10 @@ void main();
 
 // class Node:
 struct Node {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Node() = default;
     explicit Node(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Node";
@@ -80,10 +80,10 @@ inline std::ostream& operator<<(std::ostream& os, const Boom& obj) {
 // # -- generator METHOD: the frame carries `__self` too, same field machinery.
 // class Src:
 struct Src {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Src() = default;
     explicit Src(int32_t n);
 
@@ -359,13 +359,13 @@ inline __gen_Src_gen Src::gen() const {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Node::Node(int32_t v) : v(v) {}
 
 // def __init__(self, msg: str) -> None:
 inline Boom::Boom(std::string_view msg) : msg(msg) {}
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Src::Src(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

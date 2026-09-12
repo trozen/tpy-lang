@@ -34,8 +34,8 @@ def main() -> None:
     # _analyze_builtin_function_overloads, a different call path than pick().
     # Both paths now call _maybe_coerce_empty_list_to_protocol post-resolution.
     # The empty-list element type defaults to the configured default_int_type
-    # (Int32) via the overload-ranking cost model, so sum([]) resolves to the
-    # Int32 overload and returns 0 -- matching CPython. This is now principled
+    # (int32) via the overload-ranking cost model, so sum([]) resolves to the
+    # int32 overload and returns 0 -- matching CPython. This is now principled
     # (cost-based), not declaration-order-dependent.
     print(sum([]))
 

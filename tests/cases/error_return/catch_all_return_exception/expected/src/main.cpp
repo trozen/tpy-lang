@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // @error_return(ParseError)
-// def parse_digit(s: str) -> Int32:
+// def parse_digit(s: str) -> int32:
 std::expected<int32_t, ParseError> parse_digit(std::string_view s) {
     // if s == "1":
     if ((s == "1")) {
@@ -17,7 +17,7 @@ std::expected<int32_t, ParseError> parse_digit(std::string_view s) {
 }
 
 // @error_return(NotFound)
-// def lookup(items: list[Int32], target: Int32) -> Int32:
+// def lookup(items: list[int32], target: int32) -> int32:
 std::expected<int32_t, NotFound> lookup(const std::vector<int32_t>& items, int32_t target) {
     // for i in range(len(items)):
     int32_t __stop_0 = ::tpy::__len__(items);
@@ -34,7 +34,7 @@ std::expected<int32_t, NotFound> lookup(const std::vector<int32_t>& items, int32
 
 // def main() -> None:
 void main() {
-    // items: list[Int32] = [10, 20]
+    // items: list[int32] = [10, 20]
     std::vector<int32_t> items = {10, 20};
     // # Success: both calls succeed
     // try:

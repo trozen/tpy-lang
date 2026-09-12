@@ -1,1 +1,1 @@
-main.py:5: error: 'is' / 'is not' can only compare Optional/Ptr/union types with None, got None | Int32 | str and IntLiteral(0)
+main.py:5: error: 'is' / 'is not' can only compare Optional/Ptr/union types with None, got None | int32 | str and IntLiteral(0)

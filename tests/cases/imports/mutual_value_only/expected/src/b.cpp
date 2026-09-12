@@ -5,7 +5,7 @@
 namespace tpyapp::b {
 
 
-// def H() -> Int32:
+// def H() -> int32:
 int32_t H() {
     // return K()
     return ::tpyapp::a::K();

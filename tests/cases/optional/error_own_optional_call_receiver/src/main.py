@@ -2,13 +2,13 @@
 # deref (which takes a raw pointer) has no row for it. Concretely,
 # `make_maybe(True).x` accesses a field straight off the call's optional
 # return; TPy rejects that access today.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 

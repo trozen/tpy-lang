@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def scalars(*xs: Int32) -> Iterator[Int32]:  # tpyc: ok
+// def scalars(*xs: int32) -> Iterator[int32]:  # tpyc: ok
 std::expected<int32_t, ::tpy::StopIteration> __gen_scalars::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -42,12 +42,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_scalars::__next__() {
 }
 
 
-// def scalars(*xs: Int32) -> Iterator[Int32]:  # tpyc: ok
+// def scalars(*xs: int32) -> Iterator[int32]:  # tpyc: ok
 __gen_scalars scalars(::tpy::varargs<const int32_t> xs) {
     return __gen_scalars(xs);
 }
 
-// def strings(*ss: str) -> Iterator[Int32]:  # tpyc: ok
+// def strings(*ss: str) -> Iterator[int32]:  # tpyc: ok
 std::expected<int32_t, ::tpy::StopIteration> __gen_strings::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -85,12 +85,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_strings::__next__() {
 }
 
 
-// def strings(*ss: str) -> Iterator[Int32]:  # tpyc: ok
+// def strings(*ss: str) -> Iterator[int32]:  # tpyc: ok
 __gen_strings strings(::tpy::varargs<const std::string> ss) {
     return __gen_strings(ss);
 }
 
-// def bump(*ps: Point) -> Iterator[Int32]:  # tpyc: ok
+// def bump(*ps: Point) -> Iterator[int32]:  # tpyc: ok
 std::expected<int32_t, ::tpy::StopIteration> __gen_bump::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -126,12 +126,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_bump::__next__() {
 }
 
 
-// def bump(*ps: Point) -> Iterator[Int32]:  # tpyc: ok
+// def bump(*ps: Point) -> Iterator[int32]:  # tpyc: ok
 __gen_bump bump(::tpy::varargs<Point> ps) {
     return __gen_bump(ps);
 }
 
-// def read_pack(*ps: Point) -> Iterator[Int32]:  # tpyc: ok
+// def read_pack(*ps: Point) -> Iterator[int32]:  # tpyc: ok
 std::expected<int32_t, ::tpy::StopIteration> __gen_read_pack::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -165,12 +165,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_read_pack::__next__() {
 }
 
 
-// def read_pack(*ps: Point) -> Iterator[Int32]:  # tpyc: ok
+// def read_pack(*ps: Point) -> Iterator[int32]:  # tpyc: ok
 __gen_read_pack read_pack(::tpy::varargs<const Point> ps) {
     return __gen_read_pack(ps);
 }
 
-// def total_of(*xs: Int32) -> Int32:
+// def total_of(*xs: int32) -> int32:
 int32_t total_of(::tpy::varargs<const int32_t> xs) {
     // n = 0
     int32_t n = 0;
@@ -187,7 +187,7 @@ int32_t total_of(::tpy::varargs<const int32_t> xs) {
     return n;
 }
 
-// def forward(*xs: Int32) -> Iterator[Int32]:  # tpyc: ok
+// def forward(*xs: int32) -> Iterator[int32]:  # tpyc: ok
 std::expected<int32_t, ::tpy::StopIteration> __gen_forward::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -210,12 +210,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_forward::__next__() {
 }
 
 
-// def forward(*xs: Int32) -> Iterator[Int32]:  # tpyc: ok
+// def forward(*xs: int32) -> Iterator[int32]:  # tpyc: ok
 __gen_forward forward(::tpy::varargs<const int32_t> xs) {
     return __gen_forward(xs);
 }
 
-// def indexed(*xs: Int32) -> Iterator[Int32]:  # tpyc: ok
+// def indexed(*xs: int32) -> Iterator[int32]:  # tpyc: ok
 std::expected<int32_t, ::tpy::StopIteration> __gen_indexed::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -251,12 +251,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_indexed::__next__() {
 }
 
 
-// def indexed(*xs: Int32) -> Iterator[Int32]:  # tpyc: ok
+// def indexed(*xs: int32) -> Iterator[int32]:  # tpyc: ok
 __gen_indexed indexed(::tpy::varargs<const int32_t> xs) {
     return __gen_indexed(xs);
 }
 
-// def in_finally(*xs: list[Int32]) -> Iterator[Int32]:  # tpyc: ok
+// def in_finally(*xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
 std::expected<int32_t, ::tpy::StopIteration> __gen_in_finally::__next__() {
     try {
     while (true) switch (__state) {
@@ -327,12 +327,12 @@ void __gen_in_finally::__finally_0() {
     std::cout << "tryfinally: cleanup" << "\n";
 }
 
-// def in_finally(*xs: list[Int32]) -> Iterator[Int32]:  # tpyc: ok
+// def in_finally(*xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
 __gen_in_finally in_finally(::tpy::varargs<const std::vector<int32_t>> xs) {
     return __gen_in_finally(xs);
 }
 
-// def in_with(*xs: list[Int32]) -> Iterator[Int32]:  # tpyc: ok
+// def in_with(*xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
 std::expected<int32_t, ::tpy::StopIteration> __gen_in_with::__next__() {
     try {
     while (true) switch (__state) {
@@ -413,12 +413,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_in_with::__next__() {
 }
 
 
-// def in_with(*xs: list[Int32]) -> Iterator[Int32]:  # tpyc: ok
+// def in_with(*xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
 __gen_in_with in_with(::tpy::varargs<const std::vector<int32_t>> xs) {
     return __gen_in_with(xs);
 }
 
-// def readonly_param(ps: readonly[list[Point]]) -> Iterator[Int32]:  # tpyc: ok
+// def readonly_param(ps: readonly[list[Point]]) -> Iterator[int32]:  # tpyc: ok
 std::expected<int32_t, ::tpy::StopIteration> __gen_readonly_param::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -452,7 +452,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_readonly_param::__next__() {
 }
 
 
-// def readonly_param(ps: readonly[list[Point]]) -> Iterator[Int32]:  # tpyc: ok
+// def readonly_param(ps: readonly[list[Point]]) -> Iterator[int32]:  # tpyc: ok
 __gen_readonly_param readonly_param(const std::vector<Point>& ps) {
     return __gen_readonly_param(ps);
 }
@@ -510,7 +510,7 @@ __gen_points points(const std::vector<Point>& ps) {
 // # Consumer whose two params are the pack's operands: a structural mutation
 // # through the loop var must be recorded against BOTH of them, not just the
 // # last operand of the slot.
-// def grow_both(p: list[list[Int32]], q: list[list[Int32]]) -> None:  # tpyc: ok
+// def grow_both(p: list[list[int32]], q: list[list[int32]]) -> None:  # tpyc: ok
 void grow_both(std::vector<std::vector<int32_t>>& p, std::vector<std::vector<int32_t>>& q) {
     // for v in each_pack(p, q):
     {
@@ -555,10 +555,10 @@ void main() {
         std::cout << "str:" << " " << v << "\n";
         }
     }
-    // # Annotated: a bare list literal infers Array[Int32, N], not list.
-    // la: list[Int32] = [1, 2]
+    // # Annotated: a bare list literal infers Array[int32, N], not list.
+    // la: list[int32] = [1, 2]
     std::vector<int32_t> la = {1, 2};
-    // lb: list[Int32] = [3]
+    // lb: list[int32] = [3]
     std::vector<int32_t> lb = {3};
     // for v in merge_shape(la, lb):
     {
@@ -617,9 +617,9 @@ void main() {
     // # Own lists per suspending section: each grows its second element between
     // # two pulls, so a frame that COPIED the element would print the stale
     // # length on the second pull.
-    // ma: list[Int32] = [1]
+    // ma: list[int32] = [1]
     std::vector<int32_t> ma = {1};
-    // mb: list[Int32] = [3]
+    // mb: list[int32] = [3]
     std::vector<int32_t> mb = {3};
     // coll = Collector(10)
     Collector coll = Collector(10);
@@ -664,9 +664,9 @@ void main() {
         std::cout << "subscript:" << " " << v << "\n";
         }
     }
-    // fa: list[Int32] = [1]
+    // fa: list[int32] = [1]
     std::vector<int32_t> fa = {1};
-    // fb: list[Int32] = [3]
+    // fb: list[int32] = [3]
     std::vector<int32_t> fb = {3};
     // for v in in_finally(fa, fb):
     {
@@ -683,9 +683,9 @@ void main() {
         fb.push_back(0);
         }
     }
-    // wa: list[Int32] = [1]
+    // wa: list[int32] = [1]
     std::vector<int32_t> wa = {1};
-    // wb: list[Int32] = [3]
+    // wb: list[int32] = [3]
     std::vector<int32_t> wb = {3};
     // for v in in_with(wa, wb):
     {
@@ -785,9 +785,9 @@ void main() {
         // # print 7 again.
         }
     }
-    // ga: list[list[Int32]] = [[1]]
+    // ga: list[list[int32]] = [[1]]
     std::vector<std::vector<int32_t>> ga = {{1}};
-    // gb: list[list[Int32]] = [[2]]
+    // gb: list[list[int32]] = [[2]]
     std::vector<std::vector<int32_t>> gb = {{2}};
     // ea = ga[0]
     std::vector<int32_t>& ea = ::tpy::__getitem__(ga, 0);
@@ -811,9 +811,9 @@ void main() {
     std::cout << "multi-root swapped:" << " " << ::tpy::__len__(ga) << " " << ::tpy::__len__(gb) << "\n";
     // gr = Grower(7)
     Grower gr = Grower(7);
-    // ha: list[list[Int32]] = [[1]]
+    // ha: list[list[int32]] = [[1]]
     std::vector<std::vector<int32_t>> ha = {{1}};
-    // hb: list[list[Int32]] = [[2]]
+    // hb: list[list[int32]] = [[2]]
     std::vector<std::vector<int32_t>> hb = {{2}};
     // ha_e = ha[0]
     std::vector<int32_t>& ha_e = ::tpy::__getitem__(ha, 0);
@@ -829,7 +829,7 @@ void main() {
     std::cout << "method-multi-root:" << " " << ::tpy::__len__(ha) << " " << ::tpy::__len__(hb) << "\n";
 }
 
-// def sizes(self, *xs: list[Int32]) -> Iterator[Int32]:  # tpyc: ok
+// def sizes(self, *xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
 std::expected<int32_t, ::tpy::StopIteration> __gen_Collector_sizes::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -863,7 +863,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Collector_sizes::__next__() {
 }
 
 
-// def each(self) -> Iterator[Int32]:  # tpyc: ok
+// def each(self) -> Iterator[int32]:  # tpyc: ok
 std::expected<int32_t, ::tpy::StopIteration> __gen_Album_each::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {

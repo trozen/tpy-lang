@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def with_wildcard(x: Optional[Int32], flag: bool) -> str:
+// def with_wildcard(x: Optional[int32], flag: bool) -> str:
 std::string with_wildcard(std::optional<int32_t> x, bool flag) {
     // match x:
     auto& __match_subject_1 = x;
@@ -26,7 +26,7 @@ std::string with_wildcard(std::optional<int32_t> x, bool flag) {
     ::std::unreachable();
 }
 
-// def with_capture(x: Optional[Int32], flag: bool) -> str:
+// def with_capture(x: Optional[int32], flag: bool) -> str:
 std::string with_capture(std::optional<int32_t> x, bool flag) {
     // match x:
     auto& __match_subject_1 = x;
@@ -60,17 +60,17 @@ void main() {
     std::cout << with_wildcard(std::nullopt, true) << "\n";
     // print(with_wildcard(None, False))
     std::cout << with_wildcard(std::nullopt, false) << "\n";
-    // print(with_wildcard(Int32(5), True))
+    // print(with_wildcard(int32(5), True))
     std::cout << with_wildcard(5, true) << "\n";
-    // print(with_wildcard(Int32(5), False))
+    // print(with_wildcard(int32(5), False))
     std::cout << with_wildcard(5, false) << "\n";
     // print(with_capture(None, True))
     std::cout << with_capture(std::nullopt, true) << "\n";
     // print(with_capture(None, False))
     std::cout << with_capture(std::nullopt, false) << "\n";
-    // print(with_capture(Int32(5), True))
+    // print(with_capture(int32(5), True))
     std::cout << with_capture(5, true) << "\n";
-    // print(with_capture(Int32(5), False))
+    // print(with_capture(int32(5), False))
     std::cout << with_capture(5, false) << "\n";
 }
 

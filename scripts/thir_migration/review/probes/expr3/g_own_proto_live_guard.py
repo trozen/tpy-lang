@@ -1,5 +1,5 @@
 from typing import Iterable
-from tpy import Int32, Own
+from tpy import int32, Own
 def first[T](items: Own[Iterable[T]]) -> T:
     for x in items:
         return x

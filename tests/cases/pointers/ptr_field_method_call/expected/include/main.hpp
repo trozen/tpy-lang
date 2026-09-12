@@ -23,7 +23,7 @@ struct Wrapper {
     Wrapper() = default;
     explicit Wrapper(::tpy::UninitHeapStorage<T>* storage) : _storage(storage) {}
 
-    // def load_at(self, index: UInt32) -> T:
+    // def load_at(self, index: uint32) -> T:
     ::tpy::val_or_cref_t<T> load_at(uint32_t index) const {
         // return self._storage.load(index)
         return ::tpy::deref_check(this->_storage).load(index);

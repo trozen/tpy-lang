@@ -1,7 +1,7 @@
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
-def walk() -> Iterator[Int32]:
+def walk() -> Iterator[int32]:
     yield 1
     yield 2

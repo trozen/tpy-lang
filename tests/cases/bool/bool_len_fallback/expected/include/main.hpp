@@ -15,14 +15,14 @@ void main();
 
 // class Stack:
 struct Stack {
-    // size: Int32
+    // size: int32
     int32_t size;
 
-    // def __init__(self, size: Int32) -> None:
+    // def __init__(self, size: int32) -> None:
     Stack() = default;
     explicit Stack(int32_t size);
 
-    // def __len__(self) -> Int32:
+    // def __len__(self) -> int32:
     int32_t __len__() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Stack";
 };
@@ -33,10 +33,10 @@ inline std::ostream& operator<<(std::ostream& os, const Stack& obj) {
 }
 
 
-// def __init__(self, size: Int32) -> None:
+// def __init__(self, size: int32) -> None:
 inline Stack::Stack(int32_t size) : size(size) {}
 
-// def __len__(self) -> Int32:
+// def __len__(self) -> int32:
 inline int32_t Stack::__len__() const {
     // return self.size
     return this->size;

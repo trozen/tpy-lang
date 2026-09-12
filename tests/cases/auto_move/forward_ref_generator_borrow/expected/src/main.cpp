@@ -25,9 +25,9 @@ void main() {
     }
 }
 
-// def drop(xs: Own[list[Int32]]) -> Int32:
+// def drop(xs: Own[list[int32]]) -> int32:
 int32_t drop(std::vector<int32_t>&& xs) {
-    // store: list[list[Int32]] = []
+    // store: list[list[int32]] = []
     std::vector<std::vector<int32_t>> store = std::vector<std::vector<int32_t>>{};
     // store.append(xs)
     store.push_back(std::move(xs));

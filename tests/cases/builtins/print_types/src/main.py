@@ -1,5 +1,5 @@
 from __future__ import annotations
-from tpy import Int32, Char, Array
+from tpy import int32, char, Array
 from tplib import ArrayList
 
 # None literal
@@ -7,7 +7,7 @@ print(None)
 
 # Numeric types
 print(42)
-print(Int32(7))
+print(int32(7))
 print(3.14)
 print(True)
 print(False)
@@ -17,18 +17,18 @@ print("hello")
 s = "world"
 print(s)
 
-# Char
-c: Char = "A"
+# char
+c: char = "A"
 print(c)
 
 # Containers
 items: list[int] = [1, 2, 3]
 print(items)
 
-arr: Array[Int32, 3] = [10, 20, 30]
+arr: Array[int32, 3] = [10, 20, 30]
 print(arr)
 
-al = ArrayList[Int32, 4]()
+al = ArrayList[int32, 4]()
 al.append(5)
 al.append(6)
 print(al)
@@ -48,7 +48,7 @@ print_range()
 print("x:", 42, True, 3.14)
 
 # Optional values
-x: Int32 | None = Int32(10)
+x: int32 | None = int32(10)
 print(x)
 x = None
 print(x)

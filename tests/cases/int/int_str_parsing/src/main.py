@@ -1,5 +1,5 @@
 # Test int(str) conversion function
-from tpy import Int32
+from tpy import int32
 
 # Basic parsing
 a: int = int("42")

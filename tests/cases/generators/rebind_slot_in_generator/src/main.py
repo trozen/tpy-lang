@@ -3,21 +3,21 @@
 # there. Covers the while and for lambda shapes. The cross-scope shape (declared
 # before the loop, rebound inside) has no sound home and is rejected instead --
 # see error_gen_rebind_slot_crosses_lambda.
-from tpy import Int32
+from tpy import int32
 from typing import Iterator
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
     def bump(self) -> None:
         self.x += 1
 
 
-def decl_inside_while(n: Int32) -> Iterator[Int32]:
+def decl_inside_while(n: int32) -> Iterator[int32]:
     i = 0
     while i < n:
         p = Point(0)
@@ -26,7 +26,7 @@ def decl_inside_while(n: Int32) -> Iterator[Int32]:
         i += 1
 
 
-def decl_inside_for(xs: list[Int32]) -> Iterator[Int32]:
+def decl_inside_for(xs: list[int32]) -> Iterator[int32]:
     for v in xs:
         p = Point(0)
         p = Point(v)
@@ -39,7 +39,7 @@ def decl_inside_for(xs: list[Int32]) -> Iterator[Int32]:
 # setting). The pinned output below is the PEEPHOLE's, which is correct today;
 # deleting the peephole makes it the wrong value the warning already announces
 # (TODO.md's peephole entry, bin (e)).
-def alias_holds_across_rebind(n: Int32) -> Iterator[Int32]:
+def alias_holds_across_rebind(n: int32) -> Iterator[int32]:
     i = 0
     while i < n:
         p = Point(i)

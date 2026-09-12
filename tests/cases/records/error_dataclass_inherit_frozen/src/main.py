@@ -1,14 +1,14 @@
 # Error: frozen dataclass inheriting from non-frozen (or vice versa)
 from dataclasses import dataclass
-from tpy import Int32
+from tpy import int32
 
 @dataclass
 class Base:
-    x: Int32
+    x: int32
 
 @dataclass(frozen=True)
 class Bad(Base):  # tpyc: error(/Cannot inherit frozen.*from non-frozen/)
-    y: Int32
+    y: int32
 
 def main() -> None:
     pass

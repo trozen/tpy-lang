@@ -2,7 +2,7 @@
 # class: Holder[T] with a Box[Tree[T]] field. Pins the instance as a Box
 # element and as a generic-class field (storage form), constructed and read
 # back through the box.
-from tpy import Int32, Own
+from tpy import int32, Own
 from tplib.box import Box
 
 type Tree[T] = T | list[Tree[T]]
@@ -15,7 +15,7 @@ class Holder[T]:
         self.data = data
 
 
-def leaf_count[T](t: Tree[T]) -> Int32:
+def leaf_count[T](t: Tree[T]) -> int32:
     match t:
         case list() as branches:
             total = 0

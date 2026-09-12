@@ -6,17 +6,17 @@ namespace tpyapp::main {
 
 // def test_list_aug_assign() -> None:
 void test_list_aug_assign() {
-    // items: list[Point] = [Point(Int32(1)), Point(Int32(2))]
+    // items: list[Point] = [Point(int32(1)), Point(int32(2))]
     std::vector<Point> items = {Point(1), Point(2)};
-    // v = items[Int32(0)]
+    // v = items[int32(0)]
     Point& v = ::tpy::__getitem__(items, 0);
     // # Mutate through the borrow before the aug-assign: 50 proves `v` aliases
     // # items[0]; a silent copy would leave it at 1.
     // v.x = 50
     v.x = 50;
-    // print(items[Int32(0)].x)
+    // print(items[int32(0)].x)
     std::cout << ::tpy::__getitem__(items, 0).x << "\n";
-    // items += [Point(Int32(3))]  # tpyc: warning(/Mutation of 'items'.*'\+='/)
+    // items += [Point(int32(3))]  # tpyc: warning(/Mutation of 'items'.*'\+='/)
     ::tpy::list_extend(items, std::vector<Point>{Point(3)});
     // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
@@ -24,15 +24,15 @@ void test_list_aug_assign() {
 
 // def test_list_method_still_warns() -> None:
 void test_list_method_still_warns() {
-    // items: list[Point] = [Point(Int32(1))]
+    // items: list[Point] = [Point(int32(1))]
     std::vector<Point> items = {Point(1)};
-    // v = items[Int32(0)]
+    // v = items[int32(0)]
     Point& v = ::tpy::__getitem__(items, 0);
     // v.x = 60
     v.x = 60;
-    // print(items[Int32(0)].x)
+    // print(items[int32(0)].x)
     std::cout << ::tpy::__getitem__(items, 0).x << "\n";
-    // items.append(Point(Int32(2)))  # tpyc: warning(/Mutation of 'items'.*'append'/)
+    // items.append(Point(int32(2)))  # tpyc: warning(/Mutation of 'items'.*'append'/)
     items.push_back(Point(2));
     // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
@@ -40,11 +40,11 @@ void test_list_method_still_warns() {
 
 // def test_value_type_no_warn() -> None:
 void test_value_type_no_warn() {
-    // items: list[Int32] = [Int32(1), Int32(2)]
+    // items: list[int32] = [int32(1), int32(2)]
     std::vector<int32_t> items = {1, 2};
-    // v = items[Int32(0)]
+    // v = items[int32(0)]
     int32_t v = ::tpy::__getitem__(items, 0);
-    // items += [Int32(3)]  # tpyc: ok
+    // items += [int32(3)]  # tpyc: ok
     ::tpy::list_extend(items, std::vector<int32_t>{3});
     // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
@@ -52,7 +52,7 @@ void test_value_type_no_warn() {
 
 // def test_iter_borrow_aug_assign() -> None:
 void test_iter_borrow_aug_assign() {
-    // items: list[Point] = [Point(Int32(1)), Point(Int32(2))]
+    // items: list[Point] = [Point(int32(1)), Point(int32(2))]
     std::vector<Point> items = {Point(1), Point(2)};
     // for p in items:
     auto& __obj_0 = items;
@@ -60,7 +60,7 @@ void test_iter_borrow_aug_assign() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
-        // items += [Point(Int32(3))]  # tpyc: warning(/Mutation of 'items'.*'\+=' invalidates the iterator/)
+        // items += [Point(int32(3))]  # tpyc: warning(/Mutation of 'items'.*'\+=' invalidates the iterator/)
         ::tpy::list_extend(items, std::vector<Point>{Point(3)});
         // break
         break;
@@ -70,13 +70,13 @@ void test_iter_borrow_aug_assign() {
 // def test_reassign_borrower_clears() -> None:
 void test_reassign_borrower_clears() {
     std::optional<Point> __slot_1;
-    // items: list[Point] = [Point(Int32(1))]
+    // items: list[Point] = [Point(int32(1))]
     std::vector<Point> items = {Point(1)};
-    // v = items[Int32(0)]
+    // v = items[int32(0)]
     Point* v = &(::tpy::__getitem__(items, 0));
-    // v = Point(Int32(9))
+    // v = Point(int32(9))
     v = &*(__slot_1 = Point(9));
-    // items += [Point(Int32(2))]  # tpyc: ok
+    // items += [Point(int32(2))]  # tpyc: ok
     ::tpy::list_extend(items, std::vector<Point>{Point(2)});
     // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";

@@ -13,7 +13,7 @@ template<::tpystd::typing::Sized T_items>
 int32_t count(const T_items& items);
 void main();
 
-// def count(items: typing.Sized) -> Int32:
+// def count(items: typing.Sized) -> int32:
 template<::tpystd::typing::Sized T_items>
 int32_t count(const T_items& items) {
     // return len(items)

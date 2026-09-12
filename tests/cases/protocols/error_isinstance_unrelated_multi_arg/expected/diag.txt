@@ -1,1 +1,1 @@
-main.py:14: error: isinstance() narrowing from 'Iterable[Int32]' to protocol 'Sequence' requires 'Sequence' to inherit from 'Iterable' with a directly-derivable type argument mapping; otherwise the C++ concept would be emitted with the wrong template-arg count
+main.py:14: error: isinstance() narrowing from 'Iterable[int32]' to protocol 'Sequence' requires 'Sequence' to inherit from 'Iterable' with a directly-derivable type argument mapping; otherwise the C++ concept would be emitted with the wrong template-arg count

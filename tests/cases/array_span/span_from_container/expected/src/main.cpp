@@ -6,17 +6,17 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // lst: list[Int32] = [10, 20, 30]
+    // lst: list[int32] = [10, 20, 30]
     std::vector<int32_t> lst = {10, 20, 30};
-    // ros: Span[readonly[Int32]] = Span[readonly[Int32]](lst)
+    // ros: Span[readonly[int32]] = Span[readonly[int32]](lst)
     std::span<const int32_t> ros = std::span<const int32_t>(lst);
     // print(len(ros))
     std::cout << ::tpy::__len__(ros) << "\n";
     // print(ros[0])
     std::cout << ::tpy::__getitem__(ros, 0) << "\n";
-    // arr: Array[Int32, 3] = [1, 2, 3]
+    // arr: Array[int32, 3] = [1, 2, 3]
     std::array<int32_t, 3> arr = {1, 2, 3};
-    // s: Span[Int32] = Span[Int32](arr)
+    // s: Span[int32] = Span[int32](arr)
     std::span<int32_t> s = std::span<int32_t>(arr);
     // print(len(s))
     std::cout << ::tpy::__len__(s) << "\n";
@@ -24,9 +24,9 @@ void main() {
     ::tpy::__setitem__(s, 0, 99);
     // print(arr[0])
     std::cout << ::tpy::__getitem__(arr, 0) << "\n";
-    // lst2: list[Int32] = [5, 6]
+    // lst2: list[int32] = [5, 6]
     std::vector<int32_t> lst2 = {5, 6};
-    // ros2: Span[readonly[Int32]] = Span[readonly[Int32]](lst2)
+    // ros2: Span[readonly[int32]] = Span[readonly[int32]](lst2)
     std::span<const int32_t> ros2 = std::span<const int32_t>(lst2);
     // print(len(ros2))
     std::cout << ::tpy::__len__(ros2) << "\n";

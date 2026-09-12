@@ -1,7 +1,7 @@
 # Parenthesized (nested) or-pattern groups on a union subject: the group is
 # flattened at parse time, so the arm behaves exactly like the flat spelling.
 from dataclasses import dataclass
-from tpy import Int32
+from tpy import int32
 
 
 @dataclass
@@ -28,7 +28,7 @@ def known(a: Dog | Cat | Bird) -> str:
     return "other"
 
 
-def tag(a: Dog | Cat | Bird, t: str) -> Int32:
+def tag(a: Dog | Cat | Bird, t: str) -> int32:
     match a:
         # Binding alternatives duplicate the arm body per member; `ts` must
         # ALIAS the matched member's list, so this append is visible to the

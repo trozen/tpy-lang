@@ -6,12 +6,12 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // a = ArrayList[Int32, 16]()
+    // a = ArrayList[int32, 16]()
     ::tpystd::tplib::array_list::ArrayList<int32_t, 16> a = ::tpystd::tplib::array_list::ArrayList<int32_t, 16>();
     // a.append(1)
     a.append(1);
     // # extend from list (Iterable, not Spannable)
-    // items: list[Int32] = [10, 20, 30]
+    // items: list[int32] = [10, 20, 30]
     std::vector<int32_t> items = {10, 20, 30};
     // a.extend(items)
     a.extend(items);

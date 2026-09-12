@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def each(xs: list[Int32]) -> Iterator[list[Int32]]:
+// def each(xs: list[int32]) -> Iterator[list[int32]]:
 std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_each::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -27,7 +27,7 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
 }
 
 
-// def each(xs: list[Int32]) -> Iterator[list[Int32]]:
+// def each(xs: list[int32]) -> Iterator[list[int32]]:
 __gen_each each(std::vector<int32_t>& xs) {
     return __gen_each(xs);
 }
@@ -60,7 +60,7 @@ __gen_rep rep(P& b) {
     return __gen_rep(b);
 }
 
-// def pairs(d: dict[str, Int32]) -> Iterator[dict[str, Int32]]:
+// def pairs(d: dict[str, int32]) -> Iterator[dict[str, int32]]:
 std::expected<::tpy::val_or_ref<::tpy::ordered_map<std::string, int32_t>>, ::tpy::StopIteration> __gen_pairs::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -83,12 +83,12 @@ std::expected<::tpy::val_or_ref<::tpy::ordered_map<std::string, int32_t>>, ::tpy
 }
 
 
-// def pairs(d: dict[str, Int32]) -> Iterator[dict[str, Int32]]:
+// def pairs(d: dict[str, int32]) -> Iterator[dict[str, int32]]:
 __gen_pairs pairs(::tpy::ordered_map<std::string, int32_t>& d) {
     return __gen_pairs(d);
 }
 
-// async def step(n: Int32) -> Int32:
+// async def step(n: int32) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_step::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
@@ -104,12 +104,12 @@ __gen_pairs pairs(::tpy::ordered_map<std::string, int32_t>& d) {
 }
 
 
-// async def step(n: Int32) -> Int32:
+// async def step(n: int32) -> int32:
 __coro_step step(int32_t n) {
     return __coro_step(n);
 }
 
-// async def late() -> Int32:
+// async def late() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_late::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -138,12 +138,12 @@ __coro_step step(int32_t n) {
 }
 
 
-// async def late() -> Int32:
+// async def late() -> int32:
 __coro_late late() {
     return __coro_late();
 }
 
-// def late_gen() -> Iterator[Int32]:
+// def late_gen() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_late_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -168,7 +168,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_late_gen::__next__() {
 }
 
 
-// def late_gen() -> Iterator[Int32]:
+// def late_gen() -> Iterator[int32]:
 __gen_late_gen late_gen() {
     return __gen_late_gen();
 }

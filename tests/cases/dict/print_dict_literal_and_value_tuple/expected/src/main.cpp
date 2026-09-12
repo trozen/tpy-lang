@@ -8,9 +8,9 @@ namespace tpyapp::main {
 void main() {
     // print({"a": 1})
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, int32_t>({{"a", 1}})) << "\n";
-    // x: Int32 = 1
+    // x: int32 = 1
     int32_t x = 1;
-    // y: Int32 = 2
+    // y: int32 = 2
     int32_t y = 2;
     // print((x, y))
     std::cout << ::tpy::TuplePrinter(std::tuple<int32_t, int32_t>{x, y}) << "\n";

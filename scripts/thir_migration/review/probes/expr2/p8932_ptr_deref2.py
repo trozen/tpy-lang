@@ -1,23 +1,23 @@
-from tpy import Int32, Ptr
+from tpy import int32, Ptr
 class Node:
-    v: Int32
-    def __init__(self, v: Int32) -> None:
+    v: int32
+    def __init__(self, v: int32) -> None:
         self.v = v
-    def pair(self) -> tuple[Int32, Int32]:
+    def pair(self) -> tuple[int32, int32]:
         return (self.v, self.v)
-    def maybe(self) -> Int32 | None:
+    def maybe(self) -> int32 | None:
         return self.v
-    def get(self) -> Int32:
+    def get(self) -> int32:
         return self.v
-def f(p: Ptr[Node]) -> Int32:
+def f(p: Ptr[Node]) -> int32:
     t = p.pair()
     return t[0]
-def g(p: Ptr[Node]) -> Int32:
+def g(p: Ptr[Node]) -> int32:
     m = p.maybe()
     if m is not None:
         return m
     return 0
-def h(p: Ptr[Node]) -> Int32:
+def h(p: Ptr[Node]) -> int32:
     return p.get()
 def main() -> None:
     n = Node(2)

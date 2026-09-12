@@ -1,5 +1,5 @@
-# Big integers that exceed Int32 range -- forces BigInt path
-base = 1 << 100  # tpyc: warning(/outside default Int32 range/)
+# Big integers that exceed int32 range -- forces BigInt path
+base = 1 << 100  # tpyc: warning(/outside default int32 range/)
 
 # 1. BigInt range with start/stop
 for i in range(base, base + 5):

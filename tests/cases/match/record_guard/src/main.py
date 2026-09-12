@@ -1,11 +1,11 @@
 # match/case on concrete record with guards and or-patterns
 from dataclasses import dataclass
-from tpy import Int32
+from tpy import int32
 
 @dataclass
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 def guarded(p: Point) -> str:
     match p:
@@ -26,11 +26,11 @@ def or_pattern(p: Point) -> str:
     return ""
 
 def main() -> None:
-    print(guarded(Point(Int32(0), Int32(0))))
-    print(guarded(Point(Int32(5), Int32(3))))
-    print(guarded(Point(Int32(-1), Int32(0))))
-    print(or_pattern(Point(Int32(0), Int32(0))))
-    print(or_pattern(Point(Int32(1), Int32(1))))
-    print(or_pattern(Point(Int32(2), Int32(3))))
+    print(guarded(Point(int32(0), int32(0))))
+    print(guarded(Point(int32(5), int32(3))))
+    print(guarded(Point(int32(-1), int32(0))))
+    print(or_pattern(Point(int32(0), int32(0))))
+    print(or_pattern(Point(int32(1), int32(1))))
+    print(or_pattern(Point(int32(2), int32(3))))
 
 main()

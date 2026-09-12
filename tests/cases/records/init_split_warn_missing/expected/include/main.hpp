@@ -15,14 +15,14 @@ void main();
 
 // class Config:
 struct Config {
-    // x: Int32
+    // x: int32
     int32_t x;
-    // y: Int32          # not initialized in init section -> warning at split point
+    // y: int32          # not initialized in init section -> warning at split point
     int32_t y;
-    // z: Int32 = Int32(0)  # has class-level default -> silent
+    // z: int32 = int32(0)  # has class-level default -> silent
     int32_t z = 0;
 
-    // def __init__(self, x: Int32):
+    // def __init__(self, x: int32):
     Config() = default;
     explicit Config(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Config";
@@ -34,7 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
 }
 
 
-// def __init__(self, x: Int32):
+// def __init__(self, x: int32):
 inline Config::Config(int32_t x) : x(x) {
     // print("init")          # tpyc: warning(/y.*is not initialized before the constructor body/)
     std::cout << "init" << "\n";

@@ -17,10 +17,10 @@ void main();
 // @nocopy
 // class Widget:
 struct Widget {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Widget() = default;
     explicit Widget(int32_t n);
     // non-copyable (@nocopy)
@@ -30,7 +30,7 @@ struct Widget {
     Widget& operator=(Widget&&) = default;
 
     // # The subject: the receiver fills an owning tuple ELEMENT slot.
-    // def split(self: Own[Self]) -> Own[tuple[Own['Widget'], Int32]]:
+    // def split(self: Own[Self]) -> Own[tuple[Own['Widget'], int32]]:
     std::tuple<Widget, int32_t> split() &&;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Widget";
 };
@@ -42,14 +42,14 @@ inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
 
 // class Plain:
 struct Plain {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Plain() = default;
     explicit Plain(int32_t n);
 
-    // def split(self: Own[Self]) -> Own[tuple[Own['Plain'], Int32]]:
+    // def split(self: Own[Self]) -> Own[tuple[Own['Plain'], int32]]:
     std::tuple<Plain, int32_t> split() &&;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Plain";
 };
@@ -60,20 +60,20 @@ inline std::ostream& operator<<(std::ostream& os, const Plain& obj) {
 }
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Widget::Widget(int32_t n) : n(n) {}
 
 // # The subject: the receiver fills an owning tuple ELEMENT slot.
-// def split(self: Own[Self]) -> Own[tuple[Own['Widget'], Int32]]:
+// def split(self: Own[Self]) -> Own[tuple[Own['Widget'], int32]]:
 inline std::tuple<Widget, int32_t> Widget::split() && {
     // return (self, 1)  # tpyc: ok
     return std::tuple<Widget, int32_t>{std::move((*this)), 1};
 }
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Plain::Plain(int32_t n) : n(n) {}
 
-// def split(self: Own[Self]) -> Own[tuple[Own['Plain'], Int32]]:
+// def split(self: Own[Self]) -> Own[tuple[Own['Plain'], int32]]:
 inline std::tuple<Plain, int32_t> Plain::split() && {
     // return (self, 2)  # tpyc: ok
     return std::tuple<Plain, int32_t>{std::move((*this)), 2};

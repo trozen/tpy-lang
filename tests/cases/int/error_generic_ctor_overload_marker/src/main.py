@@ -4,8 +4,8 @@ import tpy
 
 
 def widen() -> None:
-    x: tpy.Int32 = tpy.Int32(10)
-    y: tpy.Int32 = tpy.Int32(tpy.UInt32(5))  # tpyc: error(/method.marker.builtin_module.ctor/)
+    x: tpy.int32 = tpy.int32(10)
+    y: tpy.int32 = tpy.int32(tpy.uint32(5))  # tpyc: error(/method.marker.builtin_module.ctor/)
     print(x, y)
 
 

@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // @export
-// def pick(d: dict[str, Int64]) -> dict[str, Int64]:  # tpyc: warning(/dict parameter 'd' is copied in/)
+// def pick(d: dict[str, int64]) -> dict[str, int64]:  # tpyc: warning(/dict parameter 'd' is copied in/)
 ::tpy::ordered_map<std::string, int64_t>& pick(::tpy::ordered_map<std::string, int64_t>& d) {
     // return d  # tpyc: warning(/function 'pick': returns a dict by reference.*copied across the CPython boundary.*return Own/)
     return d;

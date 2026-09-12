@@ -1,13 +1,13 @@
 # Return @nocopy at last use -- NRVO/implicit move
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 
 
 @nocopy
 class Handle:
-    fd: Int32
+    fd: int32
 
 
-def make(val: Int32) -> Own[Handle]:
+def make(val: int32) -> Own[Handle]:
     h = Handle()
     h.fd = val
     return h

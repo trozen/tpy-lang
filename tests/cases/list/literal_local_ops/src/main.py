@@ -4,10 +4,10 @@
 # already-routed receiver shapes -- method calls, subscript reads, len(),
 # iteration -- inside the same function. Empty annotated literal covered too.
 # Semantics are local-only (value copies of scalars), no aliasing at play.
-from tpy import Int32
+from tpy import int32
 
 
-def grown() -> Int32:
+def grown() -> int32:
     xs = [3, 1]
     xs.append(9)
     xs.insert(0, 7)
@@ -18,7 +18,7 @@ def grown() -> Int32:
     return total
 
 
-def fixed() -> Int32:
+def fixed() -> int32:
     ys = [10, 20, 30]
     total = ys[0]
     total = total + ys[2]
@@ -27,8 +27,8 @@ def fixed() -> Int32:
     return total
 
 
-def from_empty(n: Int32) -> Int32:
-    zs: list[Int32] = []
+def from_empty(n: int32) -> int32:
+    zs: list[int32] = []
     zs.append(n)
     zs.append(n + 1)
     # len is read before the pop mutates: a `len(zs) + zs.pop()` binop would be

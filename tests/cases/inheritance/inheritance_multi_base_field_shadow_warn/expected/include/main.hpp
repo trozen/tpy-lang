@@ -16,7 +16,7 @@ void main();
 
 // class Parent:
 struct Parent {
-    // token: Int32
+    // token: int32
     int32_t token;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.Parent";
@@ -29,10 +29,10 @@ inline std::ostream& operator<<(std::ostream& os, const Parent& obj) {
 
 // class Child(Parent):
 struct Child : Parent {
-    // token: Int32  # tpyc: warning(/shadows inherited field from 'Parent'/)
+    // token: int32  # tpyc: warning(/shadows inherited field from 'Parent'/)
     int32_t token;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Child() = default;
     explicit Child(int32_t n);
 
@@ -47,7 +47,7 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 }
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Child::Child(int32_t n) : token(n) {
     // Parent.token = n + 1
     this->Parent::token = (::tpy::add_check<int32_t>(n, 1));

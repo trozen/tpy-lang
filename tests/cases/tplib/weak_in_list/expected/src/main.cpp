@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def observed_values(observers: list[Weak[Node]]) -> Own[list[Int32]]:
+// def observed_values(observers: list[Weak[Node]]) -> Own[list[int32]]:
 std::vector<int32_t> observed_values(const std::vector<::tpystd::tplib::rc::Weak<Node>>& observers) {
-    // result: list[Int32] = []
+    // result: list[int32] = []
     std::vector<int32_t> result = std::vector<int32_t>{};
     // for w in observers:
     auto& __obj_0 = observers;
@@ -18,7 +18,7 @@ std::vector<int32_t> observed_values(const std::vector<::tpystd::tplib::rc::Weak
         std::optional<::tpystd::tplib::rc::Rc<Node>> upgraded = w.upgrade();
         // if upgraded is None:
         if ((!upgraded.has_value())) {
-            // result.append(Int32(-1))
+            // result.append(int32(-1))
             result.push_back(-1);
         // else:
         } else {
@@ -32,11 +32,11 @@ std::vector<int32_t> observed_values(const std::vector<::tpystd::tplib::rc::Weak
 
 // def main() -> None:
 void main() {
-    // a = Rc.new(Node(Int32(10)))
+    // a = Rc.new(Node(int32(10)))
     ::tpystd::tplib::rc::Rc<Node> a = Rc<Node>::new_<Node>(Node(10));
-    // b = Rc.new(Node(Int32(20)))
+    // b = Rc.new(Node(int32(20)))
     ::tpystd::tplib::rc::Rc<Node> b = Rc<Node>::new_<Node>(Node(20));
-    // c = Rc.new(Node(Int32(30)))
+    // c = Rc.new(Node(int32(30)))
     ::tpystd::tplib::rc::Rc<Node> c = Rc<Node>::new_<Node>(Node(30));
     // observers: list[Weak[Node]] = [a.downgrade(), b.downgrade(), c.downgrade()]
     std::vector<::tpystd::tplib::rc::Weak<Node>> observers = ::tpy::make_vector<::tpystd::tplib::rc::Weak<Node>>(a.downgrade(), b.downgrade(), c.downgrade());
@@ -51,7 +51,7 @@ void main() {
         std::cout << v << "\n";
     }
     // # Mutate via the original Rc, observe through the Weak.
-    // a.get().value = Int32(99)
+    // a.get().value = int32(99)
     a.get().value = 99;
     // upgraded = observers[0].upgrade()
     std::optional<::tpystd::tplib::rc::Rc<Node>> upgraded = ::tpy::__getitem__(observers, 0).upgrade();

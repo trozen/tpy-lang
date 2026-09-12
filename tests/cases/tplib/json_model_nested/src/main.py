@@ -1,8 +1,8 @@
 # Test @model macro: all type combos, nesting, and round-trip.
-# Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
+# Covers: str, int32, float, float32, bool, BigInt, enum, Optional,
 # list[T], dict[str, V], tuple, nested @model, list[Model], list[Enum],
 # dict[str, list[T]].
-from tpy import Int32, Float32, try_parse
+from tpy import int32, float32, try_parse
 from enum import Enum
 from tplib.json.model import model
 
@@ -19,20 +19,20 @@ class Address:
 @model
 class Profile:
     name: str
-    age: Int32
+    age: int32
     score: float
-    precision: Float32
+    precision: float32
     active: bool
     big_id: int
     role: Role
     address: Address
     tags: list[str]
-    scores: list[Int32]
+    scores: list[int32]
     friends: list[Address]
     roles: list[Role]
-    metadata: dict[str, Int32]
-    nested_map: dict[str, list[Int32]]
-    coord: tuple[Int32, Int32, str]
+    metadata: dict[str, int32]
+    nested_map: dict[str, list[int32]]
+    coord: tuple[int32, int32, str]
     backup_role: Role | None = None
     alt_address: Address | None = None
     email: str | None = None

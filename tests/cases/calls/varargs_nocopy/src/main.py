@@ -1,10 +1,10 @@
 # *args with @nocopy types: passed by pointer, no copies
-from tpy import nocopy, Int32
+from tpy import nocopy, int32
 
 @nocopy
 class Resource:
-    id: Int32
-    def __init__(self, id: Int32) -> None:
+    id: int32
+    def __init__(self, id: int32) -> None:
         self.id = id
     def __del__(self) -> None:
         print("drop", self.id)

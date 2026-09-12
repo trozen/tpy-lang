@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def scaled(a: Int64, b: Int64 = 10, *, c: Int64) -> Int64:
+// async def scaled(a: int64, b: int64 = 10, *, c: int64) -> int64:
 ::tpystd::tpy::Poll<int64_t> __coro_scaled::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
@@ -20,7 +20,7 @@ namespace tpyapp::main {
 }
 
 
-// async def scaled(a: Int64, b: Int64 = 10, *, c: Int64) -> Int64:
+// async def scaled(a: int64, b: int64 = 10, *, c: int64) -> int64:
 __coro_scaled scaled(int64_t a, int64_t b, int64_t c) {
     return __coro_scaled(a, b, c);
 }

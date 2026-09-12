@@ -17,9 +17,9 @@ void main() {
     // # Same literal, two types, opposite Sync: an explicit list is mutable
     // # (Sync no); an unmutated literal deduces to the value-type Array (Sync
     // # yes). Mutating `ar` would deduce list and flip it to is_sync(no).
-    // xs: list[Int32] = [1, 2, 3]  # tpyc: type(list[Int32]) is_send(yes) is_sync(no)
+    // xs: list[int32] = [1, 2, 3]  # tpyc: type(list[int32]) is_send(yes) is_sync(no)
     std::vector<int32_t> xs = {1, 2, 3};
-    // ar = [1, 2, 3]              # tpyc: type(Array[Int32, 3]) is_send(yes) is_sync(yes)
+    // ar = [1, 2, 3]              # tpyc: type(Array[int32, 3]) is_send(yes) is_sync(yes)
     std::array<int32_t, 3> ar = {1, 2, 3};
     // st = {1, 2}                 # tpyc: is_send(yes) is_sync(no)
     ::tpy::ordered_set<int32_t> st = ::tpy::ordered_set<int32_t>({1, 2});

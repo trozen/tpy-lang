@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def src() -> Iterator[Int32]:
+// def src() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_src::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -27,12 +27,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_src::__next__() {
 }
 
 
-// def src() -> Iterator[Int32]:
+// def src() -> Iterator[int32]:
 __gen_src src() {
     return __gen_src();
 }
 
-// def gen() -> Iterator[Int32]:
+// def gen() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -71,7 +71,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
 }
 
 
-// def gen() -> Iterator[Int32]:
+// def gen() -> Iterator[int32]:
 __gen_gen gen() {
     return __gen_gen();
 }

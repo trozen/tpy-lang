@@ -1,11 +1,11 @@
 # Callable class with mutable state (mutating __call__)
-from tpy import Int32
+from tpy import int32
 
 class Counter:
-    count: Int32
+    count: int32
     def __init__(self):
         self.count = 0
-    def __call__(self, inc: Int32) -> Int32:
+    def __call__(self, inc: int32) -> int32:
         self.count += inc
         return self.count
 

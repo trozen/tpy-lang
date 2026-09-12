@@ -18,12 +18,12 @@ void main();
 
 // class A:
 struct A {
-    // val: Int32
+    // val: int32
     int32_t val;
     // bs: list[B]
     std::vector<B> bs;
 
-    // def __init__(self, val: Int32) -> None:
+    // def __init__(self, val: int32) -> None:
     A() = default;
     explicit A(int32_t val);
     static constexpr std::string_view __tpy_class_name__ = "__main__.A";
@@ -36,12 +36,12 @@ inline std::ostream& operator<<(std::ostream& os, const A& obj) {
 
 // class B:
 struct B {
-    // val: Int32
+    // val: int32
     int32_t val;
     // as_: list[A]
     std::vector<A> as_;
 
-    // def __init__(self, val: Int32) -> None:
+    // def __init__(self, val: int32) -> None:
     B() = default;
     explicit B(int32_t val);
     static constexpr std::string_view __tpy_class_name__ = "__main__.B";
@@ -53,10 +53,10 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 }
 
 
-// def __init__(self, val: Int32) -> None:
+// def __init__(self, val: int32) -> None:
 inline A::A(int32_t val) : val(val), bs(std::vector<B>{}) {}
 
-// def __init__(self, val: Int32) -> None:
+// def __init__(self, val: int32) -> None:
 inline B::B(int32_t val) : val(val), as_(std::vector<A>{}) {}
 void __tpy_init();
 } // namespace tpyapp::main

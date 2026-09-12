@@ -1,11 +1,11 @@
 # Error: mixing ReturnException and non-ReturnException in same try/except
-from tpy import Int32, error_return, ReturnException
+from tpy import int32, error_return, ReturnException
 
 class NotFound(Exception, ReturnException):
     pass
 
 @error_return(NotFound)
-def lookup() -> Int32:
+def lookup() -> int32:
     raise NotFound
 
 def main() -> None:

@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // # Explicit annotation, bare literals coerced
-    // items: list[tuple[Int32, str]] = [(1, "one"), (2, "two")]
+    // items: list[tuple[int32, str]] = [(1, "one"), (2, "two")]
     std::vector<std::tuple<int32_t, std::string>> items = {std::tuple<int32_t, std::string>{1, "one"}, std::tuple<int32_t, std::string>{2, "two"}};
     // for n, s in items:
     auto& __obj_0 = items;
@@ -23,7 +23,7 @@ void main() {
         std::cout << n << " " << s << "\n";
     }
     // # Inferred from typed constructors
-    // pairs = [(Int32(10), True), (Int32(20), False)]
+    // pairs = [(int32(10), True), (int32(20), False)]
     std::array<std::tuple<int32_t, bool>, 2> pairs = {std::tuple<int32_t, bool>{10, true}, std::tuple<int32_t, bool>{20, false}};
     // for n, flag in pairs:
     auto& __obj_1 = pairs;

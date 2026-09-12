@@ -3,10 +3,10 @@
 # binding-level consumers key F1 renders on it, so the optional flavour keeps
 # its own rung even though the bare bytearray param now rides the axis.
 from typing import Iterator, Optional
-from tpy import Int32
+from tpy import int32
 
 
-def twice(b: Optional[bytearray]) -> Iterator[Int32]:  # tpyc: error(/not yet supported.*res.param_type/)
+def twice(b: Optional[bytearray]) -> Iterator[int32]:  # tpyc: error(/not yet supported.*res.param_type/)
     yield 1
     yield 2
 

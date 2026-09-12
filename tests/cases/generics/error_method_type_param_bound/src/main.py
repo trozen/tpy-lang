@@ -1,10 +1,10 @@
 # Error: per-method Default bound violated by concrete type
-from tpy import Int32, Own, Default, make_default
+from tpy import int32, Own, Default, make_default
 
 class Opaque:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 class Holder[T]:

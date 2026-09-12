@@ -1,10 +1,10 @@
 # isinstance on Optional[Protocol] must check the declared protocol, not a different one
 from __future__ import annotations
 from typing import Protocol
-from tpy import Int32
+from tpy import int32
 
 class HasLen(Protocol):
-    def __len__(self) -> Int32: ...
+    def __len__(self) -> int32: ...
 
 class HasStr(Protocol):
     def __str__(self) -> str: ...

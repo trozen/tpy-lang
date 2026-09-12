@@ -16,18 +16,18 @@ int32_t use_helper(Helper& Helper);
 
 // class Helper:
 struct Helper {
-    // value: Int32
+    // value: int32
     int32_t value;
 
-    // def __init__(self, v: Int32):
+    // def __init__(self, v: int32):
     Helper() = default;
     explicit Helper(int32_t v);
 
     // @staticmethod
-    // def add(a: Int32, b: Int32) -> Int32:
+    // def add(a: int32, b: int32) -> int32:
     static int32_t add(int32_t a, int32_t b);
 
-    // def get(self) -> Int32:
+    // def get(self) -> int32:
     int32_t get() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Helper";
 };
@@ -38,17 +38,17 @@ inline std::ostream& operator<<(std::ostream& os, const Helper& obj) {
 }
 
 
-// def __init__(self, v: Int32):
+// def __init__(self, v: int32):
 inline Helper::Helper(int32_t v) : value(v) {}
 
 // @staticmethod
-// def add(a: Int32, b: Int32) -> Int32:
+// def add(a: int32, b: int32) -> int32:
 inline int32_t Helper::add(int32_t a, int32_t b) {
     // return a + b
     return (::tpy::add_check<int32_t>(a, b));
 }
 
-// def get(self) -> Int32:
+// def get(self) -> int32:
 inline int32_t Helper::get() const {
     // return self.value
     return this->value;

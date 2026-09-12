@@ -4,7 +4,7 @@
 # MIL inits run before the body and would see the default-init (empty)
 # inherited slot. The chain stays alive past the inherited assign in
 # general -- this test pins the demotion path for the dangerous case.
-from tpy import Int32
+from tpy import int32
 
 
 class Animal:
@@ -15,11 +15,11 @@ class Animal:
 
 
 class Tagged(Animal):
-    name_len: Int32
+    name_len: int32
 
     def __init__(self, name: str) -> None:
         self.name = name              # inherited; goes to body
-        self.name_len = Int32(len(self.name))  # own; RHS reads self.name -- must demote
+        self.name_len = int32(len(self.name))  # own; RHS reads self.name -- must demote
 
 
 def main() -> None:

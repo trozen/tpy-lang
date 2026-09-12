@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def make_pair() -> tuple[Own[Tree[Int32]], Int32]:
+// def make_pair() -> tuple[Own[Tree[int32]], int32]:
 std::tuple<Tree<int32_t>, int32_t> make_pair() {
     // return ([1, 2], 0)
     return std::tuple<Tree<int32_t>, int32_t>{std::vector<Tree<int32_t>>{1, 2}, 0};

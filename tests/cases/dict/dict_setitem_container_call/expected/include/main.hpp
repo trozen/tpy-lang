@@ -25,14 +25,14 @@ void main();
 
 // class Source:
 struct Source {
-    // seed: Int32
+    // seed: int32
     int32_t seed;
 
-    // def __init__(self, seed: Int32) -> None:
+    // def __init__(self, seed: int32) -> None:
     Source() = default;
     explicit Source(int32_t seed);
 
-    // def rows(self) -> Own[list[Int32]]:
+    // def rows(self) -> Own[list[int32]]:
     std::vector<int32_t> rows() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Source";
 };
@@ -43,10 +43,10 @@ inline std::ostream& operator<<(std::ostream& os, const Source& obj) {
 }
 
 
-// def __init__(self, seed: Int32) -> None:
+// def __init__(self, seed: int32) -> None:
 inline Source::Source(int32_t seed) : seed(seed) {}
 
-// def rows(self) -> Own[list[Int32]]:
+// def rows(self) -> Own[list[int32]]:
 inline std::vector<int32_t> Source::rows() const {
     // return [self.seed, self.seed + 1]
     return {this->seed, (::tpy::add_check<int32_t>(this->seed, 1))};

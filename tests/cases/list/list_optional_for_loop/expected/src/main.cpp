@@ -4,11 +4,11 @@
 namespace tpyapp::main {
 
 
-// def borrow(p: P | None) -> Int32:
+// def borrow(p: P | None) -> int32:
 int32_t borrow(const P* p) {
     // if p is None:
     if ((p == nullptr)) {
-        // return Int32(-1)
+        // return int32(-1)
         return -1;
     }
     // return p.x
@@ -17,7 +17,7 @@ int32_t borrow(const P* p) {
 
 // def main() -> None:
 void main() {
-    // pairs: list[P | None] = [P(Int32(1)), None, P(Int32(3))]
+    // pairs: list[P | None] = [P(int32(1)), None, P(int32(3))]
     std::vector<std::optional<P>> pairs = {P(1), std::nullopt, P(3)};
     // # Direct access via narrowing
     // for it in pairs:

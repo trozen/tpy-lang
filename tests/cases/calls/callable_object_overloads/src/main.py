@@ -2,26 +2,26 @@
 # arity, and the instance satisfies an Fn contract matching ONE of the
 # overloads (previously an internal-error assert).
 from typing import overload
-from tpy import Fn, Int32
+from tpy import Fn, int32
 
 
 class Adder:
-    base: Int32
+    base: int32
 
-    def __init__(self, base: Int32) -> None:
+    def __init__(self, base: int32) -> None:
         self.base = base
 
     @overload
-    def __call__(self, x: Int32) -> Int32: ...
+    def __call__(self, x: int32) -> int32: ...
 
     @overload
-    def __call__(self, x: Int32, y: Int32) -> Int32: ...
+    def __call__(self, x: int32, y: int32) -> int32: ...
 
-    def __call__(self, x: Int32, y: Int32 = 0) -> Int32:
+    def __call__(self, x: int32, y: int32 = 0) -> int32:
         return self.base + x + y
 
 
-def use(f: Fn[[Int32], Int32]) -> None:
+def use(f: Fn[[int32], int32]) -> None:
     print(f(5))
 
 

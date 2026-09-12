@@ -14,7 +14,7 @@ void main() {
     std::cout << SubSub(9)._v << "\n";
     // print(TypedI(42).val)
     std::cout << TypedI(42).val << "\n";
-    // print(TypedM[Int32](7).val)
+    // print(TypedM[int32](7).val)
     std::cout << TypedM<int32_t>(7).val << "\n";
 }
 

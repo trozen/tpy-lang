@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def takes_bool(b: bool) -> Int32:
+// def takes_bool(b: bool) -> int32:
 int32_t takes_bool(bool b) {
     // return 1 if b else 0
     return ((b) ? (1) : (0));
@@ -22,7 +22,7 @@ void main() {
     bool b = true;
     // print(1 if b else 0)
     std::cout << ((b) ? (1) : (0)) << "\n";
-    // n: Int32 = poly("100")       # int slot
+    // n: int32 = poly("100")       # int slot
     int32_t n = 100;
     // print(n + 1)                 # arithmetic proves it's an int, not "100"
     std::cout << (::tpy::add_check<int32_t>(n, 1)) << "\n";
@@ -34,7 +34,7 @@ void main() {
     std::cout << s << "\n";
     // print(1 if returns_bool() else 0)
     std::cout << ((returns_bool()) ? (1) : (0)) << "\n";
-    // opt: Int32 | None = poly("8")     # Optional slot: macro unwraps to int
+    // opt: int32 | None = poly("8")     # Optional slot: macro unwraps to int
     std::optional<int32_t> opt = 8;
     // print((opt if opt is not None else 0) + 1)
     std::cout << (::tpy::add_check<int32_t>((((opt.has_value())) ? ((*opt)) : (0)), 1)) << "\n";

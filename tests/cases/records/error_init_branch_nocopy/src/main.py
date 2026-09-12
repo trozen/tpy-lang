@@ -1,10 +1,10 @@
 # @nocopy field assigned inside control flow in __init__ is an error.
-from tpy import nocopy, Int32
+from tpy import nocopy, int32
 
 @nocopy
 class Handle:
-    id: Int32
-    def __init__(self, id: Int32):
+    id: int32
+    def __init__(self, id: int32):
         self.id = id
 
 class Wrapper:

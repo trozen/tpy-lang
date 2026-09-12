@@ -1,11 +1,11 @@
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 class Counter:
-    value: Int32
+    value: int32
 class Combined(Counter):
     def __init__(self) -> None:
         Counter.value = 3
-    def walk(self) -> Iterator[Int32]:
+    def walk(self) -> Iterator[int32]:
         i = 0
         while i < Counter.value:
             yield i

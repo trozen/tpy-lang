@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // # Unpack from list of tuples
-    // pairs: list[tuple[str, Int32]] = [("a", 1), ("b", 2), ("c", 3)]
+    // pairs: list[tuple[str, int32]] = [("a", 1), ("b", 2), ("c", 3)]
     std::vector<std::tuple<std::string, int32_t>> pairs = {std::tuple<std::string, int32_t>{"a", 1}, std::tuple<std::string, int32_t>{"b", 2}, std::tuple<std::string, int32_t>{"c", 3}};
     // values = [v for k, v in pairs]
     std::vector<int32_t> values = ({
@@ -44,7 +44,7 @@ void main() {
     // print(keys)
     std::cout << ::tpy::ListPrinter(keys) << "\n";
     // # Unpack from dict.items()
-    // d: dict[str, Int32] = {"x": 10, "y": 20, "z": 30}
+    // d: dict[str, int32] = {"x": 10, "y": 20, "z": 30}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"x", 10}, {"y", 20}, {"z", 30}});
     // doubled = [v * 2 for k, v in d.items()]
     std::vector<int32_t> doubled = ({
@@ -139,7 +139,7 @@ void main() {
     // print(filtered)
     std::cout << ::tpy::ListPrinter(filtered) << "\n";
     // # 3-element tuple unpack
-    // triples: list[tuple[str, Int32, bool]] = [("a", 1, True), ("b", 2, False), ("c", 3, True)]
+    // triples: list[tuple[str, int32, bool]] = [("a", 1, True), ("b", 2, False), ("c", 3, True)]
     std::vector<std::tuple<std::string, int32_t, bool>> triples = {std::tuple<std::string, int32_t, bool>{"a", 1, true}, std::tuple<std::string, int32_t, bool>{"b", 2, false}, std::tuple<std::string, int32_t, bool>{"c", 3, true}};
     // middle = [n for _, n, _ in triples]
     std::vector<int32_t> middle = ({

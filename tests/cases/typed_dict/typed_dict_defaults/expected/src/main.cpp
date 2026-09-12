@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // # All fields must be provided at direct construction
-    // c = Config(host="example.com", port=Int32(9090), debug=True)
+    // c = Config(host="example.com", port=int32(9090), debug=True)
     Config c = Config("example.com", 9090, true);
     // print(c["host"])
     std::cout << c.host << "\n";

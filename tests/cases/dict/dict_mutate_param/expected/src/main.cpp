@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def insert(d: dict[str, Int32], key: str, val: Int32) -> None:
+// def insert(d: dict[str, int32], key: str, val: int32) -> None:
 void insert(::tpy::ordered_map<std::string, int32_t>& d, std::string_view key, int32_t val) {
     // d[key] = val
     ::tpy::__setitem__(d, key, val);

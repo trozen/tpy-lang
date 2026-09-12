@@ -1,1 +1,1 @@
-main.py:7: error: Invalid operand types for '+': list[int] and list[Int32]
+main.py:7: error: Invalid operand types for '+': list[int] and list[int32]

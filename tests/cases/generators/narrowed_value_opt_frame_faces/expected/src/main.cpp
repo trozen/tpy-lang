@@ -3,10 +3,10 @@
 
 namespace tpyapp::main {
 
-// G: Int32 | None = 5
+// G: int32 | None = 5
 std::optional<int32_t> G;
 
-// def g(p: Int32 | None) -> Iterator[Int32]:
+// def g(p: int32 | None) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_g::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -50,12 +50,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_g::__next__() {
 }
 
 
-// def g(p: Int32 | None) -> Iterator[Int32]:
+// def g(p: int32 | None) -> Iterator[int32]:
 __gen_g g(std::optional<int32_t> p) {
     return __gen_g(p);
 }
 
-// def g_loop(d: dict[str, Int32 | None]) -> Iterator[Int32]:
+// def g_loop(d: dict[str, int32 | None]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_g_loop::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -94,12 +94,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_g_loop::__next__() {
 }
 
 
-// def g_loop(d: dict[str, Int32 | None]) -> Iterator[Int32]:
+// def g_loop(d: dict[str, int32 | None]) -> Iterator[int32]:
 __gen_g_loop g_loop(::tpy::ordered_map<std::string, std::optional<int32_t>>& d) {
     return __gen_g_loop(d);
 }
 
-// def g_whole(p: Int32 | None) -> Iterator[Int32 | None]:
+// def g_whole(p: int32 | None) -> Iterator[int32 | None]:
 std::expected<std::optional<int32_t>, ::tpy::StopIteration> __gen_g_whole::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -131,16 +131,16 @@ std::expected<std::optional<int32_t>, ::tpy::StopIteration> __gen_g_whole::__nex
 }
 
 
-// def g_whole(p: Int32 | None) -> Iterator[Int32 | None]:
+// def g_whole(p: int32 | None) -> Iterator[int32 | None]:
 __gen_g_whole g_whole(std::optional<int32_t> p) {
     return __gen_g_whole(p);
 }
 
-// def g_frame_whole(p: Int32 | None) -> Iterator[Int32]:
+// def g_frame_whole(p: int32 | None) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_g_frame_whole::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // q2: Int32 | None = None
+        // q2: int32 | None = None
         q2 = std::nullopt;
         // if p is not None:
         if ((p.has_value())) {
@@ -180,12 +180,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_g_frame_whole::__next__() {
 }
 
 
-// def g_frame_whole(p: Int32 | None) -> Iterator[Int32]:
+// def g_frame_whole(p: int32 | None) -> Iterator[int32]:
 __gen_g_frame_whole g_frame_whole(std::optional<int32_t> p) {
     return __gen_g_frame_whole(p);
 }
 
-// def g_global() -> Iterator[Int32]:
+// def g_global() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_g_global::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -217,7 +217,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_g_global::__next__() {
 }
 
 
-// def g_global() -> Iterator[Int32]:
+// def g_global() -> Iterator[int32]:
 __gen_g_global g_global() {
     return __gen_g_global();
 }
@@ -273,7 +273,7 @@ void main() {
         std::cout << x << "\n";
         }
     }
-    // d: dict[str, Int32 | None] = {"a": 1, "b": None, "c": 2}
+    // d: dict[str, int32 | None] = {"a": 1, "b": None, "c": 2}
     ::tpy::ordered_map<std::string, std::optional<int32_t>> d = ::tpy::ordered_map<std::string, std::optional<int32_t>>({{"a", 1}, {"b", std::nullopt}, {"c", 2}});
     // for x in g_loop(d):
     {
@@ -350,7 +350,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // G: Int32 | None = 5
+    // G: int32 | None = 5
     G = 5;
     // main()
     main();

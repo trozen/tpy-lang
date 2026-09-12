@@ -1,9 +1,9 @@
-# A scalar coerce over a NARROWED `int | None` name at an Own[Int32] slot: the
+# A scalar coerce over a NARROWED `int | None` name at an Own[int32] slot: the
 # narrowing deref is dropped there, so the shape keeps rejecting.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
-def take(x: Own[Int32]) -> Int32:
+def take(x: Own[int32]) -> int32:
     return x
 
 

@@ -49,14 +49,14 @@ inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
 
 // class Count:
 struct Count {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Count() = default;
     explicit Count(int32_t n);
 
-    // def __eq__(self, other: Int32) -> bool:
+    // def __eq__(self, other: int32) -> bool:
     bool __eq__(int32_t other) const;
 
     friend bool operator==(const Count& lhs, int32_t other) {
@@ -94,14 +94,14 @@ inline std::ostream& operator<<(std::ostream& os, const Blob& obj) {
 
 // class Ratio:
 struct Ratio {
-    // r: Float64
+    // r: float64
     double r;
 
-    // def __init__(self, r: Float64) -> None:
+    // def __init__(self, r: float64) -> None:
     Ratio() = default;
     explicit Ratio(double r);
 
-    // def __eq__(self, other: Float64) -> bool:
+    // def __eq__(self, other: float64) -> bool:
     bool __eq__(double other) const;
 
     friend bool operator==(const Ratio& lhs, double other) {
@@ -117,14 +117,14 @@ inline std::ostream& operator<<(std::ostream& os, const Ratio& obj) {
 
 // class Initial:
 struct Initial {
-    // c: Char
+    // c: char
     char c;
 
-    // def __init__(self, c: Char) -> None:
+    // def __init__(self, c: char) -> None:
     Initial() = default;
     explicit Initial(char c);
 
-    // def __eq__(self, other: Char) -> bool:
+    // def __eq__(self, other: char) -> bool:
     bool __eq__(char other) const;
 
     friend bool operator==(const Initial& lhs, char other) {
@@ -154,10 +154,10 @@ inline bool Tag::__lt__(std::string_view other) const {
     return (this->name < other);
 }
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Count::Count(int32_t n) : n(n) {}
 
-// def __eq__(self, other: Int32) -> bool:
+// def __eq__(self, other: int32) -> bool:
 inline bool Count::__eq__(int32_t other) const {
     // return self.n == other
     return (this->n == other);
@@ -172,19 +172,19 @@ inline bool Blob::__eq__(::tpy::BytesView other) const {
     return (this->data == other);
 }
 
-// def __init__(self, r: Float64) -> None:
+// def __init__(self, r: float64) -> None:
 inline Ratio::Ratio(double r) : r(r) {}
 
-// def __eq__(self, other: Float64) -> bool:
+// def __eq__(self, other: float64) -> bool:
 inline bool Ratio::__eq__(double other) const {
     // return self.r == other
     return (this->r == other);
 }
 
-// def __init__(self, c: Char) -> None:
+// def __init__(self, c: char) -> None:
 inline Initial::Initial(char c) : c(c) {}
 
-// def __eq__(self, other: Char) -> bool:
+// def __eq__(self, other: char) -> bool:
 inline bool Initial::__eq__(char other) const {
     // return self.c == other
     return (this->c == other);

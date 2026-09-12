@@ -1,11 +1,11 @@
 # argparse append + store_const actions (Phase 7D3).
 # extend lands with nargs in Phase E -- without nargs CPython argparse
 # iterates the converted value, with surprising semantics.
-from tpy import Int32
+from tpy import int32
 from argparse import ArgumentParser
 
 
-def main() -> Int32:
+def main() -> int32:
     parser = ArgumentParser()
     parser.add_argument("--tag", action="append")
     parser.add_argument("--num", action="append", type=int)

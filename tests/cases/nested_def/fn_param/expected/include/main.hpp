@@ -16,7 +16,7 @@ template<typename __F0>
 int32_t apply(__F0&& f, int32_t x);
 void main();
 
-// def apply(f: Fn[[Int32], Int32], x: Int32) -> Int32:
+// def apply(f: Fn[[int32], int32], x: int32) -> int32:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<int32_t>;

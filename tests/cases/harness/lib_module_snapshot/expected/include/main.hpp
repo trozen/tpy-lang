@@ -19,10 +19,10 @@ void main();
 
 // class Counter:
 struct Counter {
-    // hits: Int32
+    // hits: int32
     int32_t hits;
 
-    // def __init__(self, hits: Int32) -> None:
+    // def __init__(self, hits: int32) -> None:
     Counter() = default;
     explicit Counter(int32_t hits);
 
@@ -37,7 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 }
 
 
-// def __init__(self, hits: Int32) -> None:
+// def __init__(self, hits: int32) -> None:
 inline Counter::Counter(int32_t hits) : hits(hits) {}
 
 // def bump(self) -> None:

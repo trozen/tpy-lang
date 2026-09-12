@@ -1,13 +1,13 @@
 # @nocopy with elif chain where some branches return early.
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 
 
 @nocopy
 class Handle:
-    fd: Int32
+    fd: int32
 
 
-def test(n: Int32) -> Own[Handle]:
+def test(n: int32) -> Own[Handle]:
     h = Handle()
     h.fd = n
     if n == 1:

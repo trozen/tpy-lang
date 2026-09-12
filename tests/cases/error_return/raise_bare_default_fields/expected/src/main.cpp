@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // @error_return(MyError)
-// def fail() -> Int32:
+// def fail() -> int32:
 std::expected<int32_t, MyError> fail() {
     // raise MyError
     return ::tpy::make_unexpected(MyError{});

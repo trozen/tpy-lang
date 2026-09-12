@@ -17,7 +17,7 @@ void main();
 
 // class Grandparent:
 struct Grandparent {
-    // counter: ClassVar[Int32] = 0
+    // counter: ClassVar[int32] = 0
     static inline int32_t counter = 0;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.Grandparent";
@@ -30,7 +30,7 @@ inline std::ostream& operator<<(std::ostream& os, const Grandparent& obj) {
 
 // class Parent(Grandparent):
 struct Parent : Grandparent {
-    // counter: ClassVar[Int32] = 0
+    // counter: ClassVar[int32] = 0
     static inline int32_t counter = 0;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.Parent";
@@ -43,7 +43,7 @@ inline std::ostream& operator<<(std::ostream& os, const Parent& obj) {
 
 // class Child(Parent):
 struct Child : Parent {
-    // counter: ClassVar[Int32] = 0
+    // counter: ClassVar[int32] = 0
     static inline int32_t counter = 0;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.Child";

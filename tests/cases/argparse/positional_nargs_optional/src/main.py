@@ -1,10 +1,10 @@
 # Positional with nargs='?' and default= -- the user's default is
 # returned when the slot is absent from argv.
-from tpy import Int32
+from tpy import int32
 from argparse import ArgumentParser
 
 
-def main() -> Int32:
+def main() -> int32:
     parser = ArgumentParser()
     parser.add_argument("name", nargs="?", default="anon")
     a1 = parser.parse_args([])

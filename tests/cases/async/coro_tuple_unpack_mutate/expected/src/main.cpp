@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def process(rows: list[tuple[Int32, Item]]) -> Int32:
+// async def process(rows: list[tuple[int32, Item]]) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_process::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -50,7 +50,7 @@ namespace tpyapp::main {
 }
 
 
-// async def process(rows: list[tuple[Int32, Item]]) -> Int32:
+// async def process(rows: list[tuple[int32, Item]]) -> int32:
 __coro_process process(std::vector<std::tuple<int32_t, Item>>& rows) {
     return __coro_process(rows);
 }
@@ -59,7 +59,7 @@ __coro_process process(std::vector<std::tuple<int32_t, Item>>& rows) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // rows: list[tuple[Int32, Item]] = [(1, Item(0)), (2, Item(0))]
+        // rows: list[tuple[int32, Item]] = [(1, Item(0)), (2, Item(0))]
         rows.emplace(std::vector<std::tuple<int32_t, Item>>{std::tuple<int32_t, Item>{1, Item(0)}, std::tuple<int32_t, Item>{2, Item(0)}});
         // print(await process(rows))
         __sub_0.emplace((*rows));

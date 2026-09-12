@@ -1,21 +1,21 @@
 # Test ord() builtin -- inverse of chr()
-from tpy import Char, Int32
+from tpy import char, int32
 
 def main() -> None:
     # Basic ASCII
-    c: Char = chr(65)
+    c: char = chr(65)
     print(ord(c))
 
     # Lowercase letter
-    d: Char = chr(122)
+    d: char = chr(122)
     print(ord(d))
 
     # Null character
-    zero: Char = chr(0)
+    zero: char = chr(0)
     print(ord(zero))
 
     # ord/chr roundtrip
-    n: Int32 = 97
+    n: int32 = 97
     print(ord(chr(n)))
 
 main()

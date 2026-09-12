@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def safe_add(x: Int32 | None) -> Int32:
+// def safe_add(x: int32 | None) -> int32:
 int32_t safe_add(std::optional<int32_t> x) {
     // if x is None:
     if ((!x.has_value())) {

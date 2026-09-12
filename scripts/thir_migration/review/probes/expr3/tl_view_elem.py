@@ -1,5 +1,5 @@
-from tpy import Int32, StrView
-def f(t: tuple[StrView, Int32]) -> Int32:
+from tpy import int32, StrView
+def f(t: tuple[StrView, int32]) -> int32:
     return t[1]
 def main() -> None:
     print(f(("a", 2)))

@@ -1,10 +1,10 @@
-from tpy import Int32
+from tpy import int32
 
 class Animal:
     name: str
-    age: Int32
+    age: int32
 
-    def __init__(self, name: str, age: Int32) -> None:
+    def __init__(self, name: str, age: int32) -> None:
         self.name = name
         self.age = age
 
@@ -18,7 +18,7 @@ class Animal:
 class Dog(Animal):
     breed: str
 
-    def __init__(self, name: str, age: Int32, breed: str) -> None:
+    def __init__(self, name: str, age: int32, breed: str) -> None:
         super().__init__(name, age)
         self.breed = breed
 

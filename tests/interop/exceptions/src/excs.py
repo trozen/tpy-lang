@@ -5,34 +5,34 @@
 # direct Exception subclass (ValueError), a deeper LookupError leaf (KeyError),
 # an OSError-tree leaf (FileNotFoundError), a runtime-raised ZeroDivisionError,
 # and a bare Exception.
-from tpy import Int64
+from tpy import int64
 from tpy.extern import export
 
 
 @export
-def check_positive(n: Int64) -> Int64:
+def check_positive(n: int64) -> int64:
     if n < 0:
         raise ValueError("must be non-negative")
     return n
 
 
 @export
-def lookup(key: Int64) -> Int64:
+def lookup(key: int64) -> int64:
     if key != 1:
         raise KeyError("no such key")
     return 100
 
 
 @export
-def open_missing() -> Int64:
+def open_missing() -> int64:
     raise FileNotFoundError("missing file")
 
 
 @export
-def divide(a: Int64, b: Int64) -> Int64:
+def divide(a: int64, b: int64) -> int64:
     return a // b  # b == 0 raises ZeroDivisionError from the runtime
 
 
 @export
-def fail_generic() -> Int64:
+def fail_generic() -> int64:
     raise Exception("generic failure")

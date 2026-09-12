@@ -19,7 +19,7 @@ void main() {
     );
     std::cout << sum_items(__tmp_1) << "\n";
     // # List source
-    // items: list[Int32] = [1, 2, 3, 4, 5]
+    // items: list[int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> items = {1, 2, 3, 4, 5};
     // print(sum_items(x * 2 for x in items))
     auto __tmp_2 = [&items]() {
@@ -120,7 +120,7 @@ void main() {
     );
     std::cout << sum_items(__tmp_8) << "\n";
     // # Body referencing outer local -- exercises [&] capture
-    // multiplier: Int32 = 3
+    // multiplier: int32 = 3
     int32_t multiplier = 3;
     // print(sum_items(x * multiplier for x in range(5)))
     auto __tmp_9 = ::tpy::make_generator<int32_t>(
@@ -149,7 +149,7 @@ void main() {
     }();
     std::cout << sum_items(__tmp_10) << "\n";
     // # Outer local referenced only in filter condition
-    // threshold: Int32 = 3
+    // threshold: int32 = 3
     int32_t threshold = 3;
     // print(sum_items(x for x in range(10) if x > threshold))
     auto __tmp_11 = ::tpy::make_generator<int32_t>(
@@ -182,7 +182,7 @@ void main() {
     }();
     std::cout << sum_items(__tmp_12) << "\n";
     // # str.join with generator expression
-    // nums: list[Int32] = [1, 2, 3]
+    // nums: list[int32] = [1, 2, 3]
     std::vector<int32_t> nums = {1, 2, 3};
     // print(", ".join(str(x) for x in nums))
     std::cout << ::tpy::str_join(", ", [&nums]() {
@@ -198,7 +198,7 @@ void main() {
         );
     }()) << "\n";
     // # Tuple unpacking in generator
-    // pairs: list[tuple[str, Int32]] = [("a", 1), ("b", 2), ("c", 3)]
+    // pairs: list[tuple[str, int32]] = [("a", 1), ("b", 2), ("c", 3)]
     std::vector<std::tuple<std::string, int32_t>> pairs = {std::tuple<std::string, int32_t>{"a", 1}, std::tuple<std::string, int32_t>{"b", 2}, std::tuple<std::string, int32_t>{"c", 3}};
     // print(sum_items(v for _, v in pairs))
     auto __tmp_13 = [&pairs]() {

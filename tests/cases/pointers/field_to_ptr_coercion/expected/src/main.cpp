@@ -10,7 +10,7 @@ void modify_inner(Inner* p) {
     ::tpy::deref_check(p).x = 999;
 }
 
-// def read_inner(p: Ptr[readonly[Inner]]) -> Int32:
+// def read_inner(p: Ptr[readonly[Inner]]) -> int32:
 int32_t read_inner(const Inner* p) {
     // return p.x
     return ::tpy::deref_check(p).x;
@@ -32,7 +32,7 @@ void test_field_to_const_ptr() {
     // outer: Outer = Outer(100)
     Outer outer = Outer(100);
     // # obj.field -> Ptr[readonly[...]] coercion
-    // result: Int32 = read_inner(outer.inner)
+    // result: int32 = read_inner(outer.inner)
     int32_t result = read_inner(&outer.inner);
     // print(result)
     std::cout << result << "\n";

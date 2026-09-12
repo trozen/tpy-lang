@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def main() -> Int32:
+// def main() -> int32:
 int32_t main() {
     // print(MAX_VALUE)
     std::cout << ::tpyapp::config::MAX_VALUE << "\n";
     // print(get_max())
     std::cout << ::tpyapp::config::get_max() << "\n";
-    // return Int32(0)
+    // return int32(0)
     return 0;
 }
 

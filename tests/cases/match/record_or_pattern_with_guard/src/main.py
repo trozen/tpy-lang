@@ -3,16 +3,16 @@
 # `case Point(x=0, y=0) | Point(x=1, y=1) if ok`, whose body mutates the
 # caller's record so the write is visible after the call returns.
 from dataclasses import dataclass
-from tpy import Int32
+from tpy import int32
 
 
 @dataclass
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 
-def f(p: Point, ok: bool) -> Int32:
+def f(p: Point, ok: bool) -> int32:
     match p:
         # Both alternatives share one condition, and-ed with the guard.
         case Point(x=0, y=0) | Point(x=1, y=1) if ok:

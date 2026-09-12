@@ -1,11 +1,11 @@
 # Generator with bare return (early exit -> StopIteration)
-from tpy import Int32
+from tpy import int32
 from typing import Iterator
 
-def maybe_count(n: Int32) -> Iterator[Int32]:
+def maybe_count(n: int32) -> Iterator[int32]:
     if n <= 0:
         return
-    i: Int32 = 0
+    i: int32 = 0
     while i < n:
         yield i
         i += 1

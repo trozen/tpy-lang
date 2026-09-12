@@ -6,23 +6,23 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // c: Container[Int32] = Container[Int32]()
+    // c: Container[int32] = Container[int32]()
     Container<int32_t> c = Container<int32_t>();
-    // c.add(Int32(30))
+    // c.add(int32(30))
     c.add(30);
-    // c.add(Int32(10))
+    // c.add(int32(10))
     c.add(10);
-    // c.add(Int32(20))
+    // c.add(int32(20))
     c.add(20);
     // print(c.is_sorted())
     std::cout << ::tpy::print_bool(c.is_sorted()) << "\n";
-    // c2: Container[Int32] = Container[Int32]()
+    // c2: Container[int32] = Container[int32]()
     Container<int32_t> c2 = Container<int32_t>();
-    // c2.add(Int32(1))
+    // c2.add(int32(1))
     c2.add(1);
-    // c2.add(Int32(2))
+    // c2.add(int32(2))
     c2.add(2);
-    // c2.add(Int32(3))
+    // c2.add(int32(3))
     c2.add(3);
     // print(c2.is_sorted())
     std::cout << ::tpy::print_bool(c2.is_sorted()) << "\n";

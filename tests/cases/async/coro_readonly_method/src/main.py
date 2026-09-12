@@ -9,13 +9,13 @@
 # const code; the `const auto& it = *__beg_0;` line in the snapshot is
 # the load-bearing assertion.
 import asyncio
-from tpy import Int32, readonly
+from tpy import int32, readonly
 
 
 class Item:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
@@ -29,8 +29,8 @@ class Container:
         self.items.append(Item(3))
 
     @readonly
-    async def total(self) -> Int32:
-        s: Int32 = 0
+    async def total(self) -> int32:
+        s: int32 = 0
         await asyncio.sleep(0)
         for it in self.items:
             s += it.n

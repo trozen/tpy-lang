@@ -1,35 +1,35 @@
 # A walrus whose target is a value-repr `str | None` / `bytes | None` binds the
 # bare `std::optional<...>` slot and None-tests it with has_value, the owned-view
 # twin of the Optional[scalar] walrus.
-from tpy import Int32
+from tpy import int32
 
 
-def maybe_text(k: Int32) -> str | None:
+def maybe_text(k: int32) -> str | None:
     if k > 0:
         return "abc"
     return None
 
 
-def maybe_blob(k: Int32) -> bytes | None:
+def maybe_blob(k: int32) -> bytes | None:
     if k > 0:
         return b"ab"
     return None
 
 
-def text_len(k: Int32) -> Int32:
+def text_len(k: int32) -> int32:
     if (s := maybe_text(k)) is not None:   # tpyc: ok -- `str | None` target
         print(s)
         return len(s)
     return -1
 
 
-def blob_len(k: Int32) -> Int32:
+def blob_len(k: int32) -> int32:
     if (b := maybe_blob(k)) is not None:   # tpyc: ok -- `bytes | None` target
         return len(b)
     return -1
 
 
-def from_text_param(t: str | None) -> Int32:
+def from_text_param(t: str | None) -> int32:
     # A PARAM source binds the VIEW form, so the owned slot takes an explicit
     # copy rather than the optional's converting assignment.
     if (s := t) is not None:               # tpyc: ok -- a `str | None` param
@@ -37,7 +37,7 @@ def from_text_param(t: str | None) -> Int32:
     return -1
 
 
-def from_blob_param(t: bytes | None) -> Int32:
+def from_blob_param(t: bytes | None) -> int32:
     # The bytes face of the same copy: `optional<span>` never converts to
     # `optional<vector>` on its own.
     if (b := t) is not None:               # tpyc: ok -- a `bytes | None` param
@@ -45,7 +45,7 @@ def from_blob_param(t: bytes | None) -> Int32:
     return -1
 
 
-def reassigned(k: Int32) -> Int32:
+def reassigned(k: int32) -> int32:
     s = maybe_text(k)
     if s is None:
         # A REUSE of the same target assigns the predeclared slot in place.

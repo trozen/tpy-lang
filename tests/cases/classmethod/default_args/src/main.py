@@ -2,20 +2,20 @@
 # receiver slot, so the defaults must still align with the parameters after it.
 from typing import Self
 
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Point:
-    def __init__(self, x: Int32, y: Int32):
+    def __init__(self, x: int32, y: int32):
         self.x = x
         self.y = y
 
     @classmethod
-    def make(cls, x: Int32, y: Int32 = 9) -> Own[Self]:
+    def make(cls, x: int32, y: int32 = 9) -> Own[Self]:
         return cls(x, y)
 
     @classmethod
-    def blank(cls, x: Int32 = 1, y: Int32 = 2) -> Own[Self]:
+    def blank(cls, x: int32 = 1, y: int32 = 2) -> Own[Self]:
         return cls(x, y)
 
 

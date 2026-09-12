@@ -1,11 +1,11 @@
 # A `try` inside a loop exercises the liveness fixpoint's try handling: a
 # @nocopy local created and consumed in the try body moves each iteration.
 from tplib.box import Box
-from tpy import Int32
+from tpy import int32
 
 
 def main() -> None:
-    boxes: list[Box[Int32]] = []
+    boxes: list[Box[int32]] = []
     for _ in range(3):
         try:
             a = Box(7)

@@ -3,12 +3,12 @@
 # into std::optional<storage-tuple>. Covers simple-while, simple-for
 # (range strategy), and simple-for (NativeIterable strategy).
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
 class P:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
@@ -22,8 +22,8 @@ def gen_range(items: list[P]) -> Iterator[tuple[P | None, P | None]]:
         yield (items[i], None)
 
 
-def gen_while(items: list[P], n: Int32) -> Iterator[tuple[P | None, P | None]]:
-    i = Int32(0)
+def gen_while(items: list[P], n: int32) -> Iterator[tuple[P | None, P | None]]:
+    i = int32(0)
     while i < n:
         yield (items[i], None)
         i = i + 1
@@ -40,7 +40,7 @@ def main() -> None:
         if a is not None:
             print(a.x)
 
-    for a, b in gen_while(items, Int32(2)):
+    for a, b in gen_while(items, int32(2)):
         if a is not None:
             print(a.x)
 

@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // c = Config(Int32(42))
+    // c = Config(int32(42))
     Config c = Config(42);
     // print(c.x)
     std::cout << c.x << "\n";

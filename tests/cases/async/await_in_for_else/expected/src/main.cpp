@@ -25,7 +25,7 @@ __coro_tick tick(std::string_view label) {
     return __coro_tick(label);
 }
 
-// async def drive(brk: Int32) -> None:
+// async def drive(brk: int32) -> None:
 ::tpystd::tpy::Poll<::std::monostate> __coro_drive::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -80,7 +80,7 @@ __coro_tick tick(std::string_view label) {
 }
 
 
-// async def drive(brk: Int32) -> None:
+// async def drive(brk: int32) -> None:
 __coro_drive drive(int32_t brk) {
     return __coro_drive(brk);
 }

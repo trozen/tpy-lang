@@ -1,9 +1,9 @@
 # Test: copy warnings for Own[T] params in builtin methods
-from tpy import Int32, copy
+from tpy import int32, copy
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 def main() -> None:
     p: Point = Point()
@@ -28,8 +28,8 @@ def main() -> None:
     items[0] = Point()        # tpyc: ok
 
     # value types — no warning
-    nums: list[Int32] = []
-    x: Int32 = 42
+    nums: list[int32] = []
+    x: int32 = 42
     nums.append(x)            # tpyc: ok
     nums[0] = x               # tpyc: ok
 

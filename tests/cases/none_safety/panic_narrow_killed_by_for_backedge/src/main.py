@@ -1,12 +1,12 @@
 # for-loop sibling of the while back-edge case: narrowing proven before
 # the loop dies at body entry because the body may rebind the variable.
-from tpy import Int32
+from tpy import int32
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32):
+    def __init__(self, x: int32):
         self.x = x
 
 

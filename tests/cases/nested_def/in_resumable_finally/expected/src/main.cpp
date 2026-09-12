@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def def_in_finally() -> Int32:
+// async def def_in_finally() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_def_in_finally::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
@@ -73,12 +73,12 @@ void __coro_def_in_finally::bump() {
     total = ::tpy::add_check<int32_t>(total, 5);
 }
 
-// async def def_in_finally() -> Int32:
+// async def def_in_finally() -> int32:
 __coro_def_in_finally def_in_finally() {
     return __coro_def_in_finally();
 }
 
-// def gen_def_in_finally() -> Iterator[Int32]:
+// def gen_def_in_finally() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_def_in_finally::__next__() {
     try {
     while (true) switch (__state) {
@@ -137,12 +137,12 @@ void __gen_gen_def_in_finally::bump() {
     total = ::tpy::add_check<int32_t>(total, 3);
 }
 
-// def gen_def_in_finally() -> Iterator[Int32]:
+// def gen_def_in_finally() -> Iterator[int32]:
 __gen_gen_def_in_finally gen_def_in_finally() {
     return __gen_gen_def_in_finally();
 }
 
-// async def called_from_finally() -> Int32:
+// async def called_from_finally() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_called_from_finally::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
@@ -211,7 +211,7 @@ void __coro_called_from_finally::tick() {
     count = ::tpy::add_check<int32_t>(count, 1);
 }
 
-// async def called_from_finally() -> Int32:
+// async def called_from_finally() -> int32:
 __coro_called_from_finally called_from_finally() {
     return __coro_called_from_finally();
 }

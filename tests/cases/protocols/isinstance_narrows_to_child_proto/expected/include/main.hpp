@@ -15,10 +15,10 @@ template<::tpystd::typing::Iterable<int32_t> T_xs>
 int32_t maybe_sum(T_xs& xs);
 void main();
 
-// def sum_native(xs: NativeIterable[Int32]) -> Int32:
+// def sum_native(xs: NativeIterable[int32]) -> int32:
 template<::tpy::NativeIterable<int32_t> T_xs>
 int32_t sum_native(T_xs& xs) {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for x in xs:
     auto& __obj_0 = xs;
@@ -32,7 +32,7 @@ int32_t sum_native(T_xs& xs) {
     // return total
     return total;
 }
-// def maybe_sum(xs: Iterable[Int32]) -> Int32:
+// def maybe_sum(xs: Iterable[int32]) -> int32:
 template<::tpystd::typing::Iterable<int32_t> T_xs>
 int32_t maybe_sum(T_xs& xs) {
     // if isinstance(xs, NativeIterable):

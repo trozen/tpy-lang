@@ -27,7 +27,7 @@ void main();
 
 // class Counter:
 struct Counter {
-    // n: Int32
+    // n: int32
     int32_t n;
 
     // def __init__(self) -> None:
@@ -42,10 +42,10 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 // class Probe:
 struct Probe {
-    // tag: Int32
+    // tag: int32
     int32_t tag;
 
-    // def __init__(self, c: Counter, tag: Int32) -> None:
+    // def __init__(self, c: Counter, tag: int32) -> None:
     Probe() = default;
     explicit Probe(Counter& c, int32_t tag);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Probe";
@@ -60,7 +60,7 @@ inline std::ostream& operator<<(std::ostream& os, const Probe& obj) {
 // def __init__(self) -> None:
 inline Counter::Counter() : n(0) {}
 
-// def __init__(self, c: Counter, tag: Int32) -> None:
+// def __init__(self, c: Counter, tag: int32) -> None:
 inline Probe::Probe(Counter& c, int32_t tag) {
     // # Counted mutation through a shared reference: proves whether this
     // # operand was evaluated at all.

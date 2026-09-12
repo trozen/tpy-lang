@@ -5,17 +5,17 @@
 # rebindable optional, and every write lifts through that one slot. Plus the pass-through write of a
 # borrow-returning Optional call AFTER a slot-allocating write in the same
 # branch: it assigns the `T*` bare and leaves the slot alone.
-from tpy import Int32
+from tpy import int32
 
 
 class Node:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
-def find(ns: list[Node], k: Int32) -> Node | None:
+def find(ns: list[Node], k: int32) -> Node | None:
     for n in ns:
         if n.x == k:
             return n

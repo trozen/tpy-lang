@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def mutate_and_get(b: Box) -> Int32:
+// def mutate_and_get(b: Box) -> int32:
 int32_t mutate_and_get(Box& b) {
     // if b.value is not None:
     if ((b.value.has_value())) {
@@ -18,13 +18,13 @@ int32_t mutate_and_get(Box& b) {
 }
 
 // @readonly
-// def observe(_: Int32) -> None:
+// def observe(_: int32) -> None:
 void observe(int32_t _) {
     // return
     return;
 }
 
-// def use(b: Box) -> Int32:
+// def use(b: Box) -> int32:
 int32_t use(Box& b) {
     // if b.value is not None:
     if ((b.value.has_value())) {

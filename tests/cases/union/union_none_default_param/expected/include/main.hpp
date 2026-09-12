@@ -21,7 +21,7 @@ void main();
 // @dataclass(frozen=True)
 // class Fixed(ValueType):
 struct Fixed {
-    // off: Int32
+    // off: int32
     int32_t off;
 
     Fixed() = default;
@@ -63,7 +63,7 @@ namespace tpyapp::main {
 // @dataclass(frozen=True)
 // class Zone(ValueType):
 struct Zone {
-    // zid: Int32
+    // zid: int32
     int32_t zid;
 
     Zone() = default;
@@ -136,7 +136,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 
 // class Holder:
 struct Holder {
-    // kind: Int32
+    // kind: int32
     int32_t kind;
 
     // def __init__(self, tz: Fixed | Zone | None = None) -> None:

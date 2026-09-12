@@ -4,13 +4,13 @@
 # a subclass of one, and through a readonly receiver (the implicit const twin
 # also needs the `&` lift on its return). Hits alias: mutation through the
 # result is visible in the holder. Misses yield None.
-from tpy import Int32, readonly
+from tpy import int32, readonly
 
 
 class Rec:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32):
+    def __init__(self, x: int32):
         self.x = x
 
 
@@ -20,7 +20,7 @@ class Box:
     def __init__(self, v: Rec):
         self._v = v
 
-    def __getitem__(self, want: Int32) -> Rec | None:
+    def __getitem__(self, want: int32) -> Rec | None:
         if want > 0:
             return self._v
         return None
@@ -34,13 +34,13 @@ class GenBox[K, V]:
         self._k = k
         self._v = v
 
-    def __getitem__(self, want: Int32) -> V | None:
+    def __getitem__(self, want: int32) -> V | None:
         if want > 0:
             return self._v
         return None
 
 
-class SubBox(GenBox[Int32, Rec]):
+class SubBox(GenBox[int32, Rec]):
     pass
 
 

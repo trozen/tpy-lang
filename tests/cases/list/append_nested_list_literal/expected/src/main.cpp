@@ -36,7 +36,7 @@ void main() {
     // take([[1, 2], [3, 4]])  # param-passing sibling
     std::vector<std::vector<::tpy::BigInt>> __tmp_1 = {{1, 2}, {3, 4}};
     take(__tmp_1);
-    // # Both rows pending with int-LITERAL elements (not Int32): the element
+    // # Both rows pending with int-LITERAL elements (not int32): the element
     // # predicate must accept two distinct literals, like peer-unification does.
     // lits = [[1, 2]]
     std::vector<std::array<int32_t, 2>> lits = {{1, 2}};

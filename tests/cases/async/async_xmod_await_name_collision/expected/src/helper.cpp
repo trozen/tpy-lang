@@ -4,7 +4,7 @@
 namespace tpyapp::helper {
 
 
-// async def step() -> Int32:
+// async def step() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_step::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -29,12 +29,12 @@ namespace tpyapp::helper {
 }
 
 
-// async def step() -> Int32:
+// async def step() -> int32:
 __coro_step step() {
     return __coro_step();
 }
 
-// async def other() -> Int32:
+// async def other() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_other::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -59,7 +59,7 @@ __coro_step step() {
 }
 
 
-// async def other() -> Int32:
+// async def other() -> int32:
 __coro_other other() {
     return __coro_other();
 }

@@ -2,7 +2,7 @@
 # -- standalone, composed (islice bounding the infinite count/repeat/cycle), and
 # consuming a generator source -- byte-compared against real CPython itertools.
 import itertools
-from tpy import Int32
+from tpy import int32
 
 
 def main() -> None:
@@ -20,7 +20,7 @@ def main() -> None:
 
     # cycle: infinite, sliced; and an empty source (yields nothing)
     print([x for x in itertools.islice(itertools.cycle([1, 2, 3]), 7)])
-    empty: list[Int32] = []
+    empty: list[int32] = []
     print([x for x in itertools.islice(itertools.cycle(empty), 5)])
 
     # islice over a plain list: normal, stop past the end, stop 0
@@ -29,7 +29,7 @@ def main() -> None:
     print([x for x in itertools.islice([10, 20, 30], 0)])
 
     # takewhile / dropwhile / filterfalse over a list
-    nums: list[Int32] = [1, 2, 3, 4, 1, 2]
+    nums: list[int32] = [1, 2, 3, 4, 1, 2]
     print([x for x in itertools.takewhile(lambda n: n < 3, nums)])
     print([x for x in itertools.dropwhile(lambda n: n < 3, nums)])
     print([x for x in itertools.filterfalse(lambda n: n % 2 == 0, nums)])

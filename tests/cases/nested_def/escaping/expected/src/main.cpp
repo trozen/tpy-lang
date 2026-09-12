@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def make_adder(n: Int32) -> Callable[[Int32], Int32]:
+// def make_adder(n: int32) -> Callable[[int32], int32]:
 std::function<int32_t(int32_t)> make_adder(int32_t n) {
-    // def add(x: Int32) -> Int32:
+    // def add(x: int32) -> int32:
     auto add = [n](int32_t x) -> int32_t {
         // return x + n
         return (::tpy::add_check<int32_t>(x, n));

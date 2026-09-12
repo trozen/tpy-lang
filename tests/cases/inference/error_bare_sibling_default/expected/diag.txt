@@ -1,1 +1,1 @@
-main.py:21: error: Default field value must be a constant expression (literal, None, or fixed-int constructor like Int32(5))
+main.py:21: error: Default field value must be a constant expression (literal, None, or fixed-int constructor like int32(5))

@@ -36,12 +36,12 @@ inline constexpr std::string_view __name__ = "__main__";
 // # Test 8: Global pointer field access
 // class Point:
 struct Point {
-    // a: Int32
+    // a: int32
     int32_t a;
-    // b: Int32
+    // b: int32
     int32_t b;
 
-    // def __init__(self, a: Int32, b: Int32) -> None:
+    // def __init__(self, a: int32, b: int32) -> None:
     Point() = default;
     explicit Point(int32_t a, int32_t b);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
@@ -55,14 +55,14 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 // # Test 11: Method parameter shadows global
 // class Counter:
 struct Counter {
-    // val: Int32
+    // val: int32
     int32_t val;
 
-    // def __init__(self, val: Int32) -> None:
+    // def __init__(self, val: int32) -> None:
     Counter() = default;
     explicit Counter(int32_t val);
 
-    // def add(self, a: Int32) -> Int32:
+    // def add(self, a: int32) -> int32:
     int32_t add(int32_t a) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
@@ -73,13 +73,13 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 }
 
 
-// def __init__(self, a: Int32, b: Int32) -> None:
+// def __init__(self, a: int32, b: int32) -> None:
 inline Point::Point(int32_t a, int32_t b) : a(a), b(b) {}
 
-// def __init__(self, val: Int32) -> None:
+// def __init__(self, val: int32) -> None:
 inline Counter::Counter(int32_t val) : val(val) {}
 
-// def add(self, a: Int32) -> Int32:
+// def add(self, a: int32) -> int32:
 inline int32_t Counter::add(int32_t a) const {
     // # 'a' param shadows global 'a' above - should NOT deref
     // return self.val + a

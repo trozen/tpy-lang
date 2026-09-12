@@ -11,28 +11,28 @@
 # into a consuming function -- the drop-flag ensures the move source does not
 # retrigger the destructor on scope exit.
 from __future__ import annotations
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 
 
 @nocopy
 class Resource:
-    id: Int32
-    def __init__(self, id: Int32) -> None:
+    id: int32
+    def __init__(self, id: int32) -> None:
         self.id = id
     def __del__(self) -> None:
         print("drop", self.id)
 
     @staticmethod
-    def make(seed: Int32) -> Own[Resource]:
-        base = seed + Int32(100)
+    def make(seed: int32) -> Own[Resource]:
+        base = seed + int32(100)
         return Resource(base)
 
 
 class Holder:
     _r: Resource
-    tag: Int32
+    tag: int32
 
-    def __init__(self, seed: Int32, tag: Int32) -> None:
+    def __init__(self, seed: int32, tag: int32) -> None:
         self._r = Resource.make(seed)
         self.tag = tag
 
@@ -42,7 +42,7 @@ def take(h: Own[Holder]) -> None:
 
 
 def main() -> None:
-    h = Holder(Int32(1), Int32(42))
+    h = Holder(int32(1), int32(42))
     print("held", h._r.id, "tag", h.tag)
     take(h)
     print("after take")

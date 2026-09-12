@@ -1,11 +1,11 @@
 # Async sibling: a (non-suspending) finally mutating a returned reference-type
 # local is visible in the returned object, matching CPython aliasing.
 import asyncio
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Box:
-    n: Int32
+    n: int32
 
     def __init__(self) -> None:
         self.n = 10

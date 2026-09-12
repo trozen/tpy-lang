@@ -4,9 +4,9 @@
 namespace tpyapp::pkg::a {
 
 
-// def f(n: Int32) -> Int32:
+// def f(n: int32) -> int32:
 int32_t f(int32_t n) {
-    // return n * Int32(2)
+    // return n * int32(2)
     return (::tpy::mul_check<int32_t>(n, 2));
 }
 

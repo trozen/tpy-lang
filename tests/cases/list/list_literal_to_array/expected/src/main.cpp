@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def sum_array(arr: Array[Int32, 3]) -> Int32:
+// def sum_array(arr: Array[int32, 3]) -> int32:
 int32_t sum_array(const std::array<int32_t, 3>& arr) {
     // return arr[0] + arr[1] + arr[2]
     return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(::tpy::__getitem__(arr, 0), ::tpy::__getitem__(arr, 1))), ::tpy::__getitem__(arr, 2)));
@@ -13,7 +13,7 @@ int32_t sum_array(const std::array<int32_t, 3>& arr) {
 // def main():
 void main() {
     // # List literal assigned to Array variable
-    // arr1: Array[Int32, 3] = [1, 2, 3]
+    // arr1: Array[int32, 3] = [1, 2, 3]
     std::array<int32_t, 3> arr1 = {1, 2, 3};
     // print(sum_array(arr1))  # 6
     std::cout << sum_array(arr1) << "\n";
@@ -22,7 +22,7 @@ void main() {
     std::array<int32_t, 3> __tmp_1 = {10, 20, 30};
     std::cout << sum_array(__tmp_1) << "\n";
     // # List literal in variable initializer
-    // result: Int32 = sum_array([100, 200, 300])
+    // result: int32 = sum_array([100, 200, 300])
     std::array<int32_t, 3> __tmp_2 = {100, 200, 300};
     int32_t result = sum_array(__tmp_2);
     // print(result)  # 600
@@ -39,7 +39,7 @@ void main() {
         std::cout << 0 << "\n";
     }
     // # List literal in while condition (edge case)
-    // count: Int32 = 0
+    // count: int32 = 0
     int32_t count = 0;
     // while sum_array([1, 0, 0]) > count:
     while (true) {

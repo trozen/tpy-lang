@@ -26,9 +26,9 @@ void main();
 
 // class PingState:
 struct PingState {
-    // turn: Int32          # 0 = main's turn, 1 = worker's turn
+    // turn: int32          # 0 = main's turn, 1 = worker's turn
     int32_t turn;
-    // log: list[Int32]
+    // log: list[int32]
     std::vector<int32_t> log;
 
     // def __init__(self) -> None:

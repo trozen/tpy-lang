@@ -3,18 +3,18 @@
 # positional order, and the nested one does not, so the arm has nothing to
 # render from. The positional spelling of the same call is pinned by
 # tests/cases/records/nested_class.
-from tpy import Int32
+from tpy import int32
 
 
 class Outer:
     class Inner:
-        v: Int32
+        v: int32
 
-        def __init__(self, v: Int32, w: Int32 = 0) -> None:
+        def __init__(self, v: int32, w: int32 = 0) -> None:
             self.v = v + w
 
 
-def f() -> Int32:
+def f() -> int32:
     ok = Outer.Inner(1, 2)
     kw = Outer.Inner(v=1)           # tpyc: error(/expr\.method_call/)
     return ok.v + kw.v

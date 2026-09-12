@@ -4,8 +4,8 @@
 
 | Phase | Scope | Status |
 |-------|-------|--------|
-| **Phase 1** | Global `--default-int` CLI flag, configurable default (Int32/Int64/BigInt), explicit `int` stays BigInt | Done |
-| **Phase 2a** | Retro-widening of literal-seeded function locals at typed-slot uses (cross-sign Int32→UInt64 etc., the standard widening rules can't reach), with range diagnostics | Done |
+| **Phase 1** | Global `--default-int` CLI flag, configurable default (int32/int64/BigInt), explicit `int` stays BigInt | Done |
+| **Phase 2a** | Retro-widening of literal-seeded function locals at typed-slot uses (cross-sign int32→uint64 etc., the standard widening rules can't reach), with range diagnostics | Done |
 | **Phase 2b** | Full deferred `IntLiteralType` resolution (carry the literal type through arbitrary use chains, including module globals and collection elements, with multi-constraint reconciliation) | Planned |
 | **Future** | Per-module/per-function overrides (`# tpy:` directives, `@tpy.config`), constant folding | Planned |
 
@@ -14,7 +14,7 @@ Decision date: 2026-02-16
 ## Summary
 
 TurboPython must default unannotated integer literals to the configured default
-integer type. The default configuration value is `Int32` (not `BigInt`) to
+integer type. The default configuration value is `int32` (not `BigInt`) to
 align with the project's primary goal of performance-first compiled output.
 
 The compiler must provide an explicit escape hatch for CPython-like behavior:
@@ -49,16 +49,16 @@ Unannotated integer literals resolve to a configurable default integer type.
 
 Supported values:
 
-- `Int32` (new default)
-- `Int64` (optional performance profile)
+- `int32` (new default)
+- `int64` (optional performance profile)
 - `BigInt` (compatibility mode)
 
 CLI:
 
 ```bash
-tpy --default-int=Int32 ...    # default behavior
+tpy --default-int=int32 ...    # default behavior
 tpy --default-int=BigInt ...   # CPython-like integer behavior
-tpy --default-int=Int64 ...    # optional wider fixed-width default
+tpy --default-int=int64 ...    # optional wider fixed-width default
 ```
 
 ### 2. Invocation-Wide Consistency
@@ -78,7 +78,7 @@ Only unannotated integer literal deduction is controlled by `--default-int`.
 
 Explicit annotations/constructors override the default:
 
-- `x: Int32 = 1` -> `Int32`
+- `x: int32 = 1` -> `int32`
 - `x: int = 1` -> `BigInt`
 - `x = BigInt(1)` -> `BigInt`
 
@@ -89,12 +89,12 @@ We expect to add local overrides, but they are out of scope for Phase 1.
 Proposed syntax (subject to parser/directive design):
 
 - Module-level directive:
-  - `# tpy: default-int=Int32`
-  - `# tpy: default-int=Int64`
+  - `# tpy: default-int=int32`
+  - `# tpy: default-int=int64`
   - `# tpy: default-int=BigInt`
 - Function-level decorator:
-  - `@tpy.config(default_int="Int32")`
-  - `@tpy.config(default_int="Int64")`
+  - `@tpy.config(default_int="int32")`
+  - `@tpy.config(default_int="int64")`
   - `@tpy.config(default_int="BigInt")`
 
 Proposed precedence (highest to lowest):
@@ -102,18 +102,18 @@ Proposed precedence (highest to lowest):
 1. Function-level override (`@tpy.config(...)`)
 2. Module-level directive (`# tpy: default-int=...`)
 3. CLI flag (`--default-int=...`)
-4. Compiler built-in default (`Int32`)
+4. Compiler built-in default (`int32`)
 
 Phase 1 intentionally uses only levels 3 and 4.
 
 ## Semantics Matrix
 
-| Code | `--default-int=Int32` | `--default-int=BigInt` |
+| Code | `--default-int=int32` | `--default-int=BigInt` |
 |---|---|---|
-| `x = 1` | `Int32` | `BigInt` |
-| `for i in range(10)` | `Range<Int32>` | `Range<BigInt>` |
+| `x = 1` | `int32` | `BigInt` |
+| `for i in range(10)` | `Range<int32>` | `Range<BigInt>` |
 | `x: int = 1` | `BigInt` | `BigInt` |
-| `x: Int32 = 1` | `Int32` | `Int32` |
+| `x: int32 = 1` | `int32` | `int32` |
 | `x = int(1)` | `BigInt` | `BigInt` |
 
 ## Why This Over Deferred Literal Resolution First
@@ -133,8 +133,8 @@ added later as an optimization layer on top of this policy.
 ## Phase 1 Implementation Plan
 
 1. Add CLI flag:
-   - `--default-int=Int32|Int64|BigInt`
-   - default value: `Int32`
+   - `--default-int=int32|int64|BigInt`
+   - default value: `int32`
 2. Thread selected default into semantic analysis context.
 3. Replace hardcoded `BigInt` literal default paths with selected default:
    - variable declaration defaulting
@@ -146,7 +146,7 @@ added later as an optimization layer on top of this policy.
 
 ## Compatibility and Migration
 
-Changing default from `BigInt` to `Int32` can introduce overflow panics in
+Changing default from `BigInt` to `int32` can introduce overflow panics in
 previously unbounded arithmetic where users relied on implicit BigInt.
 
 Mitigation path:
@@ -167,10 +167,10 @@ Mitigation path:
 A narrow slice of the original deferred-resolution proposal landed: a
 function-local initialized from a non-negative integer literal (`offset = 0`)
 takes the configured default at the assignment as before, but the
-`literal_default_vars` scaffold (already used for BigInt/Int64/Float
+`literal_default_vars` scaffold (already used for BigInt/int64/Float
 anchors set by *later assigns*) was extended with one additional edge --
 retroactive promotion to a fixed-int target on the first typed-slot use
-that the standard widening rules can't reach (cross-sign Int32→UInt64
+that the standard widening rules can't reach (cross-sign int32→uint64
 etc.).
 
 Triggers: ARG, RETURN, INIT to annotated local, ASSIGN to existing typed
@@ -181,10 +181,10 @@ subscript-assign. The hook lives in `TypeCompatibility.check_type_compatible`
 
 Diagnostics: when retro-widening would have fired except a recorded
 literal value falls outside the target's range (`a = -1; f(a)` for
-`UInt64`, `a = 300; f(a)` for `UInt8`), the error names the literal
-value and target range instead of the bare "got Int32" mismatch. When a
+`uint64`, `a = 300; f(a)` for `uint8`), the error names the literal
+value and target range instead of the bare "got int32" mismatch. When a
 retro-widened local later fails compat at a different typed slot
-(`a = 0; fu(a) /* UInt64 */; fi(a) /* Int32 */`), the type-mismatch
+(`a = 0; fu(a) /* uint64 */; fi(a) /* int32 */`), the type-mismatch
 message gets a "promoted to T by earlier use at line N" suffix pointing
 at the locking site.
 
@@ -209,7 +209,7 @@ Example intent:
 
 ```python
 n = 4                    # IntLiteralType(4), not immediately concrete
-for i in range(n):       # choose Int32/Int64 fast range path when safe
+for i in range(n):       # choose int32/int64 fast range path when safe
     ...
 x = n + m                # may choose BigInt if arithmetic domain is ambiguous
 ```
@@ -220,7 +220,7 @@ x = n + m                # may choose BigInt if arithmetic domain is ambiguous
    seeds) during semantic analysis.
 2. Let usage sites constrain candidate concrete types:
    - `range(n)` can request fixed-width integer domain
-   - explicit annotation/parameter type (`f(x: Int32)`) can request `Int32`
+   - explicit annotation/parameter type (`f(x: int32)`) can request `int32`
    - unconstrained arithmetic can force `BigInt` fallback for safety
 3. Run a post-analysis resolution pass for remaining `IntLiteralType` vars.
 4. Write resolved concrete types back into sema state used by codegen.

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def _pin_cycle_copy() -> Int32:
+// def _pin_cycle_copy() -> int32:
 int32_t _pin_cycle_copy() {
     // total = 0
     int32_t total = 0;

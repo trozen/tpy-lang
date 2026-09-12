@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main():
 void main() {
-    // s: set[Int32] = {1, 2}
+    // s: set[int32] = {1, 2}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2});
     // k: int = 2
     ::tpy::BigInt k = ::tpy::BigInt(2);
@@ -22,7 +22,7 @@ void main() {
     ::tpy::BigInt neg = ::tpy::BigInt(static_cast<int64_t>(-1099511627776LL));
     // print(neg in s)
     std::cout << ::tpy::print_bool((s.contains(neg))) << "\n";
-    // su: set[UInt32] = {7}
+    // su: set[uint32] = {7}
     ::tpy::ordered_set<uint32_t> su = ::tpy::ordered_set<uint32_t>({7});
     // seven: int = 7
     ::tpy::BigInt seven = ::tpy::BigInt(7);

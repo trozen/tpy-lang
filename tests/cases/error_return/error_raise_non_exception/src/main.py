@@ -1,10 +1,10 @@
 # Error: raise a class that doesn't inherit from Exception
-from tpy import Int32
+from tpy import int32
 
 class NotFound:
     pass
 
-def find_index(items: list[Int32], target: Int32) -> Int32:
+def find_index(items: list[int32], target: int32) -> int32:
     for i in range(len(items)):
         if items[i] == target:
             return i

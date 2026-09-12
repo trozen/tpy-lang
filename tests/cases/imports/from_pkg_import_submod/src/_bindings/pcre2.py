@@ -1,12 +1,12 @@
-from tpy import Int32
+from tpy import int32
 
 
 class Code:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
-def compile_pattern(s: str) -> Int32:
-    return Int32(len(s))
+def compile_pattern(s: str) -> int32:
+    return int32(len(s))

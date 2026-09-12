@@ -5,21 +5,21 @@
 # where the constructor would run in a branch CPython never takes.
 from typing import Protocol
 
-from tpy import Int32
+from tpy import int32
 
 
 class Reader(Protocol):
-    def read(self) -> Int32: ...
+    def read(self) -> int32: ...
 
 
 class Src:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         print("built", n)
         self.n = n
 
-    def read(self) -> Int32:
+    def read(self) -> int32:
         return self.n
 
 

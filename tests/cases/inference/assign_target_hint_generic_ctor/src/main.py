@@ -1,6 +1,6 @@
 # Generic constructor type inference from assignment target.
 # When T can't be inferred from constructor args, use the LHS type as hint.
-from tpy import Int32, Own
+from tpy import int32, Own
 from tpy.mem import UninitHeapStorage
 
 class Wrapper[T]:
@@ -19,13 +19,13 @@ class Wrapper[T]:
 
 def main():
     # Annotated var_decl: T inferred from annotation
-    s: UninitHeapStorage[Int32] = UninitHeapStorage(1)  # tpyc: ok
-    s.init0(Int32(42))
+    s: UninitHeapStorage[int32] = UninitHeapStorage(1)  # tpyc: ok
+    s.init0(int32(42))
     print("var_decl:", s.load0())
     s.drop0()
 
     # Field assignment via generic class
-    w = Wrapper[Int32](Int32(99))
+    w = Wrapper[int32](int32(99))
     print("field:", w.get())
 
     print("done")

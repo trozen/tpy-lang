@@ -7,11 +7,11 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     std::optional<::tpystd::tplib::rc::Rc<Node>> __slot_2;
-    // a = Rc.new(Node(Int32(1)))
+    // a = Rc.new(Node(int32(1)))
     ::tpystd::tplib::rc::Rc<Node> a = Rc<Node>::new_<Node>(Node(1));
-    // b = Rc.new(Node(Int32(2)))
+    // b = Rc.new(Node(int32(2)))
     ::tpystd::tplib::rc::Rc<Node> b = Rc<Node>::new_<Node>(Node(2));
-    // c = Rc.new(Node(Int32(3)))
+    // c = Rc.new(Node(int32(3)))
     ::tpystd::tplib::rc::Rc<Node> c = Rc<Node>::new_<Node>(Node(3));
     // a.get().next = b.clone()
     a.get().next = b.clone();

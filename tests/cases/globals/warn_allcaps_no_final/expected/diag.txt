@@ -1,1 +1,1 @@
-main.py:4: warning: ALL_CAPS variable 'MAX_SIZE' without Final annotation; use Final[Int32] if this is a constant
+main.py:4: warning: ALL_CAPS variable 'MAX_SIZE' without Final annotation; use Final[int32] if this is a constant

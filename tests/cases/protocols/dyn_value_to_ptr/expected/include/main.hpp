@@ -60,13 +60,13 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 // class Executor(Awaker):
 struct Executor : Awaker {
-    // log: list[Int32]
+    // log: list[int32]
     std::vector<int32_t> log;
 
     // def __init__(self) -> None:
     Executor();
 
-    // def mark(self, task_id: Int32) -> None:
+    // def mark(self, task_id: int32) -> None:
     void mark(int32_t task_id) override;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Executor";
 };
@@ -102,7 +102,7 @@ inline Holder::Holder(Awaker& h) : awaker(&h) {}
 // def __init__(self) -> None:
 inline Executor::Executor() : log(std::vector<int32_t>{}) {}
 
-// def mark(self, task_id: Int32) -> None:
+// def mark(self, task_id: int32) -> None:
 inline void Executor::mark(int32_t task_id) {
     // self.log.append(task_id)
     this->log.push_back(task_id);

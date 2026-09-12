@@ -2,13 +2,13 @@
 # expression -- its side effects happen and are then discarded, as in CPython.
 from typing import Self
 
-from tpy import Int32, Own
+from tpy import int32, Own
 
-built: Int32 = 0
+built: int32 = 0
 
 
 class Widget:
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
     @classmethod

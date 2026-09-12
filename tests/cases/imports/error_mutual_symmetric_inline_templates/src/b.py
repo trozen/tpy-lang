@@ -1,9 +1,9 @@
 from a import A
-from tpy import Int32, Fn
+from tpy import int32, Fn
 
 class B:
-    m: Int32
-    def __init__(self, m: Int32) -> None:
+    m: int32
+    def __init__(self, m: int32) -> None:
         self.m = m
 
 # Symmetric -- inline template returning A by value. b.hpp needs

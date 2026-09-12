@@ -18,7 +18,7 @@ void main();
 struct Address {
     // city: str
     std::string city;
-    // zip_code: Int32
+    // zip_code: int32
     int32_t zip_code;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.Address";

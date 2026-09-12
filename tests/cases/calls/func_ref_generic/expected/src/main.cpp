@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // # Callable param (type-erased std::function)
-// def apply_callable(f: Callable[[Int32], Int32], x: Int32) -> Int32:
+// def apply_callable(f: Callable[[int32], int32], x: int32) -> int32:
 int32_t apply_callable(const std::function<int32_t(int32_t)>& f, int32_t x) {
     // return f(x)
     return f(x);
@@ -14,14 +14,14 @@ int32_t apply_callable(const std::function<int32_t(int32_t)>& f, int32_t x) {
 // # Callable local variable
 // def use_local() -> None:
 void use_local() {
-    // f: Callable[[Int32], Int32] = identity
+    // f: Callable[[int32], int32] = identity
     std::function<int32_t(int32_t)> f = identity<int32_t>;
     // print(f(99))
     std::cout << f(99) << "\n";
 }
 
 // # Return as Callable
-// def get_identity() -> Callable[[Int32], Int32]:
+// def get_identity() -> Callable[[int32], int32]:
 std::function<int32_t(int32_t)> get_identity() {
     // return identity
     return identity<int32_t>;
@@ -29,15 +29,15 @@ std::function<int32_t(int32_t)> get_identity() {
 
 // def main() -> None:
 void main() {
-    // # Basic: identity[T] inferred as identity[Int32]
+    // # Basic: identity[T] inferred as identity[int32]
     // print(apply_fn(identity, 42))          # 42
     std::cout << apply_fn(identity<int32_t>, 42) << "\n";
     // print(apply_callable(identity, 42))    # 42
     std::cout << apply_callable(identity<int32_t>, 42) << "\n";
-    // # Multi type params: pair[T, U] inferred as pair[Int32, Int32]
+    // # Multi type params: pair[T, U] inferred as pair[int32, int32]
     // print(make_pair(pair, 3, 7))           # (3, 7)
     std::cout << ::tpy::TuplePrinter(make_pair(pair<int32_t, int32_t>, 3, 7)) << "\n";
-    // # Bounded: max_val[T: Comparable] inferred as max_val[Int32]
+    // # Bounded: max_val[T: Comparable] inferred as max_val[int32]
     // print(apply2(max_val, 10, 3))          # 10
     std::cout << apply2(max_val<int32_t>, 10, 3) << "\n";
     // # Callable local variable

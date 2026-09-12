@@ -1,9 +1,9 @@
 import asyncio
-from tpy import Int32
-async def step(n: Int32) -> Int32:
+from tpy import int32
+async def step(n: int32) -> int32:
     await asyncio.sleep(0)
     return n
-async def f(n: Int32, flag: bool) -> Int32:
+async def f(n: int32, flag: bool) -> int32:
     d = step(n)
     await asyncio.sleep(0)
     if flag:

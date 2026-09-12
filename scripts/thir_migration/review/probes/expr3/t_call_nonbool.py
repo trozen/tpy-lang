@@ -1,5 +1,5 @@
-from tpy import Int32
-def cnt() -> Int32:
+from tpy import int32
+def cnt() -> int32:
     return 3
 def main() -> None:
     if cnt():

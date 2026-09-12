@@ -6,7 +6,7 @@
   "reason": "call_reject_reason(\"expr.method_call\")",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "Probe verdict BREAKS_AT_CUTOVER, fallback 'body:expr.method_call:method.arg_shape' (composed via call_reject_reason at this site): a ternary arg at an Own[Char] method slot.",
+  "evidence": "Probe verdict BREAKS_AT_CUTOVER, fallback 'body:expr.method_call:method.arg_shape' (composed via call_reject_reason at this site): a ternary arg at an Own[char] method slot.",
   "probe": "scripts/thir_migration/review/probes/expr1/s2065_method_arg_ternary_own_char.py",
   "plain_raise": false,
   "known_shape": null
@@ -114,7 +114,7 @@
   "reason": "\"binop.union_none_narrowed_subject\"",
   "bin": "UNSURE",
   "confidence": "medium",
-  "evidence": "Every narrowed union subject probed (isinstance-if, match class pattern, isinstance then `is not`) rejects EARLIER at expressions.py:3093 via the _IS_OPS reject at 3602 (`binop.shape.is`); the inline `isinstance(v, Int32) and v is None` shape ROUTES past this guard (name not in inline_narrowed) with a BYTE DIVERGENCE: AST emits ill-formed `std::holds_alternative<std::monostate>(std::get<int32_t>(v))`, THIR emits `holds_alternative<monostate>(v)` (see r4016_inline_and). Could not construct a program that reaches 4016.",
+  "evidence": "Every narrowed union subject probed (isinstance-if, match class pattern, isinstance then `is not`) rejects EARLIER at expressions.py:3093 via the _IS_OPS reject at 3602 (`binop.shape.is`); the inline `isinstance(v, int32) and v is None` shape ROUTES past this guard (name not in inline_narrowed) with a BYTE DIVERGENCE: AST emits ill-formed `std::holds_alternative<std::monostate>(std::get<int32_t>(v))`, THIR emits `holds_alternative<monostate>(v)` (see r4016_inline_and). Could not construct a program that reaches 4016.",
   "probe": null,
   "plain_raise": false,
   "known_shape": null
@@ -138,7 +138,7 @@
   "reason": "\"binop.narrowed_char_eq_literal\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "BREAKS_AT_CUTOVER with the exact literal 'binop.narrowed_char_eq_literal': `c == 'x'` under `if c is not None` on `Char | None`.",
+  "evidence": "BREAKS_AT_CUTOVER with the exact literal 'binop.narrowed_char_eq_literal': `c == 'x'` under `if c is not None` on `char | None`.",
   "probe": "scripts/thir_migration/review/probes/expr1/s4225_narrowed_char_eq_str.py",
   "plain_raise": false,
   "known_shape": null
@@ -150,7 +150,7 @@
   "reason": "\"name.scalar_ptr_opt_unwired\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "BREAKS_AT_CUTOVER 'body:stmt.return:name.scalar_ptr_opt_unwired', site pinned: a generic `T | None` method result (pointer-repr Optional[Int32]) bound to a local and returned / passed to a value-opt param.",
+  "evidence": "BREAKS_AT_CUTOVER 'body:stmt.return:name.scalar_ptr_opt_unwired', site pinned: a generic `T | None` method result (pointer-repr Optional[int32]) bound to a local and returned / passed to a value-opt param.",
   "probe": "scripts/thir_migration/review/probes/expr1/t4599_optscalar_local_return.py",
   "plain_raise": false,
   "known_shape": null
@@ -198,7 +198,7 @@
   "reason": "unrouted",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "BREAKS_AT_CUTOVER 'body:stmt.return:name.own_read' (verdict from predicates.py:4520 _unrouted_binding_read): an `Own[tuple[Int32, Int32]]` param read; Own[bytearray] param gives the same tag.",
+  "evidence": "BREAKS_AT_CUTOVER 'body:stmt.return:name.own_read' (verdict from predicates.py:4520 _unrouted_binding_read): an `Own[tuple[int32, int32]]` param read; Own[bytearray] param gives the same tag.",
   "probe": "scripts/thir_migration/review/probes/expr1/s5002_own_value_tuple_param.py",
   "plain_raise": false,
   "known_shape": null
@@ -222,7 +222,7 @@
   "reason": "\"name.optval_unproven_read\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "BREAKS_AT_CUTOVER 'body:stmt.var_decl:name.optval_unproven_read': un-narrowed `Int32 | None` param as a list-literal element (tuple element composes decl.tuple_literal_shape:name.optval_unproven_read).",
+  "evidence": "BREAKS_AT_CUTOVER 'body:stmt.var_decl:name.optval_unproven_read': un-narrowed `int32 | None` param as a list-literal element (tuple element composes decl.tuple_literal_shape:name.optval_unproven_read).",
   "probe": "scripts/thir_migration/review/probes/expr1/s5022_optval_list_elem.py",
   "plain_raise": false,
   "known_shape": null
@@ -246,7 +246,7 @@
   "reason": "\"name.optspan_unproven_read\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "BREAKS_AT_CUTOVER 'body:stmt.var_decl:name.optspan_unproven_read': un-narrowed `Span[Int32] | None` param as a list-literal element.",
+  "evidence": "BREAKS_AT_CUTOVER 'body:stmt.var_decl:name.optspan_unproven_read': un-narrowed `Span[int32] | None` param as a list-literal element.",
   "probe": "scripts/thir_migration/review/probes/expr1/s5030_optspan_list_elem.py",
   "plain_raise": false,
   "known_shape": null
@@ -258,7 +258,7 @@
   "reason": "\"name.opttuple_unproven_read\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "BREAKS_AT_CUTOVER 'body:stmt.var_decl:name.opttuple_unproven_read': un-narrowed `tuple[Int32, Int32] | None` param as a list-literal element.",
+  "evidence": "BREAKS_AT_CUTOVER 'body:stmt.var_decl:name.opttuple_unproven_read': un-narrowed `tuple[int32, int32] | None` param as a list-literal element.",
   "probe": "scripts/thir_migration/review/probes/expr1/r5037_opttuple_list_elem.py",
   "plain_raise": false,
   "known_shape": null
@@ -270,7 +270,7 @@
   "reason": "\"name.optspan_narrowed_read\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "BREAKS_AT_CUTOVER 'body:stmt.return:name.optspan_narrowed_read': `len(sp)` under `if sp is not None` on `Span[Int32] | None`.",
+  "evidence": "BREAKS_AT_CUTOVER 'body:stmt.return:name.optspan_narrowed_read': `len(sp)` under `if sp is not None` on `Span[int32] | None`.",
   "probe": "scripts/thir_migration/review/probes/expr1/s5046_optspan_narrowed.py",
   "plain_raise": false,
   "known_shape": null
@@ -294,7 +294,7 @@
   "reason": "\"name.union_binding_divergent\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "BREAKS_AT_CUTOVER 'body:stmt.var_decl:name.union_binding_divergent': `x: Int32 | float = k; v = x`. NOTE the AST render of this shape is a known miscompile (predicates.py:1194-1199, BUGS.md), so the program is already broken at C++ compile.",
+  "evidence": "BREAKS_AT_CUTOVER 'body:stmt.var_decl:name.union_binding_divergent': `x: int32 | float = k; v = x`. NOTE the AST render of this shape is a known miscompile (predicates.py:1194-1199, BUGS.md), so the program is already broken at C++ compile.",
   "probe": "scripts/thir_migration/review/probes/expr1/s5059_union_divergent.py",
   "plain_raise": false,
   "known_shape": null
@@ -366,7 +366,7 @@
   "reason": "\"subscript.optional_check\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "BREAKS_AT_CUTOVER 'body:stmt.return:subscript.optional_check' (pinned test_thir_containers.py:5374): `d[0]` on an un-narrowed `list[Int32] | None`.",
+  "evidence": "BREAKS_AT_CUTOVER 'body:stmt.return:subscript.optional_check' (pinned test_thir_containers.py:5374): `d[0]` on an un-narrowed `list[int32] | None`.",
   "probe": "scripts/thir_migration/review/probes/expr1/s5831_opt_list_unproven.py",
   "plain_raise": false,
   "known_shape": null
@@ -402,7 +402,7 @@
   "reason": "\"subscript.tuple_shape\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "BREAKS_AT_CUTOVER 'body:stmt.return:subscript.tuple_shape' (pinned test_thir_tuples.py:632 fixture): `make(b)[0]` on a call returning tuple[Int32, Rec].",
+  "evidence": "BREAKS_AT_CUTOVER 'body:stmt.return:subscript.tuple_shape' (pinned test_thir_tuples.py:632 fixture): `make(b)[0]` on a call returning tuple[int32, Rec].",
   "probe": "scripts/thir_migration/review/probes/expr1/s6055_tuple_call_subscript.py",
   "plain_raise": false,
   "known_shape": null
@@ -414,7 +414,7 @@
   "reason": "\"subscript.record_getitem\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "BREAKS_AT_CUTOVER 'body:stmt.var_decl:subscript.record_getitem': a user __getitem__ returning `Int32 | None` bound to a local (record- and scalar-returning getitems route).",
+  "evidence": "BREAKS_AT_CUTOVER 'body:stmt.var_decl:subscript.record_getitem': a user __getitem__ returning `int32 | None` bound to a local (record- and scalar-returning getitems route).",
   "probe": "scripts/thir_migration/review/probes/expr1/r6142_getitem_opt_ret.py",
   "plain_raise": false,
   "known_shape": null
@@ -438,7 +438,7 @@
   "reason": "\"subscript.ru_narrowed_nonmap\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "BREAKS_AT_CUTOVER 'body:subscript.ru_narrowed_nonmap' (exact literal, site pinned): `x[0]` under `if isinstance(x, str)` on `str | list[Int32]`.",
+  "evidence": "BREAKS_AT_CUTOVER 'body:subscript.ru_narrowed_nonmap' (exact literal, site pinned): `x[0]` under `if isinstance(x, str)` on `str | list[int32]`.",
   "probe": "scripts/thir_migration/review/probes/expr1/s6647_union_str_narrowed_subscript.py",
   "plain_raise": false,
   "known_shape": null
@@ -486,7 +486,7 @@
   "reason": "\"expr.unary\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "BREAKS_AT_CUTOVER 'body:expr.unary' (exact), site pinned to 6783: `-g(k)` where g returns `Int32 | None` (a non-name unproven optional operand; name/field operands route).",
+  "evidence": "BREAKS_AT_CUTOVER 'body:expr.unary' (exact), site pinned to 6783: `-g(k)` where g returns `int32 | None` (a non-name unproven optional operand; name/field operands route).",
   "probe": "scripts/thir_migration/review/probes/expr1/t6783_unary_call_opt.py",
   "plain_raise": false,
   "known_shape": null
@@ -498,7 +498,7 @@
   "reason": "\"expr.unary\"",
   "bin": "UNSURE",
   "confidence": "medium",
-  "evidence": "Every sema-accepted arithmetic unary probed (Int32 ~, Int64/Float32/float/BigInt-default int -, BigInt local, +float, user __neg__ with Own return) ROUTES; UInt8/bool/BigInt-param operands are sema-refused. No accepted shape leaves resolved_unaryop without a cpp_template; leaning DEAD but unproven.",
+  "evidence": "Every sema-accepted arithmetic unary probed (int32 ~, int64/float32/float/BigInt-default int -, BigInt local, +float, user __neg__ with Own return) ROUTES; uint8/bool/BigInt-param operands are sema-refused. No accepted shape leaves resolved_unaryop without a cpp_template; leaning DEAD but unproven.",
   "probe": null,
   "plain_raise": false,
   "known_shape": null
@@ -642,7 +642,7 @@
   "reason": "\"expr.walrus\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "BREAKS_AT_CUTOVER 'body:expr.walrus', site pinned to 7194: `x = (s := maybe(k))` with a `str | None` value, and a Span walrus `len(sp := Span[Int32](xs))`.",
+  "evidence": "BREAKS_AT_CUTOVER 'body:expr.walrus', site pinned to 7194: `x = (s := maybe(k))` with a `str | None` value, and a Span walrus `len(sp := Span[int32](xs))`.",
   "probe": "scripts/thir_migration/review/probes/expr1/t7194_walrus_optstr_decl.py",
   "plain_raise": false,
   "known_shape": null
@@ -654,7 +654,7 @@
   "reason": "\"expr.ifexpr\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "BREAKS_AT_CUTOVER 'body:expr.ifexpr', site pinned to 7266: an Array[Int32, 2] ternary and a bytearray ternary bound to a local. Related ICE (not this arm): `(a if c else b).area()` on a @dynamic protocol raises AttributeError 'TpyIfExpr' has no attribute 'obj' at checks.py:7701 via 7927 (probe s7266_ifexpr_dyn_protocol, THIR_RAISES_PLAIN).",
+  "evidence": "BREAKS_AT_CUTOVER 'body:expr.ifexpr', site pinned to 7266: an Array[int32, 2] ternary and a bytearray ternary bound to a local. Related ICE (not this arm): `(a if c else b).area()` on a @dynamic protocol raises AttributeError 'TpyIfExpr' has no attribute 'obj' at checks.py:7701 via 7927 (probe s7266_ifexpr_dyn_protocol, THIR_RAISES_PLAIN).",
   "probe": "scripts/thir_migration/review/probes/expr1/t7266_ifexpr_array.py",
   "plain_raise": false,
   "known_shape": null
@@ -702,7 +702,7 @@
   "reason": "call_reject_reason(\"expr.call\")",
   "bin": "DEAD",
   "confidence": "medium",
-  "evidence": "Same guard set as 2198: arity/int-typed counters are sema-enforced, builtin range carries cpp_template, _eligible_scalar admits every int width incl. BigInt; object-position range probes with Int64/BigInt counters never reached this reject (they were refused downstream by len()).",
+  "evidence": "Same guard set as 2198: arity/int-typed counters are sema-enforced, builtin range carries cpp_template, _eligible_scalar admits every int width incl. BigInt; object-position range probes with int64/BigInt counters never reached this reject (they were refused downstream by len()).",
   "probe": null,
   "plain_raise": false,
   "known_shape": null
@@ -810,7 +810,7 @@
   "reason": "call_reject_reason(\"expr.call\")",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "BREAKS_AT_CUTOVER 'body:expr.call:call.ctor_arg.<family>', site pinned to 7704: `Container[Int32](5)` (scalar into a `T | None` slot -> .optional), a record rvalue / container literal into a MUTATED ctor slot inside a match guard or lambda (.record_f1 / .container), a ternary or comprehension TD ctor arg.",
+  "evidence": "BREAKS_AT_CUTOVER 'body:expr.call:call.ctor_arg.<family>', site pinned to 7704: `Container[int32](5)` (scalar into a `T | None` slot -> .optional), a record rvalue / container literal into a MUTATED ctor slot inside a match guard or lambda (.record_f1 / .container), a ternary or comprehension TD ctor arg.",
   "probe": "scripts/thir_migration/review/probes/expr1/r4599_generic_optscalar_local_return.py",
   "plain_raise": false,
   "known_shape": null
@@ -858,7 +858,7 @@
   "reason": "call_reject_reason(\"expr.call\")",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "BREAKS_AT_CUTOVER 'body:expr.call:call.inst_shape', site pinned to 7994: `Span[Int32](p, 3)` over a Ptr[Int32] (call_type set, no instantiation fi / non-container result).",
+  "evidence": "BREAKS_AT_CUTOVER 'body:expr.call:call.inst_shape', site pinned to 7994: `Span[int32](p, 3)` over a Ptr[int32] (call_type set, no instantiation fi / non-container result).",
   "probe": "scripts/thir_migration/review/probes/expr1/t7994_inst_span_ptr.py",
   "plain_raise": false,
   "known_shape": null
@@ -870,7 +870,7 @@
   "reason": "call_reject_reason(\"expr.call\")",
   "bin": "DEAD",
   "confidence": "medium",
-  "evidence": "Same guard set as 2198/7343 on a range arg of an instantiation: `list(range(1, 5))` under --default-int BigInt and `list(range(n))` with Int64 n both ROUTE; arity and int-typed counters are sema-enforced.",
+  "evidence": "Same guard set as 2198/7343 on a range arg of an instantiation: `list(range(1, 5))` under --default-int BigInt and `list(range(n))` with int64 n both ROUTE; arity and int-typed counters are sema-enforced.",
   "probe": null,
   "plain_raise": false,
   "known_shape": null

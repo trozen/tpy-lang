@@ -3,15 +3,15 @@
 
 namespace tpystd::random {
 
-// _N: Int32 = 624
+// _N: int32 = 624
 int32_t _N{};
-// _M: Int32 = 397
+// _M: int32 = 397
 int32_t _M{};
-// _MATRIX_A: UInt32 = 0x9908b0df
+// _MATRIX_A: uint32 = 0x9908b0df
 uint32_t _MATRIX_A{};
-// _UPPER_MASK: UInt32 = 0x80000000
+// _UPPER_MASK: uint32 = 0x80000000
 uint32_t _UPPER_MASK{};
-// _LOWER_MASK: UInt32 = 0x7fffffff
+// _LOWER_MASK: uint32 = 0x7fffffff
 uint32_t _LOWER_MASK{};
 // # Constants for distributions, mirroring CPython's Lib/random.py.
 // _TWOPI: float = 2.0 * math.pi
@@ -44,56 +44,56 @@ void seed() {
 }
 
 // @dispatch
-// def seed(n: Int32) -> None:
+// def seed(n: int32) -> None:
 void seed(int32_t n) {
     // # CPython treats negative seeds as their absolute value. For
-    // # INT32_MIN the mathematical abs doesn't fit in Int32, but
-    // # `0 - n` in UInt32 (mod 2^32) equals abs(n) for any negative n.
+    // # INT32_MIN the mathematical abs doesn't fit in int32, but
+    // # `0 - n` in uint32 (mod 2^32) equals abs(n) for any negative n.
     // if n < 0:
     if ((n < 0)) {
-        // _inst._seed(UInt32.sub_wrap(UInt32(0), UInt32.trunc(n)))
+        // _inst._seed(uint32.sub_wrap(uint32(0), uint32.trunc(n)))
         _inst->_seed(static_cast<uint32_t>(0 - static_cast<uint32_t>(n)));
     // else:
     } else {
-        // _inst._seed(UInt32(n))
+        // _inst._seed(uint32(n))
         _inst->_seed(static_cast<uint32_t>(n));
     }
 }
 
-// def getrandbits(k: Int32) -> int:
+// def getrandbits(k: int32) -> int:
 ::tpy::BigInt getrandbits(int32_t k) {
     // return _inst.getrandbits(k)
     return _inst->getrandbits(k);
 }
 
-// def randint(a: Int32, b: Int32) -> Int32:
+// def randint(a: int32, b: int32) -> int32:
 int32_t randint(int32_t a, int32_t b) {
     // return _inst.randint(a, b)
     return _inst->randint(a, b);
 }
 
 // @dispatch
-// def randrange(stop: Int32) -> Int32:
+// def randrange(stop: int32) -> int32:
 int32_t randrange(int32_t stop) {
     // return _inst.randrange(stop)
     return _inst->randrange(stop);
 }
 
 // @dispatch
-// def randrange(start: Int32, stop: Int32) -> Int32:
+// def randrange(start: int32, stop: int32) -> int32:
 int32_t randrange(int32_t start, int32_t stop) {
     // return _inst.randrange(start, stop)
     return _inst->randrange(start, stop);
 }
 
 // @dispatch
-// def randrange(start: Int32, stop: Int32, step: Int32) -> Int32:
+// def randrange(start: int32, stop: int32, step: int32) -> int32:
 int32_t randrange(int32_t start, int32_t stop, int32_t step) {
     // return _inst.randrange(start, stop, step)
     return _inst->randrange(start, stop, step);
 }
 
-// def randbytes(n: Int32) -> bytes:
+// def randbytes(n: int32) -> bytes:
 ::tpy::Bytes randbytes(int32_t n) {
     // return _inst.randbytes(n)
     return _inst->randbytes(n);
@@ -166,20 +166,20 @@ double vonmisesvariate(double mu, double kappa) {
 }
 
 
-// def _seed(self, s: UInt32) -> None:
+// def _seed(self, s: uint32) -> None:
 void Random::_seed(uint32_t s) {
     // # CPython's init_by_array specialised for a single-uint32 key [s].
     // self._init_genrand(19650218)
     this->_init_genrand(19650218);
-    // key0: UInt32 = s
+    // key0: uint32 = s
     uint32_t key0 = s;
-    // key_length: Int32 = 1
+    // key_length: int32 = 1
     int32_t key_length = 1;
-    // i: Int32 = 1
+    // i: int32 = 1
     int32_t i = 1;
-    // j: Int32 = 0
+    // j: int32 = 0
     int32_t j = 0;
-    // k: Int32 = _N
+    // k: int32 = _N
     int32_t k = _N;
     // if k < key_length:
     if ((k < key_length)) {
@@ -188,13 +188,13 @@ void Random::_seed(uint32_t s) {
     }
     // while k > 0:
     while ((k > 0)) {
-        // prev: UInt32 = self._state[i - 1]
+        // prev: uint32 = self._state[i - 1]
         uint32_t prev = ::tpy::__getitem__(this->_state, (::tpy::sub_check<int32_t>(i, 1)));
-        // mixed: UInt32 = UInt32.mul_wrap(prev ^ (prev >> 30), 1664525)
+        // mixed: uint32 = uint32.mul_wrap(prev ^ (prev >> 30), 1664525)
         uint32_t mixed = static_cast<uint32_t>((static_cast<uint32_t>(prev ^ (::tpy::rshift_check<uint32_t>(prev, 30)))) * 1664525);
-        // self._state[i] = UInt32.add_wrap(
-        // UInt32.add_wrap(self._state[i] ^ mixed, key0),
-        // UInt32(j),
+        // self._state[i] = uint32.add_wrap(
+        // uint32.add_wrap(self._state[i] ^ mixed, key0),
+        // uint32(j),
         // )
         ::tpy::__setitem__(this->_state, i, static_cast<uint32_t>(static_cast<uint32_t>((static_cast<uint32_t>(::tpy::__getitem__(this->_state, i) ^ mixed)) + key0) + ::tpy::int_cast_check<uint32_t>(j)));
         // i += 1
@@ -220,11 +220,11 @@ void Random::_seed(uint32_t s) {
     k = (::tpy::sub_check<int32_t>(_N, 1));
     // while k > 0:
     while ((k > 0)) {
-        // prev2: UInt32 = self._state[i - 1]
+        // prev2: uint32 = self._state[i - 1]
         uint32_t prev2 = ::tpy::__getitem__(this->_state, (::tpy::sub_check<int32_t>(i, 1)));
-        // mixed2: UInt32 = UInt32.mul_wrap(prev2 ^ (prev2 >> 30), 1566083941)
+        // mixed2: uint32 = uint32.mul_wrap(prev2 ^ (prev2 >> 30), 1566083941)
         uint32_t mixed2 = static_cast<uint32_t>((static_cast<uint32_t>(prev2 ^ (::tpy::rshift_check<uint32_t>(prev2, 30)))) * 1566083941);
-        // self._state[i] = UInt32.sub_wrap(self._state[i] ^ mixed2, UInt32(i))
+        // self._state[i] = uint32.sub_wrap(self._state[i] ^ mixed2, uint32(i))
         ::tpy::__setitem__(this->_state, i, static_cast<uint32_t>((static_cast<uint32_t>(::tpy::__getitem__(this->_state, i) ^ mixed2)) - ::tpy::int_cast_check<uint32_t>(i)));
         // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
@@ -251,13 +251,13 @@ void Random::_seed(uint32_t s) {
 
 // def _generate(self) -> None:
 void Random::_generate() {
-    // kk: Int32 = 0
+    // kk: int32 = 0
     int32_t kk = 0;
     // while kk < _N - _M:
     while ((kk < (::tpy::sub_check<int32_t>(_N, _M)))) {
-        // y: UInt32 = (self._state[kk] & _UPPER_MASK) | (self._state[kk + 1] & _LOWER_MASK)
+        // y: uint32 = (self._state[kk] & _UPPER_MASK) | (self._state[kk + 1] & _LOWER_MASK)
         uint32_t y = (static_cast<uint32_t>((static_cast<uint32_t>(::tpy::__getitem__(this->_state, kk) & _UPPER_MASK)) | (static_cast<uint32_t>(::tpy::__getitem__(this->_state, (::tpy::add_check<int32_t>(kk, 1))) & _LOWER_MASK))));
-        // mag: UInt32 = 0
+        // mag: uint32 = 0
         uint32_t mag = 0;
         // if (y & 1) != 0:
         if (((static_cast<uint32_t>(y & 1)) != 0)) {
@@ -271,9 +271,9 @@ void Random::_generate() {
     }
     // while kk < _N - 1:
     while ((kk < (::tpy::sub_check<int32_t>(_N, 1)))) {
-        // y2: UInt32 = (self._state[kk] & _UPPER_MASK) | (self._state[kk + 1] & _LOWER_MASK)
+        // y2: uint32 = (self._state[kk] & _UPPER_MASK) | (self._state[kk + 1] & _LOWER_MASK)
         uint32_t y2 = (static_cast<uint32_t>((static_cast<uint32_t>(::tpy::__getitem__(this->_state, kk) & _UPPER_MASK)) | (static_cast<uint32_t>(::tpy::__getitem__(this->_state, (::tpy::add_check<int32_t>(kk, 1))) & _LOWER_MASK))));
-        // mag2: UInt32 = 0
+        // mag2: uint32 = 0
         uint32_t mag2 = 0;
         // if (y2 & 1) != 0:
         if (((static_cast<uint32_t>(y2 & 1)) != 0)) {
@@ -285,9 +285,9 @@ void Random::_generate() {
         // kk += 1
         kk = ::tpy::add_check<int32_t>(kk, 1);
     }
-    // y3: UInt32 = (self._state[_N - 1] & _UPPER_MASK) | (self._state[0] & _LOWER_MASK)
+    // y3: uint32 = (self._state[_N - 1] & _UPPER_MASK) | (self._state[0] & _LOWER_MASK)
     uint32_t y3 = (static_cast<uint32_t>((static_cast<uint32_t>(::tpy::__getitem__(this->_state, (::tpy::sub_check<int32_t>(_N, 1))) & _UPPER_MASK)) | (static_cast<uint32_t>(::tpy::__getitem__(this->_state, 0) & _LOWER_MASK))));
-    // mag3: UInt32 = 0
+    // mag3: uint32 = 0
     uint32_t mag3 = 0;
     // if (y3 & 1) != 0:
     if (((static_cast<uint32_t>(y3 & 1)) != 0)) {
@@ -300,23 +300,23 @@ void Random::_generate() {
     this->_index = 0;
 }
 
-// def _genrand_uint32(self) -> UInt32:
+// def _genrand_uint32(self) -> uint32:
 uint32_t Random::_genrand_uint32() {
     // if self._index >= _N:
     if ((this->_index >= _N)) {
         // self._generate()
         this->_generate();
     }
-    // y: UInt32 = self._state[self._index]
+    // y: uint32 = self._state[self._index]
     uint32_t y = ::tpy::__getitem__(this->_state, this->_index);
     // self._index += 1
     this->_index = ::tpy::add_check<int32_t>(this->_index, 1);
     // # Tempering.
     // y = y ^ (y >> 11)
     y = (static_cast<uint32_t>(y ^ (::tpy::rshift_check<uint32_t>(y, 11))));
-    // y = y ^ (UInt32.shl_wrap(y, 7) & 0x9d2c5680)
+    // y = y ^ (uint32.shl_wrap(y, 7) & 0x9d2c5680)
     y = (static_cast<uint32_t>(y ^ (static_cast<uint32_t>(static_cast<uint32_t>(static_cast<uint32_t>(y) << (7)) & static_cast<uint32_t>(2636928640)))));
-    // y = y ^ (UInt32.shl_wrap(y, 15) & 0xefc60000)
+    // y = y ^ (uint32.shl_wrap(y, 15) & 0xefc60000)
     y = (static_cast<uint32_t>(y ^ (static_cast<uint32_t>(static_cast<uint32_t>(static_cast<uint32_t>(y) << (15)) & static_cast<uint32_t>(4022730752)))));
     // y = y ^ (y >> 18)
     y = (static_cast<uint32_t>(y ^ (::tpy::rshift_check<uint32_t>(y, 18))));
@@ -324,7 +324,7 @@ uint32_t Random::_genrand_uint32() {
     return y;
 }
 
-// def getrandbits(self, k: Int32) -> int:
+// def getrandbits(self, k: int32) -> int:
 ::tpy::BigInt Random::getrandbits(int32_t k) {
     // # CPython-compatible: returns an int (BigInt) of k random bits.
     // # k in [1, 32] uses one MT word; k > 32 concatenates ceil(k/32)
@@ -339,11 +339,11 @@ uint32_t Random::_genrand_uint32() {
         // return int(self._genrand_top_bits(k))
         return ::tpy::BigInt(static_cast<uint64_t>(this->_genrand_top_bits(k)));
     }
-    // numwords: Int32 = (k + 31) // 32
+    // numwords: int32 = (k + 31) // 32
     int32_t numwords = (::tpy::div_floor<int32_t>((::tpy::add_check<int32_t>(k, 31)), 32));
     // result: int = int(0)
     ::tpy::BigInt result = ::tpy::BigInt(0);
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < numwords - 1:
     while ((i < (::tpy::sub_check<int32_t>(numwords, 1)))) {
@@ -352,9 +352,9 @@ uint32_t Random::_genrand_uint32() {
         // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // last_k: Int32 = k - 32 * i
+    // last_k: int32 = k - 32 * i
     int32_t last_k = (::tpy::sub_check<int32_t>(k, (::tpy::mul_check<int32_t>(32, i))));
-    // last_word: UInt32 = self._genrand_uint32() >> UInt32(32 - last_k)
+    // last_word: uint32 = self._genrand_uint32() >> uint32(32 - last_k)
     uint32_t last_word = (::tpy::rshift_check<uint32_t>(this->_genrand_uint32(), ::tpy::int_cast_check<uint32_t>((::tpy::sub_check<int32_t>(32, last_k)))));
     // result = result | (int(last_word) << (32 * i))
     result = ((result) | (((::tpy::BigInt(static_cast<uint64_t>(last_word))) << (::tpy::BigInt((::tpy::mul_check<int32_t>(32, i)))))));
@@ -363,7 +363,7 @@ uint32_t Random::_genrand_uint32() {
 }
 
 // # ---------- Integer helpers ----------
-// def _randbelow(self, n: UInt32) -> UInt32:
+// def _randbelow(self, n: uint32) -> uint32:
 uint32_t Random::_randbelow(uint32_t n) {
     // # Uniform int in [0, n) via rejection sampling over a top-bits
     // # slice where k = bit_length(n). Matches CPython's
@@ -380,9 +380,9 @@ uint32_t Random::_randbelow(uint32_t n) {
         // return 0
         return 0;
     }
-    // m: UInt32 = n
+    // m: uint32 = n
     uint32_t m = n;
-    // k: Int32 = 0
+    // k: int32 = 0
     int32_t k = 0;
     // while m > 0:
     while ((m > 0)) {
@@ -391,7 +391,7 @@ uint32_t Random::_randbelow(uint32_t n) {
         // m = m >> 1
         m = (::tpy::rshift_check<uint32_t>(m, 1));
     }
-    // r: UInt32 = self._genrand_top_bits(k)
+    // r: uint32 = self._genrand_top_bits(k)
     uint32_t r = this->_genrand_top_bits(k);
     // while r >= n:
     while ((r >= n)) {
@@ -403,14 +403,14 @@ uint32_t Random::_randbelow(uint32_t n) {
 }
 
 // @dispatch
-// def randrange(self, start: Int32, stop: Int32, step: Int32) -> Int32:
+// def randrange(self, start: int32, stop: int32, step: int32) -> int32:
 int32_t Random::randrange(int32_t start, int32_t stop, int32_t step) {
     // if step == 0:
     if ((step == 0)) {
         // raise ValueError("zero step for randrange()")
         throw ::tpy::ValueError("zero step for randrange()");
     }
-    // width: Int32 = 0
+    // width: int32 = 0
     int32_t width = 0;
     // if step > 0:
     if ((step > 0)) {
@@ -429,16 +429,16 @@ int32_t Random::randrange(int32_t start, int32_t stop, int32_t step) {
             // raise ValueError("empty range for randrange()")
             throw ::tpy::ValueError("empty range for randrange()");
         }
-        // neg_step: Int32 = -step
+        // neg_step: int32 = -step
         int32_t neg_step = ::tpy::neg_check<int32_t>(step);
         // width = (start - stop + neg_step - 1) // neg_step
         width = (::tpy::div_check<int32_t>((::tpy::sub_check<int32_t>((::tpy::add_check<int32_t>((::tpy::sub_check<int32_t>(start, stop)), neg_step)), 1)), neg_step));
     }
-    // return start + step * Int32(self._randbelow(UInt32(width)))
+    // return start + step * int32(self._randbelow(uint32(width)))
     return (::tpy::add_check<int32_t>(start, (::tpy::mul_check<int32_t>(step, ::tpy::int_cast_check<int32_t>(this->_randbelow(::tpy::int_cast_check<uint32_t>(width)))))));
 }
 
-// def randbytes(self, n: Int32) -> bytes:
+// def randbytes(self, n: int32) -> bytes:
 ::tpy::Bytes Random::randbytes(int32_t n) {
     // # Matches CPython's `self.getrandbits(n * 8).to_bytes(n, 'little')`.
     // # Full uint32 chunks yield their 4 bytes low-to-high (little-endian).
@@ -453,38 +453,38 @@ int32_t Random::randrange(int32_t start, int32_t stop, int32_t step) {
     }
     // out: bytearray = bytearray()
     ::tpy::ByteArray out = ::tpy::ByteArray();
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
-    // full: Int32 = n // 4
+    // full: int32 = n // 4
     int32_t full = (::tpy::div_floor<int32_t>(n, 4));
     // while i < full:
     while ((i < full)) {
-        // v: UInt32 = self._genrand_uint32()
+        // v: uint32 = self._genrand_uint32()
         uint32_t v = this->_genrand_uint32();
-        // out.append(UInt8(v & 0xFF))
+        // out.append(uint8(v & 0xFF))
         out.push_back(::tpy::int_cast_check<uint8_t>((static_cast<uint32_t>(v & 255))));
-        // out.append(UInt8((v >> 8) & 0xFF))
+        // out.append(uint8((v >> 8) & 0xFF))
         out.push_back(::tpy::int_cast_check<uint8_t>((static_cast<uint32_t>((::tpy::rshift_check<uint32_t>(v, 8)) & 255))));
-        // out.append(UInt8((v >> 16) & 0xFF))
+        // out.append(uint8((v >> 16) & 0xFF))
         out.push_back(::tpy::int_cast_check<uint8_t>((static_cast<uint32_t>((::tpy::rshift_check<uint32_t>(v, 16)) & 255))));
-        // out.append(UInt8((v >> 24) & 0xFF))
+        // out.append(uint8((v >> 24) & 0xFF))
         out.push_back(::tpy::int_cast_check<uint8_t>((static_cast<uint32_t>((::tpy::rshift_check<uint32_t>(v, 24)) & 255))));
         // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // rem: Int32 = n - full * 4
+    // rem: int32 = n - full * 4
     int32_t rem = (::tpy::sub_check<int32_t>(n, (::tpy::mul_check<int32_t>(full, 4))));
     // if rem > 0:
     if ((rem > 0)) {
-        // w: UInt32 = self._genrand_uint32()
+        // w: uint32 = self._genrand_uint32()
         uint32_t w = this->_genrand_uint32();
-        // shift_base: Int32 = 32 - rem * 8
+        // shift_base: int32 = 32 - rem * 8
         int32_t shift_base = (::tpy::sub_check<int32_t>(32, (::tpy::mul_check<int32_t>(rem, 8))));
-        // j: Int32 = 0
+        // j: int32 = 0
         int32_t j = 0;
         // while j < rem:
         while ((j < rem)) {
-            // out.append(UInt8((w >> UInt32(shift_base + j * 8)) & 0xFF))
+            // out.append(uint8((w >> uint32(shift_base + j * 8)) & 0xFF))
             out.push_back(::tpy::int_cast_check<uint8_t>((static_cast<uint32_t>((::tpy::rshift_check<uint32_t>(w, ::tpy::int_cast_check<uint32_t>((::tpy::add_check<int32_t>(shift_base, (::tpy::mul_check<int32_t>(j, 8))))))) & 255))));
             // j += 1
             j = ::tpy::add_check<int32_t>(j, 1);
@@ -698,15 +698,15 @@ void __tpy_init() {
     // from tpy.extern import native
     // import math
     ::tpystd::math::__tpy_init();
-    // _N: Int32 = 624
+    // _N: int32 = 624
     _N = 624;
-    // _M: Int32 = 397
+    // _M: int32 = 397
     _M = 397;
-    // _MATRIX_A: UInt32 = 0x9908b0df
+    // _MATRIX_A: uint32 = 0x9908b0df
     _MATRIX_A = static_cast<uint32_t>(2567483615);
-    // _UPPER_MASK: UInt32 = 0x80000000
+    // _UPPER_MASK: uint32 = 0x80000000
     _UPPER_MASK = static_cast<uint32_t>(2147483648);
-    // _LOWER_MASK: UInt32 = 0x7fffffff
+    // _LOWER_MASK: uint32 = 0x7fffffff
     _LOWER_MASK = 2147483647;
     // # Constants for distributions, mirroring CPython's Lib/random.py.
     // _TWOPI: float = 2.0 * math.pi

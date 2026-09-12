@@ -6,13 +6,13 @@
 # Kept last-iteration-wins so the case stays CPython-clean: the shapes
 # where the hoist gives a different answer than CPython are tracked in
 # BUGS.md and cannot be pinned without pinning wrong output.
-from tpy import Int32
+from tpy import int32
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32):
+    def __init__(self, x: int32):
         self.x = x
 
 

@@ -1,5 +1,5 @@
-from tpy import Int32
-def f(d: dict[str, Int32] | None) -> Int32:
+from tpy import int32
+def f(d: dict[str, int32] | None) -> int32:
     if d is not None:
         del d['a']
         return len(d)

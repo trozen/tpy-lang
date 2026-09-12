@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 
 
-def score(x: Int32 | None) -> Int32:
+def score(x: int32 | None) -> int32:
     if x is not None and x > 3:
         return x + 10
     if x is None or x < 0:

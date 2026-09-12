@@ -4,12 +4,12 @@
 namespace tpyapp::main {
 
 
-// async def make_list() -> Own[list[Int32]]:
+// async def make_list() -> Own[list[int32]]:
 ::tpystd::tpy::Poll<std::vector<int32_t>> __coro_make_list::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return [Int32(10), Int32(20), Int32(30)]
+        // return [int32(10), int32(20), int32(30)]
         __state = S_DONE;
         std::vector<int32_t> __tpy_async_ret = {10, 20, 30};
         return ::tpystd::tpy::Poll<std::vector<int32_t>>::ready(std::move(__tpy_async_ret));
@@ -20,17 +20,17 @@ namespace tpyapp::main {
 }
 
 
-// async def make_list() -> Own[list[Int32]]:
+// async def make_list() -> Own[list[int32]]:
 __coro_make_list make_list() {
     return __coro_make_list();
 }
 
-// async def get_multiplier() -> Int32:
+// async def get_multiplier() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_get_multiplier::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return Int32(2)
+        // return int32(2)
         __state = S_DONE;
         int32_t __tpy_async_ret = 2;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -41,12 +41,12 @@ __coro_make_list make_list() {
 }
 
 
-// async def get_multiplier() -> Int32:
+// async def get_multiplier() -> int32:
 __coro_get_multiplier get_multiplier() {
     return __coro_get_multiplier();
 }
 
-// async def caller() -> Int32:
+// async def caller() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -70,7 +70,7 @@ __coro_get_multiplier get_multiplier() {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         multiplier = std::move(__r1).value();
         __sub_1.reset();
-        // total = Int32(0)
+        // total = int32(0)
         total = 0;
         // for x in xs:
         auto& __obj_0 = (*xs);
@@ -92,7 +92,7 @@ __coro_get_multiplier get_multiplier() {
 }
 
 
-// async def caller() -> Int32:
+// async def caller() -> int32:
 __coro_caller caller() {
     return __coro_caller();
 }

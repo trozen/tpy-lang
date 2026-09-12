@@ -35,10 +35,10 @@ void main();
 
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
 
-    // def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: int32) -> None:
     Point() = default;
     explicit Point(int32_t x);
 
@@ -116,7 +116,7 @@ struct __gen_gen_section : public ::tpy::next_iter_mixin<__gen_gen_section, int3
 };
 
 
-// def __init__(self, x: Int32) -> None:
+// def __init__(self, x: int32) -> None:
 inline Point::Point(int32_t x) : x(x) {}
 
 // def bump(self) -> None:

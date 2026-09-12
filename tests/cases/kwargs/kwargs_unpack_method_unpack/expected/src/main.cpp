@@ -8,7 +8,7 @@ namespace tpyapp::main {
 void main() {
     // c = Client(name="MyClient")
     Client c = Client("MyClient");
-    // opts = Options(host="example.com", port=Int32(443))
+    // opts = Options(host="example.com", port=int32(443))
     Options opts = Options("example.com", 443);
     // c.connect(**opts)
     c.connect(opts);

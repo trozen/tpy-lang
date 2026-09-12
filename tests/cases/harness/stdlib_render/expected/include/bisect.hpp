@@ -28,16 +28,16 @@ int32_t bisect(const std::vector<T>& a, ::tpy::param_val_or_ref_t<T> x);
 template<::tpystd::tpy::Comparable T>
 void insort(std::vector<T>& a, ::tpy::param_val_or_ref_t<T> x);
 
-// def bisect_left[T: Comparable](a: list[T], x: T) -> Int32:
+// def bisect_left[T: Comparable](a: list[T], x: T) -> int32:
 template<::tpystd::tpy::Comparable T>
 int32_t bisect_left(const std::vector<T>& a, ::tpy::param_val_or_ref_t<T> x) {
-    // lo: Int32 = 0
+    // lo: int32 = 0
     int32_t lo = 0;
-    // hi: Int32 = Int32(len(a))
+    // hi: int32 = int32(len(a))
     int32_t hi = ::tpy::__len__(a);
     // while lo < hi:
     while ((lo < hi)) {
-        // mid: Int32 = (lo + hi) // 2
+        // mid: int32 = (lo + hi) // 2
         int32_t mid = (::tpy::div_floor<int32_t>((::tpy::add_check<int32_t>(lo, hi)), 2));
         // if a[mid] < x:
         if ((::tpy::__getitem__(a, mid) < x)) {
@@ -52,16 +52,16 @@ int32_t bisect_left(const std::vector<T>& a, ::tpy::param_val_or_ref_t<T> x) {
     // return lo
     return lo;
 }
-// def bisect_right[T: Comparable](a: list[T], x: T) -> Int32:
+// def bisect_right[T: Comparable](a: list[T], x: T) -> int32:
 template<::tpystd::tpy::Comparable T>
 int32_t bisect_right(const std::vector<T>& a, ::tpy::param_val_or_ref_t<T> x) {
-    // lo: Int32 = 0
+    // lo: int32 = 0
     int32_t lo = 0;
-    // hi: Int32 = Int32(len(a))
+    // hi: int32 = int32(len(a))
     int32_t hi = ::tpy::__len__(a);
     // while lo < hi:
     while ((lo < hi)) {
-        // mid: Int32 = (lo + hi) // 2
+        // mid: int32 = (lo + hi) // 2
         int32_t mid = (::tpy::div_floor<int32_t>((::tpy::add_check<int32_t>(lo, hi)), 2));
         // if x < a[mid]:
         if ((x < ::tpy::__getitem__(a, mid))) {
@@ -79,7 +79,7 @@ int32_t bisect_right(const std::vector<T>& a, ::tpy::param_val_or_ref_t<T> x) {
 // def insort_left[T: Comparable](a: list[T], x: T) -> None:
 template<::tpystd::tpy::Comparable T>
 void insort_left(std::vector<T>& a, ::tpy::param_val_or_ref_t<T> x) {
-    // i: Int32 = bisect_left(a, x)
+    // i: int32 = bisect_left(a, x)
     int32_t i = bisect_left<T>(a, x);
     // a.insert(i, copy(x))
     ::tpy::list_insert(a, i, T(x));
@@ -87,12 +87,12 @@ void insort_left(std::vector<T>& a, ::tpy::param_val_or_ref_t<T> x) {
 // def insort_right[T: Comparable](a: list[T], x: T) -> None:
 template<::tpystd::tpy::Comparable T>
 void insort_right(std::vector<T>& a, ::tpy::param_val_or_ref_t<T> x) {
-    // i: Int32 = bisect_right(a, x)
+    // i: int32 = bisect_right(a, x)
     int32_t i = bisect_right<T>(a, x);
     // a.insert(i, copy(x))
     ::tpy::list_insert(a, i, T(x));
 }
-// def bisect[T: Comparable](a: list[T], x: T) -> Int32:
+// def bisect[T: Comparable](a: list[T], x: T) -> int32:
 template<::tpystd::tpy::Comparable T>
 int32_t bisect(const std::vector<T>& a, ::tpy::param_val_or_ref_t<T> x) {
     // return bisect_right(a, x)

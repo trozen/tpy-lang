@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // s = Sub(Int32(7))
+    // s = Sub(int32(7))
     Sub s = Sub(7);
     // print(s.get())
     std::cout << s.get() << "\n";

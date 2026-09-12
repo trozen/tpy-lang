@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def gen() -> Iterator[list[Int32]]:
+// def gen() -> Iterator[list[int32]]:
 std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -23,7 +23,7 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
     }
     case S_JOIN_0: {
         if ((i < 2)) {
-            // buf: list[Int32] = []
+            // buf: list[int32] = []
             buf.emplace(std::vector<int32_t>{});
             // buf.append(10)
             (*buf).push_back(10);
@@ -43,16 +43,16 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
 }
 
 
-// def gen() -> Iterator[list[Int32]]:
+// def gen() -> Iterator[list[int32]]:
 __gen_gen gen() {
     return __gen_gen();
 }
 
-// def walk() -> Iterator[tuple[Int32, list[Int32]]]:
+// def walk() -> Iterator[tuple[int32, list[int32]]]:
 std::expected<std::tuple<int32_t, std::vector<int32_t>*>, ::tpy::StopIteration> __gen_walk::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // stack: list[Int32] = []
+        // stack: list[int32] = []
         stack.emplace(std::vector<int32_t>{});
         // stack.append(2)
         (*stack).push_back(2);
@@ -76,7 +76,7 @@ std::expected<std::tuple<int32_t, std::vector<int32_t>*>, ::tpy::StopIteration> 
         if ((::tpy::__len__((*stack)) > 0)) {
             // cur = stack.pop()
             cur = ::tpy::pop_back((*stack));
-            // kids: list[Int32] = []
+            // kids: list[int32] = []
             kids.emplace(std::vector<int32_t>{});
             // if cur > 0:
             if ((cur > 0)) {
@@ -99,12 +99,12 @@ std::expected<std::tuple<int32_t, std::vector<int32_t>*>, ::tpy::StopIteration> 
 }
 
 
-// def walk() -> Iterator[tuple[Int32, list[Int32]]]:
+// def walk() -> Iterator[tuple[int32, list[int32]]]:
 __gen_walk walk() {
     return __gen_walk();
 }
 
-// def gen_range() -> Iterator[list[Int32]]:
+// def gen_range() -> Iterator[list[int32]]:
 std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_gen_range::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -125,7 +125,7 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         _ = ((*__for_i_0))++;
-        // buf: list[Int32] = []
+        // buf: list[int32] = []
         buf.emplace(std::vector<int32_t>{});
         // buf.append(1)
         (*buf).push_back(1);
@@ -139,12 +139,12 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
 }
 
 
-// def gen_range() -> Iterator[list[Int32]]:
+// def gen_range() -> Iterator[list[int32]]:
 __gen_gen_range gen_range() {
     return __gen_gen_range();
 }
 
-// def gen_ternary(flag: bool) -> Iterator[list[Int32]]:
+// def gen_ternary(flag: bool) -> Iterator[list[int32]]:
 std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_gen_ternary::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -163,11 +163,11 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
     }
     case S_JOIN_0: {
         if ((i < 2)) {
-            // a: list[Int32] = []
+            // a: list[int32] = []
             a.emplace(std::vector<int32_t>{});
             // a.append(7)
             (*a).push_back(7);
-            // b: list[Int32] = []
+            // b: list[int32] = []
             b.emplace(std::vector<int32_t>{});
             // b.append(8)
             (*b).push_back(8);
@@ -185,12 +185,12 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
 }
 
 
-// def gen_ternary(flag: bool) -> Iterator[list[Int32]]:
+// def gen_ternary(flag: bool) -> Iterator[list[int32]]:
 __gen_gen_ternary gen_ternary(bool flag) {
     return __gen_gen_ternary(flag);
 }
 
-// def gen_walrus() -> Iterator[list[Int32]]:
+// def gen_walrus() -> Iterator[list[int32]]:
 std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_gen_walrus::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -209,7 +209,7 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
     }
     case S_JOIN_0: {
         if ((i < 2)) {
-            // buf: list[Int32] = []
+            // buf: list[int32] = []
             buf.emplace(std::vector<int32_t>{});
             // buf.append(3)
             (*buf).push_back(3);
@@ -227,7 +227,7 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
 }
 
 
-// def gen_walrus() -> Iterator[list[Int32]]:
+// def gen_walrus() -> Iterator[list[int32]]:
 __gen_gen_walrus gen_walrus() {
     return __gen_gen_walrus();
 }
@@ -323,7 +323,7 @@ void main() {
     }
 }
 
-// def gen(self) -> Iterator[list[Int32]]:
+// def gen(self) -> Iterator[list[int32]]:
 std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_Source_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -342,7 +342,7 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
     }
     case S_JOIN_0: {
         if ((i < 2)) {
-            // buf: list[Int32] = []
+            // buf: list[int32] = []
             buf.emplace(std::vector<int32_t>{});
             // buf.append(5)
             (*buf).push_back(5);

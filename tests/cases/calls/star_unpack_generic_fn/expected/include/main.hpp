@@ -39,10 +39,10 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
     return os;
 }
 
-// def proc[T](fn: Callable[[Box[T]], Int32], *xs: Box[T]) -> Int32:
+// def proc[T](fn: Callable[[Box[T]], int32], *xs: Box[T]) -> int32:
 template<typename T>
 int32_t proc(const std::function<int32_t(Box<T>&)>& fn, ::tpy::varargs<Box<T>> xs) {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for x in xs:
     auto& __obj_0 = xs;

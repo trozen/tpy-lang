@@ -1,11 +1,11 @@
 # except ReturnException as e is not supported
-from tpy import Int32, error_return, ReturnException
+from tpy import int32, error_return, ReturnException
 
 class MyError(Exception, ReturnException):
     pass
 
 @error_return(MyError)
-def foo() -> Int32:
+def foo() -> int32:
     raise MyError
 
 def main() -> None:

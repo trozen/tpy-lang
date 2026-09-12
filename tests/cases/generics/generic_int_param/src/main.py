@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 
 
 class Container[T, N: int]:
@@ -13,7 +13,7 @@ def main() -> None:
     c1: Container[str, 10] = Container[str, 10]("hello")
     print(c1.value)
 
-    c2: Container[Int32, 5] = Container[Int32, 5](Int32(42))
+    c2: Container[int32, 5] = Container[int32, 5](int32(42))
     print(c2.value)
 
     c3: Container[str, 100] = Container[str, 100]("world")

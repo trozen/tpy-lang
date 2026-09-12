@@ -4,21 +4,21 @@
 # ByteArrayPrinter. For Optional sources, print_optional / print_optional_val
 # now accept a Formatter template arg so the wrapper printer applies only
 # when the optional has a value (vs printing "None").
-from tpy import Int32
+from tpy import int32
 
 
 class Bag:
     items: list[int] | None
-    by_key: dict[str, Int32] | None
-    elems: set[Int32] | None
+    by_key: dict[str, int32] | None
+    elems: set[int32] | None
     data: bytes | None
     buf: bytearray | None
 
     def __init__(
         self,
         items: list[int] | None,
-        by_key: dict[str, Int32] | None,
-        elems: set[Int32] | None,
+        by_key: dict[str, int32] | None,
+        elems: set[int32] | None,
         data: bytes | None,
         buf: bytearray | None,
     ) -> None:
@@ -40,11 +40,11 @@ def show_list_param(lst: list[int] | None) -> None:
     print(lst)
 
 
-def show_dict_param(d: dict[str, Int32] | None) -> None:
+def show_dict_param(d: dict[str, int32] | None) -> None:
     print(d)
 
 
-def show_set_param(s: set[Int32] | None) -> None:
+def show_set_param(s: set[int32] | None) -> None:
     print(s)
 
 
@@ -61,8 +61,8 @@ def main() -> None:
     # params take pointers; passing rvalue literals trips the same pre-existing
     # rvalue-address-of issue worked around in the param-call section below).
     init_items: list[int] = [1, 2]
-    init_by_key: dict[str, Int32] = {"a": 1}
-    init_elems: set[Int32] = {3, 4}
+    init_by_key: dict[str, int32] = {"a": 1}
+    init_elems: set[int32] = {3, 4}
     init_buf = bytearray(b"yo")
     Bag(init_items, init_by_key, init_elems, b"hi", init_buf).show_fields()
     # None on all five inners
@@ -74,10 +74,10 @@ def main() -> None:
     lst: list[int] = [10, 20]
     show_list_param(lst)
     show_list_param(None)
-    d: dict[str, Int32] = {"k": 7}
+    d: dict[str, int32] = {"k": 7}
     show_dict_param(d)
     show_dict_param(None)
-    s: set[Int32] = {9}
+    s: set[int32] = {9}
     show_set_param(s)
     show_set_param(None)
     show_bytes_param(b"abc")

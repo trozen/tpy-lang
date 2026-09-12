@@ -1,10 +1,10 @@
-from tpy import Int32
+from tpy import int32
 
 
 class Foo:
-    val: Int32
+    val: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 

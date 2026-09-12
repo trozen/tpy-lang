@@ -3,22 +3,22 @@
 # `cls` while the enclosing classmethod still resolves `cls` to the class.
 from typing import Final
 
-from tpy import Int32
+from tpy import int32
 
 
 class Totals:
-    BASE: Final[Int32] = 10
+    BASE: Final[int32] = 10
 
     @classmethod
-    def plain_nested(cls) -> Int32:
-        def double(n: Int32) -> Int32:
+    def plain_nested(cls) -> int32:
+        def double(n: int32) -> int32:
             return n * 2
 
         return double(4) + cls.BASE
 
     @classmethod
-    def shadowing_nested(cls) -> Int32:
-        def triple(cls: Int32) -> Int32:
+    def shadowing_nested(cls) -> int32:
+        def triple(cls: int32) -> int32:
             return cls * 3
 
         return triple(2) + cls.BASE

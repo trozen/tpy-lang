@@ -4,18 +4,18 @@
 # is the documented gap covered by the TODO.md "polymorphic integer
 # literals" entry; the test pins the current bare type-mismatch error so a
 # future C-style fix can update the snapshot in a single place.
-from tpy import UInt64
+from tpy import uint64
 
 
 CONST = 5
 
 
-def f(x: UInt64) -> None:
+def f(x: uint64) -> None:
     pass
 
 
 def main() -> None:
-    f(CONST)   # tpyc: error(/Type mismatch in argument 'x': expected UInt64, got Int32/)
+    f(CONST)   # tpyc: error(/Type mismatch in argument 'x': expected uint64, got int32/)
 
 
 main()

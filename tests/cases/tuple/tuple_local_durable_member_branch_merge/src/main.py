@@ -2,16 +2,16 @@
 # the yield aliases whichever member the taken branch bound (b for cond=True),
 # so a post-boundary mutation reaches that object.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    val: Int32
-    def __init__(self, v: Int32) -> None:
+    val: int32
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 
-def gen(b: Box, c: Box, cond: bool) -> Iterator[tuple[Int32, Box]]:
+def gen(b: Box, c: Box, cond: bool) -> Iterator[tuple[int32, Box]]:
     if cond:
         t = (1, b)
     else:

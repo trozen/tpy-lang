@@ -3,12 +3,12 @@
 # `in` over a list of stored tuples value-compares a borrow-form needle.
 # Distinct same-value objects must compare equal -- an address compare would
 # silently return False.
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    val: Int32
-    def __init__(self, v: Int32) -> None:
+    val: int32
+    def __init__(self, v: int32) -> None:
         self.val = v
     def __eq__(self, other: "Box") -> bool:
         return self.val == other.val

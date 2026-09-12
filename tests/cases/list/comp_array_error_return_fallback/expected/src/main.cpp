@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // @error_return(MyErr)
-// def half(n: Int32) -> Int32:
+// def half(n: int32) -> int32:
 std::expected<int32_t, MyErr> half(int32_t n) {
     // if n % 2 != 0:
     if (((::tpy::mod_floor<int32_t>(n, 2)) != 0)) {
@@ -17,9 +17,9 @@ std::expected<int32_t, MyErr> half(int32_t n) {
 }
 
 // @error_return(MyErr)
-// def halves() -> Int32:
+// def halves() -> int32:
 std::expected<int32_t, MyErr> halves() {
-    // hs = [half(i) for i in range(0, 8, 2)]  # tpyc: type(/list\[Int32\]/)
+    // hs = [half(i) for i in range(0, 8, 2)]  # tpyc: type(/list\[int32\]/)
     std::vector<int32_t> hs = ({
         std::vector<int32_t> __result;
         auto __obj_0 = ::tpy::Range<int32_t>(0, 8, 2);
@@ -36,9 +36,9 @@ std::expected<int32_t, MyErr> halves() {
 }
 
 // @error_return(MyErr)
-// def bad() -> Int32:
+// def bad() -> int32:
 std::expected<int32_t, MyErr> bad() {
-    // hs = [half(i) for i in range(3)]  # tpyc: type(/list\[Int32\]/)
+    // hs = [half(i) for i in range(3)]  # tpyc: type(/list\[int32\]/)
     std::vector<int32_t> hs = ({
         std::vector<int32_t> __result;
         const int32_t __stop_0 = 3;
@@ -82,7 +82,7 @@ void main() {
     std::optional<std::vector<int32_t>> meths;
     std::optional<std::vector<int32_t>> props;
     {
-        // props = [g.val for i in range(4)]  # tpyc: type(/list\[Int32\]/)
+        // props = [g.val for i in range(4)]  # tpyc: type(/list\[int32\]/)
         props = ({
             std::vector<int32_t> __result;
             const int32_t __stop_0 = 4;
@@ -92,7 +92,7 @@ void main() {
             }
             std::move(__result);
         });
-        // meths = [g.scaled(i) for i in range(3)]  # tpyc: type(/list\[Int32\]/)
+        // meths = [g.scaled(i) for i in range(3)]  # tpyc: type(/list\[int32\]/)
         meths = ({
             std::vector<int32_t> __result;
             const int32_t __stop_1 = 3;

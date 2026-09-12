@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def f(n: Int32) -> Int32 | None:
+// async def f(n: int32) -> int32 | None:
 ::tpystd::tpy::Poll<std::optional<int32_t>> __coro_f::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -66,7 +66,7 @@ namespace tpyapp::main {
 }
 
 
-// async def f(n: Int32) -> Int32 | None:
+// async def f(n: int32) -> int32 | None:
 __coro_f f(int32_t n) {
     return __coro_f(n);
 }

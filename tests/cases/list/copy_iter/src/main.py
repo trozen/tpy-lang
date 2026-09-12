@@ -1,11 +1,11 @@
 # copy_iter() suppresses element-copy warnings on bulk operations.
 # Parallel to copy() for single elements, but intended for iterables.
-from tpy import Int32, copy, copy_iter
+from tpy import int32, copy, copy_iter
 
 
 class Node:
-    val: Int32
-    def __init__(self, val: Int32) -> None:
+    val: int32
+    def __init__(self, val: int32) -> None:
         self.val = val
 
 
@@ -18,8 +18,8 @@ def test_extend_copy_iter_no_warn() -> None:
     print(len(b))
 
 def test_extend_copy_iter_value_type() -> None:
-    a: list[Int32] = []
-    b: list[Int32] = [1, 2, 3]
+    a: list[int32] = []
+    b: list[int32] = [1, 2, 3]
     a.extend(copy_iter(b))  # tpyc: ok
     print(len(a))
 
@@ -44,7 +44,7 @@ def test_extend_no_copy_iter_warns() -> None:
 
 def test_for_loop_copy_iter() -> None:
     b: list[Node] = [Node(10), Node(20)]
-    total: Int32 = 0
+    total: int32 = 0
     for x in copy_iter(b):
         total += x.val
     print(total)

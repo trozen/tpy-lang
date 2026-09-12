@@ -4,7 +4,7 @@
 namespace tpyapp::shapes {
 
 
-// def int_leaves(s: Shape) -> Int32:
+// def int_leaves(s: Shape) -> int32:
 int32_t int_leaves(const Shape& s) {
     // match s:
     auto& __match_subject_1 = s;

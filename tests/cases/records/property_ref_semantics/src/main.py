@@ -1,16 +1,16 @@
 # Property reference semantics: non-value types return by ref, mutation propagates
-from tpy import Int32
+from tpy import int32
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32) -> None:
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 
 class Container:
     _name: str
-    _items: list[Int32]
+    _items: list[int32]
     _pt: Point
     _big: int
 
@@ -29,7 +29,7 @@ class Container:
         self._name = v
 
     @property
-    def items(self) -> list[Int32]:
+    def items(self) -> list[int32]:
         return self._items
 
     @property

@@ -19,10 +19,10 @@ void main();
 // @nocopy
 // class Beacon:
 struct Beacon {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32):
+    // def __init__(self, n: int32):
     Beacon() = default;
     explicit Beacon(int32_t n);
     // non-copyable (@nocopy)
@@ -42,7 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const Beacon& obj) {
 }
 
 
-// def __init__(self, n: Int32):
+// def __init__(self, n: int32):
 inline Beacon::Beacon(int32_t n) : n(n) {}
 
 // def run(self) -> None:

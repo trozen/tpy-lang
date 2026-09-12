@@ -1,16 +1,16 @@
 # @dataclass with user-defined methods alongside auto-generated __init__
 from dataclasses import dataclass
-from tpy import Int32
+from tpy import int32
 
 @dataclass
 class Rect:
-    width: Int32
-    height: Int32
+    width: int32
+    height: int32
 
-    def area(self) -> Int32:
+    def area(self) -> int32:
         return self.width * self.height
 
-    def scale(self, factor: Int32) -> None:
+    def scale(self, factor: int32) -> None:
         self.width = self.width * factor
         self.height = self.height * factor
 

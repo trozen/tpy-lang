@@ -1,1 +1,1 @@
-main.py:24: error: no '__call__' overload of 'Adder' matches Fn[[StrView], Int32] in argument 'f' (candidates: (Int32) -> Int32; (Int32, Int32) -> Int32)
+main.py:24: error: no '__call__' overload of 'Adder' matches Fn[[StrView], int32] in argument 'f' (candidates: (int32) -> int32; (int32, int32) -> int32)

@@ -2,17 +2,17 @@
 # gate admits self-field iterables only, so this rejects.
 import asyncio
 from typing import Iterable
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
-class Summer[T: Iterable[Int32]]:
+class Summer[T: Iterable[int32]]:
     items: T
 
     def __init__(self, items: Own[T]) -> None:
         self.items = items
 
 
-async def total(s: Summer[list[Int32]]) -> Int32:
+async def total(s: Summer[list[int32]]) -> int32:
     result = 0
     # The iterable is a bound field off a parameter, not off `self`.
     for x in s.items:  # tpyc: error(/stmt\.for_each:field\.result_type/)

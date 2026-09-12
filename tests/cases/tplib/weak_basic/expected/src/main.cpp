@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // rc = Rc.new(Cell(Int32(10)))
+    // rc = Rc.new(Cell(int32(10)))
     ::tpystd::tplib::rc::Rc<Cell> rc = Rc<Cell>::new_<Cell>(Cell(10));
     // w = rc.downgrade()
     ::tpystd::tplib::rc::Weak<Cell> w = rc.downgrade();
@@ -18,7 +18,7 @@ void main() {
     if (!((rc2.has_value()))) ::tpy::raise_assertion_error();
     // print(rc2.get().val)  # 10
     std::cout << (*rc2).get().val << "\n";
-    // rc2.get().val = Int32(99)
+    // rc2.get().val = int32(99)
     (*rc2).get().val = 99;
     // print(rc.get().val)  # 99 -- shared
     std::cout << rc.get().val << "\n";

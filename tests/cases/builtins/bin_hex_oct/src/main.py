@@ -1,5 +1,5 @@
 # bin(), hex(), oct() builtins for fixed-int and BigInt
-from tpy import Int64
+from tpy import int64
 
 def main() -> None:
     # bin
@@ -24,8 +24,8 @@ def main() -> None:
     print(oct(64))
     print(oct(-8))
 
-    # Int64
-    big: Int64 = 1000000000000
+    # int64
+    big: int64 = 1000000000000
     print(hex(big))
 
     # BigInt (int)

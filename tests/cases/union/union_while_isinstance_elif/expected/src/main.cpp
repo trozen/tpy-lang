@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def describe(s: Circle | Rect | Triangle) -> None:
 void describe(::tpy::Union<const Circle*, const Rect*, const Triangle*> s) {
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < 2:
     while ((i < 2)) {

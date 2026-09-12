@@ -22,7 +22,7 @@ def get_builtin_module_names() -> set[str]:
 
 
 def get_builtin_type_obj(qname: str) -> "TpyType | None":
-    """Get the type object for a builtin type by qualified name (e.g. 'tpy.Float32').
+    """Get the type object for a builtin type by qualified name (e.g. 'tpy.float32').
 
     Uses type factories from the TypeDef registry (populated from .py-defined
     builtin types).

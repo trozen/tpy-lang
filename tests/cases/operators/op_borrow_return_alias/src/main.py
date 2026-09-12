@@ -2,19 +2,19 @@
 # ALIAS of an operand, like CPython: the friend-operator shim const-projects
 # its return alongside the method emit, and the result binds as a borrow
 # (mutating the source afterwards is visible through it), not an owned copy.
-from tpy import Int32
+from tpy import int32
 
 
 class Acc:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
     def __add__(self, o: "Acc") -> "Acc":
         return self if self.n >= o.n else o
 
-    def __radd__(self, other: Int32) -> "Acc":
+    def __radd__(self, other: int32) -> "Acc":
         return self
 
     def __neg__(self) -> "Acc":

@@ -4,24 +4,24 @@
 # class name shadowed after the try.
 from typing import ClassVar
 
-from tpy import Int32
+from tpy import int32
 
 
 class Registry:
-    code: ClassVar[Int32] = 999
+    code: ClassVar[int32] = 999
 
 
 class NotFound(Exception):
-    def __init__(self, code: Int32):
+    def __init__(self, code: int32):
         self.code = code
 
 
 class Denied(Exception):
-    def __init__(self, code: Int32):
+    def __init__(self, code: int32):
         self.code = code
 
 
-def pick(which: Int32) -> Int32:
+def pick(which: int32) -> int32:
     try:
         if which == 0:
             raise NotFound(7)

@@ -5,12 +5,12 @@
 # `Ptr[P]` callee). Without this, sema rejects the address-take and the
 # caller has to spell the outer param as `Ptr[P]` themselves.
 from typing import Protocol
-from tpy import Int32, Ptr, dynamic, nocopy, readonly
+from tpy import int32, Ptr, dynamic, nocopy, readonly
 
 
 @dynamic
 class Awaker(Protocol):
-    def mark(self, task_id: Int32) -> None: ...
+    def mark(self, task_id: int32) -> None: ...
 
 
 @nocopy
@@ -22,12 +22,12 @@ class Holder:
         self.awaker = h  # tpyc: ok
 
 
-def make_waker(h: Awaker, task_id: Int32) -> None:
+def make_waker(h: Awaker, task_id: int32) -> None:
     # Identity at a callee site: forwards a protocol value through Ptr[P].
     _consume(h, task_id)
 
 
-def _consume(p: Ptr[Awaker], task_id: Int32) -> None:
+def _consume(p: Ptr[Awaker], task_id: int32) -> None:
     p.mark(task_id)
 
 
@@ -38,10 +38,10 @@ def read_only_take(h: Awaker) -> Ptr[readonly[Awaker]]:
 
 
 class Executor(Awaker):
-    log: list[Int32]
+    log: list[int32]
     def __init__(self) -> None:
         self.log = []
-    def mark(self, task_id: Int32) -> None:
+    def mark(self, task_id: int32) -> None:
         self.log.append(task_id)
 
 

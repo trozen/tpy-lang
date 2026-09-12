@@ -1,10 +1,10 @@
 # Dead-alias precision guard: a field alias whose last use precedes the
 # consume must NOT suppress auto-move (no copy, no warning).
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Inner:
-    vals: list[Int32]
+    vals: list[int32]
 
     def __init__(self):
         self.vals = [7, 8]
@@ -17,7 +17,7 @@ class Outer:
         self.inner = Inner()
 
 
-def take(o: Own[Outer]) -> Int32:
+def take(o: Own[Outer]) -> int32:
     store: list[Outer] = []
     store.append(o)
     return len(store)

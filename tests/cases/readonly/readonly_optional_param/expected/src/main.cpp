@@ -5,32 +5,32 @@ namespace tpyapp::main {
 
 
 // # Form 1: readonly[T | None]
-// def f1(p: readonly[Point | None]) -> Int32:
+// def f1(p: readonly[Point | None]) -> int32:
 int32_t f1(const Point* p) {
     // if p is not None:
     if ((p != nullptr)) {
         // return p.x
         return p->x;
     }
-    // return Int32(0)
+    // return int32(0)
     return 0;
 }
 
 // # Form 2: readonly[T] | None
-// def f2(p: readonly[Point] | None) -> Int32:
+// def f2(p: readonly[Point] | None) -> int32:
 int32_t f2(const Point* p) {
     // if p is not None:
     if ((p != nullptr)) {
         // return p.x
         return p->x;
     }
-    // return Int32(0)
+    // return int32(0)
     return 0;
 }
 
 // def main() -> None:
 void main() {
-    // p = Point(Int32(42))
+    // p = Point(int32(42))
     Point p = Point(42);
     // print(f1(p))
     std::cout << f1(&(p)) << "\n";

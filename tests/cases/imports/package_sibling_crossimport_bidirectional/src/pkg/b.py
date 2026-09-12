@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 
 # Bidirectional sibling cross-import: pkg.a imports B from us AND we
 # import A from pkg.a. Both directions auto-walk back to pkg in their
@@ -10,9 +10,9 @@ from pkg.a import A
 
 
 class B:
-    def kind(self) -> Int32:
-        return Int32(2)
+    def kind(self) -> int32:
+        return int32(2)
 
 
-def use_a(a: A) -> Int32:
+def use_a(a: A) -> int32:
     return a.kind()

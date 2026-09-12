@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def probe(flag: bool) -> Int32:
+// def probe(flag: bool) -> int32:
 int32_t probe(bool flag) {
     std::optional<Reg> __slot_2;
     std::optional<Reg> __slot_3;

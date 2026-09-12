@@ -57,16 +57,16 @@ int32_t g(int32_t n);
 
 // class B:
 struct B {
-    // x: Int32
+    // x: int32
     int32_t x;
 
     // def __init__(self) -> None:
     B();
 
-    // def greet(self) -> Int32:
+    // def greet(self) -> int32:
     int32_t greet() const;
 
-    // def value(self) -> Int32:
+    // def value(self) -> int32:
     int32_t value() const;
     static constexpr std::string_view __tpy_class_name__ = "pkg.b.B";
 };
@@ -99,14 +99,14 @@ namespace tpyapp::pkg::b {
 // def __init__(self) -> None:
 inline B::B() : x(7) {}
 
-// def greet(self) -> Int32:
+// def greet(self) -> int32:
 inline int32_t B::greet() const {
     // # Conforms to Greeter via structural matching.
     // return self.x
     return this->x;
 }
 
-// def value(self) -> Int32:
+// def value(self) -> int32:
 inline int32_t B::value() const {
     // return self.x
     return this->x;

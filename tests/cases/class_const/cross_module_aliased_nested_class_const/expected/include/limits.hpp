@@ -15,7 +15,7 @@ inline constexpr std::string_view __name__ = "limits";
 struct Limits {
     // class Inner:
     struct Inner {
-        // MAX: Final[Int32] = 99
+        // MAX: Final[int32] = 99
         static constexpr int32_t MAX = 99;
         // TAG: Final[str] = "inner-aliased"
         static constexpr std::string_view TAG = "inner-aliased";

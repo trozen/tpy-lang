@@ -23,10 +23,10 @@ void main();
 
 // class Item:
 struct Item {
-    // boxed: Box[Int32]
+    // boxed: Box[int32]
     ::tpystd::tplib::box::Box<int32_t> boxed;
 
-    // def __init__(self, b: Own[Box[Int32]]):
+    // def __init__(self, b: Own[Box[int32]]):
     explicit Item(::tpystd::tplib::box::Box<int32_t>&& b);
     // non-copyable (field 'boxed')
     Item(const Item&) = delete;
@@ -102,7 +102,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
 };
 
 
-// def __init__(self, b: Own[Box[Int32]]):
+// def __init__(self, b: Own[Box[int32]]):
 inline Item::Item(::tpystd::tplib::box::Box<int32_t>&& b) : boxed(std::move(b)) {}
 
 // def __enter__(self) -> Own[Item]:

@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // line = Line(Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4)))
+    // line = Line(Point(int32(1), int32(2)), Point(int32(3), int32(4)))
     Line line = Line(Point(1, 2), Point(3, 4));
     // d = asdict(line)
     ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>> d = ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>({{"start", ::tpy::ordered_map<std::string, int32_t>({{"x", line.start.x}, {"y", line.start.y}})}, {"end", ::tpy::ordered_map<std::string, int32_t>({{"x", line.end.x}, {"y", line.end.y}})}});

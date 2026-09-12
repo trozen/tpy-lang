@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def find_point(pts: list[Point], x: Int32) -> Point | None:
+// def find_point(pts: list[Point], x: int32) -> Point | None:
 Point* find_point(std::vector<Point>& pts, int32_t x) {
     // for p in pts:
     auto& __obj_0 = pts;

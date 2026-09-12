@@ -3,11 +3,11 @@
 # optional, so the bare-field argument row must stay off it.
 # `heapq.heapify(self.maybe)` still rejects.
 import heapq
-from tpy import Int32
+from tpy import int32
 
 
 class Holder:
-    maybe: list[Int32] | None
+    maybe: list[int32] | None
 
     def __init__(self) -> None:
         self.maybe = None

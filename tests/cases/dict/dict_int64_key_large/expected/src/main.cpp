@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main():
 void main() {
-    // d: dict[Int64, str] = {}
+    // d: dict[int64, str] = {}
     ::tpy::ordered_map<int64_t, std::string> d = ::tpy::ordered_map<int64_t, std::string>();
     // k: int = 1099511627776  # 2**40
     ::tpy::BigInt k = ::tpy::BigInt(static_cast<int64_t>(1099511627776LL));
@@ -18,7 +18,7 @@ void main() {
     ::tpy::__delitem__(d, k.to_fixed_check<int64_t>());
     // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";
-    // counts: dict[Int64, Int32] = {}
+    // counts: dict[int64, int32] = {}
     ::tpy::ordered_map<int64_t, int32_t> counts = ::tpy::ordered_map<int64_t, int32_t>();
     // counts[k] = 1
     ::tpy::__setitem__(counts, k.to_fixed_check<int64_t>(), 1);

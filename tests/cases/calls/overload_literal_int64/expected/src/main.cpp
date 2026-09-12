@@ -23,7 +23,7 @@ std::string classify__lit_1__2(int64_t x) {
 }
 
 // @overload
-// def classify(x: Int64) -> str: ...
+// def classify(x: int64) -> str: ...
 std::string classify(int64_t x) {
     // if x == 1:
     if ((x == 1)) {
@@ -45,7 +45,7 @@ void main() {
     std::cout << classify__lit_1__2(1) << "\n";
     // print(classify(2))
     std::cout << classify__lit_1__2(2) << "\n";
-    // x: Int64 = 99
+    // x: int64 = 99
     int64_t x = 99;
     // print(classify(x))
     std::cout << classify(x) << "\n";

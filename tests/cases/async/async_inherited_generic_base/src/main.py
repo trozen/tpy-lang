@@ -2,7 +2,7 @@
 # subclass reuses the base's templated coro struct with the bound element type.
 # Mutate-and-observe confirms the receiver is aliased across the boundary.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
 class Box[T]:
@@ -19,14 +19,14 @@ class Box[T]:
         return self.v
 
 
-class IntBox(Box[Int32]):
-    def __init__(self, v: Int32) -> None:
+class IntBox(Box[int32]):
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 
 class Guard[T]:
     val: T
-    entered: Int32
+    entered: int32
 
     def __init__(self, val: T) -> None:
         self.val = val
@@ -41,18 +41,18 @@ class Guard[T]:
         await asyncio.sleep(0.001)
 
 
-class IntGuard(Guard[Int32]):
-    def __init__(self, val: Int32) -> None:
+class IntGuard(Guard[int32]):
+    def __init__(self, val: int32) -> None:
         self.val = val
         self.entered = 0
 
 
 class Counter[T]:
-    cur: Int32
-    limit: Int32
+    cur: int32
+    limit: int32
     seed: T
 
-    def __init__(self, limit: Int32, seed: T) -> None:
+    def __init__(self, limit: int32, seed: T) -> None:
         self.cur = 0
         self.limit = limit
         self.seed = seed
@@ -68,8 +68,8 @@ class Counter[T]:
         return self.seed
 
 
-class IntCounter(Counter[Int32]):
-    def __init__(self, limit: Int32, seed: Int32) -> None:
+class IntCounter(Counter[int32]):
+    def __init__(self, limit: int32, seed: int32) -> None:
         self.cur = 0
         self.limit = limit
         self.seed = seed

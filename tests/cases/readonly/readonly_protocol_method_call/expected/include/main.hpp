@@ -14,7 +14,7 @@ template<::tpystd::typing::Sized T_s>
 int32_t get_len(const T_s& s);
 
 // @readonly
-// def get_len(s: Sized) -> Int32:
+// def get_len(s: Sized) -> int32:
 template<::tpystd::typing::Sized T_s>
 int32_t get_len(const T_s& s) {
     // return len(s)  # tpyc: ok

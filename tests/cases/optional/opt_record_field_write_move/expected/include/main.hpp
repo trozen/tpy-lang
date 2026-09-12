@@ -17,10 +17,10 @@ void main();
 // @nocopy
 // class Inner:
 struct Inner {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Inner() = default;
     explicit Inner(int32_t v);
     // non-copyable (@nocopy)
@@ -52,10 +52,10 @@ struct Holder {
     // def set_name(self, p: Own[Inner]) -> None:
     void set_name(Inner&& p);
 
-    // def set_rvalue(self, v: Int32) -> None:
+    // def set_rvalue(self, v: int32) -> None:
     void set_rvalue(int32_t v);
 
-    // def get(self) -> Int32:
+    // def get(self) -> int32:
     int32_t get() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
@@ -66,7 +66,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Inner::Inner(int32_t v) : v(v) {}
 
 // def __init__(self) -> None:
@@ -78,13 +78,13 @@ inline void Holder::set_name(Inner&& p) {
     this->opt = std::move(p);
 }
 
-// def set_rvalue(self, v: Int32) -> None:
+// def set_rvalue(self, v: int32) -> None:
 inline void Holder::set_rvalue(int32_t v) {
     // self.opt = Inner(v)
     this->opt = Inner(v);
 }
 
-// def get(self) -> Int32:
+// def get(self) -> int32:
 inline int32_t Holder::get() const {
     // if self.opt is not None:
     if ((this->opt.has_value())) {

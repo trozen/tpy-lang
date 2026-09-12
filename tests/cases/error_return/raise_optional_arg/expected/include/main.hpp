@@ -16,10 +16,10 @@ void main();
 
 // class Failed(Exception, ReturnException):
 struct Failed : ::tpy::Exception {
-    // code: Int32 | None
+    // code: int32 | None
     std::optional<int32_t> code;
 
-    // def __init__(self, code: Int32 | None) -> None:
+    // def __init__(self, code: int32 | None) -> None:
     Failed() = default;
     explicit Failed(std::optional<int32_t> code);
 
@@ -35,7 +35,7 @@ inline std::ostream& operator<<(std::ostream& os, const Failed& obj) {
 }
 
 
-// def __init__(self, code: Int32 | None) -> None:
+// def __init__(self, code: int32 | None) -> None:
 inline Failed::Failed(std::optional<int32_t> code) : ::tpy::Exception("failed"), code(code) {}
 void __tpy_init();
 } // namespace tpyapp::main

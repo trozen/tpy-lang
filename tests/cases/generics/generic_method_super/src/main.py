@@ -1,5 +1,5 @@
 # Generic method called via super() inside a child class
-from tpy import Int32
+from tpy import int32
 
 class Base[T]:
     val: T
@@ -18,7 +18,7 @@ class Child[T](Base[T]):
         return super().transform(other)
 
 def main() -> None:
-    c = Child[Int32](Int32(5))
+    c = Child[int32](int32(5))
     print(c.wrap(42))
     print(c.wrap("hello"))
 

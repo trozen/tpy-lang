@@ -17,13 +17,13 @@
 # local already uses, the scalar and the all-borrow tuple reach 42 43; the
 # mixed form reaches 44 only if it stops taking storage, which is an open
 # question -- so expect 42 43 2 or 42 43 44 depending on how that lands.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Box:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 

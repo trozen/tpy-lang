@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // c = Cell[Int32](42)
+    // c = Cell[int32](42)
     Cell<int32_t> c = Cell<int32_t>(42);
     // print(c.duplicate())
     std::cout << c.duplicate() << "\n";

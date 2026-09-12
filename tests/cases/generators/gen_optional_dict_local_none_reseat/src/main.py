@@ -1,16 +1,16 @@
 # A generator binding an `Optional[dict]` field to a local, mutating it
 # through that local, and re-seating the local to None across a suspension.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
 class Holder:
-    d: dict[Int32, Int32] | None
+    d: dict[int32, int32] | None
 
     def __init__(self) -> None:
         self.d = {1: 10, 2: 20}
 
-    def keys_of(self) -> Iterator[Int32]:
+    def keys_of(self) -> Iterator[int32]:
         m = self.d
         if m is not None:
             # The local aliases the field's dict -- the insert must be seen

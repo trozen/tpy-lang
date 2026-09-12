@@ -1,17 +1,17 @@
 # Test Fn parameter on a class method (template header generation)
-from tpy import Int32, Fn
+from tpy import int32, Fn
 
 
 class Processor:
-    value: Int32
+    value: int32
 
-    def __init__(self, value: Int32) -> None:
+    def __init__(self, value: int32) -> None:
         self.value = value
 
-    def apply(self, f: Fn[[Int32], Int32]) -> Int32:
+    def apply(self, f: Fn[[int32], int32]) -> int32:
         return f(self.value)
 
-    def apply_binary(self, other: Int32, f: Fn[[Int32, Int32], Int32]) -> Int32:
+    def apply_binary(self, other: int32, f: Fn[[int32, int32], int32]) -> int32:
         return f(self.value, other)
 
 

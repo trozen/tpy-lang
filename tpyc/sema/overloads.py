@@ -46,7 +46,7 @@ class MatchTier(Enum):
     type-check.
     """
     EXACT_CONCRETE = 1             # arg_inner == param_inner (or nominal-adjacent: IntLit->FixedInt, NoneType->Void, Callable->Fn, ...)
-    EXACT_GENERIC_SHAPE = 2        # generic param with concrete outer shape: list[T] vs list[Int32]
+    EXACT_GENERIC_SHAPE = 2        # generic param with concrete outer shape: list[T] vs list[int32]
     PROTOCOL_EXPLICIT = 3          # protocol conformance via classify_protocol_conformance -> EXPLICIT
     PROTOCOL_STRUCTURAL = 4        # protocol conformance via classify_protocol_conformance -> STRUCTURAL
     GENERIC_PROTOCOL_EXPLICIT = 5  # generic over protocol param, explicit conformance
@@ -125,7 +125,7 @@ def _structural_match(arg: TpyType, param: TpyType) -> bool:
     if type(arg) != type(param):
         return False
     # Post-Phase-D all containers/primitives/records are NominalType; type()
-    # equality alone passes list[Int32] vs set[Int32]. Require matching name
+    # equality alone passes list[int32] vs set[int32]. Require matching name
     # so structural recursion only fires for same-kind NominalType pairs.
     if isinstance(arg, NominalType) and arg.name != param.name:
         return False
@@ -151,12 +151,12 @@ def _scalar_widening_cost(
 
     Returns 0 when the types are identical and a positive distance when
     ``actual`` widens to ``expected``. Used as a secondary sort key inside a
-    match tier so that e.g. ``list[Int32]`` prefers ``Iterable[Int32]`` over
-    ``Iterable[Int64]`` / ``Iterable[int]`` / ``Iterable[float]``.
+    match tier so that e.g. ``list[int32]`` prefers ``Iterable[int32]`` over
+    ``Iterable[int64]`` / ``Iterable[int]`` / ``Iterable[float]``.
 
     ``IntLiteralType`` ranks as the ``default_int_type`` would (so a list of
-    ``int`` literals under ``default_int=Int32`` scores ``Iterable[Int32]``
-    exactly like ``list[Int32]`` does). When ``default_int_type`` is None,
+    ``int`` literals under ``default_int=int32`` scores ``Iterable[int32]``
+    exactly like ``list[int32]`` does). When ``default_int_type`` is None,
     IntLiteral comparisons fall back to the generic cross-type distance.
     """
     if actual == expected:
@@ -175,7 +175,7 @@ def _scalar_widening_cost(
     e_tr = int_traits_of(expected)
     if a_tr is not None and e_tr is not None:
         # Fixed-int -> fixed-int: bit-width gap, plus a small sign-flip penalty
-        # so e.g. Int32 -> Int64 beats Int32 -> UInt64.
+        # so e.g. int32 -> int64 beats int32 -> uint64.
         gap = max(0, (e_tr.bits - a_tr.bits)) // 8
         sign_penalty = 1 if a_tr.signed != e_tr.signed else 0
         return max(1, gap) + sign_penalty
@@ -199,7 +199,7 @@ def _type_args_widening_cost(
     Caller has already confirmed ``actual`` conforms to ``param``. Walks the
     type-arg tuples pairwise when they line up; for single-element protocols
     also falls back to ``actual.get_element_type()`` so non-parameterised
-    containers (``bytes``/``bytearray`` -> ``Iterable[UInt8]``) can be scored
+    containers (``bytes``/``bytearray`` -> ``Iterable[uint8]``) can be scored
     by their baked-in element type. Returns 0 when no type-arg information
     is available.
     """
@@ -216,7 +216,7 @@ def _type_args_widening_cost(
             actual_args = (actual.element_types[0],)
     # Fallback for single-element protocols where the actual's element type
     # isn't directly visible in type_args -- non-parameterised containers
-    # (bytes/bytearray -> UInt8) and PendingListType expose it via
+    # (bytes/bytearray -> uint8) and PendingListType expose it via
     # get_element_type().
     if not actual_args and len(param.type_args) == 1 and hasattr(actual, 'get_element_type'):
         elem = actual.get_element_type()
@@ -270,10 +270,10 @@ def _classify_strict_match(
             return (MatchTier.EXACT_CONCRETE, 0)
     # IntLiteralType matches the specific fixed-width int it was inferred to (from
     # generic resolution). This allows resolved-generic overloads like
-    # range(stop: Int32) to match IntLiteralType(5) in the first pass.
+    # range(stop: int32) to match IntLiteralType(5) in the first pass.
     # Cost ranks by widening distance from default_int_type so str(IntLiteralType)
-    # picks the default-width overload (Int32) over the smallest-fitting one
-    # (Int8) when multiple fixed-int overloads accept the value.
+    # picks the default-width overload (int32) over the smallest-fitting one
+    # (int8) when multiple fixed-int overloads accept the value.
     if isinstance(arg_inner, IntLiteralType) and is_fixed_int_type(param_inner):
         tr = int_traits_of(param_inner)
         if arg_inner.value is None or tr.min_value <= arg_inner.value <= tr.max_value:
@@ -423,10 +423,10 @@ def type_matches_numeric(
     """Type matching for numeric operators and constructors.
 
     Handles IntLiteralType and TypeParamRef(INT) flexibility without
-    triggering general type coercions (e.g., Int32->BigInt promotion).
+    triggering general type coercions (e.g., int32->BigInt promotion).
 
     - Exact equality
-    - IntLiteralType matches IntLiteralType, any fixed-width int, BigInt, float, or Float32
+    - IntLiteralType matches IntLiteralType, any fixed-width int, BigInt, float, or float32
     - INT TypeParamRef matches any fixed-width int or BigInt
     """
     if arg_type == param_type:
@@ -450,7 +450,7 @@ def type_matches_numeric(
     # T -> Optional[T]: unwrap Optional param and match inner type
     if isinstance(param_type, OptionalType):
         return type_matches_numeric(arg_type, param_type.inner)
-    # Recursive container matching: e.g. make_list(IntLiteralType) vs make_list(Int32).
+    # Recursive container matching: e.g. make_list(IntLiteralType) vs make_list(int32).
     # Post-Phase-D all builtin containers share the NominalType class, so also
     # require matching name (list vs set etc. would otherwise both pass type()
     # equality and fall into the element-only check).
@@ -777,7 +777,7 @@ def resolve_overload(
         return first_generic_match_fallback
 
     # Second pass: allow coercions, prefer overload with most non-coercion
-    # matches and fewest narrowing conversions (BigInt->Int32 is lossy).
+    # matches and fewest narrowing conversions (BigInt->int32 is lossy).
     candidates: list[tuple[int, int, FunctionInfo, list[TpyType]]] = []
     for overload in overloads:
         effective_args = arg_types

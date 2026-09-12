@@ -1,5 +1,5 @@
 import sys
-from tpy import Int32
+from tpy import int32
 def a1() -> None:
     print(sys.argv[0])
 def a2() -> None:

@@ -1,5 +1,5 @@
 # Deferred generic inference: conflicting type constraints from method calls
-from tpy import Int32, Int64
+from tpy import int32, int64
 
 class Container[T]:
     val: T
@@ -10,7 +10,7 @@ class Container[T]:
 
 def main() -> None:
     c = Container()
-    c.set(Int32(1))
-    c.set(Int64(2))  # tpyc: error(/expected Int32, got Int64/)
+    c.set(int32(1))
+    c.set(int64(2))  # tpyc: error(/expected int32, got int64/)
 
 main()

@@ -2,13 +2,13 @@
 # mutable operator[] shim mirrors the mutable clone's param signature (the
 # key stays T& there because the borrow escapes through the return), so the
 # subscript result is writable and mutation flows both ways, like CPython.
-from tpy import Int32
+from tpy import int32
 
 
 class Node:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32):
+    def __init__(self, v: int32):
         self.v = v
 
 

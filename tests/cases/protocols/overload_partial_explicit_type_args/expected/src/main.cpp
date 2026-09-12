@@ -13,7 +13,7 @@ std::string stub(std::string_view val) {
 
 // def main() -> None:
 void main() {
-    // r: Int32 = stub[Int32](lambda x: x * Int32(2))
+    // r: int32 = stub[int32](lambda x: x * int32(2))
     int32_t r = stub<int32_t, int32_t>([](int32_t x) -> int32_t { return (::tpy::mul_check<int32_t>(x, 2)); });
     // print(r)
     std::cout << r << "\n";

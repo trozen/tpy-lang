@@ -20,7 +20,7 @@ void main();
 struct Maker {
 
 
-    // def make(self, n: Int32) -> Own[list[Int32]]:
+    // def make(self, n: int32) -> Own[list[int32]]:
     std::vector<int32_t> make(int32_t n) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Maker";
 };
@@ -31,9 +31,9 @@ inline std::ostream& operator<<(std::ostream& os, const Maker& obj) {
 }
 
 
-// def make(self, n: Int32) -> Own[list[Int32]]:
+// def make(self, n: int32) -> Own[list[int32]]:
 inline std::vector<int32_t> Maker::make(int32_t n) const {
-    // out: list[Int32] = []
+    // out: list[int32] = []
     std::vector<int32_t> out = std::vector<int32_t>{};
     // for i in range(n):
     int32_t __stop_0 = n;

@@ -2,7 +2,7 @@
 # stale after the block: `__aexit__` awaits before the following code
 # runs, so the fact dies at that suspension.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
 class Gate:
@@ -15,12 +15,12 @@ class Gate:
 
 
 class Holder:
-    f: Int32 | None
+    f: int32 | None
 
     def __init__(self) -> None:
         self.f = 3
 
-    async def read_after_with(self, g: Gate) -> Int32:
+    async def read_after_with(self, g: Gate) -> int32:
         async with g:
             if self.f is None:
                 return -1

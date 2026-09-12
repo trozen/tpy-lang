@@ -1,0 +1,1 @@
+The cpy stub int32 is an int subclass, so isinstance(5, int32) is False under CPython (BUGS.md#isinstance-int32-cpy-stub-subclass); the case exists to pin which union member a literal lands in.

@@ -16,12 +16,12 @@ void main();
 
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
-    // y: Int32
+    // y: int32
     int32_t y;
 
-    // def __init__(self, x: Int32, y: Int32) -> None:
+    // def __init__(self, x: int32, y: int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
@@ -41,15 +41,15 @@ struct PointList {
     PointList() = default;
     explicit PointList(const std::vector<Point>& pts);
 
-    // def __len__(self) -> Int32:
+    // def __len__(self) -> int32:
     int32_t __len__() const;
 
     // @auto_readonly
-    // def __getitem__(self, index: Int32) -> Point:
+    // def __getitem__(self, index: int32) -> Point:
     Point& __getitem__(int32_t index);
 
     // @auto_readonly
-    // def __getitem__(self, index: Int32) -> Point:
+    // def __getitem__(self, index: int32) -> Point:
     const Point& __getitem__(int32_t index) const;
 
     const Point& operator[](int32_t index) const {
@@ -74,27 +74,27 @@ inline std::ostream& operator<<(std::ostream& os, const PointList& obj) {
 }
 
 
-// def __init__(self, x: Int32, y: Int32) -> None:
+// def __init__(self, x: int32, y: int32) -> None:
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __init__(self, pts: list[Point]) -> None:
 inline PointList::PointList(const std::vector<Point>& pts) : data(pts) {}
 
-// def __len__(self) -> Int32:
+// def __len__(self) -> int32:
 inline int32_t PointList::__len__() const {
     // return len(self.data)
     return ::tpy::__len__(this->data);
 }
 
 // @auto_readonly
-// def __getitem__(self, index: Int32) -> Point:
+// def __getitem__(self, index: int32) -> Point:
 inline Point& PointList::__getitem__(int32_t index) {
     // return self.data[index]
     return ::tpy::__getitem__(this->data, index);
 }
 
 // @auto_readonly
-// def __getitem__(self, index: Int32) -> Point:
+// def __getitem__(self, index: int32) -> Point:
 inline const Point& PointList::__getitem__(int32_t index) const {
     // return self.data[index]
     return ::tpy::__getitem__(this->data, index);

@@ -15,20 +15,20 @@ void main();
 
 // class CachingContainer:
 struct CachingContainer {
-    // data: Int32
+    // data: int32
     int32_t data;
-    // last_access: Int32
+    // last_access: int32
     int32_t last_access;
 
-    // def __init__(self, data: Int32) -> None:
+    // def __init__(self, data: int32) -> None:
     CachingContainer() = default;
     explicit CachingContainer(int32_t data);
 
     // @readonly(False)
-    // def __getitem__(self, index: Int32) -> Int32:
+    // def __getitem__(self, index: int32) -> int32:
     int32_t __getitem__(int32_t index);
 
-    // def __len__(self) -> Int32:
+    // def __len__(self) -> int32:
     int32_t __len__() const;
 
     int32_t operator[](int32_t index) {
@@ -49,11 +49,11 @@ inline std::ostream& operator<<(std::ostream& os, const CachingContainer& obj) {
 }
 
 
-// def __init__(self, data: Int32) -> None:
+// def __init__(self, data: int32) -> None:
 inline CachingContainer::CachingContainer(int32_t data) : data(data), last_access(-1) {}
 
 // @readonly(False)
-// def __getitem__(self, index: Int32) -> Int32:
+// def __getitem__(self, index: int32) -> int32:
 inline int32_t CachingContainer::__getitem__(int32_t index) {
     // self.last_access = index
     this->last_access = index;
@@ -61,7 +61,7 @@ inline int32_t CachingContainer::__getitem__(int32_t index) {
     return this->data;
 }
 
-// def __len__(self) -> Int32:
+// def __len__(self) -> int32:
 inline int32_t CachingContainer::__len__() const {
     // return 1
     return 1;

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def free_slot_twin(v: Cell) -> Int32:
+// def free_slot_twin(v: Cell) -> int32:
 int32_t free_slot_twin(const Cell& v) {
     // xs: list[Cell] = []
     std::vector<Cell> xs = std::vector<Cell>{};
@@ -20,7 +20,7 @@ Cell ret_own_twin(const Cell& v) {
     return v;
 }
 
-// async def async_driver(c: Cell) -> Int32:
+// async def async_driver(c: Cell) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_async_driver::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -55,22 +55,22 @@ Cell ret_own_twin(const Cell& v) {
 }
 
 
-// async def async_driver(c: Cell) -> Int32:
+// async def async_driver(c: Cell) -> int32:
 __coro_async_driver async_driver(Cell& c) {
     return __coro_async_driver(c);
 }
 
-// def boxed_bound_twin(v: GBox[Int32]) -> Int32:
+// def boxed_bound_twin(v: GBox[int32]) -> int32:
 int32_t boxed_bound_twin(const GBox<int32_t>& v) {
-    // xs: list[GBox[Int32]] = []
+    // xs: list[GBox[int32]] = []
     std::vector<GBox<int32_t>> xs = std::vector<GBox<int32_t>>{};
-    // xs.append(v)  # tpyc: warning(/copies GBox\[Int32\] into owned storage/)
+    // xs.append(v)  # tpyc: warning(/copies GBox\[int32\] into owned storage/)
     xs.push_back(v);
     // return len(xs)
     return ::tpy::__len__(xs);
 }
 
-// def elems_ctor_twin(pairs: list[tuple[str, Cell]]) -> Int32:
+// def elems_ctor_twin(pairs: list[tuple[str, Cell]]) -> int32:
 int32_t elems_ctor_twin(const std::vector<std::tuple<std::string, Cell>>& pairs) {
     // d = dict(pairs)  # tpyc: warning(/copies tuple\[str, Cell\] elements/)
     ::tpy::ordered_map<std::string, Cell> d = ::tpy::dict_construct<std::string, Cell>(pairs);
@@ -83,7 +83,7 @@ int32_t elems_ctor_twin(const std::vector<std::tuple<std::string, Cell>>& pairs)
 // # pre-existing lowering reject queued in scripts/thir_migration/review, and a
 // # set comprehension there is refused earlier still (`Ref[T]` is not hashable).
 // # The concrete side is pinned so the position is not silently uncovered.
-// def comp_slot_twin(v: Cell) -> Int32:
+// def comp_slot_twin(v: Cell) -> int32:
 int32_t comp_slot_twin(const Cell& v) {
     // xs: list[Cell] = [v for _ in range(2)]  # tpyc: warning(/copies Cell into owned storage/)
     std::vector<Cell> xs = ({
@@ -99,7 +99,7 @@ int32_t comp_slot_twin(const Cell& v) {
     return ::tpy::__len__(xs);
 }
 
-// def subscript_slot_twin(xs: list[Cell], v: Cell) -> Int32:
+// def subscript_slot_twin(xs: list[Cell], v: Cell) -> int32:
 int32_t subscript_slot_twin(std::vector<Cell>& xs, const Cell& v) {
     // xs[0] = v  # tpyc: warning(/copies Cell into container/)
     ::tpy::__setitem__(xs, 0, v);

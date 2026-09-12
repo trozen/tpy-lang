@@ -29,7 +29,7 @@ __coro_bump bump(A& a) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // h = Holder(Int32(5))
+        // h = Holder(int32(5))
         h.emplace(Holder<int32_t>(5));
         // a = A()
         a.emplace(A());
@@ -93,7 +93,7 @@ void main() {
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
-// async def show(self, u: A | B) -> Int32:
+// async def show(self, u: A | B) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_PlainHolder_show::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {

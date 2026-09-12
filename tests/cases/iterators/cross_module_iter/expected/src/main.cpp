@@ -30,10 +30,10 @@ void __tpy_init() {
     initialized = true;
 
     // # Iterate a cross-module generic iterable WITHOUT importing its type -- only
-    // # the factory is imported. The element type of Bag[Int32].__iter__() ->
-    // # Iterator[T] must still bind T=Int32, which requires resolving Bag's
+    // # the factory is imported. The element type of Bag[int32].__iter__() ->
+    // # Iterator[T] must still bind T=int32, which requires resolving Bag's
     // # RecordInfo by qname (it is absent from this module's local records dict).
-    // # Regression guard: this raised "Cannot iterate over type Bag[Int32]" before
+    // # Regression guard: this raised "Cannot iterate over type Bag[int32]" before
     // # the qname-first lookup fix.
     // from bag import make_bag
     ::tpyapp::bag::__tpy_init();

@@ -84,13 +84,13 @@ struct _SslSession {
     // def raw(self) -> Ptr[mbedtls.Session]:
     ::tpy_tls_session* raw() const;
 
-    // def fileno(self) -> Int32:
+    // def fileno(self) -> int32:
     int32_t fileno() const;
 
     // def setblocking(self, flag: bool) -> None:
     void setblocking(bool flag);
 
-    // def read_into(self, size: Int32) -> bytes:
+    // def read_into(self, size: int32) -> bytes:
     ::tpy::Bytes read_into(int32_t size) const;
     static constexpr std::string_view __tpy_class_name__ = "ssl._SslSession";
 };
@@ -102,7 +102,7 @@ inline std::ostream& operator<<(std::ostream& os, const _SslSession& obj) {
 
 // class SSLContext:
 struct SSLContext {
-    // verify_mode: Int32
+    // verify_mode: int32
     int32_t verify_mode;
     // check_hostname: bool
     bool check_hostname;
@@ -171,10 +171,10 @@ struct SSLSocket {
     // def do_handshake_blocking(self) -> None:
     void do_handshake_blocking();
 
-    // def recv(self, bufsize: Int32) -> bytes:
+    // def recv(self, bufsize: int32) -> bytes:
     ::tpy::Bytes recv(int32_t bufsize);
 
-    // def send(self, data: bytes) -> Int32:
+    // def send(self, data: bytes) -> int32:
     int32_t send(::tpy::BytesView data);
 
     // def sendall(self, data: bytes) -> None:
@@ -186,7 +186,7 @@ struct SSLSocket {
     // def version(self) -> str:
     std::string version();
 
-    // def fileno(self) -> Int32:
+    // def fileno(self) -> int32:
     int32_t fileno();
 
     // def setblocking(self, flag: bool) -> None:
@@ -216,7 +216,7 @@ struct SSLRawIO {
     SSLRawIO(SSLRawIO&&) = default;
     SSLRawIO& operator=(SSLRawIO&&) = default;
 
-    // def read(self, size: Int32 = -1) -> bytes:
+    // def read(self, size: int32 = -1) -> bytes:
     ::tpy::Bytes read(int32_t size = -1);
 
     // def close(self) -> None:
@@ -322,7 +322,7 @@ inline ::tpy_tls_session* _SslSession::raw() const {
     return this->_s;
 }
 
-// def fileno(self) -> Int32:
+// def fileno(self) -> int32:
 inline int32_t _SslSession::fileno() const {
     // return self._sock.fileno()
     return this->_sock.fileno();
@@ -390,8 +390,8 @@ inline void SSLContext::_config_server(::tpy_tls_session* s) const {
     // kf = self._keyfile
     std::string_view kf = this->_keyfile;
     // rc = mbedtls.tls_config_server(
-    // s, unsafe_cast(unsafe_ptr(cf)), UInt64(len(cf)),
-    // unsafe_cast(unsafe_ptr(kf)), UInt64(len(kf)))
+    // s, unsafe_cast(unsafe_ptr(cf)), uint64(len(cf)),
+    // unsafe_cast(unsafe_ptr(kf)), uint64(len(kf)))
     int32_t rc = ::tpy_tls_config_server(s, reinterpret_cast<const uint8_t*>(cf.data()), ::tpy::int_cast_check<uint64_t>(::tpy::__len__(cf)), reinterpret_cast<const uint8_t*>(kf.data()), ::tpy::int_cast_check<uint64_t>(::tpy::__len__(kf)));
     // if rc != 0:
     if ((rc != 0)) {
@@ -411,18 +411,18 @@ inline void SSLSocket::do_handshake_blocking() {
     }
 }
 
-// def recv(self, bufsize: Int32) -> bytes:
+// def recv(self, bufsize: int32) -> bytes:
 inline ::tpy::Bytes SSLSocket::recv(int32_t bufsize) {
     // return self._session.get().read_into(bufsize)
     return this->_session.get().read_into(bufsize);
 }
 
-// def send(self, data: bytes) -> Int32:
+// def send(self, data: bytes) -> int32:
 inline int32_t SSLSocket::send(::tpy::BytesView data) {
     // rc = mbedtls.tls_write(self._session.get().raw(), unsafe_ptr(data),
-    // UInt64(len(data)))
+    // uint64(len(data)))
     int32_t rc = ::tpy_tls_write(this->_session.get().raw(), data.data(), ::tpy::int_cast_check<uint64_t>(::tpy::__len__(data)));
-    // if rc < Int32(0):
+    // if rc < int32(0):
     if ((rc < 0)) {
         // _raise_io_error(rc)
         _raise_io_error(rc);
@@ -444,7 +444,7 @@ inline std::string SSLSocket::version() {
     return std::string(reinterpret_cast<const char*>(reinterpret_cast<const uint8_t*>(::tpy_tls_version(this->_session.get().raw()))));
 }
 
-// def fileno(self) -> Int32:
+// def fileno(self) -> int32:
 inline int32_t SSLSocket::fileno() {
     // return self._session.get().fileno()
     return this->_session.get().fileno();
@@ -472,9 +472,9 @@ inline void SSLSocket::close() {
 // def __init__(self, session: Own[Rc[_SslSession]]) -> None:
 inline SSLRawIO::SSLRawIO(::tpystd::tplib::rc::Rc<_SslSession>&& session) : _session(std::move(session)) {}
 
-// def read(self, size: Int32 = -1) -> bytes:
+// def read(self, size: int32 = -1) -> bytes:
 inline ::tpy::Bytes SSLRawIO::read(int32_t size) {
-    // n = size if size > Int32(0) else 8192
+    // n = size if size > int32(0) else 8192
     int32_t n = (((size > 0)) ? (size) : (8192));
     // return self._session.get().read_into(n)
     return this->_session.get().read_into(n);

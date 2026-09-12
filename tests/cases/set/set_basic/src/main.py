@@ -1,8 +1,8 @@
 # Basic set creation, add, len, print, contains
-from tpy import Int32
+from tpy import int32
 
 def main() -> None:
-    s: set[Int32] = {1, 2, 3}
+    s: set[int32] = {1, 2, 3}
     print(s)
     print(len(s))
     s.add(4)

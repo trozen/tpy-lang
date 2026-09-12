@@ -1,6 +1,6 @@
 # io.BytesIO -- write/read/seek/iter + context manager + closed errors.
 import io
-from tpy import Int32
+from tpy import int32
 
 
 def basic_write_read() -> None:
@@ -23,9 +23,9 @@ def initial_value_and_overwrite() -> None:
 
 def seek_then_read() -> None:
     b = io.BytesIO(b"abcdefgh")
-    b.seek(Int32(3))
+    b.seek(int32(3))
     print("read-from-3:", b.read())
-    b.seek(Int32(0))
+    b.seek(int32(0))
     print("read-all:", b.read())
 
 

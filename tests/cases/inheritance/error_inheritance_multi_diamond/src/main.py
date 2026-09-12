@@ -1,11 +1,11 @@
 # Diamond inheritance is rejected in D22 v1. Non-virtual C++ MI would duplicate
 # the shared ancestor's subobject; users who need runtime polymorphism should
 # make the shared ancestor a @dynamic protocol.
-from tpy import Int32
+from tpy import int32
 
 
 class A:
-    x: Int32
+    x: int32
 
 
 class B(A):

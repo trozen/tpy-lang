@@ -16,7 +16,7 @@ void test_list_inferred() {
 
 // def test_list_annotated_float32() -> None:
 void test_list_annotated_float32() {
-    // xs: list[Float32] = [1.0, 2.0, 3.0]  # tpyc: type(list[Float32])
+    // xs: list[float32] = [1.0, 2.0, 3.0]  # tpyc: type(list[float32])
     std::vector<float> xs = {1.0, 2.0, 3.0};
     // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
@@ -40,9 +40,9 @@ void test_set_inferred() {
 
 // def test_ternary_float_literal() -> None:
 void test_ternary_float_literal() {
-    // x: Float32 = Float32(1.0)
+    // x: float32 = float32(1.0)
     float x = 1.0f;
-    // y = x if True else 2.0  # tpyc: type(Float32)
+    // y = x if True else 2.0  # tpyc: type(float32)
     float y = ((true) ? (x) : (2.0f));
     // print(y)
     std::cout << ::tpy::print_float(static_cast<double>(y)) << "\n";

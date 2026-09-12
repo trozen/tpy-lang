@@ -24,10 +24,10 @@ void main();
 // @nocopy
 // class Box:
 struct Box {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Box() = default;
     explicit Box(int32_t v);
     // non-copyable (@nocopy)
@@ -92,7 +92,7 @@ struct __coro_driver {
 };
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Box::Box(int32_t v) : v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

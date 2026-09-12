@@ -1,13 +1,13 @@
-from tpy import Int32, error_return, ReturnException
+from tpy import int32, error_return, ReturnException
 class NotFound(Exception, ReturnException):
     pass
 @error_return(NotFound)
-def inner(n: Int32) -> Int32:
+def inner(n: int32) -> int32:
     if n < 0:
         raise NotFound
     return n
 @error_return(NotFound)
-def outer(n: Int32) -> Int32 | None:
+def outer(n: int32) -> int32 | None:
     return inner(n)
 def main() -> None:
     try:

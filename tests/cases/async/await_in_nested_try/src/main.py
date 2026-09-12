@@ -1,22 +1,22 @@
 # Nested try/except/finally with awaits at each level.
 # Verifies finallies run in correct order on return-from-inner-handler.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
-async def value(n: Int32) -> Int32:
+async def value(n: int32) -> int32:
     return n
 
-async def fail() -> Int32:
+async def fail() -> int32:
     raise ValueError("inner")
 
-async def go() -> Int32:
+async def go() -> int32:
     try:
         try:
             x = await fail()
             return x
         except ValueError:
             print("inner-handler")
-            y = await value(Int32(5))
+            y = await value(int32(5))
             return y
         finally:
             print("inner-finally")

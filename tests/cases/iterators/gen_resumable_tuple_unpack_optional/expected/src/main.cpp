@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def gen(pairs: list[tuple[Optional[P], Optional[P]]]) -> Iterator[Int32]:  # tpyc: ok
+// def gen(pairs: list[tuple[Optional[P], Optional[P]]]) -> Iterator[int32]:  # tpyc: ok
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -60,7 +60,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
 }
 
 
-// def gen(pairs: list[tuple[Optional[P], Optional[P]]]) -> Iterator[Int32]:  # tpyc: ok
+// def gen(pairs: list[tuple[Optional[P], Optional[P]]]) -> Iterator[int32]:  # tpyc: ok
 __gen_gen gen(std::vector<std::tuple<std::optional<P>, std::optional<P>>>& pairs) {
     return __gen_gen(pairs);
 }

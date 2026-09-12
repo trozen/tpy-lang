@@ -7,14 +7,14 @@
 # The printed values are the WRONG ones the warning announces
 # (BUGS.md#resumable-alias-identity) -- hence no_cpython.txt.
 import asyncio
-from tpy import Int32, Own, take_ptr
+from tpy import int32, Own, take_ptr
 from typing import Iterator
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
     def bump(self) -> None:
@@ -29,7 +29,7 @@ class Holder:
 
 
 # frame generator: one frame field per name, so the FIRST rebind clobbers.
-def gen_section() -> Iterator[Int32]:
+def gen_section() -> Iterator[int32]:
     p = Point(1)
     alias = p
     p = Point(50)  # tpyc: warning(/will not keep the object it was given/)
@@ -39,7 +39,7 @@ def gen_section() -> Iterator[Int32]:
 
 
 # async def: same resumable frame, same single generation.
-async def async_section() -> Int32:
+async def async_section() -> int32:
     p = Point(2)
     alias = p
     p = Point(50)  # tpyc: warning(/will not keep the object it was given/)

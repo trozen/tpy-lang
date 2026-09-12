@@ -4,25 +4,25 @@
 namespace tpyapp::main {
 
 
-// def empty_list() -> Own[list[Int32]]:
+// def empty_list() -> Own[list[int32]]:
 std::vector<int32_t> empty_list() {
-    // out = []  # tpyc: type(/list\[Int32\]/)
+    // out = []  # tpyc: type(/list\[int32\]/)
     std::vector<int32_t> out = std::vector<int32_t>{};
     // return out
     return out;
 }
 
-// def empty_dict() -> Own[dict[Int32, Int32]]:
+// def empty_dict() -> Own[dict[int32, int32]]:
 ::tpy::ordered_map<int32_t, int32_t> empty_dict() {
-    // d = {}  # tpyc: type(/dict\[Int32, Int32\]/)
+    // d = {}  # tpyc: type(/dict\[int32, int32\]/)
     ::tpy::ordered_map<int32_t, int32_t> d = ::tpy::ordered_map<int32_t, int32_t>();
     // return d
     return d;
 }
 
-// def empty_set() -> Own[set[Int32]]:
+// def empty_set() -> Own[set[int32]]:
 ::tpy::ordered_set<int32_t> empty_set() {
-    // s = set()  # tpyc: type(/set\[Int32\]/)
+    // s = set()  # tpyc: type(/set\[int32\]/)
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>();
     // return s
     return s;
@@ -36,9 +36,9 @@ std::vector<int32_t> empty_list() {
     return s;
 }
 
-// def empty_record_dict() -> Own[dict[Int32, Point]]:
+// def empty_record_dict() -> Own[dict[int32, Point]]:
 ::tpy::ordered_map<int32_t, Point> empty_record_dict() {
-    // d = {}  # tpyc: type(/dict\[Int32, Point\]/)
+    // d = {}  # tpyc: type(/dict\[int32, Point\]/)
     ::tpy::ordered_map<int32_t, Point> d = ::tpy::ordered_map<int32_t, Point>();
     // return d
     return d;

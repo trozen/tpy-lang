@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def get_or_default(x: Int32, default: Int32) -> Int32:
+// def get_or_default(x: int32, default: int32) -> int32:
 int32_t get_or_default(int32_t x, int32_t default_) {
     // if x > 0:
     if ((x > 0)) {
@@ -17,11 +17,11 @@ int32_t get_or_default(int32_t x, int32_t default_) {
 
 // def test_local_keywords() -> None:
 void test_local_keywords() {
-    // delete: Int32 = 10
+    // delete: int32 = 10
     int32_t delete_ = 10;
-    // new: Int32 = 20
+    // new: int32 = 20
     int32_t new_ = 20;
-    // result: Int32 = delete + new
+    // result: int32 = delete + new
     int32_t result = (::tpy::add_check<int32_t>(delete_, new_));
     // print(result)
     std::cout << result << "\n";
@@ -29,9 +29,9 @@ void test_local_keywords() {
 
 // def test_for_loop_keyword() -> None:
 void test_for_loop_keyword() {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
-    // items: list[Int32] = [1, 2, 3]
+    // items: list[int32] = [1, 2, 3]
     std::vector<int32_t> items = {1, 2, 3};
     // for operator in items:
     auto& __obj_0 = items;
@@ -46,7 +46,7 @@ void test_for_loop_keyword() {
     std::cout << total << "\n";
 }
 
-// def delete(x: Int32) -> Int32:
+// def delete(x: int32) -> int32:
 int32_t delete_(int32_t x) {
     // return x * 2
     return (::tpy::mul_check<int32_t>(x, 2));

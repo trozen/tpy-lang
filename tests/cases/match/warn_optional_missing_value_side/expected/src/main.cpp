@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def f(p: Point | None) -> Int32:
+// def f(p: Point | None) -> int32:
 int32_t f(const Point* p) {
     // match p:  # tpyc: warning(/non-exhaustive match.*missing: Point/)
     auto& __match_subject_1 = p;

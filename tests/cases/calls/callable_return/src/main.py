@@ -1,11 +1,11 @@
 # Test Callable as function return type (captures by value)
 from typing import Callable
-from tpy import Int32
+from tpy import int32
 
-def make_adder(n: Int32) -> Callable[[Int32], Int32]:
+def make_adder(n: int32) -> Callable[[int32], int32]:
     return lambda x: x + n
 
-def make_multiplier(factor: Int32) -> Callable[[Int32], Int32]:
+def make_multiplier(factor: int32) -> Callable[[int32], int32]:
     return lambda x: x * factor
 
 def main() -> None:

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def two_then(n: Int32) -> Iterator[Int32]:
+// def two_then(n: int32) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_two_then::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -13,7 +13,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_two_then::__next__() {
         return 0;
     }
     case S_RESUME_0: {
-        // i: Int32 = 1
+        // i: int32 = 1
         i = 1;
         __state = S_JOIN_0;
         continue;
@@ -40,12 +40,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_two_then::__next__() {
 }
 
 
-// def two_then(n: Int32) -> Iterator[Int32]:
+// def two_then(n: int32) -> Iterator[int32]:
 __gen_two_then two_then(int32_t n) {
     return __gen_two_then(n);
 }
 
-// def pairs(n: Int32) -> Iterator[tuple[Int32, Int32]]:
+// def pairs(n: int32) -> Iterator[tuple[int32, int32]]:
 std::expected<std::tuple<int32_t, int32_t>, ::tpy::StopIteration> __gen_pairs::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -54,7 +54,7 @@ std::expected<std::tuple<int32_t, int32_t>, ::tpy::StopIteration> __gen_pairs::_
         return std::tuple<int32_t, int32_t>{0, 0};
     }
     case S_RESUME_0: {
-        // i: Int32 = 1
+        // i: int32 = 1
         i = 1;
         __state = S_JOIN_0;
         continue;
@@ -81,12 +81,12 @@ std::expected<std::tuple<int32_t, int32_t>, ::tpy::StopIteration> __gen_pairs::_
 }
 
 
-// def pairs(n: Int32) -> Iterator[tuple[Int32, Int32]]:
+// def pairs(n: int32) -> Iterator[tuple[int32, int32]]:
 __gen_pairs pairs(int32_t n) {
     return __gen_pairs(n);
 }
 
-// def make_nodes(n: Int32) -> Iterator[Own[Node]]:
+// def make_nodes(n: int32) -> Iterator[Own[Node]]:
 std::expected<Node, ::tpy::StopIteration> __gen_make_nodes::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -95,7 +95,7 @@ std::expected<Node, ::tpy::StopIteration> __gen_make_nodes::__next__() {
         return Node(0);
     }
     case S_RESUME_0: {
-        // i: Int32 = 1
+        // i: int32 = 1
         i = 1;
         __state = S_JOIN_0;
         continue;
@@ -122,7 +122,7 @@ std::expected<Node, ::tpy::StopIteration> __gen_make_nodes::__next__() {
 }
 
 
-// def make_nodes(n: Int32) -> Iterator[Own[Node]]:
+// def make_nodes(n: int32) -> Iterator[Own[Node]]:
 __gen_make_nodes make_nodes(int32_t n) {
     return __gen_make_nodes(n);
 }
@@ -155,7 +155,7 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    // nums: list[Int32] = [10, 20, 30, 40]
+    // nums: list[int32] = [10, 20, 30, 40]
     std::vector<int32_t> nums = {10, 20, 30, 40};
     // print([x for x in head(nums, 2)])             # [10, 20]
     std::cout << ::tpy::ListPrinter(({
@@ -268,7 +268,7 @@ void main() {
     std::cout << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, 2).v << "\n";
 }
 
-// def around(self) -> Iterator[Int32]:
+// def around(self) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_Counter_around::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {

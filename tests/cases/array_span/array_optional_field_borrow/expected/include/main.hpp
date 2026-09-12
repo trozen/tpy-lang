@@ -17,7 +17,7 @@ void main();
 
 // class Grid:
 struct Grid {
-    // cells: Array[Int32, 2] | None
+    // cells: Array[int32, 2] | None
     std::optional<std::array<int32_t, 2>> cells;
 
     // def __init__(self) -> None:

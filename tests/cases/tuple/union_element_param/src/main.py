@@ -1,29 +1,29 @@
-# A tuple param with a union element (tuple[Dog | Cat, Int32]) builds and is
+# A tuple param with a union element (tuple[Dog | Cat, int32]) builds and is
 # passed by borrow -- @nocopy members prove the element is aliased, not copied.
-from tpy import Int32, nocopy
+from tpy import int32, nocopy
 
 
 @nocopy
 class Dog:
-    bark: Int32
+    bark: int32
 
-    def __init__(self, b: Int32) -> None:
+    def __init__(self, b: int32) -> None:
         self.bark = b
 
 
 @nocopy
 class Cat:
-    meow: Int32
+    meow: int32
 
-    def __init__(self, m: Int32) -> None:
+    def __init__(self, m: int32) -> None:
         self.meow = m
 
 
-def read_second(pair: tuple[Dog | Cat, Int32]) -> Int32:
+def read_second(pair: tuple[Dog | Cat, int32]) -> int32:
     return pair[1]
 
 
-def passthrough(pair: tuple[Dog | Cat, Int32]) -> Int32:
+def passthrough(pair: tuple[Dog | Cat, int32]) -> int32:
     return read_second(pair)
 
 

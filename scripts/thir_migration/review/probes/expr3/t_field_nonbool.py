@@ -1,8 +1,8 @@
-from tpy import Int32, Char
+from tpy import int32, char
 class Holder:
-    c: Char
+    c: char
     def __init__(self) -> None:
-        self.c = Char('a')
+        self.c = char('a')
 def main() -> None:
     h = Holder()
     if h.c:

@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 
 
-def add_if_both(a: Int32 | None, b: Int32 | None) -> Int32:
+def add_if_both(a: int32 | None, b: int32 | None) -> int32:
     if a and b:  # tpyc: warning(/variable 'a'/)  # tpyc: warning(/variable 'b'/)
         return a + b  # tpyc: ok
     return 0

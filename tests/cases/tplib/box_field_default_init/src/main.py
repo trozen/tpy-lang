@@ -1,13 +1,13 @@
 # Regression: `self.field = Box(...)` inside `__init__` -- Box analog of
 # rc_field_default_init.
-from tpy import Int32
+from tpy import int32
 from tplib import Box
 
 
 class Val:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 

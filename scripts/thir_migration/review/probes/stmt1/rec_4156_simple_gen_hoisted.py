@@ -1,10 +1,10 @@
-from tpy import Int32, Own, readonly
+from tpy import int32, Own, readonly
 class Point:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 from typing import Iterator
-def gen() -> Iterator[Int32]:
+def gen() -> Iterator[int32]:
     q = Point(0)
     for i in range(2):
         p = Point(i)

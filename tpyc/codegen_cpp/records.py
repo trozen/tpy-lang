@@ -370,7 +370,7 @@ class RecordGenerator:
                 # ambiguously on macOS). Mirrors the enum-member default arm
                 # below, which likewise renders from default_expr at codegen.
                 # fixed_int_literal_value_from_expr peels a fixed-int ctor
-                # wrapper (`Int64(x)`) too, matching default_to_cpp so the
+                # wrapper (`int64(x)`) too, matching default_to_cpp so the
                 # field member-init and the generated ctor param agree.
                 iv = (fixed_int_literal_value_from_expr(fld.default_expr)
                       if fld.default_expr is not None else None)
@@ -407,7 +407,7 @@ class RecordGenerator:
         # the same way module-level Final constants do.
         if record_info and not record_info.is_native:
             # Earlier constants of this body are in scope for the later ones
-            # (`DOUBLE: Final[Int32] = BASE * 2`), on top of the module's
+            # (`DOUBLE: Final[int32] = BASE * 2`), on top of the module's
             # Final globals -- accumulated in declaration order so a class
             # constant shadowing a global wins, as it does in C++.
             const_scope = self._thir_const_scope(record_info)
@@ -1490,7 +1490,7 @@ class RecordGenerator:
             return True
         if not isinstance(typ, NominalType) or not typ.is_user_record:
             return protocols._is_default_constructible(typ)
-        # Generic instantiation (e.g. Pair[Int32]): the base template class
+        # Generic instantiation (e.g. Pair[int32]): the base template class
         # usually emits = default, so any instantiation is C++-default-constructible.
         # `del_suppresses_default_ctor` catches the exception (Box/Rc/Weak and
         # other __del__ shapes) so the cascade through enclosing records stops

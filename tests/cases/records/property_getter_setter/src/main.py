@@ -1,18 +1,18 @@
 # @property with getter and setter, including validation in setter
-from tpy import Int32
+from tpy import int32
 
 class Clamped:
-    _value: Int32
+    _value: int32
 
-    def __init__(self, value: Int32) -> None:
+    def __init__(self, value: int32) -> None:
         self._value = value
 
     @property
-    def value(self) -> Int32:
+    def value(self) -> int32:
         return self._value
 
     @value.setter
-    def value(self, v: Int32) -> None:
+    def value(self, v: int32) -> None:
         if v < 0:
             self._value = 0
         elif v > 100:

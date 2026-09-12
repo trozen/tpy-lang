@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def relay_twice(items: list[tuple[Int32, C]]) -> Iterator[tuple[Int32, C]]:
+// def relay_twice(items: list[tuple[int32, C]]) -> Iterator[tuple[int32, C]]:
 std::expected<std::tuple<int32_t, C*>, ::tpy::StopIteration> __gen_relay_twice::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -38,14 +38,14 @@ std::expected<std::tuple<int32_t, C*>, ::tpy::StopIteration> __gen_relay_twice::
 }
 
 
-// def relay_twice(items: list[tuple[Int32, C]]) -> Iterator[tuple[Int32, C]]:
+// def relay_twice(items: list[tuple[int32, C]]) -> Iterator[tuple[int32, C]]:
 __gen_relay_twice relay_twice(std::vector<std::tuple<int32_t, C>>& items) {
     return __gen_relay_twice(items);
 }
 
 // def main() -> None:
 void main() {
-    // xs: list[tuple[Int32, C]] = [(1, C(5)), (2, C(6))]
+    // xs: list[tuple[int32, C]] = [(1, C(5)), (2, C(6))]
     std::vector<std::tuple<int32_t, C>> xs = {::tpy::tuple_to_storage<std::tuple<int32_t, C>>(std::tuple<int32_t, C>{1, C(5)}), ::tpy::tuple_to_storage<std::tuple<int32_t, C>>(std::tuple<int32_t, C>{2, C(6)})};
     // for n, c in storage_relay(xs):
     {
@@ -145,7 +145,7 @@ void main() {
     })) << "\n";
 }
 
-// def relay(self) -> Iterator[tuple[Int32, C]]:
+// def relay(self) -> Iterator[tuple[int32, C]]:
 std::expected<std::tuple<int32_t, C*>, ::tpy::StopIteration> __gen_Holder_relay::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {

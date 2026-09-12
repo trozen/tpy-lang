@@ -8,9 +8,9 @@ int32_t lo{};
 // lo, hi = get_bounds()
 int32_t hi{};
 
-// def get_bounds() -> tuple[Int32, Int32]:
+// def get_bounds() -> tuple[int32, int32]:
 std::tuple<int32_t, int32_t> get_bounds() {
-    // return (Int32(10), Int32(20))
+    // return (int32(10), int32(20))
     return std::tuple<int32_t, int32_t>{10, 20};
 }
 

@@ -1,6 +1,6 @@
 # Deferred generic inference: conflicting constraints for same type param
 # across method calls when type is not yet fully resolved
-from tpy import Int32, Int64
+from tpy import int32, int64
 
 class Pair[T, U]:
     a: T
@@ -17,7 +17,7 @@ class Pair[T, U]:
 
 def main() -> None:
     p = Pair()
-    p.set_a(Int32(1))   # T = Int32
-    p.set_a(Int64(2))   # tpyc: error(/Conflicting type inference for 'T'/)
+    p.set_a(int32(1))   # T = int32
+    p.set_a(int64(2))   # tpyc: error(/Conflicting type inference for 'T'/)
 
 main()

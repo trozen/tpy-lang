@@ -2,11 +2,11 @@
 # elements copies them into owned storage and warns. The source list[Item] has
 # no Own in its type args, so the Own-symmetric-strip suppression must not fire
 # -- the warning still reports the copy.
-from tpy import Int32
+from tpy import int32
 
 class Item:
-    key: Int32
-    def __init__(self, key: Int32) -> None:
+    key: int32
+    def __init__(self, key: int32) -> None:
         self.key = key
 
 def main() -> None:

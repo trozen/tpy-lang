@@ -1,10 +1,10 @@
 import asyncio
-from tpy import Int32
+from tpy import int32
 
-async def sub() -> Int32:
-    return Int32(42)
+async def sub() -> int32:
+    return int32(42)
 
-async def main_coro() -> Int32:
+async def main_coro() -> int32:
     try:
         return await sub()
     finally:

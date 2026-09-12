@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // @error_return(ParseError)
-// def parse_digit(s: str) -> Int32:
+// def parse_digit(s: str) -> int32:
 std::expected<int32_t, ParseError> parse_digit(std::string_view s) {
     // if s == "0":
     if ((s == "0")) {

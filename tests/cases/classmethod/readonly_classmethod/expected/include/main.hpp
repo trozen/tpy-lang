@@ -15,18 +15,18 @@ void main();
 
 // class Limits:
 struct Limits {
-    // BASE: Final[Int32] = 4
+    // BASE: Final[int32] = 4
     static constexpr int32_t BASE = 4;
 
 
     // @readonly
     // @classmethod
-    // def base(cls) -> Int32:
+    // def base(cls) -> int32:
     static int32_t base();
 
     // @readonly
     // @classmethod
-    // def doubled(cls) -> Int32:
+    // def doubled(cls) -> int32:
     static int32_t doubled();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Limits";
 };
@@ -39,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Limits& obj) {
 
 // @readonly
 // @classmethod
-// def base(cls) -> Int32:
+// def base(cls) -> int32:
 inline int32_t Limits::base() {
     // return cls.BASE
     return Limits::BASE;
@@ -47,7 +47,7 @@ inline int32_t Limits::base() {
 
 // @readonly
 // @classmethod
-// def doubled(cls) -> Int32:
+// def doubled(cls) -> int32:
 inline int32_t Limits::doubled() {
     // return cls.base() * 2
     return (::tpy::mul_check<int32_t>(Limits::base(), 2));

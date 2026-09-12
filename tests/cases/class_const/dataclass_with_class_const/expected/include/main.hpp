@@ -16,11 +16,11 @@ void main();
 // @dataclass
 // class Counter:
 struct Counter {
-    // count: Int32
+    // count: int32
     int32_t count;
     // label: str
     std::string label;
-    // DEFAULT_STEP: Final[Int32] = 1
+    // DEFAULT_STEP: Final[int32] = 1
     static constexpr int32_t DEFAULT_STEP = 1;
 
     Counter() = default;

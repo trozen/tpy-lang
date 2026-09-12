@@ -199,7 +199,7 @@ def _apply_implicit_auto_readonly(method: TpyFunction) -> None:
     overloads. Wrapping the return type with `AutoReadonlyType` reuses the
     existing decorator path: the cloner produces the mutable + const pair.
 
-    Value-typed returns (Int32, etc.) skip this -- they stay on the
+    Value-typed returns (int32, etc.) skip this -- they stay on the
     IMPLICIT_READONLY_METHODS path (single const overload is correct because
     there's no aliasing to mutate). Without this dual-overload synthesis, a
     class with `def __deref__(self) -> SomeRecord:` would be const-only,

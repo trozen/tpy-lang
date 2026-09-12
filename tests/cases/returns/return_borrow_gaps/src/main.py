@@ -1,12 +1,12 @@
 # 8b gaps: (a) reassignment, (b) call iterables, (c) transitive return inference.
-from tpy import Int32
+from tpy import int32
 
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32) -> None:
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 
@@ -63,7 +63,7 @@ def test_for_call_iterable_warns() -> None:
 def test_for_call_iterable_readonly_ok() -> None:
     """for-loop over a call result is fine if the body doesn't mutate the source."""
     items = [Point(1, 2), Point(3, 4)]
-    total = Int32(0)
+    total = int32(0)
     for p in get_list(items):   # tpyc: ok
         total = total + p.x
     print(total)                # 4 (1+3)

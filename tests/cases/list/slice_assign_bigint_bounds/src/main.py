@@ -1,10 +1,10 @@
 # A slice ASSIGN whose bounds are runtime BigInt values: the Slice / BasicSlice
 # members are fixed-int, so each bound narrows exactly as the slice READ does.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Holder:
-    xs: list[Int32]
+    xs: list[int32]
 
     def __init__(self) -> None:
         self.xs = list(range(0, 10))
@@ -13,20 +13,20 @@ class Holder:
         self.xs[lo::step] = [0, 0]  # tpyc: ok
 
 
-def stepped(lo: int, step: int) -> Own[list[Int32]]:
+def stepped(lo: int, step: int) -> Own[list[int32]]:
     xs = list(range(0, 12))
     xs[lo::step] = [90, 91, 92]  # tpyc: ok
     return xs
 
 
-def basic(lo: int, hi: int) -> Own[list[Int32]]:
+def basic(lo: int, hi: int) -> Own[list[int32]]:
     xs = list(range(0, 12))
     # A non-stepped bound pair narrows the same way, and step 1 may resize.
     xs[lo:hi] = [70, 71, 72, 73]  # tpyc: ok
     return xs
 
 
-def upper_only(hi: int) -> Own[list[Int32]]:
+def upper_only(hi: int) -> Own[list[int32]]:
     xs = list(range(0, 6))
     xs[:hi] = [50]  # tpyc: ok
     return xs

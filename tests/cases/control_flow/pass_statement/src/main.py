@@ -1,20 +1,20 @@
-from tpy import Int32
+from tpy import int32
 
 # Test 'pass' statement in various contexts
 
 def empty_function() -> None:
     pass
 
-def function_with_pass_branch(x: Int32) -> Int32:
+def function_with_pass_branch(x: int32) -> int32:
     if x > 0:
         pass
     else:
         return -1
     return x * 2
 
-def pass_in_loop() -> Int32:
-    total: Int32 = 0
-    i: Int32 = 0
+def pass_in_loop() -> int32:
+    total: int32 = 0
+    i: int32 = 0
     while i < 10:
         if i % 2 == 0:
             pass
@@ -23,7 +23,7 @@ def pass_in_loop() -> Int32:
         i += 1
     return total
 
-def pass_in_elif(x: Int32) -> Int32:
+def pass_in_elif(x: int32) -> int32:
     if x < 0:
         return -1
     elif x == 0:
@@ -33,15 +33,15 @@ def pass_in_elif(x: Int32) -> Int32:
     return 0
 
 class Counter:
-    value: Int32
+    value: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.value = v
 
     def do_nothing(self) -> None:
         pass
 
-    def maybe_increment(self, flag: Int32) -> None:
+    def maybe_increment(self, flag: int32) -> None:
         if flag > 0:
             self.value += 1
         else:

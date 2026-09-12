@@ -1,6 +1,6 @@
 # os.walk v1: topdown prune, followlinks, broken/missing-dir skip. Output is
 # host-independent (relative paths, sorted -- scandir order is OS-arbitrary).
-from tpy import Int32
+from tpy import int32
 import os
 
 
@@ -56,14 +56,14 @@ def walk_sorted(root: str) -> None:
         print(r)
 
 
-def count_dirs(root: str, follow: bool) -> Int32:
+def count_dirs(root: str, follow: bool) -> int32:
     n = 0
     for dp, dn, fn in os.walk(root, followlinks=follow):
         n += 1
     return n
 
 
-def prune_all(root: str) -> Int32:
+def prune_all(root: str) -> int32:
     # dirnames[:] = [] stops all descent -- only the root tuple is yielded.
     n = 0
     for dp, dn, fn in os.walk(root):

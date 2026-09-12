@@ -17,10 +17,10 @@ void main();
 
 // class Dog:
 struct Dog {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Dog() = default;
     explicit Dog(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
@@ -33,10 +33,10 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 
 // class Cat:
 struct Cat {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Cat() = default;
     explicit Cat(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cat";
@@ -48,10 +48,10 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 }
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Dog::Dog(int32_t n) : n(n) {}
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Cat::Cat(int32_t n) : n(n) {}
 using PtrPet = ::tpy::Union<Cat*, Dog*>;
 

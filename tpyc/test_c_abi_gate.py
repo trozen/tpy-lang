@@ -83,7 +83,7 @@ def test_plain_enum_param_is_rejected():
 
 
 _EXPORT = ("from tpy.extern import export\n"
-           "from tpy import Int32, Int64, Span, Array, Ptr, readonly\n")
+           "from tpy import int32, int64, Span, Array, Ptr, readonly\n")
 
 
 def _c_fn(params: str, ret: str = "None") -> str:
@@ -93,13 +93,13 @@ def _c_fn(params: str, ret: str = "None") -> str:
 # Each rejected family routes to a different remedy clause, and a wrong
 # clause is worse than none -- it sends the reader at the wrong fix.
 @pytest.mark.parametrize("params,fragment", [
-    ("b: bytes", "Ptr[readonly[UInt8]] plus an explicit length"),
-    ("xs: list[Int32]", "Ptr[T] plus an explicit length"),
-    ("s: Span[Int32]", "Ptr[T] plus an explicit length"),
-    ("a: Array[Int32, 2]", "Ptr[T] plus an explicit length"),
-    ("t: tuple[Int32, Int32]", "pass it as Ptr[T]"),
-    ("o: Int32 | None", "pass it as Ptr[T]"),
-    ("u: Int32 | Int64", "pass it as Ptr[T]"),
+    ("b: bytes", "Ptr[readonly[uint8]] plus an explicit length"),
+    ("xs: list[int32]", "Ptr[T] plus an explicit length"),
+    ("s: Span[int32]", "Ptr[T] plus an explicit length"),
+    ("a: Array[int32, 2]", "Ptr[T] plus an explicit length"),
+    ("t: tuple[int32, int32]", "pass it as Ptr[T]"),
+    ("o: int32 | None", "pass it as Ptr[T]"),
+    ("u: int32 | int64", "pass it as Ptr[T]"),
     ("n: int", "fixed-width integer"),
     ("s: str", "unsafe_str_from_cstr"),
 ])
@@ -121,13 +121,13 @@ def test_varargs_rejected_on_c_linkage():
     # A variadic C function needs a different declaration form entirely, so
     # this is its own message rather than a per-type remedy.
     with pytest.raises(SemanticError, match="variadic parameters are not"):
-        _compile(_c_fn("*rest: Int32"))
+        _compile(_c_fn("*rest: int32"))
 
 
 def test_readonly_scalar_is_unwrapped_not_rejected():
     # readonly is a TPy-side modifier with no bearing on the C spelling, so
     # the gate has to see through it rather than treat it as a new type.
-    _compile(_c_fn("x: readonly[Int32]"))
+    _compile(_c_fn("x: readonly[int32]"))
 
 
 def test_native_global_array_checks_the_pointee():
@@ -144,21 +144,21 @@ def test_native_global_array_checks_the_pointee():
 def test_native_global_array_accepts_a_c_pointee():
     # The inverse: the unwrap must not reject a valid element type.
     src = ('from tpy.extern import native_global\n'
-           'from tpy import Ptr, Int16\n'
-           'g: Ptr[Int16] = native_global("g", binding="C", array=True)\n')
+           'from tpy import Ptr, int16\n'
+           'g: Ptr[int16] = native_global("g", binding="C", array=True)\n')
     _compile(src)
 
 
-@pytest.mark.parametrize("pointee", ["list[Int32]", "Widget", "Int32"])
+@pytest.mark.parametrize("pointee", ["list[int32]", "Widget", "int32"])
 def test_ptr_is_unconditional_in_the_pointee(pointee):
     # DELIBERATE, and the only place it is asserted: a pointer is an opaque
     # handle at the ABI, so the gate constrains what crosses by value, not
-    # what a pointer addresses. `list[Int32]` by value is rejected two rows
+    # what a pointer addresses. `list[int32]` by value is rejected two rows
     # up -- behind a Ptr it is not. Narrowing this would break the
     # documented opaque-handle convention (Ptr[SomeTpyClass]).
     src = (_EXPORT
-           + "class Widget:\n    n: Int32\n"
-           + "    def __init__(self, n: Int32) -> None: self.n = n\n"
+           + "class Widget:\n    n: int32\n"
+           + "    def __init__(self, n: int32) -> None: self.n = n\n"
            + f'@export(binding="C")\ndef f(p: Ptr[{pointee}]) -> None: pass\n')
     _compile(src)
 
@@ -168,8 +168,8 @@ def test_record_remedy_does_not_steer_a_by_value_struct_at_a_pointer():
     # Ptr[T]" against a by-value C struct links cleanly and the callee reads
     # a struct where a pointer was passed. The remedy has to say so.
     src = (_EXPORT
-           + "class Widget:\n    n: Int32\n"
-           + "    def __init__(self, n: Int32) -> None: self.n = n\n"
+           + "class Widget:\n    n: int32\n"
+           + "    def __init__(self, n: int32) -> None: self.n = n\n"
            + '@export(binding="C")\ndef f(w: Widget) -> None: pass\n')
     with pytest.raises(SemanticError, match="cannot be expressed"):
         _compile(src)

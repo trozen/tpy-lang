@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // xs = collect(Int32(10), Int32(20))
+    // xs = collect(int32(10), int32(20))
     std::vector<int32_t> xs = collect<int32_t>(10, 20);
     // print(len(xs))
     std::cout << ::tpy::__len__(xs) << "\n";
@@ -14,7 +14,7 @@ void main() {
     std::cout << ::tpy::__getitem__(xs, 0) << "\n";
     // print(xs[1])
     std::cout << ::tpy::__getitem__(xs, 1) << "\n";
-    // ys = collect(Box(Int32(1)), Box(Int32(2)))
+    // ys = collect(Box(int32(1)), Box(int32(2)))
     Box __tmp_1 = Box(1);
     Box __tmp_2 = Box(2);
     std::vector<Box> ys = collect<Box>(__tmp_1, __tmp_2);

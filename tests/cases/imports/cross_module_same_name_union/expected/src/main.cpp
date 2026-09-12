@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def uses_pkg_a(x: Foo) -> Int32:
+// def uses_pkg_a(x: Foo) -> int32:
 int32_t uses_pkg_a(const ::tpyapp::pkg_a::Foo& x) {
     // return x.val
     return x.val;
@@ -29,7 +29,7 @@ std::string describe(::tpy::Union<const ::tpyapp::pkg_b::Bar*, const ::tpyapp::p
 
 // def main() -> None:
 void main() {
-    // a = Foo(Int32(42))
+    // a = Foo(int32(42))
     ::tpyapp::pkg_a::Foo a = ::tpyapp::pkg_a::Foo(42);
     // print(uses_pkg_a(a))
     std::cout << uses_pkg_a(a) << "\n";
@@ -39,7 +39,7 @@ void main() {
     std::cout << ::tpyapp::pkg_b::name_of_b() << "\n";
     // print(describe(a))
     std::cout << describe(::tpy::Union<const ::tpyapp::pkg_b::Bar*, const ::tpyapp::pkg_a::Foo*>{&(a)}) << "\n";
-    // print(describe(Bar(Int32(7))))
+    // print(describe(Bar(int32(7))))
     ::tpyapp::pkg_b::Bar __tmp_1 = ::tpyapp::pkg_b::Bar(7);
     std::cout << describe(::tpy::Union<const ::tpyapp::pkg_b::Bar*, const ::tpyapp::pkg_a::Foo*>{&__tmp_1}) << "\n";
 }

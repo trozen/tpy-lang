@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def triple(n: Int32) -> Int32:
+// async def triple(n: int32) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_triple::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -29,18 +29,18 @@ namespace tpyapp::main {
 }
 
 
-// async def triple(n: Int32) -> Int32:
+// async def triple(n: int32) -> int32:
 __coro_triple triple(int32_t n) {
     return __coro_triple(n);
 }
 
-// def pick() -> Callable[[Int32], Own[Cancellable[Int32]]]:
+// def pick() -> Callable[[int32], Own[Cancellable[int32]]]:
 std::function<std::unique_ptr<::tpystd::coro::Cancellable<int32_t>>(int32_t)> pick() {
     // return triple
     return [](int32_t __a0) -> std::unique_ptr<::tpystd::coro::Cancellable<int32_t>> { return ::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(triple(__a0)); };
 }
 
-// async def main_coro() -> Int32:
+// async def main_coro() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -65,7 +65,7 @@ std::function<std::unique_ptr<::tpystd::coro::Cancellable<int32_t>>(int32_t)> pi
 }
 
 
-// async def main_coro() -> Int32:
+// async def main_coro() -> int32:
 __coro_main_coro main_coro() {
     return __coro_main_coro();
 }

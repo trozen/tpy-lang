@@ -71,7 +71,7 @@ struct __gen_repeat : public ::tpy::next_iter_mixin<__gen_repeat<T>, T> {
         return os << "<generator repeat>";
     }
 };
-// def repeat[T](object: T, times: Optional[Int32] = None) -> Iterator[T]:
+// def repeat[T](object: T, times: Optional[int32] = None) -> Iterator[T]:
 template <typename T>
 std::expected<T, ::tpy::StopIteration> __gen_repeat<T>::__next__() {
     while (true) switch (__state) {
@@ -124,7 +124,7 @@ std::expected<T, ::tpy::StopIteration> __gen_repeat<T>::__next__() {
 }
 
 
-// def repeat[T](object: T, times: Optional[Int32] = None) -> Iterator[T]:
+// def repeat[T](object: T, times: Optional[int32] = None) -> Iterator[T]:
 template <typename T>
 __gen_repeat<T> repeat(::tpy::param_val_or_ref_t<T> object, std::optional<int32_t> times) {
     return __gen_repeat<T>(object, times);
@@ -257,12 +257,12 @@ struct __gen_islice : public ::tpy::next_iter_mixin<__gen_islice<T, T_it>, T> {
         return os << "<generator islice>";
     }
 };
-// def islice[T](it: Iterable[T], stop: Int32) -> Iterator[T]:
+// def islice[T](it: Iterable[T], stop: int32) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 std::expected<T, ::tpy::StopIteration> __gen_islice<T, T_it>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i: Int32 = 0
+        // i: int32 = 0
         i = 0;
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
@@ -300,7 +300,7 @@ std::expected<T, ::tpy::StopIteration> __gen_islice<T, T_it>::__next__() {
 }
 
 
-// def islice[T](it: Iterable[T], stop: Int32) -> Iterator[T]:
+// def islice[T](it: Iterable[T], stop: int32) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 __gen_islice<T, T_it> islice(T_it&& it, int32_t stop) {
     return __gen_islice<T, T_it>(std::forward<T_it>(it), stop);

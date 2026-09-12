@@ -60,7 +60,7 @@ void __tpy_init() {
         // print(i)
         std::cout << i << "\n";
     }
-    // # Compound expression -- constant-folded to Int32
+    // # Compound expression -- constant-folded to int32
     // for i in range(1 + 2):
     int32_t __stop_9 = ::tpy::add_check<int32_t>(1, 2);
     for (int32_t i = 0; i < __stop_9; ++i) {

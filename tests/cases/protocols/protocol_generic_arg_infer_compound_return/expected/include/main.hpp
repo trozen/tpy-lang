@@ -34,13 +34,13 @@ struct Cell {
     Cell() = default;
     explicit Cell(::tpy::readonly_form_t<T> value) : value(value) {}
 
-    // def pair(self) -> tuple[T, Int32]:
+    // def pair(self) -> tuple[T, int32]:
     std::tuple<::tpy::val_or_cptr_t<T>, int32_t> pair() const {
-        // return (self.value, Int32(1))
+        // return (self.value, int32(1))
         return std::tuple<::tpy::val_or_ptr_t<T>, int32_t>{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(this->value), 1};
     }
 
-    // def consume(self, p: tuple[T, Int32]) -> Int32:
+    // def consume(self, p: tuple[T, int32]) -> int32:
     int32_t consume(const std::tuple<::tpy::val_or_cptr_t<T>, int32_t>& p) const {
         // return p[1]
         return std::get<1>(p);
@@ -54,8 +54,8 @@ inline std::ostream& operator<<(std::ostream& os, const Cell<T>& obj) {
     return os;
 }
 
-// # Return position: T inferred from `pair()`'s tuple[T, Int32] return.
-// def second_of[T](s: HasPair[T]) -> Int32:
+// # Return position: T inferred from `pair()`'s tuple[T, int32] return.
+// def second_of[T](s: HasPair[T]) -> int32:
 template<typename T, HasPair<T> T_s>
 int32_t second_of(T_s& s) {
     // p = s.pair()
@@ -63,11 +63,11 @@ int32_t second_of(T_s& s) {
     // return p[1]
     return std::get<1>(p);
 }
-// # Parameter position: T inferred from `consume`'s tuple[T, Int32] param.
-// def use_consume[T](s: HasPair[T], v: T) -> Int32:
+// # Parameter position: T inferred from `consume`'s tuple[T, int32] param.
+// def use_consume[T](s: HasPair[T], v: T) -> int32:
 template<typename T, HasPair<T> T_s>
 int32_t use_consume(T_s& s, ::tpy::param_val_or_ref_t<T> v) {
-    // return s.consume((v, Int32(2)))
+    // return s.consume((v, int32(2)))
     return s.consume(std::tuple<::tpy::val_or_ptr_t<T>, int32_t>{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(v), 2});
 }
 

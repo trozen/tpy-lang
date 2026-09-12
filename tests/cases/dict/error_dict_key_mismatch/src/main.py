@@ -1,7 +1,7 @@
 # Mixed key types in dict literal should error
-from tpy import Int32
+from tpy import int32
 
 def main() -> None:
-    d = {"a": Int32(1), Int32(2): Int32(3)}  # tpyc: error(/mixed key types/)
+    d = {"a": int32(1), int32(2): int32(3)}  # tpyc: error(/mixed key types/)
 
 main()

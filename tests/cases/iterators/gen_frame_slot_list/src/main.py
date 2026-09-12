@@ -4,12 +4,12 @@
 # nullopt; the subsequent `.append()` was UB. frame_slot replaces the
 # outer wrap, and codegen routes init through `.emplace()` so the
 # brace-init ambiguity can't recur.
-from tpy import Int32
+from tpy import int32
 from typing import Iterator
 
 
-def gen() -> Iterator[Int32]:
-    history: list[Int32] = []
+def gen() -> Iterator[int32]:
+    history: list[int32] = []
     history.append(1)
     history.append(2)
     history.append(3)

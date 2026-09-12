@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def score(x: Int32 | None) -> Int32:
+// def score(x: int32 | None) -> int32:
 int32_t score(std::optional<int32_t> x) {
     // if x is not None and x > 3:
     if (((x.has_value()) && ((*x) > 3))) {

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def take(b: Own[bytes]) -> Int32:
+// def take(b: Own[bytes]) -> int32:
 int32_t take(::tpy::Bytes b) {
     // return len(b)
     return ::tpy::__len__(b);

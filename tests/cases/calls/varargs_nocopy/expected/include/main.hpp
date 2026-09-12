@@ -17,11 +17,11 @@ void main();
 // @nocopy
 // class Resource:
 struct Resource {
-    // id: Int32
+    // id: int32
     int32_t id;
     bool __tpy_owned_ = true;
 
-    // def __init__(self, id: Int32) -> None:
+    // def __init__(self, id: int32) -> None:
     explicit Resource(int32_t id);
     // non-copyable (@nocopy)
     Resource(const Resource&) = delete;
@@ -40,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
 }
 
 
-// def __init__(self, id: Int32) -> None:
+// def __init__(self, id: int32) -> None:
 inline Resource::Resource(int32_t id) : id(id) {}
 
 inline Resource::Resource(Resource&& other) noexcept : id(std::move(other.id)) {

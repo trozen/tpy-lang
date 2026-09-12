@@ -1,6 +1,6 @@
-from tpy import Int32
+from tpy import int32
 
-PUBLIC_VAL: Int32 = 7
-HIDDEN_VAL: Int32 = 99
+PUBLIC_VAL: int32 = 7
+HIDDEN_VAL: int32 = 99
 
 __all__ = ["PUBLIC_VAL"]

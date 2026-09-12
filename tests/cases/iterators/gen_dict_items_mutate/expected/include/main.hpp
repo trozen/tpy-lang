@@ -18,10 +18,10 @@ void main();
 
 // class C:
 struct C {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32):
+    // def __init__(self, v: int32):
     C() = default;
     explicit C(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.C";
@@ -62,7 +62,7 @@ struct __gen_bump : public ::tpy::next_iter_mixin<__gen_bump, int32_t> {
 };
 
 
-// def __init__(self, v: Int32):
+// def __init__(self, v: int32):
 inline C::C(int32_t v) : v(v) {}
 inline auto pairs(::tpy::ordered_map<int32_t, C>& d) {
     return ::tpy::make_generator<int32_t>(

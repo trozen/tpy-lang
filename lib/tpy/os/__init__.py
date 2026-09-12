@@ -11,7 +11,7 @@
 # CPython-exact `str(e)` text; `rename`/`replace`/`link`/`symlink` also set
 # `.filename2`.
 from typing import Final, Iterator, Callable
-from tpy import Int64, Own, readonly, dispatch
+from tpy import int64, Own, readonly, dispatch
 from tpy.extern import native_global
 from . import path
 from .path import join as _join
@@ -41,8 +41,8 @@ from ._environ import environ
 from ._types import stat_result
 
 
-def _wrap_stat(t: tuple[Int64, Int64, Int64, Int64, Int64, Int64, Int64,
-                        float, float, float, Int64, Int64, Int64]
+def _wrap_stat(t: tuple[int64, int64, int64, int64, int64, int64, int64,
+                        float, float, float, int64, int64, int64]
                ) -> Own[stat_result]:
     return stat_result(t[0], t[1], t[2], t[3], t[4], t[5], t[6],
                        t[7], t[8], t[9], t[10], t[11], t[12])
@@ -58,10 +58,10 @@ def lstat(path: str) -> Own[stat_result]:
 
 # st_mode S_IF* type bits, for DirEntry's stat fallback when readdir's d_type is
 # unknown or a symlink (which is_dir/is_file must follow).
-_S_IFMT: Final[Int64] = 0o170000
-_S_IFDIR: Final[Int64] = 0o040000
-_S_IFREG: Final[Int64] = 0o100000
-_S_IFLNK: Final[Int64] = 0o120000
+_S_IFMT: Final[int64] = 0o170000
+_S_IFDIR: Final[int64] = 0o040000
+_S_IFREG: Final[int64] = 0o100000
+_S_IFLNK: Final[int64] = 0o120000
 
 
 # os.scandir entry. `_kind` is the normalized readdir d_type (1 dir / 2 file /
@@ -71,9 +71,9 @@ _S_IFLNK: Final[Int64] = 0o120000
 class DirEntry:
     name: str
     path: str
-    _kind: Int64
+    _kind: int64
 
-    def __init__(self, name: str, path: str, kind: Int64) -> None:
+    def __init__(self, name: str, path: str, kind: int64) -> None:
         self.name = name
         self.path = path
         self._kind = kind
@@ -233,7 +233,7 @@ def walk(top: str, topdown: bool = True,
             i -= 1
 
 
-def mkdir(path: str, mode: Int64 = 0o777) -> None:
+def mkdir(path: str, mode: int64 = 0o777) -> None:
     _mkdir(path, mode)
 
 
@@ -273,7 +273,7 @@ def replace(src: str, dst: str) -> None:
     rename(src, dst)
 
 
-def makedirs(name: str, mode: Int64 = 0o777, exist_ok: bool = False) -> None:
+def makedirs(name: str, mode: int64 = 0o777, exist_ok: bool = False) -> None:
     head = path.dirname(name)
     if len(head) > 0 and not path.exists(head):
         makedirs(head, mode, exist_ok)
@@ -300,63 +300,63 @@ def removedirs(name: str) -> None:
 # macros present in the generated TU, so they cannot be emitted as C++ symbols;
 # native_global binds each to a safe-named C++ global holding the real macro
 # value (correct on every platform -- the O_CREAT family differs Linux/macOS).
-O_RDONLY: Final[Int64] = native_global("tpy::stdlib::os::kc_o_rdonly")
-O_WRONLY: Final[Int64] = native_global("tpy::stdlib::os::kc_o_wronly")
-O_RDWR: Final[Int64] = native_global("tpy::stdlib::os::kc_o_rdwr")
-O_CREAT: Final[Int64] = native_global("tpy::stdlib::os::kc_o_creat")
-O_EXCL: Final[Int64] = native_global("tpy::stdlib::os::kc_o_excl")
-O_TRUNC: Final[Int64] = native_global("tpy::stdlib::os::kc_o_trunc")
-O_APPEND: Final[Int64] = native_global("tpy::stdlib::os::kc_o_append")
-SEEK_SET: Final[Int64] = native_global("tpy::stdlib::os::kc_seek_set")
-SEEK_CUR: Final[Int64] = native_global("tpy::stdlib::os::kc_seek_cur")
-SEEK_END: Final[Int64] = native_global("tpy::stdlib::os::kc_seek_end")
-F_OK: Final[Int64] = native_global("tpy::stdlib::os::kc_f_ok")
-R_OK: Final[Int64] = native_global("tpy::stdlib::os::kc_r_ok")
-W_OK: Final[Int64] = native_global("tpy::stdlib::os::kc_w_ok")
-X_OK: Final[Int64] = native_global("tpy::stdlib::os::kc_x_ok")
+O_RDONLY: Final[int64] = native_global("tpy::stdlib::os::kc_o_rdonly")
+O_WRONLY: Final[int64] = native_global("tpy::stdlib::os::kc_o_wronly")
+O_RDWR: Final[int64] = native_global("tpy::stdlib::os::kc_o_rdwr")
+O_CREAT: Final[int64] = native_global("tpy::stdlib::os::kc_o_creat")
+O_EXCL: Final[int64] = native_global("tpy::stdlib::os::kc_o_excl")
+O_TRUNC: Final[int64] = native_global("tpy::stdlib::os::kc_o_trunc")
+O_APPEND: Final[int64] = native_global("tpy::stdlib::os::kc_o_append")
+SEEK_SET: Final[int64] = native_global("tpy::stdlib::os::kc_seek_set")
+SEEK_CUR: Final[int64] = native_global("tpy::stdlib::os::kc_seek_cur")
+SEEK_END: Final[int64] = native_global("tpy::stdlib::os::kc_seek_end")
+F_OK: Final[int64] = native_global("tpy::stdlib::os::kc_f_ok")
+R_OK: Final[int64] = native_global("tpy::stdlib::os::kc_r_ok")
+W_OK: Final[int64] = native_global("tpy::stdlib::os::kc_w_ok")
+X_OK: Final[int64] = native_global("tpy::stdlib::os::kc_x_ok")
 
 
-def open(path: str, flags: Int64, mode: Int64 = 0o777) -> Int64:
+def open(path: str, flags: int64, mode: int64 = 0o777) -> int64:
     return _open_fd(path, flags, mode)
 
 
-def close(fd: Int64) -> None:
+def close(fd: int64) -> None:
     _close_fd(fd)
 
 
-def read(fd: Int64, n: Int64) -> Own[bytes]:
+def read(fd: int64, n: int64) -> Own[bytes]:
     return _read_fd(fd, n)
 
 
-def write(fd: Int64, data: bytes) -> Int64:
+def write(fd: int64, data: bytes) -> int64:
     return _write_fd(fd, data)
 
 
-def lseek(fd: Int64, pos: Int64, how: Int64) -> Int64:
+def lseek(fd: int64, pos: int64, how: int64) -> int64:
     return _lseek_fd(fd, pos, how)
 
 
-def pipe() -> tuple[Int64, Int64]:
+def pipe() -> tuple[int64, int64]:
     return _pipe_fd()
 
 
-def dup(fd: Int64) -> Int64:
+def dup(fd: int64) -> int64:
     return _dup_fd(fd)
 
 
-def dup2(fd: Int64, fd2: Int64) -> Int64:
+def dup2(fd: int64, fd2: int64) -> int64:
     return _dup2_fd(fd, fd2)
 
 
-def fstat(fd: Int64) -> Own[stat_result]:
+def fstat(fd: int64) -> Own[stat_result]:
     return _wrap_stat(_fstat_fd(fd))
 
 
-def chmod(path: str, mode: Int64) -> None:
+def chmod(path: str, mode: int64) -> None:
     _chmod_path(path, mode)
 
 
-def chown(path: str, uid: Int64, gid: Int64) -> None:
+def chown(path: str, uid: int64, gid: int64) -> None:
     _chown_path(path, uid, gid)
 
 
@@ -366,11 +366,11 @@ def utime(path: str, times: tuple[float, float]) -> None:
     _utime_path(path, times[0], times[1])
 
 
-def access(path: str, mode: Int64) -> bool:
+def access(path: str, mode: int64) -> bool:
     return _access_path(path, mode)
 
 
-def urandom(n: Int64) -> Own[bytes]:
+def urandom(n: int64) -> Own[bytes]:
     return _urandom(n)
 
 
@@ -378,15 +378,15 @@ def link(src: str, dst: str) -> None:
     _link_path(src, dst)
 
 
-def truncate(path: str, length: Int64) -> None:
+def truncate(path: str, length: int64) -> None:
     _truncate_path(path, length)
 
 
-def ftruncate(fd: Int64, length: Int64) -> None:
+def ftruncate(fd: int64, length: int64) -> None:
     _ftruncate_fd(fd, length)
 
 
-def fsync(fd: Int64) -> None:
+def fsync(fd: int64) -> None:
     _fsync_fd(fd)
 
 
@@ -394,15 +394,15 @@ def fsync(fd: Int64) -> None:
 # protocol, unlike CPython's terminal_size named tuple); st[0]/unpacking is a
 # clean compile error, not a silent divergence.
 class terminal_size:
-    columns: Int64
-    lines: Int64
+    columns: int64
+    lines: int64
 
-    def __init__(self, columns: Int64, lines: Int64) -> None:
+    def __init__(self, columns: int64, lines: int64) -> None:
         self.columns = columns
         self.lines = lines
 
 
-def get_terminal_size(fd: Int64 = 1) -> Own[terminal_size]:
+def get_terminal_size(fd: int64 = 1) -> Own[terminal_size]:
     t = _terminal_size_raw(fd)
     return terminal_size(t[0], t[1])
 
@@ -413,7 +413,7 @@ def fspath(path: str) -> str:
 
 
 # CPython os.cpu_count() returns None when the count is indeterminate.
-def cpu_count() -> Int64 | None:
+def cpu_count() -> int64 | None:
     n = _cpu_count_raw()
     if n == 0:
         return None

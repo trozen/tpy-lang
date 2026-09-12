@@ -2,10 +2,10 @@
 # owning overload, so the comp's `auto __obj_N = ::tpy::__iter__(mk());` capture
 # would iterate a destroyed temporary. Every other admitted combinator owns its
 # rvalue argument through a dedicated overload.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
-def mk() -> Own[list[Int32]]:
+def mk() -> Own[list[int32]]:
     return [1, 2, 3]
 
 

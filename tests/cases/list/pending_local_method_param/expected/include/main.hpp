@@ -21,19 +21,19 @@ void main();
 struct Sink {
 
 
-    // def take(self, xs: list[Int32]) -> None:
+    // def take(self, xs: list[int32]) -> None:
     void take(std::vector<int32_t>& xs) const;
 
-    // def widen(self, xs: list[Int64]) -> None:
+    // def widen(self, xs: list[int64]) -> None:
     void widen(std::vector<int64_t>& xs) const;
 
-    // def first(self, xs: Span[Int32]) -> Int32:
+    // def first(self, xs: Span[int32]) -> int32:
     int32_t first(std::span<int32_t> xs) const;
 
-    // def add(self, d: dict[str, Int32]) -> None:
+    // def add(self, d: dict[str, int32]) -> None:
     void add(::tpy::ordered_map<std::string, int32_t>& d) const;
 
-    // def grow(self, s: set[Int32]) -> None:
+    // def grow(self, s: set[int32]) -> None:
     void grow(::tpy::ordered_set<int32_t>& s) const;
 
     // def greet(self, name: str) -> str:
@@ -47,31 +47,31 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
 }
 
 
-// def take(self, xs: list[Int32]) -> None:
+// def take(self, xs: list[int32]) -> None:
 inline void Sink::take(std::vector<int32_t>& xs) const {
     // xs.append(99)
     xs.push_back(99);
 }
 
-// def widen(self, xs: list[Int64]) -> None:
+// def widen(self, xs: list[int64]) -> None:
 inline void Sink::widen(std::vector<int64_t>& xs) const {
     // xs.append(1000)
     xs.push_back(1000);
 }
 
-// def first(self, xs: Span[Int32]) -> Int32:
+// def first(self, xs: Span[int32]) -> int32:
 inline int32_t Sink::first(std::span<int32_t> xs) const {
     // return xs[0]
     return ::tpy::__getitem__(xs, 0);
 }
 
-// def add(self, d: dict[str, Int32]) -> None:
+// def add(self, d: dict[str, int32]) -> None:
 inline void Sink::add(::tpy::ordered_map<std::string, int32_t>& d) const {
     // d["z"] = 100
     ::tpy::__setitem__(d, "z", 100);
 }
 
-// def grow(self, s: set[Int32]) -> None:
+// def grow(self, s: set[int32]) -> None:
 inline void Sink::grow(::tpy::ordered_set<int32_t>& s) const {
     // s.add(50)
     s.insert(50);

@@ -7,24 +7,24 @@
 # aliases identically). A borrow LIST return still copies (warned; no view
 # path for containers) -- that divergence is pinned ext-only in
 # ext_checks.py. Own[...] returns move a fresh instance out.
-from tpy import Int32, Own, readonly
+from tpy import int32, Own, readonly
 from tpy.extern import export
 
 
 @export
 class Node:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32):
+    def __init__(self, v: int32):
         self.v = v
 
 
 @export
 class Repeat:
     _cur: Node
-    _n: Int32
+    _n: int32
 
-    def __init__(self, v: Int32):
+    def __init__(self, v: int32):
         self._cur = Node(v)
         self._n = 0
 
@@ -48,9 +48,9 @@ class RepeatSub(Repeat):
 @export
 class Peek:
     _cur: Node
-    _n: Int32
+    _n: int32
 
-    def __init__(self, v: Int32):
+    def __init__(self, v: int32):
         self._cur = Node(v)
         self._n = 0
 
@@ -69,8 +69,8 @@ class Peek:
 
 @export
 class Rows:
-    _row: list[Int32]
-    _n: Int32
+    _row: list[int32]
+    _n: int32
 
     def __init__(self):
         self._row = [1, 2, 3]
@@ -79,7 +79,7 @@ class Rows:
     def __iter__(self) -> "Rows":
         return self
 
-    def __next__(self) -> list[Int32]:
+    def __next__(self) -> list[int32]:
         if self._n >= 2:
             raise StopIteration
         self._n += 1
@@ -88,7 +88,7 @@ class Rows:
 
 @export
 class Fresh:
-    _n: Int32
+    _n: int32
 
     def __init__(self):
         self._n = 0

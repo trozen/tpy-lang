@@ -1,3 +1,3 @@
-main.py:10: warning: copies list[Int32] | None into field; use copy() to make this explicit
-main.py:13: warning: copies list[Int32] | None into field; use copy() to make this explicit
+main.py:10: warning: copies list[int32] | None into field; use copy() to make this explicit
+main.py:13: warning: copies list[int32] | None into field; use copy() to make this explicit
 main.py:13: error: in function 'replace': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape)

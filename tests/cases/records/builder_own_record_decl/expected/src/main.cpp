@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def sink(x: Own[Inner]) -> Int32:
+// def sink(x: Own[Inner]) -> int32:
 int32_t sink(Inner&& x) {
     // x.bump()
     x.bump();

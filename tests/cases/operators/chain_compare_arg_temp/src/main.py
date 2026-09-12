@@ -2,49 +2,49 @@
 # whose argument needs a hoisted temp must not be evaluated. Covers both
 # chained-compare renders: the inline && chain (all intermediates duplicable)
 # and the statement-expression chain (an intermediate needs binding).
-from tpy import Int32
+from tpy import int32
 
 
 class Counter:
-    n: Int32
+    n: int32
 
     def __init__(self) -> None:
         self.n = 0
 
 
 class Probe:
-    tag: Int32
+    tag: int32
 
-    def __init__(self, c: Counter, tag: Int32) -> None:
+    def __init__(self, c: Counter, tag: int32) -> None:
         # Counted mutation through a shared reference: proves whether this
         # comparator was evaluated at all.
         c.n += 1
         self.tag = tag
 
 
-def take(p: Probe | None) -> Int32:
+def take(p: Probe | None) -> int32:
     """Reference param, so a `Probe(...)` rvalue argument needs a hoisted temp."""
     return 1 if p is not None else 0
 
 
-def inline_chain(c: Counter, a: Int32, b: Int32) -> bool:
+def inline_chain(c: Counter, a: int32, b: int32) -> bool:
     # `b` is duplicable, so this renders as an inline && chain. When a < b is
     # false the third comparator must not be built.
     return a < b < take(Probe(c, 1))
 
 
-def stmtexpr_chain(c: Counter, a: Int32, xs: list[Int32]) -> bool:
+def stmtexpr_chain(c: Counter, a: int32, xs: list[int32]) -> bool:
     # xs[0] is a non-duplicable intermediate, forcing the statement-expression
     # render. The last comparator is still skipped when the first pair fails.
     return a < xs[0] < take(Probe(c, 2))
 
 
-def stmtexpr_chain_long(c: Counter, a: Int32, xs: list[Int32]) -> bool:
+def stmtexpr_chain_long(c: Counter, a: int32, xs: list[int32]) -> bool:
     # Two bound intermediates: the middle comparator is itself conditional.
     return a < xs[0] < xs[1] < take(Probe(c, 3))
 
 
-def first_pair_only(c: Counter, a: Int32, b: Int32) -> bool:
+def first_pair_only(c: Counter, a: int32, b: int32) -> bool:
     """Inverse: when every earlier pair passes, the last comparator DOES run."""
     return a < b < take(Probe(c, 4))
 

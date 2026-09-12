@@ -1,19 +1,19 @@
 # The null path of a GENERIC method call on an unproven Optional receiver: the
 # template args ride the checked deref, so a None receiver panics there.
-from tpy import Int32
+from tpy import int32
 
 
 class Bag:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def conv[T](self, x: T) -> T:
         return x
 
 
-def generic_on_optional(b: Bag | None) -> Int32:
+def generic_on_optional(b: Bag | None) -> int32:
     return b.conv(3)  # tpyc: warning(/Potential None access/)
 
 

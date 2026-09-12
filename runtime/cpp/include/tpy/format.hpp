@@ -1038,7 +1038,7 @@ inline ToTuple tuple_value_to_borrow_impl(FromTuple& t, std::index_sequence<I...
 // destination tuple (T*, T&, or const T*-form slots). Used at tuple-literal
 // sites whose target tuple has borrow-form slots and at least one literal
 // element is an rvalue (e.g. `f((Point(1), 42))` where `f` takes a
-// `tuple[Point | None, Int32]` or `tuple[Point, Int32]`).
+// `tuple[Point | None, int32]` or `tuple[Point, int32]`).
 //
 // The caller materializes the source tuple as a temporary -- C++ extends
 // its lifetime to the end of the surrounding full-expression, so the

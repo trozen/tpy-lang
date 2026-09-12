@@ -1,12 +1,12 @@
 # Unpacking a namespace-scope STORAGE tuple global: the global slot's element
 # spelling needs the storage lift the unpack targets do not carry.
-from tpy import Int32
+from tpy import int32
 
 
 class Elem:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 

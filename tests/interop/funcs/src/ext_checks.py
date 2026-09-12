@@ -1,6 +1,6 @@
-# Ext-only: the compiled extension enforces Int64 bounds and integer typing at
+# Ext-only: the compiled extension enforces int64 bounds and integer typing at
 # the boundary (marshalling errors -> Python exceptions). These deliberately
-# do NOT match the CPython source (where `Int64` is just an annotation and
+# do NOT match the CPython source (where `int64` is just an annotation and
 # `int` is unbounded), so they are checked only against the built .so.
 import funcs
 

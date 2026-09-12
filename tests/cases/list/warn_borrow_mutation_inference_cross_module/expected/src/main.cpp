@@ -7,9 +7,9 @@ namespace tpyapp::main {
 // # --- Non-mutating imported function: no warning ---
 // def test_imported_read_no_warn() -> None:
 void test_imported_read_no_warn() {
-    // items: list[Point] = [Point(Int32(1), Int32(2))]
+    // items: list[Point] = [Point(int32(1), int32(2))]
     std::vector<::tpyapp::helpers::Point> items = {::tpyapp::helpers::Point(1, 2)};
-    // v = items[Int32(0)]
+    // v = items[int32(0)]
     ::tpyapp::helpers::Point& v = ::tpy::__getitem__(items, 0);
     // sum_points(items)  # tpyc: ok
     ::tpyapp::helpers::sum_points(items);
@@ -20,11 +20,11 @@ void test_imported_read_no_warn() {
 // # --- Mutating imported function: warns ---
 // def test_imported_mutate_warns() -> None:
 void test_imported_mutate_warns() {
-    // items: list[Point] = [Point(Int32(1), Int32(2))]
+    // items: list[Point] = [Point(int32(1), int32(2))]
     std::vector<::tpyapp::helpers::Point> items = {::tpyapp::helpers::Point(1, 2)};
-    // v = items[Int32(0)]
+    // v = items[int32(0)]
     ::tpyapp::helpers::Point& v = ::tpy::__getitem__(items, 0);
-    // add_point(items, Point(Int32(9), Int32(9)))  # tpyc: warning(/Passing borrowed container 'items'/)
+    // add_point(items, Point(int32(9), int32(9)))  # tpyc: warning(/Passing borrowed container 'items'/)
     ::tpyapp::helpers::Point __tmp_1 = ::tpyapp::helpers::Point(9, 9);
     ::tpyapp::helpers::add_point(items, __tmp_1);
     // print(len(items))
@@ -34,11 +34,11 @@ void test_imported_mutate_warns() {
 // # --- Transitive: imported wrapper that calls mutator ---
 // def test_imported_transitive_mutation_warns() -> None:
 void test_imported_transitive_mutation_warns() {
-    // items: list[Point] = [Point(Int32(1), Int32(2))]
+    // items: list[Point] = [Point(int32(1), int32(2))]
     std::vector<::tpyapp::helpers::Point> items = {::tpyapp::helpers::Point(1, 2)};
-    // v = items[Int32(0)]
+    // v = items[int32(0)]
     ::tpyapp::helpers::Point& v = ::tpy::__getitem__(items, 0);
-    // add_point_wrapper(items, Point(Int32(9), Int32(9)))  # tpyc: warning(/Passing borrowed container 'items'/)
+    // add_point_wrapper(items, Point(int32(9), int32(9)))  # tpyc: warning(/Passing borrowed container 'items'/)
     ::tpyapp::helpers::Point __tmp_2 = ::tpyapp::helpers::Point(9, 9);
     ::tpyapp::helpers::add_point_wrapper(items, __tmp_2);
     // print(len(items))
@@ -48,9 +48,9 @@ void test_imported_transitive_mutation_warns() {
 // # --- Transitive: imported wrapper that only reads ---
 // def test_imported_transitive_read_no_warn() -> None:
 void test_imported_transitive_read_no_warn() {
-    // items: list[Point] = [Point(Int32(1), Int32(2))]
+    // items: list[Point] = [Point(int32(1), int32(2))]
     std::vector<::tpyapp::helpers::Point> items = {::tpyapp::helpers::Point(1, 2)};
-    // v = items[Int32(0)]
+    // v = items[int32(0)]
     ::tpyapp::helpers::Point& v = ::tpy::__getitem__(items, 0);
     // read_wrapper(items)  # tpyc: ok
     ::tpyapp::helpers::read_wrapper(items);

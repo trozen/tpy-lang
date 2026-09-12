@@ -4,7 +4,7 @@
 namespace tpyapp::defmod {
 
 
-// async def scaled(a: Int32, b: Int32 = BUMP) -> Int32:
+// async def scaled(a: int32, b: int32 = BUMP) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_scaled::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -29,7 +29,7 @@ namespace tpyapp::defmod {
 }
 
 
-// async def scaled(a: Int32, b: Int32 = BUMP) -> Int32:
+// async def scaled(a: int32, b: int32 = BUMP) -> int32:
 __coro_scaled scaled(int32_t a, int32_t b) {
     return __coro_scaled(a, b);
 }

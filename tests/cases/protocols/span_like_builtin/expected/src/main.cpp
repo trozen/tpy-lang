@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def test_list() -> None:
 void test_list() {
-    // data: list[Int32] = [10, 20, 30]
+    // data: list[int32] = [10, 20, 30]
     std::vector<int32_t> data = {10, 20, 30};
     // print(sum_span(data))
     std::cout << sum_span(data) << "\n";
@@ -14,7 +14,7 @@ void test_list() {
 
 // def test_array() -> None:
 void test_array() {
-    // data: Array[Int32, 3] = [1, 2, 3]
+    // data: Array[int32, 3] = [1, 2, 3]
     std::array<int32_t, 3> data = {1, 2, 3};
     // print(sum_span(data))
     std::cout << sum_span(data) << "\n";
@@ -22,9 +22,9 @@ void test_array() {
 
 // def test_span() -> None:
 void test_span() {
-    // data: list[Int32] = [7, 8, 9]
+    // data: list[int32] = [7, 8, 9]
     std::vector<int32_t> data = {7, 8, 9};
-    // s: Span[Int32] = data
+    // s: Span[int32] = data
     std::span<int32_t> s = ::tpy::as_mut_span(data);
     // print(sum_span(s))
     std::cout << sum_span(s) << "\n";
@@ -32,9 +32,9 @@ void test_span() {
 
 // def test_ro_span() -> None:
 void test_ro_span() {
-    // data: list[Int32] = [4, 5, 6]
+    // data: list[int32] = [4, 5, 6]
     std::vector<int32_t> data = {4, 5, 6};
-    // s: Span[readonly[Int32]] = data
+    // s: Span[readonly[int32]] = data
     std::span<const int32_t> s = ::tpy::as_span(data);
     // print(sum_span(s))
     std::cout << sum_span(s) << "\n";
@@ -42,11 +42,11 @@ void test_ro_span() {
 
 // def test_arraylist() -> None:
 void test_arraylist() {
-    // al = ArrayList[Int32, 4]()
+    // al = ArrayList[int32, 4]()
     ::tpystd::tplib::array_list::ArrayList<int32_t, 4> al = ::tpystd::tplib::array_list::ArrayList<int32_t, 4>();
-    // al.append(Int32(100))
+    // al.append(int32(100))
     al.append(100);
-    // al.append(Int32(200))
+    // al.append(int32(200))
     al.append(200);
     // print(sum_span(al))
     std::cout << sum_span(al) << "\n";

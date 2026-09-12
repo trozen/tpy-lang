@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 
 _HEX: bytes = b"0123456789ABCDEF"
 
 
-def hi_nibble(c: Int32) -> Int32:
-    return Int32(_HEX[c >> 4])
+def hi_nibble(c: int32) -> int32:
+    return int32(_HEX[c >> 4])

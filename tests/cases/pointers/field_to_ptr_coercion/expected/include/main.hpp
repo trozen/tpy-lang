@@ -20,10 +20,10 @@ void test_subscript_to_ptr();
 
 // class Inner:
 struct Inner {
-    // x: Int32
+    // x: int32
     int32_t x;
 
-    // def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: int32) -> None:
     Inner() = default;
     explicit Inner(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Inner";
@@ -39,7 +39,7 @@ struct Outer {
     // inner: Inner
     Inner inner;
 
-    // def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: int32) -> None:
     Outer() = default;
     explicit Outer(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Outer";
@@ -51,10 +51,10 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
 }
 
 
-// def __init__(self, x: Int32) -> None:
+// def __init__(self, x: int32) -> None:
 inline Inner::Inner(int32_t x) : x(x) {}
 
-// def __init__(self, x: Int32) -> None:
+// def __init__(self, x: int32) -> None:
 inline Outer::Outer(int32_t x) : inner(Inner(x)) {}
 void __tpy_init();
 } // namespace tpyapp::main

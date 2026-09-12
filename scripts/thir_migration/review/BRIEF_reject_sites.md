@@ -19,7 +19,7 @@ the repository. Do not run pytest. Do not use git to change anything.
 - Your slice: a JSON list of sites `{file, line, func, reason}` (path given in your
   task message). Line numbers are for the CURRENT tree; verify each by reading the
   code around it (use `sed -n` / `grep -n` / the Read tool).
-- Probe tool: `uv run python scripts/thir_migration/review/probe_fallback.py FILE.py [--default-int Int32|Int64|BigInt]`
+- Probe tool: `uv run python scripts/thir_migration/review/probe_fallback.py FILE.py [--default-int int32|int64|BigInt]`
   It compiles a TPy program through both paths and prints a verdict:
   `ROUTES` (THIR handled every body), `BREAKS_AT_CUTOVER` (AST emits, THIR fell
   back on at least one body; the `fallback:` dict names the reason tag),
@@ -39,8 +39,8 @@ the repository. Do not run pytest. Do not use git to change anything.
 
 TPy is a statically typed Python subset compiled to C++. Functions need type
 annotations. Program shape for probes: put logic in `def main() -> None:` and call
-`main()` at the bottom. Integer literals default to `Int32` unless `--default-int`
-says otherwise. `from tpy import Int32, Int64, Own, Ptr, StrView, ...` for the TPy
+`main()` at the bottom. Integer literals default to `int32` unless `--default-int`
+says otherwise. `from tpy import int32, int64, Own, Ptr, StrView, ...` for the TPy
 types. Records are plain classes with annotated fields and an `__init__`. Look at
 `tests/cases/<group>/<case>/src/main.py` for idiomatic examples of any construct
 (e.g. `tests/cases/match/`, `tests/cases/generators/`, `tests/cases/async/`,

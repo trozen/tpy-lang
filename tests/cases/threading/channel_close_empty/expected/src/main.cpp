@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // tx, rx = channel[Int32](4)
+    // tx, rx = channel[int32](4)
     auto __tup_1 = ::tpystd::tplib::channel::channel<int32_t>(4);
     ::tpystd::tplib::channel::Sender<int32_t> tx = std::move(std::get<0>(__tup_1));
     ::tpystd::tplib::channel::Receiver<int32_t> rx = std::move(std::get<1>(__tup_1));

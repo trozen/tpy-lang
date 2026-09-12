@@ -1,19 +1,19 @@
 # JSON writer: builds a JSON string incrementally.
-from tpy import Int32, Int64, Float64, Float32, Char, String
+from tpy import int32, int64, float64, float32, char, String
 
 _HEX = "0123456789abcdef"
 
-def _hex_byte(v: Int32) -> str:
+def _hex_byte(v: int32) -> str:
     return _HEX[v // 16] + _HEX[v % 16]
 
 class JsonWriter:
     _buf: str
     _needs_comma: bool
-    _indent: Int32
-    _depth: Int32
+    _indent: int32
+    _depth: int32
     _fresh_line: bool
 
-    def __init__(self, indent: Int32 = 0) -> None:
+    def __init__(self, indent: int32 = 0) -> None:
         self._buf = ""
         self._needs_comma = False
         self._indent = indent
@@ -106,7 +106,7 @@ class JsonWriter:
         self._buf += "\""
         self._needs_comma = True
 
-    def write_int(self, v: Int64) -> None:
+    def write_int(self, v: int64) -> None:
         if self._indent > 0:
             self._pretty_sep()
         elif self._needs_comma:
@@ -114,7 +114,7 @@ class JsonWriter:
         self._buf += str(v)
         self._needs_comma = True
 
-    def write_int32(self, v: Int32) -> None:
+    def write_int32(self, v: int32) -> None:
         if self._indent > 0:
             self._pretty_sep()
         elif self._needs_comma:
@@ -130,7 +130,7 @@ class JsonWriter:
         self._buf += str(v)
         self._needs_comma = True
 
-    def write_float(self, v: Float64) -> None:
+    def write_float(self, v: float64) -> None:
         # TODO: nan/inf produce invalid JSON ("nan", "inf"). JSON has no
         # special float values; CPython raises ValueError (or with
         # allow_nan=True emits NaN/Infinity). Validate or escape.
@@ -141,7 +141,7 @@ class JsonWriter:
         self._buf += str(v)
         self._needs_comma = True
 
-    def write_float32(self, v: Float32) -> None:
+    def write_float32(self, v: float32) -> None:
         if self._indent > 0:
             self._pretty_sep()
         elif self._needs_comma:
@@ -172,8 +172,8 @@ class JsonWriter:
         return self._buf
 
     def _write_escaped(self, s: str) -> None:
-        start: Int32 = 0
-        i: Int32 = 0
+        start: int32 = 0
+        i: int32 = 0
         slen = len(s)
         while i < slen:
             c = s[i]

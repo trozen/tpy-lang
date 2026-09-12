@@ -19,10 +19,10 @@ void main();
 struct Tag {
     // # @nocopy so a silent COPY at either stub-slot leg below is a compile
     // # error rather than an invisible extra object.
-    // ident: Int32
+    // ident: int32
     int32_t ident;
 
-    // def __init__(self, ident: Int32) -> None:
+    // def __init__(self, ident: int32) -> None:
     Tag() = default;
     explicit Tag(int32_t ident);
     // non-copyable (@nocopy)
@@ -56,7 +56,7 @@ struct Sink {
     // def store_name(self, s: Own[str]) -> None:
     void store_name(std::string s);
 
-    // def store_width(self, w: Own[Int32]) -> None:
+    // def store_width(self, w: Own[int32]) -> None:
     void store_width(int32_t w);
 
     // def store_blob(self, b: Own[bytes]) -> None:
@@ -73,7 +73,7 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
 }
 
 
-// def __init__(self, ident: Int32) -> None:
+// def __init__(self, ident: int32) -> None:
 inline Tag::Tag(int32_t ident) : ident(ident) {}
 
 // def __eq__(self, other: 'Tag') -> bool:
@@ -91,7 +91,7 @@ inline void Sink::store_name(std::string s) {
     this->n = ::tpy::BigInt(::tpy::__len__(s));
 }
 
-// def store_width(self, w: Own[Int32]) -> None:
+// def store_width(self, w: Own[int32]) -> None:
 inline void Sink::store_width(int32_t w) {
     // self.n = int(w)
     this->n = ::tpy::BigInt(static_cast<int64_t>(w));

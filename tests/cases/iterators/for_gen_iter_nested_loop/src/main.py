@@ -3,17 +3,17 @@
 # mutable (not const), else the inner iteration can't drive the mutating
 # __iter__. Guards the mark_loop_var_mutated path. Iterating drains every
 # source (second pass -> 0), proving the elements are mutated in place.
-from tpy import Int32, Own
+from tpy import int32, Own
 from typing import Iterator
 
 
 class Source:
-    _n: Int32
+    _n: int32
 
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self._n = n
 
-    def __iter__(self) -> Iterator[Int32]:
+    def __iter__(self) -> Iterator[int32]:
         while self._n > 0:
             self._n -= 1
             yield self._n
@@ -25,8 +25,8 @@ class Consumer:
     def __init__(self, srcs: Own[list[Source]]):
         self._sources = srcs
 
-    def total(self) -> Int32:
-        acc: Int32 = 0
+    def total(self) -> int32:
+        acc: int32 = 0
         for src in self._sources:
             for v in src:
                 acc += v

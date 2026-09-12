@@ -3,11 +3,11 @@
 
 namespace tpyapp::main {
 
-// # Value type: Int32
-// storage = UninitArrayStorage[Int32, 4]()
+// # Value type: int32
+// storage = UninitArrayStorage[int32, 4]()
 ::tpy::UninitArrayStorage<int32_t, 4>* storage{};
 // # ptr() returns a raw pointer
-// p: Ptr[Int32] = storage.ptr()
+// p: Ptr[int32] = storage.ptr()
 int32_t* p{};
 // # Record type: Point
 // points = UninitArrayStorage[Point, 3]()
@@ -24,8 +24,8 @@ void __tpy_init() {
 
     // from tpy.unsafe import unsafe_load
     // from tpy.mem import UninitArrayStorage
-    // # Value type: Int32
-    // storage = UninitArrayStorage[Int32, 4]()
+    // # Value type: int32
+    // storage = UninitArrayStorage[int32, 4]()
     static ::tpy::UninitArrayStorage<int32_t, 4> __global_slot_1 = ::tpy::UninitArrayStorage<int32_t, 4>();
     storage = &__global_slot_1;
     // storage.init(0, 10)
@@ -41,7 +41,7 @@ void __tpy_init() {
     // print(storage.load(2))
     std::cout << storage->load(2) << "\n";
     // # ptr() returns a raw pointer
-    // p: Ptr[Int32] = storage.ptr()
+    // p: Ptr[int32] = storage.ptr()
     p = storage->ptr();
     // print(unsafe_load(p, 0))
     std::cout << p[0] << "\n";

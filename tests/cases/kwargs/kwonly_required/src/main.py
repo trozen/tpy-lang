@@ -1,7 +1,7 @@
 # keyword-only parameters, some required (no default)
-from tpy import Int32
+from tpy import int32
 
-def format_value(value: Int32, *, width: Int32, fill: str = " ") -> str:
+def format_value(value: int32, *, width: int32, fill: str = " ") -> str:
     s = str(value)
     while len(s) < width:
         s = fill + s

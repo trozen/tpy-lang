@@ -2,19 +2,19 @@
 # matching finality and type, the child's shadow is accepted. Each class
 # (A, B, C) gets its own `static inline` slot.
 from typing import ClassVar
-from tpy import Int32
+from tpy import int32
 
 
 class A:
-    X: ClassVar[Int32] = 1
+    X: ClassVar[int32] = 1
 
 
 class B:
-    X: ClassVar[Int32] = 2
+    X: ClassVar[int32] = 2
 
 
 class C(A, B):
-    X: ClassVar[Int32] = 3
+    X: ClassVar[int32] = 3
 
 
 def main() -> None:

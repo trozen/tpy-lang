@@ -1,6 +1,6 @@
 # A user-record `__setitem__` whose KEY is a composite over a local that widens
 # later in the body: the key slot runs the same body-wide disposition.
-from tpy import Int32
+from tpy import int32
 
 
 def gi() -> int:
@@ -8,15 +8,15 @@ def gi() -> int:
 
 
 class Bag:
-    xs: list[Int32]
+    xs: list[int32]
 
     def __init__(self) -> None:
         self.xs = [1, 2, 3, 4]
 
-    def __getitem__(self, i: Int32) -> Int32:
+    def __getitem__(self, i: int32) -> int32:
         return self.xs[i]
 
-    def __setitem__(self, i: Int32, v: Int32) -> None:
+    def __setitem__(self, i: int32, v: int32) -> None:
         self.xs[i] = v
 
 

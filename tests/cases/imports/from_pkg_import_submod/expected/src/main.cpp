@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def use(c: pcre2.Code) -> Int32:
+// def use(c: pcre2.Code) -> int32:
 int32_t use(const ::tpyapp::_bindings::pcre2::Code& c) {
     // return c.n
     return c.n;
@@ -14,7 +14,7 @@ int32_t use(const ::tpyapp::_bindings::pcre2::Code& c) {
 void main() {
     // print(pcre2.compile_pattern("hello"))
     std::cout << ::tpyapp::_bindings::pcre2::compile_pattern("hello") << "\n";
-    // print(use(pcre2.Code(Int32(7))))
+    // print(use(pcre2.Code(int32(7))))
     ::tpyapp::_bindings::pcre2::Code __tmp_1 = ::tpyapp::_bindings::pcre2::Code(7);
     std::cout << use(__tmp_1) << "\n";
 }

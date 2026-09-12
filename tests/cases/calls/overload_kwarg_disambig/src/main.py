@@ -7,27 +7,27 @@
 # and then fail the kwarg type-check. With the fix, per-overload expansion
 # inserts each kwarg's type at its matching param slot so the kwarg can
 # break the tie.
-from tpy import Int32, dispatch
+from tpy import int32, dispatch
 
 
 @dispatch
-def pick(x: Int32, *, tag: str = "") -> str:
+def pick(x: int32, *, tag: str = "") -> str:
     return tag + ":" + str(x)
 
 
 @dispatch
-def pick(x: Int32, *, tag: Int32 = 0) -> Int32:
+def pick(x: int32, *, tag: int32 = 0) -> int32:
     return x + tag
 
 
 def main() -> None:
-    # Positional arg alone is ambiguous (Int32 matches both overloads at the
+    # Positional arg alone is ambiguous (int32 matches both overloads at the
     # same tier); the kwarg's type picks the winner. Before the fix,
     # resolve_overload didn't see kwargs -- both calls raised "Ambiguous
     # overload" since the positional signatures are identical.
-    a: str = pick(Int32(10), tag="label")
+    a: str = pick(int32(10), tag="label")
     print(a)                                # label:10
-    b: Int32 = pick(Int32(10), tag=Int32(5))
+    b: int32 = pick(int32(10), tag=int32(5))
     print(b)                                # 15
 
 

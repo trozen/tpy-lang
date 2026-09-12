@@ -7,7 +7,7 @@ namespace tpyapp::main {
 
 
 // @overload
-// def h(a: Literal["x"]) -> Int32: ...  # tpyc: ok
+// def h(a: Literal["x"]) -> int32: ...  # tpyc: ok
 int32_t h__lit_x(std::string_view a, int32_t b) {
     // # The literal stub folds this compare; the wide stub keeps it at runtime.
     // return b + 100
@@ -15,7 +15,7 @@ int32_t h__lit_x(std::string_view a, int32_t b) {
 }
 
 // @overload
-// def h(a: str, b: Int32) -> Int32: ...  # tpyc: ok
+// def h(a: str, b: int32) -> int32: ...  # tpyc: ok
 int32_t h(std::string_view a, int32_t b) {
     // # The literal stub folds this compare; the wide stub keeps it at runtime.
     // if a == "x":

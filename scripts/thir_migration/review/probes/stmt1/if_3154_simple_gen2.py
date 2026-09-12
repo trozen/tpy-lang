@@ -1,10 +1,10 @@
-from tpy import Int32, Own, readonly
+from tpy import int32, Own, readonly
 class Point:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 from typing import Iterator
-def gen(c: bool) -> Iterator[Int32]:
+def gen(c: bool) -> Iterator[int32]:
     if c:
         p = Point(1)
     else:

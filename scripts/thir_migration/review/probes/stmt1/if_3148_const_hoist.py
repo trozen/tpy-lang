@@ -1,7 +1,7 @@
-from tpy import Int32, Own, readonly
+from tpy import int32, Own, readonly
 class Point:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 class Reg:
     p: Point
@@ -10,7 +10,7 @@ class Reg:
     @readonly
     def view(self) -> readonly[Point]:
         return self.p
-def pick(c: bool, r: Reg) -> Int32:
+def pick(c: bool, r: Reg) -> int32:
     if c:
         v = r.view()
     else:

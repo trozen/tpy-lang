@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // d: dict[str, Int32] = {}
+    // d: dict[str, int32] = {}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>();
     // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";

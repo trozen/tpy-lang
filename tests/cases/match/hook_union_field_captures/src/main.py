@@ -3,20 +3,20 @@
 # extraction alias is an emit-drawn temp rather than a frame local.
 import asyncio
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
 class Cat:
-    lives: Int32
+    lives: int32
 
-    def __init__(self, lives: Int32) -> None:
+    def __init__(self, lives: int32) -> None:
         self.lives = lives
 
 
 class Dog:
-    lives: Int32
+    lives: int32
 
-    def __init__(self, lives: Int32) -> None:
+    def __init__(self, lives: int32) -> None:
         self.lives = lives
 
 
@@ -27,7 +27,7 @@ class Holder:
         self.pet = pet  # tpyc: warning(/copies Cat \| Dog into field/)
 
 
-def guarded(a: Cat | Dog) -> Iterator[Int32]:
+def guarded(a: Cat | Dog) -> Iterator[int32]:
     match a:
         case Cat(lives=v) if v > 3:  # a guarded arm's field capture
             yield v
@@ -36,7 +36,7 @@ def guarded(a: Cat | Dog) -> Iterator[Int32]:
             yield 0
 
 
-def guarded_cond(a: Cat | Dog, flag: bool) -> Iterator[Int32]:
+def guarded_cond(a: Cat | Dog, flag: bool) -> Iterator[int32]:
     match a:
         case Cat(lives=9) if flag:  # a field CONDITION beside the guard
             yield 9
@@ -46,7 +46,7 @@ def guarded_cond(a: Cat | Dog, flag: bool) -> Iterator[Int32]:
             yield -1
 
 
-def nested(h: Holder) -> Iterator[Int32]:
+def nested(h: Holder) -> Iterator[int32]:
     match h:
         case Holder(pet=Cat(lives=v)):  # the union field's extraction alias
             yield v
@@ -55,7 +55,7 @@ def nested(h: Holder) -> Iterator[Int32]:
             yield 0
 
 
-def nested_shadow(h: Holder) -> Iterator[Int32]:
+def nested_shadow(h: Holder) -> Iterator[int32]:
     # A frame local spelled like the aliased FIELD: the alias name derives
     # from the runtime base, so the two cannot collide.
     pet = Cat(1)
@@ -68,7 +68,7 @@ def nested_shadow(h: Holder) -> Iterator[Int32]:
     yield pet.lives
 
 
-async def a_guarded(a: Cat | Dog) -> Int32:
+async def a_guarded(a: Cat | Dog) -> int32:
     match a:
         case Cat(lives=v) if v > 3:
             await asyncio.sleep(0)

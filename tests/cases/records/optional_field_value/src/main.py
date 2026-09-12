@@ -1,15 +1,15 @@
-from tpy import Int32
+from tpy import int32
 
 
 class Config:
     name: str
-    max_retries: Int32 | None
+    max_retries: int32 | None
 
     def __init__(self, name: str):
         self.name = name
         self.max_retries = None
 
-    def get_retries(self) -> Int32 | None:
+    def get_retries(self) -> int32 | None:
         return self.max_retries
 
 

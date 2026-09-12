@@ -17,14 +17,14 @@ void main();
 
 // class MyContainer:
 struct MyContainer {
-    // size: Int32
+    // size: int32
     int32_t size;
 
-    // def __init__(self, size: Int32) -> None:
+    // def __init__(self, size: int32) -> None:
     MyContainer() = default;
     explicit MyContainer(int32_t size);
 
-    // def __len__(self) -> Int32:
+    // def __len__(self) -> int32:
     int32_t __len__() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.MyContainer";
 };
@@ -35,15 +35,15 @@ inline std::ostream& operator<<(std::ostream& os, const MyContainer& obj) {
 }
 
 
-// def __init__(self, size: Int32) -> None:
+// def __init__(self, size: int32) -> None:
 inline MyContainer::MyContainer(int32_t size) : size(size) {}
 
-// def __len__(self) -> Int32:
+// def __len__(self) -> int32:
 inline int32_t MyContainer::__len__() const {
     // return self.size
     return this->size;
 }
-// def count(items: Sized) -> Int32:
+// def count(items: Sized) -> int32:
 template<::tpystd::typing::Sized T_items>
 int32_t count(const T_items& items) {
     // return len(items)

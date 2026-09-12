@@ -1,7 +1,7 @@
 # Error: unknown keyword argument to @dataclass macro
 from dataclasses import dataclass
-from tpy import Int32
+from tpy import int32
 
 @dataclass(frozen=True, slots=True)
 class Bad:  # tpyc: error(/unknown keyword argument 'slots'/)
-    x: Int32
+    x: int32

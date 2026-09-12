@@ -6,9 +6,9 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // a: list[Int32] = [1, 2, 3]
+    // a: list[int32] = [1, 2, 3]
     std::vector<int32_t> a = {1, 2, 3};
-    // b: list[Int32] = [10, 20]
+    // b: list[int32] = [10, 20]
     std::vector<int32_t> b = {10, 20};
     // b.extend(own_iter(a))
     ::tpy::list_extend(b, ::tpy::own_iter(std::move(a)));

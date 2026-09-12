@@ -7,7 +7,7 @@
 # `substitute_method_type_params` dropped `is_async` from the
 # reconstructed FunctionInfo.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
 class Container:
@@ -23,11 +23,11 @@ class Container:
 
 async def main_coro() -> None:
     c = Container("hi")
-    a = await c.echo(Int32(7))  # tpyc: type(Int32)
+    a = await c.echo(int32(7))  # tpyc: type(int32)
     print(a)
     b = await c.echo("world")  # tpyc: type(str)
     print(b)
-    p = await c.labeled(Int32(42))  # tpyc: type(/tuple\[str, Int32\]/)
+    p = await c.labeled(int32(42))  # tpyc: type(/tuple\[str, int32\]/)
     print(p[0])
     print(p[1])
 

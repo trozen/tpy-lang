@@ -4,11 +4,11 @@
 # to prove the storage both survives resume and is the same slot throughout.
 from typing import Iterator
 
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Item:
-    def __init__(self, v: Int32):
+    def __init__(self, v: int32):
         self.v = v
 
 
@@ -20,7 +20,7 @@ class Fresh:
         pass
 
 
-def gen() -> Iterator[Int32]:
+def gen() -> Iterator[int32]:
     with Fresh() as a:
         yield a.v
         a.v += 1

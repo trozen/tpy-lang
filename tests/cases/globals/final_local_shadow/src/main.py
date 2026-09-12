@@ -1,11 +1,11 @@
 # Local variables can shadow Final globals
 from typing import Final
-from tpy import Int32
+from tpy import int32
 
-X: Final[Int32] = 42
+X: Final[int32] = 42
 
 def main() -> None:
-    X: Int32 = 99
+    X: int32 = 99
     print(X)
 
 main()

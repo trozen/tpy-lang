@@ -5,9 +5,9 @@ namespace tpyapp::main {
 
 
 // # Test extended list methods: pop(index), index(), count(), reverse(), copy(), __setitem__
-// def print_list(nums: list[Int32]) -> None:
+// def print_list(nums: list[int32]) -> None:
 void print_list(const std::vector<int32_t>& nums) {
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < len(nums):
     while ((i < ::tpy::__len__(nums))) {
@@ -23,10 +23,10 @@ void print_list(const std::vector<int32_t>& nums) {
 // # === list[T] methods ===
 // def test_pop_at_index() -> None:
 void test_pop_at_index() {
-    // nums: list[Int32] = [10, 20, 30, 40, 50]
+    // nums: list[int32] = [10, 20, 30, 40, 50]
     std::vector<int32_t> nums = {10, 20, 30, 40, 50};
     // # Pop from middle
-    // val: Int32 = nums.pop(2)
+    // val: int32 = nums.pop(2)
     int32_t val = ::tpy::list_pop_at(nums, 2);
     // print(val)
     std::cout << val << "\n";
@@ -50,7 +50,7 @@ void test_pop_at_index() {
 
 // def test_index() -> None:
 void test_index() {
-    // nums: list[Int32] = [10, 20, 30, 20, 40]
+    // nums: list[int32] = [10, 20, 30, 20, 40]
     std::vector<int32_t> nums = {10, 20, 30, 20, 40};
     // print(nums.index(10))  # 0
     std::cout << ::tpy::list_index(nums, 10) << "\n";
@@ -64,7 +64,7 @@ void test_index() {
 
 // def test_count() -> None:
 void test_count() {
-    // nums: list[Int32] = [1, 2, 2, 3, 2, 4, 2]
+    // nums: list[int32] = [1, 2, 2, 3, 2, 4, 2]
     std::vector<int32_t> nums = {1, 2, 2, 3, 2, 4, 2};
     // print(nums.count(1))  # 1
     std::cout << ::tpy::list_count(nums, 1) << "\n";
@@ -78,7 +78,7 @@ void test_count() {
 
 // def test_reverse() -> None:
 void test_reverse() {
-    // nums: list[Int32] = [1, 2, 3, 4, 5]
+    // nums: list[int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> nums = {1, 2, 3, 4, 5};
     // nums.reverse()
     ::tpy::list_reverse(nums);
@@ -93,9 +93,9 @@ void test_reverse() {
 
 // def test_copy() -> None:
 void test_copy() {
-    // nums: list[Int32] = [1, 2, 3]
+    // nums: list[int32] = [1, 2, 3]
     std::vector<int32_t> nums = {1, 2, 3};
-    // copy: list[Int32] = nums.copy()
+    // copy: list[int32] = nums.copy()
     std::vector<int32_t> copy = ::tpy::list_copy(nums);
     // # Modify original
     // nums.append(4)
@@ -111,7 +111,7 @@ void test_copy() {
 
 // def test_setitem() -> None:
 void test_setitem() {
-    // nums: list[Int32] = [10, 20, 30]
+    // nums: list[int32] = [10, 20, 30]
     std::vector<int32_t> nums = {10, 20, 30};
     // nums[0] = 100
     ::tpy::__setitem__(nums, 0, 100);

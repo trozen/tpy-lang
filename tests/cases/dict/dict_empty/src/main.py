@@ -1,8 +1,8 @@
 # Empty dict with type annotation
-from tpy import Int32
+from tpy import int32
 
 def main() -> None:
-    d: dict[str, Int32] = {}
+    d: dict[str, int32] = {}
     print(d)
     print(len(d))
     d["x"] = 1

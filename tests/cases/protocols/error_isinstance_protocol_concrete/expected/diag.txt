@@ -1,1 +1,1 @@
-main.py:7: error: isinstance() with a protocol requires a protocol-typed parameter, got 'list[Int32]'
+main.py:7: error: isinstance() with a protocol requires a protocol-typed parameter, got 'list[int32]'

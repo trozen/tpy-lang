@@ -1,22 +1,22 @@
 # print(..., flush=True) appends `<< std::flush` to the chain.
 # For user Writable targets this triggers the adapter's sync(), which
 # calls W::flush(); we count flushes to verify.
-from tpy import Int32
+from tpy import int32
 
 class CountingSink:
     parts: list[str]
-    flushes: Int32
+    flushes: int32
 
     def __init__(self) -> None:
         self.parts = []
-        self.flushes = Int32(0)
+        self.flushes = int32(0)
 
-    def write(self, text: str) -> Int32:
+    def write(self, text: str) -> int32:
         self.parts.append(text)
-        return Int32(len(text))
+        return int32(len(text))
 
     def flush(self) -> None:
-        self.flushes += Int32(1)
+        self.flushes += int32(1)
 
 
 def main() -> None:

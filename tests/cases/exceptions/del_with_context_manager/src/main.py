@@ -2,16 +2,16 @@
 # rethrow path lives in a C++ noexcept destructor, so the emitted `throw;`
 # must be caught within the dtor (else -Werror=terminate). Observing the
 # CM's __enter__/__exit__ output proves the with-body runs at drop time.
-from tpy import Int32
+from tpy import int32
 
 
 class Guard:
-    _tag: Int32
+    _tag: int32
 
-    def __init__(self, tag: Int32):
+    def __init__(self, tag: int32):
         self._tag = tag
 
-    def __enter__(self) -> Int32:
+    def __enter__(self) -> int32:
         print("enter", self._tag)
         return self._tag
 
@@ -20,9 +20,9 @@ class Guard:
 
 
 class Resource:
-    _id: Int32
+    _id: int32
 
-    def __init__(self, id: Int32):
+    def __init__(self, id: int32):
         self._id = id
 
     def __del__(self):

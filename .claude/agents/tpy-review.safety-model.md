@@ -23,7 +23,7 @@ Out of scope:
 
 ## Reference: ownership model invariants
 
-- **Value types** (primitives, `bool`, `Char`, `str`, `bytes`, `StrView`, `Span[T]`, tuples, user `ValueType`): value semantics; `str`/`bytes` own buffers but are immutable, so copy-vs-alias is unobservable and the view-vs-owned choice is an optimization.
+- **Value types** (primitives, `bool`, `char`, `str`, `bytes`, `StrView`, `Span[T]`, tuples, user `ValueType`): value semantics; `str`/`bytes` own buffers but are immutable, so copy-vs-alias is unobservable and the view-vs-owned choice is an optimization.
 - **Reference types** (classes, records, `list`, `dict`, `set`, `Array[T, N]`, `bytearray`): NOT copied at boundaries; stored inline in fields and containers.
 - **Param shape**: classes/records/list/dict/set/bytearray pass by C++ reference (`T&` / `const T&`); `bytes` passes as `std::span<const uint8_t>`; `str` passes as `std::string_view`.
 - **`Own[T]`**: ownership transfer (move), NOT heap allocation. Used for returns/params that hand off ownership.

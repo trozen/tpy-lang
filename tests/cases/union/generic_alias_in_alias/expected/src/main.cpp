@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // p: IntPair = (Int32(3), Int32(7))  # tpyc: type(/tuple\[Int32, Int32\]/)
+    // p: IntPair = (int32(3), int32(7))  # tpyc: type(/tuple\[int32, int32\]/)
     std::tuple<int32_t, int32_t> p = std::tuple<int32_t, int32_t>{3, 7};
     // print(p)
     std::cout << ::tpy::TuplePrinter(p) << "\n";

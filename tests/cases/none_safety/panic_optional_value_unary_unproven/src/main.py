@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 
 
-def negate(x: Int32 | None) -> Int32:
+def negate(x: int32 | None) -> int32:
     return -x
 
 

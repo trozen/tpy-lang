@@ -14,7 +14,7 @@ void main() {
     Handler h = Handler([](int32_t n) { std::cout << n << "\n"; });
     // pv = Pair(1, 2)             # tpyc: is_send(yes) is_sync(yes)
     Pair<int32_t> pv = Pair<int32_t>(1, 2);
-    // pl = Pair[list[Int32]]([1], [2])  # tpyc: is_send(yes) is_sync(no)
+    // pl = Pair[list[int32]]([1], [2])  # tpyc: is_send(yes) is_sync(no)
     Pair<std::vector<int32_t>> pl = Pair<std::vector<int32_t>>({1}, {2});
     // print(p.x, p.y, len(b.items))
     std::cout << p.x << " " << p.y << " " << ::tpy::__len__(b.items) << "\n";

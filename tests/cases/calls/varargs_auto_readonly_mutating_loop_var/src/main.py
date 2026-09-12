@@ -3,13 +3,13 @@
 # individual arg and address-taken into the indirect-mode `Box*` pack -- so
 # the loop binding must stay `auto& b` (not `const auto& b`) or `&b` would
 # yield `const Box*` and mismatch the slot.
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    val: Int32
+    val: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 

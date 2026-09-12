@@ -4,11 +4,11 @@
 namespace tpyapp::main {
 
 
-// def main() -> Int32:
+// def main() -> int32:
 int32_t main() {
     // helper()
     ::tpyapp::mypackage::utils::helper();
-    // return Int32(0)
+    // return int32(0)
     return 0;
 }
 

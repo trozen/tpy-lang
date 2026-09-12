@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def test_array_resolution() -> None:
 void test_array_resolution() {
-    // # Unmutated repeat with constant count -> Array[Int32, 5]
+    // # Unmutated repeat with constant count -> Array[int32, 5]
     // x = [0] * 5  # tpyc: type(/Array\[/)
     std::array<int32_t, 5> x = ({
         int32_t __rep_0 = 0;
@@ -27,7 +27,7 @@ void test_array_resolution() {
 
 // def test_list_promotion() -> None:
 void test_list_promotion() {
-    // # Mutated repeat -> promoted to list[Int32]
+    // # Mutated repeat -> promoted to list[int32]
     // y = [0] * 3  # tpyc: type(/list\[/)
     std::vector<int32_t> y = ::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(3, {0}));
     // y.append(42)
@@ -47,8 +47,8 @@ void test_list_promotion() {
 
 // def test_annotated_list() -> None:
 void test_annotated_list() {
-    // # Explicit list annotation -> list[Int32]
-    // z: list[Int32] = [1] * 4  # tpyc: type(/list\[/)
+    // # Explicit list annotation -> list[int32]
+    // z: list[int32] = [1] * 4  # tpyc: type(/list\[/)
     std::vector<int32_t> z = ::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(4, {1}));
     // z.append(5)
     z.push_back(5);
@@ -81,7 +81,7 @@ void test_subscript_stays_array() {
     std::cout << ::tpy::__getitem__(w, 2) << "\n";
 }
 
-// def takes_span(s: Span[Int32]) -> None:
+// def takes_span(s: Span[int32]) -> None:
 void takes_span(std::span<int32_t> s) {
     // for v in s:
     auto& __obj_0 = s;
@@ -97,7 +97,7 @@ void takes_span(std::span<int32_t> s) {
 // def test_variable_repeat_assigned_to_span() -> None:
 void test_variable_repeat_assigned_to_span() {
     // # Variable count repeat assigned to variable, then passed to Span -> list (lvalue)
-    // n: Int32 = 2
+    // n: int32 = 2
     int32_t n = 2;
     // x = [6] * n
     std::vector<int32_t> x = ::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(n, {6}));

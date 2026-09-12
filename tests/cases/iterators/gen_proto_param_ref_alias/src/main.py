@@ -3,25 +3,25 @@
 # frame: mutating through the loop var has to reach the caller's container.
 # The value-element generator below is the inverse -- it must keep copy storage,
 # so rebinding its loop var leaves the source list untouched.
-from tpy import Int32
+from tpy import int32
 from typing import Iterable, Iterator
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
-def bump(items: Iterable[Point]) -> Iterator[Int32]:
+def bump(items: Iterable[Point]) -> Iterator[int32]:
     for p in items:
         p.x += 100
         yield p.x
         yield p.x
 
 
-def doubled(nums: Iterable[Int32]) -> Iterator[Int32]:
+def doubled(nums: Iterable[int32]) -> Iterator[int32]:
     for n in nums:
         n += 1
         yield n

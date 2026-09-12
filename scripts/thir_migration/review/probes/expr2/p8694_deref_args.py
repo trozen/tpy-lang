@@ -1,5 +1,5 @@
 from typing import Protocol
-from tpy import dynamic, Int32
+from tpy import dynamic, int32
 from tplib.box import Box
 @dynamic
 class Pet(Protocol):
@@ -9,7 +9,7 @@ class Dog(Pet):
         return "dog"
     def bark(self) -> str:
         return "woof"
-    def bark_at(self, k: Int32) -> str:
+    def bark_at(self, k: int32) -> str:
         return "woof"
 def a1(b: Box[Pet]) -> str:
     if isinstance(b, Dog):

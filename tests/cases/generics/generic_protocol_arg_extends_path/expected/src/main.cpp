@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // xs = MyList[Int32]()
+    // xs = MyList[int32]()
     MyList<int32_t> xs = MyList<int32_t>();
     // xs.add(3)
     xs.add(3);

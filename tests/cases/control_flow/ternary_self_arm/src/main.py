@@ -1,12 +1,12 @@
 # A bare `self` arm in a record ternary is a VALUE position, so the receiver
 # pointer derefs (`(*this)`) and the ternary binds an ALIAS, as in CPython.
-from tpy import Int32, readonly
+from tpy import int32, readonly
 
 
 class Acc:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
     def bump_larger(self, o: "Acc") -> None:
@@ -18,7 +18,7 @@ class Acc:
         c.n += 100
 
     @readonly
-    def larger_n(self, o: readonly["Acc"]) -> Int32:
+    def larger_n(self, o: readonly["Acc"]) -> int32:
         c = self if self.n >= o.n else o  # tpyc: ok -- const receiver arm
         return c.n
 

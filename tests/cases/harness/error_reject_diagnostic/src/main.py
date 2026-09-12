@@ -2,13 +2,13 @@
 # the blocking construct's tag. The shape here is a deliberate refusal -- a
 # local declared in the enclosing function and rebound to a fresh object inside
 # a nested def has no stable home to hoist its slot into.
-from tpy import Int32
+from tpy import int32
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 

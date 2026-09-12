@@ -1,5 +1,5 @@
 # A REFERENCE union at a storage position (a container element) compares BY
-# VALUE across alternatives, as CPython does: `Dog | Int32 | Float64` holding 1
+# VALUE across alternatives, as CPython does: `Dog | int32 | float64` holding 1
 # equals one holding 1.0. Each section names the position it covers; the
 # container compares are the subject lines. A union of two records that define
 # no `__eq__` is NOT a section: it stays a toolchain-level refusal with no TPy
@@ -7,7 +7,7 @@
 import asyncio
 from typing import Iterator
 
-from tpy import Int32, ReturnException, error_return
+from tpy import int32, ReturnException, error_return
 
 
 class Boom(Exception, ReturnException):
@@ -23,9 +23,9 @@ class Guard:
 
 
 class Dog:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def __eq__(self, other: "Dog") -> bool:
@@ -38,9 +38,9 @@ class Dog:
 
 
 class Cat:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def __eq__(self, other: "Cat") -> bool:
@@ -56,9 +56,9 @@ class Cat:
 # call it; that row lives in `union/value_union_cross_alternative_eq`, the
 # only case where a union `!=` is reachable directly.
 class Tag:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def __eq__(self, other: "Tag") -> bool:
@@ -73,9 +73,9 @@ class Tag:
 
 
 class Mark:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def __eq__(self, other: "Mark") -> bool:
@@ -87,10 +87,10 @@ class Mark:
 type Pet = Dog | Cat
 type Labelled = Tag | Mark
 # A record beside numeric alternatives: the pack whose cross-alternative
-# answer the bare variant got wrong. `float` rather than the `Float64`
+# answer the bare variant got wrong. `float` rather than the `float64`
 # spelling of the same type, which an alias body rejects
 # (BUGS.md#imported-alias-member-in-alias-body).
-type Mixed = Dog | Int32 | float
+type Mixed = Dog | int32 | float
 
 MOD_A: list[Mixed] = [1]
 MOD_B: list[Mixed] = [1.0]
@@ -155,7 +155,7 @@ def in_error_return(xs: list[Mixed], ys: list[Mixed]) -> bool:  # @error_return
 
 
 def in_match(xs: list[Mixed], ys: list[Mixed]) -> bool:  # match arm
-    tag: Int32 = 1
+    tag: int32 = 1
     match tag:
         case 1:
             return xs == ys  # tpyc: ok
@@ -165,9 +165,9 @@ def in_match(xs: list[Mixed], ys: list[Mixed]) -> bool:  # match arm
 
 # The comprehension binds its result to a local: in a RETURN expression it
 # rejects at the `expr.list_comp` reject tag for any element type, union or
-# not -- a plain `[e + 1 for e in xs]` over `list[Int32]` rejects the same
+# not -- a plain `[e + 1 for e in xs]` over `list[int32]` rejects the same
 # way -- so the local is what reaches the comprehension body.
-def in_comprehension(xs: list[Mixed], ys: list[Mixed]) -> Int32:  # comprehension
+def in_comprehension(xs: list[Mixed], ys: list[Mixed]) -> int32:  # comprehension
     flags = [xs == ys for _ in [1, 2]]  # tpyc: ok
     return len(flags) if flags[0] else 0
 
@@ -187,7 +187,7 @@ class Crate:
         self.pet = pet  # tpyc: warning(/copies Pet into field/)
 
 
-def crate_pet_n(c: Crate) -> Int32:
+def crate_pet_n(c: Crate) -> int32:
     p = c.pet
     if isinstance(p, Dog):
         return p.n
@@ -203,7 +203,7 @@ def bump_first(xs: list[Pet]) -> None:
         e.n += 1
 
 
-def first_n(xs: list[Pet]) -> Int32:
+def first_n(xs: list[Pet]) -> int32:
     e = xs[0]
     if isinstance(e, Dog):
         return e.n

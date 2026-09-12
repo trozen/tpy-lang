@@ -3,7 +3,7 @@
 # caller's except clause.
 from typing import Self
 
-from tpy import Int32, Own, ReturnException, error_return
+from tpy import int32, Own, ReturnException, error_return
 
 
 class Invalid(Exception, ReturnException):
@@ -11,12 +11,12 @@ class Invalid(Exception, ReturnException):
 
 
 class Point:
-    def __init__(self, x: Int32):
+    def __init__(self, x: int32):
         self.x = x
 
     @error_return(Invalid)
     @classmethod
-    def parse(cls, x: Int32) -> Own[Self]:
+    def parse(cls, x: int32) -> Own[Self]:
         if x < 0:
             raise Invalid
         return cls(x)

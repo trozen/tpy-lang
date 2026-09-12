@@ -1,23 +1,23 @@
 # match over a union with a None member: `case None:` dispatches on the
 # monostate variant index like any other alternative.
-from tpy import Int32
+from tpy import int32
 
 
 class A:
-    v: Int32
+    v: int32
 
     def __init__(self) -> None:
         self.v = 1
 
 
 class B:
-    v: Int32
+    v: int32
 
     def __init__(self) -> None:
         self.v = 2
 
 
-def pick(x: A | B | None) -> Int32:
+def pick(x: A | B | None) -> int32:
     match x:
         case None:
             return 0

@@ -38,14 +38,14 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
     return os;
 }
 
-// class IntBox(Box[Int32]):
+// class IntBox(Box[int32]):
 struct IntBox : Box<int32_t> {
 
-    // def __init__(self, value: Int32) -> None:
+    // def __init__(self, value: int32) -> None:
     IntBox() = default;
     explicit IntBox(int32_t value);
 
-    // def fetch(self) -> Int32:
+    // def fetch(self) -> int32:
     int32_t fetch();
     static constexpr std::string_view __tpy_class_name__ = "__main__.IntBox";
 };
@@ -56,13 +56,13 @@ inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
 }
 
 
-// def __init__(self, value: Int32) -> None:
+// def __init__(self, value: int32) -> None:
 inline IntBox::IntBox(int32_t value) : Box<int32_t>(value) {}
 
-// def fetch(self) -> Int32:
+// def fetch(self) -> int32:
 inline int32_t IntBox::fetch() {
-    // # Resolved: Box[Int32].get(self) -> Int32. The substitution T -> Int32
-    // # comes from IntBox's parents entry Box[Int32].
+    // # Resolved: Box[int32].get(self) -> int32. The substitution T -> int32
+    // # comes from IntBox's parents entry Box[int32].
     // return Box.get(self)
     return this->Box<int32_t>::get();
 }

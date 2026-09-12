@@ -1,12 +1,12 @@
 # @model inheritance: parent fields included in JSON serialization, multi-level.
-from tpy import Int32
+from tpy import int32
 from tplib.json.model import model
 from typing import Optional
 
 @model
 class Base:
     name: str
-    age: Int32
+    age: int32
 
 @model
 class User(Base):
@@ -20,12 +20,12 @@ class Admin(User):
 # Defaults in parent propagated to child
 @model
 class WithDefaults:
-    x: Int32
-    y: Int32 = 0
+    x: int32
+    y: int32 = 0
 
 @model
 class Extended(WithDefaults):
-    z: Int32 = 99
+    z: int32 = 99
 
 # Optional parent field + child field
 @model
@@ -35,7 +35,7 @@ class Tagged:
 
 @model
 class Scored(Tagged):
-    score: Int32 = 0
+    score: int32 = 0
 
 
 def main() -> None:

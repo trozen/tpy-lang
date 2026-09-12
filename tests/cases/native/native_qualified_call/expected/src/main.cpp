@@ -7,13 +7,13 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // # @native("myns::namespaced_add") -> ::myns::namespaced_add(10, 32)
-    // print(lib.ns_add(Int32(10), Int32(32)))
+    // print(lib.ns_add(int32(10), int32(32)))
     std::cout << ::myns::namespaced_add(10, 32) << "\n";
     // # @native("bare_add") -> ::bare_add(10, 32)
-    // print(lib.bare(Int32(10), Int32(32)))
+    // print(lib.bare(int32(10), int32(32)))
     std::cout << ::bare_add(10, 32) << "\n";
     // # @native("c_multiply", binding="C") -> ::tpyapp::lib::c_multiply(6, 7)
-    // print(lib.c_mul(Int32(6), Int32(7)))
+    // print(lib.c_mul(int32(6), int32(7)))
     std::cout << ::tpyapp::lib::c_multiply(6, 7) << "\n";
 }
 

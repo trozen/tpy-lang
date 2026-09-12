@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def make_list(n: Int32) -> Own[list[Int32]]:
+// def make_list(n: int32) -> Own[list[int32]]:
 std::vector<int32_t> make_list(int32_t n) {
     // return [n, n + 1, n + 2]
     return {n, (::tpy::add_check<int32_t>(n, 1)), (::tpy::add_check<int32_t>(n, 2))};
 }
 
-// def make_dict() -> Own[dict[Int32, Int32]]:
+// def make_dict() -> Own[dict[int32, int32]]:
 ::tpy::ordered_map<int32_t, int32_t> make_dict() {
     // return {1: 10, 2: 20}
     return ::tpy::ordered_map<int32_t, int32_t>({{1, 10}, {2, 20}});
@@ -22,7 +22,7 @@ std::vector<Cell>& get_cells(std::vector<Cell>& cells) {
     return cells;
 }
 
-// def view(items: list[Int32]) -> readonly[list[Int32]]:
+// def view(items: list[int32]) -> readonly[list[int32]]:
 const std::vector<int32_t>& view(std::vector<int32_t>& items) {
     // return items
     return items;
@@ -30,7 +30,7 @@ const std::vector<int32_t>& view(std::vector<int32_t>& items) {
 
 // def own_returns() -> None:
 void own_returns() {
-    // total = Int32(0)
+    // total = int32(0)
     int32_t total = 0;
     // for x in make_list(4):
     auto __obj_0 = make_list(4);
@@ -67,9 +67,9 @@ void bump(std::vector<Cell>& cells) {
     }
 }
 
-// def readonly_sum(items: list[Int32]) -> Int32:
+// def readonly_sum(items: list[int32]) -> int32:
 int32_t readonly_sum(std::vector<int32_t>& items) {
-    // s = Int32(0)
+    // s = int32(0)
     int32_t s = 0;
     // for y in view(items):
     auto& __obj_0 = view(items);

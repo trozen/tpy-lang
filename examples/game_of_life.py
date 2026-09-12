@@ -1,19 +1,19 @@
-from tpy import Int32
+from tpy import int32
 
 # Compile-time constants
-WIDTH: Int32 = 10
-HEIGHT: Int32 = 8
+WIDTH: int32 = 10
+HEIGHT: int32 = 8
 
 class Grid:
-    cells: list[Int32]
+    cells: list[int32]
 
     def __init__(self):
         self.cells = [0] * 80
 
-    def idx(self, x: Int32, y: Int32) -> Int32:
+    def idx(self, x: int32, y: int32) -> int32:
         return y * WIDTH + x
 
-    def get(self, x: Int32, y: Int32) -> Int32:
+    def get(self, x: int32, y: int32) -> int32:
         if x < 0:
             return 0
         if x >= WIDTH:
@@ -24,10 +24,10 @@ class Grid:
             return 0
         return self.cells[self.idx(x, y)]
 
-    def set(self, x: Int32, y: Int32, val: Int32) -> None:
+    def set(self, x: int32, y: int32, val: int32) -> None:
         self.cells[self.idx(x, y)] = val
 
-def count_neighbors(g: Grid, x: Int32, y: Int32) -> Int32:
+def count_neighbors(g: Grid, x: int32, y: int32) -> int32:
     n = 0
     n = n + g.get(x - 1, y - 1)
     n = n + g.get(x,     y - 1)

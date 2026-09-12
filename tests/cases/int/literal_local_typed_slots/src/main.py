@@ -4,42 +4,42 @@
 # (typed container element), FIELD assign, dict-key in subscript-assign.
 # Method calls work too -- Own/Readonly/Ref wrappers around the param type
 # (e.g. list[T].append takes Own[T]) are stripped before the fit check.
-from tpy import UInt32, UInt64
+from tpy import uint32, uint64
 
 
-def ret_unsigned() -> UInt64:
+def ret_unsigned() -> uint64:
     x = 0
     return x
 
 
-def init_typed_local() -> UInt64:
+def init_typed_local() -> uint64:
     x = 5
-    y: UInt64 = x
+    y: uint64 = x
     return y
 
 
-def reassign_existing_typed() -> UInt64:
-    y: UInt64 = 100
+def reassign_existing_typed() -> uint64:
+    y: uint64 = 100
     x = 7
     y = x
     return y
 
 
-def setitem_typed_list() -> UInt64:
-    xs: list[UInt64] = [0, 0, 0]
+def setitem_typed_list() -> uint64:
+    xs: list[uint64] = [0, 0, 0]
     n = 9
     xs[1] = n
     return xs[1]
 
 
 class Holder:
-    val: UInt64
+    val: uint64
 
     def __init__(self) -> None:
-        self.val = UInt64(0)
+        self.val = uint64(0)
 
 
-def field_assign_typed() -> UInt64:
+def field_assign_typed() -> uint64:
     h = Holder()
     n = 11
     h.val = n
@@ -47,14 +47,14 @@ def field_assign_typed() -> UInt64:
 
 
 def dict_key_typed() -> str:
-    d: dict[UInt64, str] = {}
+    d: dict[uint64, str] = {}
     k = 13
     d[k] = "ok"
     return d[k]
 
 
-def method_arg_with_own_param() -> UInt64:
-    xs: list[UInt64] = []
+def method_arg_with_own_param() -> uint64:
+    xs: list[uint64] = []
     n = 19
     xs.append(n)
     return xs[0]

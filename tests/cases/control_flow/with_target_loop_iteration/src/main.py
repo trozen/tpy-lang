@@ -1,13 +1,13 @@
 # A `with` inside a loop body whose target is read at the TOP of the NEXT
 # iteration: the read is only reachable by following the loop back, never by
 # scanning forward from the statement, and the manager must be kept for it.
-from tpy import Int32
+from tpy import int32
 
 
 class Reg:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
     def __enter__(self) -> "Reg":
@@ -20,7 +20,7 @@ class Reg:
         self.n = -999  # an early drop shows up in the sum
 
 
-def run() -> Int32:
+def run() -> int32:
     with Reg(100) as g:
         pass
 

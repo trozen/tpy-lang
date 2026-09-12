@@ -1,12 +1,12 @@
 # A constructor docstring is non-init trivia: it emits no code and no source
 # line, and the member-init chain is unaffected.
-from tpy import Int32
+from tpy import int32
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         """The x coordinate."""
         self.x = x
 

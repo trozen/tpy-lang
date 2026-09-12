@@ -1,6 +1,6 @@
 # Runtime TypeError -- raised by `ord()` on a string whose length is not 1,
 # matching CPython's `ord() expected a character, but string of length N found`.
-# (`Char(s)` raises the same way but is TPy-only and lives in panic_char_from_str.)
+# (`char(s)` raises the same way but is TPy-only and lives in panic_char_from_str.)
 
 
 def main() -> None:

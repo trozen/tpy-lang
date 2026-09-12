@@ -1,23 +1,23 @@
 # True division (/) on fixed-width integer types returns float
-from tpy import Int32, Int64, UInt32
+from tpy import int32, int64, uint32
 
 def main() -> None:
-    a: Int32 = Int32(10)
-    b: Int32 = Int32(3)
+    a: int32 = int32(10)
+    b: int32 = int32(3)
     r1: float = a / b  # tpyc: type(float)
     print(r1)
 
-    c: Int64 = Int64(100)
-    d: Int64 = Int64(7)
+    c: int64 = int64(100)
+    d: int64 = int64(7)
     print(c / d)
 
-    e: UInt32 = UInt32(15)
-    f: UInt32 = UInt32(4)
+    e: uint32 = uint32(15)
+    f: uint32 = uint32(4)
     print(e / f)
 
     # Exact division
-    g: Int32 = Int32(10)
-    h: Int32 = Int32(5)
+    g: int32 = int32(10)
+    h: int32 = int32(5)
     print(g / h)
 
 main()

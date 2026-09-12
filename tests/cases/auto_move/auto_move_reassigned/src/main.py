@@ -1,16 +1,16 @@
 # Reassigned local (T* pointer-local) at last use gets auto-moved.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Point:
-    x: Int32
+    x: int32
 
 
-def consume(p: Own[Point]) -> Int32:
+def consume(p: Own[Point]) -> int32:
     return p.x
 
 
-def test() -> Int32:
+def test() -> int32:
     p = Point()
     p.x = 10
     p = Point()  # reassignment -> T* pointer-local

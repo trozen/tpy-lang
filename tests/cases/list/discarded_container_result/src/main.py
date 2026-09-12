@@ -8,7 +8,7 @@
 # `.copy()` mis-dispatches to `::tpy::list_copy` and fails the C++ build
 # (BUGS.md#array-copy-dispatches-to-list-copy) -- an Array-resolved receiver
 # is that entry's shape, not this case's.
-from tpy import Int32
+from tpy import int32
 
 
 def main() -> None:

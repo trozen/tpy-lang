@@ -3,12 +3,12 @@
 
 namespace tpyapp::main {
 
-// # Test order: literal first, Int32 second -> should infer Same[Int32]
-// x: Int32 = 10
+// # Test order: literal first, int32 second -> should infer Same[int32]
+// x: int32 = 10
 int32_t x{};
 // same1 = Same(1, x)
 Same<int32_t>* same1{};
-// # Test order: Int32 first, literal second -> should also infer Same[Int32]
+// # Test order: int32 first, literal second -> should also infer Same[int32]
 // same2 = Same(x, 2)
 Same<int32_t>* same2{};
 
@@ -17,8 +17,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Test order: literal first, Int32 second -> should infer Same[Int32]
-    // x: Int32 = 10
+    // # Test order: literal first, int32 second -> should infer Same[int32]
+    // x: int32 = 10
     x = 10;
     // same1 = Same(1, x)
     static Same<int32_t> __global_slot_1 = Same<int32_t>(1, x);
@@ -27,7 +27,7 @@ void __tpy_init() {
     std::cout << same1->a << "\n";
     // print(same1.b)
     std::cout << same1->b << "\n";
-    // # Test order: Int32 first, literal second -> should also infer Same[Int32]
+    // # Test order: int32 first, literal second -> should also infer Same[int32]
     // same2 = Same(x, 2)
     static Same<int32_t> __global_slot_2 = Same<int32_t>(x, 2);
     same2 = &__global_slot_2;

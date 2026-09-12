@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def read_ref(r: readonly[Ref]) -> Int32:
+// def read_ref(r: readonly[Ref]) -> int32:
 int32_t read_ref(const Ref& r) {
     // # readonly receiver -> readonly __deref__ -> readonly Point
     // # field access and readonly methods should work

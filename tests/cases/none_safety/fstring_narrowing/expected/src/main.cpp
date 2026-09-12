@@ -15,7 +15,7 @@ void greet(std::optional<std::string_view> name) {
     std::cout << std::format("hello, {}", (*name)) << "\n";
 }
 
-// def show_int(x: Optional[Int32]) -> None:
+// def show_int(x: Optional[int32]) -> None:
 void show_int(std::optional<int32_t> x) {
     // if x is None:
     if ((!x.has_value())) {
@@ -45,7 +45,7 @@ void main() {
     greet("world");
     // greet(None)
     greet(std::nullopt);
-    // show_int(Int32(42))
+    // show_int(int32(42))
     show_int(42);
     // show_int(None)
     show_int(std::nullopt);

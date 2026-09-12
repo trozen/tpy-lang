@@ -1,9 +1,9 @@
-from tpy import Int32, Own
+from tpy import int32, Own
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32):
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32):
         self.x = x
         self.y = y
 
@@ -14,7 +14,7 @@ class Holder:
         self.value = None
 
 # Own[T] | None returns std::optional<T> by value — no aliasing concern
-def maybe_make(x: Int32) -> Own[Point] | None:
+def maybe_make(x: int32) -> Own[Point] | None:
     if x > 0:
         return Point(x, x)
     return None

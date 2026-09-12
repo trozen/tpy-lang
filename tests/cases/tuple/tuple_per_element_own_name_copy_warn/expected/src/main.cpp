@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def sink(p: tuple[Own[Box], Int32]) -> Int32:  # tpyc: warning(/owned tuple param 'p' is never consumed/)
+// def sink(p: tuple[Own[Box], int32]) -> int32:  # tpyc: warning(/owned tuple param 'p' is never consumed/)
 int32_t sink(std::tuple<Box, int32_t>&& p) {
     // return p[0].val + p[1]
     return (::tpy::add_check<int32_t>(std::get<0>(p).val, std::get<1>(p)));
 }
 
-// def f(ob: Own[Box]) -> Int32:  # tpyc: warning(/Own\[Box\] param 'ob' is never consumed/)
+// def f(ob: Own[Box]) -> int32:  # tpyc: warning(/Own\[Box\] param 'ob' is never consumed/)
 int32_t f(Box&& ob) {
     // pair = (ob, 0)
     auto pair = std::tuple<Box*, int32_t>{&(ob), 0};

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def show(n: Int32, ok: bool, ratio: float, small: UInt8) -> None:
+// def show(n: int32, ok: bool, ratio: float, small: uint8) -> None:
 void show(int32_t n, bool ok, double ratio, uint8_t small) {
     // print("n =", n)
     std::cout << "n =" << " " << n << "\n";

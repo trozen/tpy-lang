@@ -19,7 +19,7 @@ void main() {
     }
 }
 
-// def keys_of(self) -> Iterator[Int32]:
+// def keys_of(self) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_keys_of::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {

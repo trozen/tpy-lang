@@ -79,7 +79,7 @@ __match_end_2:;
 }
 
 // # --- 3 levels deep (type-param disambiguation) ---
-// def deep3(x: Box[Box[Box[str]]] | Box[Box[Box[Int32]]]) -> str:
+// def deep3(x: Box[Box[Box[str]]] | Box[Box[Box[int32]]]) -> str:
 std::string deep3(::tpy::Union<const Box<Box<Box<int32_t>>>*, const Box<Box<Box<std::string>>>*> x) {
     // match x:
     auto& __match_subject_1 = x;
@@ -92,7 +92,7 @@ std::string deep3(::tpy::Union<const Box<Box<Box<int32_t>>>*, const Box<Box<Box<
         return (::tpy::str_concat("string: ", v));
         break;
     }
-    // case Box(value=Box(value=Box(value=Int32() as n))):
+    // case Box(value=Box(value=Box(value=int32() as n))):
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject_1);
         auto n = __case_1.value.value.value;
@@ -105,7 +105,7 @@ std::string deep3(::tpy::Union<const Box<Box<Box<int32_t>>>*, const Box<Box<Box<
 }
 
 // # --- Positional nested patterns ---
-// def positional_nested(x: Box[str] | Box[Int32]) -> str:
+// def positional_nested(x: Box[str] | Box[int32]) -> str:
 std::string positional_nested(::tpy::Union<const Box<int32_t>*, const Box<std::string>*> x) {
     // match x:
     auto& __match_subject_1 = x;
@@ -118,7 +118,7 @@ std::string positional_nested(::tpy::Union<const Box<int32_t>*, const Box<std::s
         return (::tpy::str_concat("string: ", v));
         break;
     }
-    // case Box(Int32() as n):
+    // case Box(int32() as n):
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject_1);
         auto n = __case_1.value;
@@ -283,10 +283,10 @@ void main() {
     // print(or_nested(f))
     std::cout << or_nested(f.as_const()) << "\n";
     // # 3-deep
-    // g: Box[Box[Box[str]]] | Box[Box[Box[Int32]]] = Box(Box(Box("abc")))
+    // g: Box[Box[Box[str]]] | Box[Box[Box[int32]]] = Box(Box(Box("abc")))
     ::tpy::Union<Box<Box<Box<int32_t>>>, Box<Box<Box<std::string>>>> __slot_6 = Box<Box<Box<std::string>>>(Box<Box<std::string>>(Box<std::string>("abc")));
     ::tpy::Union<Box<Box<Box<int32_t>>>*, Box<Box<Box<std::string>>>*> g = ::tpy::to_ptr_variant(__slot_6);
-    // h: Box[Box[Box[str]]] | Box[Box[Box[Int32]]] = Box(Box(Box(Int32(99))))
+    // h: Box[Box[Box[str]]] | Box[Box[Box[int32]]] = Box(Box(Box(int32(99))))
     ::tpy::Union<Box<Box<Box<int32_t>>>, Box<Box<Box<std::string>>>> __slot_7 = Box<Box<Box<int32_t>>>(Box<Box<int32_t>>(Box<int32_t>(99)));
     ::tpy::Union<Box<Box<Box<int32_t>>>*, Box<Box<Box<std::string>>>*> h = ::tpy::to_ptr_variant(__slot_7);
     // print(deep3(g))
@@ -294,10 +294,10 @@ void main() {
     // print(deep3(h))
     std::cout << deep3(h.as_const()) << "\n";
     // # Positional
-    // i: Box[str] | Box[Int32] = Box("pos")
+    // i: Box[str] | Box[int32] = Box("pos")
     ::tpy::Union<Box<int32_t>, Box<std::string>> __slot_8 = Box<std::string>("pos");
     ::tpy::Union<Box<int32_t>*, Box<std::string>*> i = ::tpy::to_ptr_variant(__slot_8);
-    // j: Box[str] | Box[Int32] = Box(Int32(7))
+    // j: Box[str] | Box[int32] = Box(int32(7))
     ::tpy::Union<Box<int32_t>, Box<std::string>> __slot_9 = Box<int32_t>(7);
     ::tpy::Union<Box<int32_t>*, Box<std::string>*> j = ::tpy::to_ptr_variant(__slot_9);
     // print(positional_nested(i))

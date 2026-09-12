@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // nums: list[Int32] = [1, 2, 3, 4]
+    // nums: list[int32] = [1, 2, 3, 4]
     std::vector<int32_t> nums = {1, 2, 3, 4};
     // print(sum_fast(nums))  # 10
     std::cout << sum_fast(nums) << "\n";

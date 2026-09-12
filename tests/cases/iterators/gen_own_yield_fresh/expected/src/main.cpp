@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def mk(v: Int32) -> Own[Node]:
+// def mk(v: int32) -> Own[Node]:
 Node mk(int32_t v) {
     // return Node(v)
     return Node(::tpy::BigInt(v));
 }
 
-// def mk_row(v: Int32) -> Own[list[Int32]]:
+// def mk_row(v: int32) -> Own[list[int32]]:
 std::vector<int32_t> mk_row(int32_t v) {
     // return [v]
     return {v};
@@ -55,7 +55,7 @@ __gen_fresh_records fresh_records(std::vector<Node>& src) {
     return __gen_fresh_records(src);
 }
 
-// def fresh_rows(src: list[list[Int32]]) -> Iterator[Own[list[Int32]]]:
+// def fresh_rows(src: list[list[int32]]) -> Iterator[Own[list[int32]]]:
 std::expected<std::vector<int32_t>, ::tpy::StopIteration> __gen_fresh_rows::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -89,7 +89,7 @@ std::expected<std::vector<int32_t>, ::tpy::StopIteration> __gen_fresh_rows::__ne
 }
 
 
-// def fresh_rows(src: list[list[Int32]]) -> Iterator[Own[list[Int32]]]:
+// def fresh_rows(src: list[list[int32]]) -> Iterator[Own[list[int32]]]:
 __gen_fresh_rows fresh_rows(std::vector<std::vector<int32_t>>& src) {
     return __gen_fresh_rows(src);
 }
@@ -134,7 +134,7 @@ void main() {
     ::tpy::__getitem__(src, 0).val = ::tpy::BigInt(100);
     // print("free", kept, src[0].val)
     std::cout << "free" << " " << ::tpy::ListPrinter(kept) << " " << ::tpy::__getitem__(src, 0).val << "\n";
-    // rows: list[list[Int32]] = [[1, 2]]
+    // rows: list[list[int32]] = [[1, 2]]
     std::vector<std::vector<int32_t>> rows = {{1, 2}};
     // kept_rows = []
     std::vector<int32_t> kept_rows = std::vector<int32_t>{};

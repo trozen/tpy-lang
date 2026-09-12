@@ -18,7 +18,7 @@ void main();
 
 // class Buf:
 struct Buf {
-    // xs: list[Int32]
+    // xs: list[int32]
     std::vector<int32_t> xs;
 
     // def __init__(self) -> None:
@@ -29,10 +29,10 @@ struct Buf {
     auto begin() const { return this->__span__().begin(); }
     auto end() const { return this->__span__().end(); }
 
-    // def __span__(self) -> Span[readonly[Int32]]:
+    // def __span__(self) -> Span[readonly[int32]]:
     std::span<const int32_t> __span__() const;
 
-    // def own_total(self) -> Int32:
+    // def own_total(self) -> int32:
     int32_t own_total() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Buf";
 };
@@ -46,13 +46,13 @@ inline std::ostream& operator<<(std::ostream& os, const Buf& obj) {
 // def __init__(self) -> None:
 inline Buf::Buf() : xs(std::vector<int32_t>{1, 2}) {}
 
-// def __span__(self) -> Span[readonly[Int32]]:
+// def __span__(self) -> Span[readonly[int32]]:
 inline std::span<const int32_t> Buf::__span__() const {
     // return self.xs
     return ::tpy::as_span(this->xs);
 }
 
-// def own_total(self) -> Int32:
+// def own_total(self) -> int32:
 inline int32_t Buf::own_total() const {
     // return total(self)      # tpyc: ok -- `self` is the indirect receiver
     return total((*this).__span__());

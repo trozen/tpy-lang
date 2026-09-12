@@ -2,11 +2,11 @@
 # selected by the first positional. Subcommand-specific args appear
 # as Optional[T] fields on the top namespace (CPython argparse
 # Namespace shape); the chosen subcommand name lands in args.cmd.
-from tpy import Int32
+from tpy import int32
 from argparse import ArgumentParser
 
 
-def main() -> Int32:
+def main() -> int32:
     parser = ArgumentParser(prog="prog")
     sub = parser.add_subparsers(dest="cmd", required=True)
 

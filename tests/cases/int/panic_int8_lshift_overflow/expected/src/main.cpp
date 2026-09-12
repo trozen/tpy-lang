@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // x: Int8 = Int8(1) << Int8(7)
+    // x: int8 = int8(1) << int8(7)
     int8_t x = (::tpy::lshift_check<int8_t>(1, 7));
     // print(x)
     std::cout << static_cast<int>(x) << "\n";

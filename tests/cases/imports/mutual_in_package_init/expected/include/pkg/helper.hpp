@@ -17,14 +17,14 @@ inline constexpr std::string_view __name__ = "pkg.helper";
 
 // class Boosted:
 struct Boosted {
-    // val: Int32
+    // val: int32
     int32_t val;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Boosted() = default;
     explicit Boosted(int32_t v);
 
-    // def boost(self) -> Int32:
+    // def boost(self) -> int32:
     int32_t boost() const;
     static constexpr std::string_view __tpy_class_name__ = "pkg.helper.Boosted";
 };

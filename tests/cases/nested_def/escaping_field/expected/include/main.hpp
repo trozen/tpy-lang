@@ -15,10 +15,10 @@ void main();
 
 // class Handler:
 struct Handler {
-    // callback: Callable[[Int32], Int32]
+    // callback: Callable[[int32], int32]
     std::function<int32_t(int32_t)> callback;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     explicit Handler(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Handler";
 };
@@ -29,9 +29,9 @@ inline std::ostream& operator<<(std::ostream& os, const Handler& obj) {
 }
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Handler::Handler(int32_t n) {
-    // def add_offset(x: Int32) -> Int32:
+    // def add_offset(x: int32) -> int32:
     auto add_offset = [n](int32_t x) -> int32_t {
         // return x + n
         return (::tpy::add_check<int32_t>(x, n));

@@ -4,10 +4,10 @@
 # yield is exactly what the match-gate protects against on undecomposed
 # compounds).
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
-def sign_stream(n: Int32) -> Iterator[Int32]:
+def sign_stream(n: int32) -> Iterator[int32]:
     yield 0
     if n > 0:
         yield 1

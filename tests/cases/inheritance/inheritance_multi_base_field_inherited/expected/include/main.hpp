@@ -18,7 +18,7 @@ void main();
 
 // class Root:
 struct Root {
-    // token: Int32
+    // token: int32
     int32_t token;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.Root";

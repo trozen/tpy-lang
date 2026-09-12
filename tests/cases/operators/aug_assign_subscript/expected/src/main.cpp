@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def test_list_aug_assign() -> None:
 void test_list_aug_assign() {
-    // nums: list[Int32] = [1, 2, 3]
+    // nums: list[int32] = [1, 2, 3]
     std::vector<int32_t> nums = {1, 2, 3};
     // nums[0] += 10
     ::tpy::__setitem__(nums, 0, ::tpy::add_check<int32_t>(::tpy::__getitem__(nums, 0), 10));
@@ -24,7 +24,7 @@ void test_list_aug_assign() {
 
 // def test_arraylist_aug_assign() -> None:
 void test_arraylist_aug_assign() {
-    // items = ArrayList[Int32, 4]()
+    // items = ArrayList[int32, 4]()
     ::tpystd::tplib::array_list::ArrayList<int32_t, 4> items = ::tpystd::tplib::array_list::ArrayList<int32_t, 4>();
     // items.append(100)
     items.append(100);
@@ -42,7 +42,7 @@ void test_arraylist_aug_assign() {
 
 // def test_negative_index_aug_assign() -> None:
 void test_negative_index_aug_assign() {
-    // nums: list[Int32] = [10, 20, 30]
+    // nums: list[int32] = [10, 20, 30]
     std::vector<int32_t> nums = {10, 20, 30};
     // nums[-1] += 5
     ::tpy::__setitem__(nums, -1, ::tpy::add_check<int32_t>(::tpy::__getitem__(nums, -1), 5));
@@ -56,7 +56,7 @@ void test_negative_index_aug_assign() {
 
 // def test_array_aug_assign() -> None:
 void test_array_aug_assign() {
-    // arr: Array[Int32, 3] = [10, 20, 30]
+    // arr: Array[int32, 3] = [10, 20, 30]
     std::array<int32_t, 3> arr = {10, 20, 30};
     // arr[0] += 5
     ::tpy::__setitem__(arr, 0, ::tpy::add_check<int32_t>(::tpy::__getitem__(arr, 0), 5));

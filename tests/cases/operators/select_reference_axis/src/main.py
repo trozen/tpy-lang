@@ -10,41 +10,41 @@
 # legs write through `v` and read the operand back in the caller. The list and
 # dict legs carry @nocopy elements instead, so a copying render fails the C++
 # build; that is the only lever they have, since a `set` element must be
-# copy-constructible and a `bytearray` element is always UInt8.
-from tpy import Int32, Array, nocopy
+# copy-constructible and a `bytearray` element is always uint8.
+from tpy import int32, Array, nocopy
 
 
 @nocopy
 class Tag:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
-def pick_list(a: list[Tag], b: list[Tag]) -> Int32:
+def pick_list(a: list[Tag], b: list[Tag]) -> int32:
     v = a or b  # tpyc: ok
     return len(v)
 
 
-def pick_dict(a: dict[str, Tag], b: dict[str, Tag]) -> Int32:
+def pick_dict(a: dict[str, Tag], b: dict[str, Tag]) -> int32:
     v = a or b  # tpyc: ok
     return len(v)
 
 
-def pick_set(a: set[Int32], b: set[Int32]) -> Int32:
+def pick_set(a: set[int32], b: set[int32]) -> int32:
     v = a or b  # tpyc: ok
     v.add(5)
     return len(v)
 
 
-def pick_bytearray(a: bytearray, b: bytearray) -> Int32:
+def pick_bytearray(a: bytearray, b: bytearray) -> int32:
     v = a or b  # tpyc: ok
     v.append(90)
     return len(v)
 
 
-def pick_array(a: Array[Int32, 2], b: Array[Int32, 2]) -> Int32:
+def pick_array(a: Array[int32, 2], b: Array[int32, 2]) -> int32:
     # An Array is never empty, so `or` always yields the left operand; the
     # write through the result is what proves which one it aliases.
     v = a or b  # tpyc: ok
@@ -61,7 +61,7 @@ def main() -> None:
     d1: dict[str, Tag] = {"a": Tag(1)}
     print(pick_dict(de, d1))
 
-    se: set[Int32] = set()
+    se: set[int32] = set()
     s1 = {1, 2}
     print(pick_set(se, s1))
     print(len(s1), len(se))          # the add landed on s1, not on se
@@ -71,8 +71,8 @@ def main() -> None:
     print(pick_bytearray(be, b1))
     print(len(b1), len(be))
 
-    a1 = Array[Int32, 2]([7, 8])
-    a2 = Array[Int32, 2]([1, 2])
+    a1 = Array[int32, 2]([7, 8])
+    a2 = Array[int32, 2]([1, 2])
     print(pick_array(a1, a2))
     print(a1[0], a2[0])              # the write landed on a1, not on a2
 

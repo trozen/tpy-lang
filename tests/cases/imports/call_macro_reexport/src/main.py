@@ -4,12 +4,12 @@
 # decorators; this test guards the call-macro and builder-macro
 # paths after the post-Phase-8 review fix.
 from utils import dataclass, asdict
-from tpy import Int32
+from tpy import int32
 
 @dataclass
 class Pair:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-p = Pair(Int32(3), Int32(4))
+p = Pair(int32(3), int32(4))
 print(asdict(p))

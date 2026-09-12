@@ -1,16 +1,16 @@
 # A record NAME at a `list[Record | None]` element slot: the optional inner would
 # need the pointer-local deref plus last-use move threaded through it.
-from tpy import Int32
+from tpy import int32
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
-def wrap(p: Point) -> Int32:
+def wrap(p: Point) -> int32:
     xs: list[Point | None] = [p]  # tpyc: error(/container_literal/)
     return len(xs)
 

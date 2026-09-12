@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // # value payload: the clone is trivially independent.
 // def sec_value() -> None:
 void sec_value() {
-    // b = Box[Int32](1)
+    // b = Box[int32](1)
     ::tpystd::tplib::box::Box<int32_t> b = ::tpystd::tplib::box::Box<int32_t>(1);
     // c = b.clone()  # tpyc: ok
     ::tpystd::tplib::box::Box<int32_t> c = b.clone();

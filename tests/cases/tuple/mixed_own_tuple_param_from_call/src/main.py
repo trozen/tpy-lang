@@ -4,13 +4,13 @@
 # straight into it with no form conversion in either direction: it is already
 # the borrow form the slot wants, and lifting it to storage would hand the slot
 # the wrong shape.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Box:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
@@ -22,15 +22,15 @@ def make_owned() -> tuple[Own[Box], Own[Box]]:
     return (Box(10), Box(20))
 
 
-def take_mixed(p: tuple[Own[Box], Box]) -> Int32:
+def take_mixed(p: tuple[Own[Box], Box]) -> int32:
     return p[0].n + p[1].n
 
 
-def take_owned(p: tuple[Own[Box], Own[Box]]) -> Int32:
+def take_owned(p: tuple[Own[Box], Own[Box]]) -> int32:
     return p[0].n + p[1].n
 
 
-def relay(b: Box) -> Int32:
+def relay(b: Box) -> int32:
     # The param forwards onward as a param -- still no conversion.
     return take_mixed(make_mixed(b))
 

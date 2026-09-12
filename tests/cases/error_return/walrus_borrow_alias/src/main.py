@@ -1,7 +1,7 @@
 # A walrus-bound borrow aliases its source like a statement binding: in a
 # return-tier try (plain and @error_return callees), in while/if conditions
 # (per-iteration rebind; used after); @readonly binds const; rvalue stays owned.
-from tpy import Int32, error_return, ReturnException, readonly, Own
+from tpy import int32, error_return, ReturnException, readonly, Own
 
 
 class E(Exception, ReturnException):
@@ -9,24 +9,24 @@ class E(Exception, ReturnException):
 
 
 class H:
-    items: list[Int32]
+    items: list[int32]
 
     def __init__(self) -> None:
         self.items = [1, 2]
 
-    def view(self) -> list[Int32]:
+    def view(self) -> list[int32]:
         return self.items
 
     @readonly
-    def rview(self) -> list[Int32]:
+    def rview(self) -> list[int32]:
         return self.items
 
     @error_return(E)
-    def poke(self) -> Int32:
+    def poke(self) -> int32:
         return 1
 
     @error_return(E)
-    def er_view(self) -> list[Int32]:
+    def er_view(self) -> list[int32]:
         return self.items
 
 
@@ -68,7 +68,7 @@ def readonly_walrus(h: H) -> None:
         print(r[0])
 
 
-def make() -> Own[list[Int32]]:
+def make() -> Own[list[int32]]:
     xs = [10, 20]
     return xs
 

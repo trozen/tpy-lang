@@ -15,13 +15,13 @@ void main();
 
 // class Counter:
 struct Counter {
-    // count: Int32
+    // count: int32
     int32_t count;
 
-    // def __init__(self, start: Int32 = Int32(0)) -> None:
+    // def __init__(self, start: int32 = int32(0)) -> None:
     explicit Counter(int32_t start = 0);
 
-    // def increment(self, amount: Int32 = Int32(1)) -> None:
+    // def increment(self, amount: int32 = int32(1)) -> None:
     void increment(int32_t amount = 1);
 
     // def display(self, prefix: str = "count") -> None:
@@ -35,10 +35,10 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 }
 
 
-// def __init__(self, start: Int32 = Int32(0)) -> None:
+// def __init__(self, start: int32 = int32(0)) -> None:
 inline Counter::Counter(int32_t start) : count(start) {}
 
-// def increment(self, amount: Int32 = Int32(1)) -> None:
+// def increment(self, amount: int32 = int32(1)) -> None:
 inline void Counter::increment(int32_t amount) {
     // self.count = self.count + amount
     this->count = (::tpy::add_check<int32_t>(this->count, amount));

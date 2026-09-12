@@ -21,7 +21,7 @@ struct Cat {
     // self.n = n
     int64_t n;
 
-    // def __init__(self, n: Int64) -> None:
+    // def __init__(self, n: int64) -> None:
     Cat() = default;
     explicit Cat(int64_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cat";
@@ -37,7 +37,7 @@ struct Dog {
     // self.n = n
     int64_t n;
 
-    // def __init__(self, n: Int64) -> None:
+    // def __init__(self, n: int64) -> None:
     Dog() = default;
     explicit Dog(int64_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
@@ -50,14 +50,14 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 
 // class Base:
 struct Base {
-    // tag: Int64
+    // tag: int64
     int64_t tag;
     // has_pet: bool
     bool has_pet;
 
     // # `Cat | Dog | None` is a POINTER-repr union, whose None still spells `{}`
     // # (monostate is the first alternative in both reprs), not `nullptr`.
-    // def __init__(self, tag: Int64, pet: Cat | Dog | None = None) -> None:
+    // def __init__(self, tag: int64, pet: Cat | Dog | None = None) -> None:
     Base() = default;
     explicit Base(int64_t tag, ::tpy::Union<std::monostate, const Cat*, const Dog*> pet = {});
     static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
@@ -71,7 +71,7 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
 // class Sub(Base):
 struct Sub : Base {
 
-    // def __init__(self, tag: Int64) -> None:
+    // def __init__(self, tag: int64) -> None:
     Sub() = default;
     explicit Sub(int64_t tag);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Sub";
@@ -83,18 +83,18 @@ inline std::ostream& operator<<(std::ostream& os, const Sub& obj) {
 }
 
 
-// def __init__(self, n: Int64) -> None:
+// def __init__(self, n: int64) -> None:
 inline Cat::Cat(int64_t n) : n(n) {}
 
-// def __init__(self, n: Int64) -> None:
+// def __init__(self, n: int64) -> None:
 inline Dog::Dog(int64_t n) : n(n) {}
 
 // # `Cat | Dog | None` is a POINTER-repr union, whose None still spells `{}`
 // # (monostate is the first alternative in both reprs), not `nullptr`.
-// def __init__(self, tag: Int64, pet: Cat | Dog | None = None) -> None:
+// def __init__(self, tag: int64, pet: Cat | Dog | None = None) -> None:
 inline Base::Base(int64_t tag, ::tpy::Union<std::monostate, const Cat*, const Dog*> pet) : tag(tag), has_pet((!std::holds_alternative<std::monostate>(pet))) {}
 
-// def __init__(self, tag: Int64) -> None:
+// def __init__(self, tag: int64) -> None:
 inline Sub::Sub(int64_t tag) : Base(tag, {}) {}
 void __tpy_init();
 } // namespace tpyapp::main

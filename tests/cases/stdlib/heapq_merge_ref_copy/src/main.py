@@ -4,12 +4,12 @@
 # distinct objects emit in input order (stable), observable here because the
 # two key-1 items carry different tags.
 import heapq
-from tpy import Int32
+from tpy import int32
 
 class Item:
-    key: Int32
-    tag: Int32
-    def __init__(self, key: Int32, tag: Int32) -> None:
+    key: int32
+    tag: int32
+    def __init__(self, key: int32, tag: int32) -> None:
         self.key = key
         self.tag = tag
     def __lt__(self, other: 'Item') -> bool:

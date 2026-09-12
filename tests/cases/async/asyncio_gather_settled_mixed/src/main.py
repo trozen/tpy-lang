@@ -6,24 +6,24 @@
 # a slice-to-BaseException regression would miss the `except ValueError` arm
 # and hit the fallback.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
-async def good(n: Int32) -> Int32:
+async def good(n: int32) -> int32:
     await asyncio.sleep(0.001)
     return n
 
 
-async def bad() -> Int32:
+async def bad() -> int32:
     await asyncio.sleep(0.001)
     raise ValueError("boom")
 
 
 async def main_coro() -> None:
-    tasks: list[asyncio.Task[Int32]] = []
-    tasks.append(asyncio.create_task(good(Int32(1))))
+    tasks: list[asyncio.Task[int32]] = []
+    tasks.append(asyncio.create_task(good(int32(1))))
     tasks.append(asyncio.create_task(bad()))
-    tasks.append(asyncio.create_task(good(Int32(3))))
+    tasks.append(asyncio.create_task(good(int32(3))))
     results = await asyncio.gather_list_settled(tasks)
     for r in results:
         if r.exception is not None:

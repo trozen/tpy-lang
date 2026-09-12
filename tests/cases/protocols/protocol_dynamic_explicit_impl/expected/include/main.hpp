@@ -38,17 +38,17 @@ void main();
 struct Item : Describable {
     // _name: str
     std::string _name;
-    // _id: Int32
+    // _id: int32
     int32_t _id;
 
-    // def __init__(self, name: str, id: Int32) -> None:
+    // def __init__(self, name: str, id: int32) -> None:
     Item() = default;
     explicit Item(std::string_view name, int32_t id);
 
     // def describe(self) -> str:
     std::string describe() override;
 
-    // def id(self) -> Int32:
+    // def id(self) -> int32:
     int32_t id() override;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Item";
 };
@@ -80,7 +80,7 @@ struct tpy::RefAdapter<tpyapp::main::Describable, T> : tpyapp::main::Describable
 namespace tpyapp::main {
 
 
-// def __init__(self, name: str, id: Int32) -> None:
+// def __init__(self, name: str, id: int32) -> None:
 inline Item::Item(std::string_view name, int32_t id) : _name(name), _id(id) {}
 
 // def describe(self) -> str:
@@ -89,7 +89,7 @@ inline std::string Item::describe() {
     return this->_name;
 }
 
-// def id(self) -> Int32:
+// def id(self) -> int32:
 inline int32_t Item::id() {
     // return self._id
     return this->_id;

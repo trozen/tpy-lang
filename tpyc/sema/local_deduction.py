@@ -250,7 +250,7 @@ class LocalTypeDeduction:
             return existing_type
 
         # Literal-seeded default (ctx.default_int_type) may be refined by
-        # explicit later writes (e.g., BigInt/Int64/Float anchors).
+        # explicit later writes (e.g., BigInt/int64/Float anchors).
         if name in self.ctx.func.literal_default_vars:
             merged = merge_literal_seed_target(existing_type, init_type, self.ctx.func.literal_values.get(name, []))
             if merged is not None:
@@ -289,10 +289,10 @@ class LocalTypeDeduction:
         fit the target -- promote (try_retro_widen_literal_arg) or raise
         a range error (TypeCompatibility._maybe_raise_literal_local_range).
 
-        Standard fixed-int widening (Int32->Int64 etc.) already has a
+        Standard fixed-int widening (int32->int64 etc.) already has a
         Coercion entry, so we only step in when the directional COERCIONS
         table has nothing for actual->target. widen_numeric_types is a
-        symmetric common-merge predicate (Int32+UInt8 -> Int32 either
+        symmetric common-merge predicate (int32+uint8 -> int32 either
         order) and would mis-gate this.
         """
         if name not in self.ctx.func.literal_default_vars:

@@ -1,10 +1,10 @@
 # Mix of reference and owned elements in return tuple
-from tpy import Int32, Own, copy
+from tpy import int32, Own, copy
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32) -> None:
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
     def __repr__(self) -> str:
@@ -14,12 +14,12 @@ def split(p: Point) -> tuple[Point, Own[Point]]:
     return (p, copy(p))
 
 def main() -> None:
-    p = Point(Int32(1), Int32(2))
+    p = Point(int32(1), int32(2))
     ref, owned = split(p)
     print(ref)
     print(owned)
     # Mutation visible through ref, not through owned copy
-    p.x = Int32(99)
+    p.x = int32(99)
     print(ref)
     print(owned)
 

@@ -8,21 +8,21 @@ namespace tpyapp::b {
 
 
 // @overload
-// def g(x: Int32) -> Int32: ...
+// def g(x: int32) -> int32: ...
 int32_t g(int32_t x) {
     // return x * 2
     return (::tpy::mul_check<int32_t>(x, 2));
 }
 
 // @overload
-// def g(x: str) -> Int32: ...
+// def g(x: str) -> int32: ...
 int32_t g(std::string_view x) {
-    // return Int32(len(x))
+    // return int32(len(x))
     return ::tpy::__len__(x);
 }
 
 
-// def relay(n: Int32) -> Int32:
+// def relay(n: int32) -> int32:
 int32_t relay(int32_t n) {
     // return use_g_int(n)
     return ::tpyapp::a::use_g_int(n);

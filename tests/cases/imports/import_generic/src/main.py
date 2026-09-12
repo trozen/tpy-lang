@@ -1,9 +1,9 @@
-from tpy import Int32
+from tpy import int32
 from container import Box
 
-def main() -> Int32:
-    b: Box[Int32] = Box(Int32(42))
+def main() -> int32:
+    b: Box[int32] = Box(int32(42))
     print(b.value)
-    return Int32(0)
+    return int32(0)
 
 main()

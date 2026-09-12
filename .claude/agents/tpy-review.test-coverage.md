@@ -44,7 +44,7 @@ You may NOT run `uv run pytest`. Surface coverage concerns as findings.
 - `# tpyc: warning(/regex/)` annotations on lines that should warn
 - `# tpyc: type(...)` annotations where inferred type is the test point
 - `# tpyc: non_null(var)` / `nullable(var)` annotations on deref sites where applicable
-- Test literal style: plain literals (`1`, `"hello"`, `{1, 2}`) over explicit constructors (`Int32(1)`) when the type is inferable
+- Test literal style: plain literals (`1`, `"hello"`, `{1, 2}`) over explicit constructors (`int32(1)`) when the type is inferable
 
 **Condensed cases (corpus size is a cost)**
 - One case per fix or feature, with one section per covered position (the `docs/PITFALLS.md` list: free function, method, constructor, module-level statement, generator body, async body, comprehension, closure, context-manager body, `try`/`finally`, `@error_return` body, `match` arm) under a one-line comment naming the position and the `# tpyc:` annotation on the subject line; output lines prefixed with the section name. Flag a new case whose subject already has a condensed sibling, and a fix whose report's scope matrix names a position no section covers.

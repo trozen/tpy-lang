@@ -10,13 +10,13 @@ std::tuple<T*, T*> make_pair(T& a, T& b) {
     return std::tuple<T*, T*>{&(a), &(b)};
 }
 
-// def consume(p: tuple[T | None, T | None]) -> Int32:
+// def consume(p: tuple[T | None, T | None]) -> int32:
 int32_t consume(const std::tuple<const T*, const T*>& p) {
     // a, b = p
     auto& __tup_1 = p;
     const T* a = std::get<0>(__tup_1);
     const T* b = std::get<1>(__tup_1);
-    // total = Int32(0)
+    // total = int32(0)
     int32_t total = 0;
     // if a is not None:
     if ((a != nullptr)) {

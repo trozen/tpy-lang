@@ -3,11 +3,11 @@
 import asyncio
 from typing import Iterator
 
-from tpy import Int32, Own, ReturnException, error_return
+from tpy import int32, Own, ReturnException, error_return
 
 
 # Free functions: original subjects, isinstance twins, and runtime BigInt indices.
-def string_reads(x: str | Int32, index: int) -> None:
+def string_reads(x: str | int32, index: int) -> None:
     match x:
         case str():
             print("str-match", x[0], x[-1], x[index])  # tpyc: ok
@@ -27,7 +27,7 @@ def string_reads(x: str | Int32, index: int) -> None:
 
 
 class Indexed:
-    def __getitem__(self, index: Int32) -> Int32:
+    def __getitem__(self, index: int32) -> int32:
         return index + 20
 
 
@@ -47,7 +47,7 @@ def bytes_reads(x: bytes | Indexed, index: int) -> None:
 
 
 # BUGS.md#bytes-value-union-boundary-rejects blocks callers; this body still builds.
-def bytes_value_union(x: bytes | Int32) -> None:
+def bytes_value_union(x: bytes | int32) -> None:
     match x:
         case bytes():
             print("bytes-value-union", x[0])  # tpyc: ok
@@ -55,7 +55,7 @@ def bytes_value_union(x: bytes | Int32) -> None:
             pass
 
 
-def bytearray_reads(x: bytearray | Int32, index: int) -> None:
+def bytearray_reads(x: bytearray | int32, index: int) -> None:
     match x:
         case bytearray():
             print("bytearray-match", x[0], x[-1], x[index])  # tpyc: ok
@@ -74,7 +74,7 @@ def bytearray_reads(x: bytearray | Int32, index: int) -> None:
 
 
 # As-captures and guarded arms use different narrowing producers.
-def capture_reads(x: str | Int32, allowed: bool) -> None:
+def capture_reads(x: str | int32, allowed: bool) -> None:
     match x:
         case str() as captured if allowed:
             print("capture", captured[0], captured[-1])  # tpyc: ok
@@ -92,7 +92,7 @@ def generic_read[T](marker: T) -> None:
 
 
 # A generic enclosing body and scalar/tuple sinks keep the same indexed value.
-def monomorphic_read(marker: Int32) -> None:
+def monomorphic_read(marker: int32) -> None:
     x = union_text(True)
     match x:
         case str():
@@ -101,7 +101,7 @@ def monomorphic_read(marker: Int32) -> None:
             pass
 
 
-def tuple_reads(x: bytearray | Int32) -> None:
+def tuple_reads(x: bytearray | int32) -> None:
     match x:
         case bytearray():
             one = (x[0],)  # tpyc: ok
@@ -115,7 +115,7 @@ class Reader:
     value: str
 
     # Constructor: the indexed scalar is consumed by a field store.
-    def __init__(self, x: str | Int32) -> None:
+    def __init__(self, x: str | int32) -> None:
         self.value = ""
         match x:
             case str():
@@ -124,7 +124,7 @@ class Reader:
                 pass
 
     # Method: readonly receiver inference must not affect scalar indexing.
-    def read(self, x: str | Int32) -> str:
+    def read(self, x: str | int32) -> str:
         match x:
             case str():
                 return str(x[-1])  # tpyc: ok
@@ -133,7 +133,7 @@ class Reader:
 
 
 # Generator: reads on both sides of a suspension use the extracted member.
-def generate(x: bytearray | Int32) -> Iterator[Int32]:
+def generate(x: bytearray | int32) -> Iterator[int32]:
     match x:
         case bytearray():
             yield x[0]  # tpyc: ok
@@ -143,7 +143,7 @@ def generate(x: bytearray | Int32) -> Iterator[Int32]:
 
 
 # Async: a resumed arm restores the same member-specific indexing route.
-async def async_read(x: bytearray | Int32) -> Int32:
+async def async_read(x: bytearray | int32) -> int32:
     match x:
         case bytearray():
             first = x[0]  # tpyc: ok
@@ -154,7 +154,7 @@ async def async_read(x: bytearray | Int32) -> Int32:
 
 
 # Comprehension: each element consumes the scalar, not the original union.
-def comprehension(x: bytearray | Int32) -> None:
+def comprehension(x: bytearray | int32) -> None:
     match x:
         case bytearray():
             values = [x[i] for i in range(3)]  # tpyc: ok
@@ -163,7 +163,7 @@ def comprehension(x: bytearray | Int32) -> None:
             pass
 
 
-def union_text(choose_text: bool) -> str | Int32:
+def union_text(choose_text: bool) -> str | int32:
     if choose_text:
         return "abc"
     return 1
@@ -192,7 +192,7 @@ class Guard:
 
 
 # Context-manager, try and finally bodies preserve the extraction alias.
-def cleanup_reads(x: str | Int32) -> None:
+def cleanup_reads(x: str | int32) -> None:
     match x:
         case str():
             with Guard():
@@ -211,7 +211,7 @@ class Err(Exception, ReturnException):
 
 # Error-return body: the normal result remains a scalar value.
 @error_return(Err)
-def error_read(x: bytearray | Int32) -> Int32:
+def error_read(x: bytearray | int32) -> int32:
     match x:
         case bytearray():
             return x[1]  # tpyc: ok
@@ -220,18 +220,18 @@ def error_read(x: bytearray | Int32) -> Int32:
 
 
 class Counter:
-    calls: Int32
+    calls: int32
 
     def __init__(self) -> None:
         self.calls = 0
 
-    def index(self) -> Int32:
+    def index(self) -> int32:
         self.calls += 1
         return 1
 
 
 # Conditional operands: skipped reads cannot throw or evaluate their index.
-def conditional_reads(x: str | Int32, counter: Counter) -> None:
+def conditional_reads(x: str | int32, counter: Counter) -> None:
     match x:
         case str():
             print("and", False and x[99] == "x")  # tpyc: ok
@@ -243,7 +243,7 @@ def conditional_reads(x: str | Int32, counter: Counter) -> None:
 
 
 # Sibling controls: container and record dispatch already admit narrowed reads.
-def list_read(x: list[Int32] | Int32) -> None:
+def list_read(x: list[int32] | int32) -> None:
     match x:
         case list():
             print("list", x[0], x[-1])  # tpyc: ok
@@ -255,7 +255,7 @@ def list_read(x: list[Int32] | Int32) -> None:
             pass
 
 
-def dict_read(x: dict[Int32, Int32] | Int32) -> None:
+def dict_read(x: dict[int32, int32] | int32) -> None:
     match x:
         case dict():
             print("dict", x[0])  # tpyc: ok
@@ -267,7 +267,7 @@ def dict_read(x: dict[Int32, Int32] | Int32) -> None:
             pass
 
 
-def record_read(x: Indexed | Int32) -> None:
+def record_read(x: Indexed | int32) -> None:
     match x:
         case Indexed():
             print("record", x[0])  # tpyc: ok
@@ -275,18 +275,18 @@ def record_read(x: Indexed | Int32) -> None:
             pass
 
 
-def make_buffer() -> Own[bytearray | Int32]:
+def make_buffer() -> Own[bytearray | int32]:
     buffer = bytearray(b"abc")
     return buffer
 
 
-def make_list() -> Own[list[Int32] | Int32]:
-    items: list[Int32] = [10, 20]
+def make_list() -> Own[list[int32] | int32]:
+    items: list[int32] = [10, 20]
     return items
 
 
 def main() -> None:
-    text: str | Int32 = "abc"
+    text: str | int32 = "abc"
     buffer = make_buffer()
     index = int("1")
     string_reads(text, index)

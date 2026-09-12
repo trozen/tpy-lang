@@ -17,10 +17,10 @@ void main();
 // @nocopy
 // class Handle:
 struct Handle {
-    // id: Int32
+    // id: int32
     int32_t id;
 
-    // def __init__(self, id: Int32):
+    // def __init__(self, id: int32):
     Handle() = default;
     explicit Handle(int32_t id);
     // non-copyable (@nocopy)
@@ -40,10 +40,10 @@ inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
 struct Owner {
     // h: Handle
     Handle h;
-    // tag: Int32
+    // tag: int32
     int32_t tag;
 
-    // def __init__(self, id: Int32, tag: Int32):
+    // def __init__(self, id: int32, tag: int32):
     Owner() = default;
     explicit Owner(int32_t id, int32_t tag);
     // non-copyable (field 'h')
@@ -60,10 +60,10 @@ inline std::ostream& operator<<(std::ostream& os, const Owner& obj) {
 }
 
 
-// def __init__(self, id: Int32):
+// def __init__(self, id: int32):
 inline Handle::Handle(int32_t id) : id(id) {}
 
-// def __init__(self, id: Int32, tag: Int32):
+// def __init__(self, id: int32, tag: int32):
 inline Owner::Owner(int32_t id, int32_t tag) : h(Handle(id)), tag(tag) {}
 void __tpy_init();
 } // namespace tpyapp::main

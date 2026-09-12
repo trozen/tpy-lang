@@ -1,9 +1,9 @@
-from tpy import Int32
+from tpy import int32
 
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 
 # Global with the same name as the local below

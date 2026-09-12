@@ -1,11 +1,11 @@
-from tpy import Int32, Own
+from tpy import int32, Own
 class A:
-    n: Int32
-    def __init__(self, n: Int32) -> None:
+    n: int32
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 from tplib import Box
-def describe(a: A) -> Int32:
+def describe(a: A) -> int32:
     return a.n
 
 b = Box(A(3))

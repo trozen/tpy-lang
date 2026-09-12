@@ -4,7 +4,7 @@
 namespace tpyapp::asyncmod {
 
 
-// async def ping() -> Int32:
+// async def ping() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_ping::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -29,12 +29,12 @@ namespace tpyapp::asyncmod {
 }
 
 
-// async def ping() -> Int32:
+// async def ping() -> int32:
 __coro_ping ping() {
     return __coro_ping();
 }
 
-// async def add(a: Int32, b: Int32) -> Int32:
+// async def add(a: int32, b: int32) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_add::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -59,7 +59,7 @@ __coro_ping ping() {
 }
 
 
-// async def add(a: Int32, b: Int32) -> Int32:
+// async def add(a: int32, b: int32) -> int32:
 __coro_add add(int32_t a, int32_t b) {
     return __coro_add(a, b);
 }

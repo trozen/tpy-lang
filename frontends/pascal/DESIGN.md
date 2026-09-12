@@ -98,7 +98,7 @@ TPy-core changes.
   `check_subrange(...)` at assignment sites and at array index
   sites. Always-on (no `{$R+}` / `{$R-}` directive handling).
 - **Ranges in `case`** (M12, M14.5, shipped): `case x of 1..5: ...`.
-  Integer / Char ranges lower to a guarded `MatchWildcard` arm
+  Integer / char ranges lower to a guarded `MatchWildcard` arm
   (`case _ if lo <= x <= hi:`); enum-typed ranges expand to one
   `MatchValue` arm per enum member in the closed interval (no
   ordering comparisons on enums required). Scalar labels stay
@@ -172,7 +172,7 @@ TPy-core changes.
   `CloseGraph`, `SetColor`, `SetBkColor`, `ClearDevice`,
   `PutPixel`, `GetPixel`, `Line`, `Rectangle`, `Bar`, `Circle`,
   `GetMaxX`, `GetMaxY`. All drawing is pure TPy against a packed-
-  Int32 RGB pixel buffer (the TP7 16-color palette resolves to
+  int32 RGB pixel buffer (the TP7 16-color palette resolves to
   `0xRRGGBB` literals at SetColor time). `CloseGraph` dumps the
   canvas to a P3 PPM (`out.ppm` in the program's cwd, which under
   the test harness is a per-run scratch dir removed after the run
@@ -231,10 +231,10 @@ TPy-core changes.
 
 | Pascal | TPy IR | Notes |
 |---|---|---|
-| `integer` | `NamedType("Int32")` | configurable via `--default-int`, but plugin emits `Int32` by default for parity with classic TP |
+| `integer` | `NamedType("int32")` | configurable via `--default-int`, but plugin emits `int32` by default for parity with classic TP |
 | `real`, `double` | `NamedType("float")` | TP `real` is 6-byte float on x86; we don't preserve that |
 | `boolean` | `NamedType("bool")` | |
-| `char` | `NamedType("Char")` | |
+| `char` | `NamedType("char")` | |
 | `string` (no `[N]`) | `NamedType("FixStr", [IntTypeArg(255)])` | classic TP default |
 | `string[N]` | `NamedType("FixStr", [IntTypeArg(N)])` | custom capacity |
 | `array[lo..hi] of T` | `NamedType("Array", [TypeTypeArg(T), IntTypeArg(hi - lo + 1)])` | bounds folded; non-1-based bases lower to a translator-managed offset on every index |
@@ -337,7 +337,7 @@ This is where Pascal-specific behaviors get lowered:
   literals lower to `FixStr` constructor calls.
 - **Enum identity**: TP enums are integer-backed; succ/pred work via
   ord arithmetic. The translator emits enum classes with backing
-  `Int32` and a runtime helper for `succ` / `pred`.
+  `int32` and a runtime helper for `succ` / `pred`.
 - **Built-in routing**: `write` / `writeln` / `read` / `readln` /
   `length` / `inc` / `dec` / etc. don't map to TPy stdlib directly
   -- they become calls into `pascal.runtime.io` (`writeln` formats
@@ -424,7 +424,7 @@ TODOs the tier needs.
    minimal lexer/parser/translator + runtime `writeln(StrView)`.
 2. **Integer arithmetic + `var`.** Compute and print integer
    expressions. Adds `var` decl, integer literals, arithmetic
-   operators, `writeln(Int32)`.
+   operators, `writeln(int32)`.
 3. **Control flow.** `if/then/else`, `while`, `repeat/until`,
    `for/to/downto`. End-to-end program: print primes / FizzBuzz.
 4. **Procedures + functions.** Value parameters, `var`
@@ -480,7 +480,7 @@ TODOs the tier needs.
     functions lifted to module-level with mangled names.
 18. **Procedural types + typed-record-consts.** `type Fn =
     procedure(x: integer);` introduces a procedural type alias
-    backed by TPy `Callable[[Int32], None]`; values can be
+    backed by TPy `Callable[[int32], None]`; values can be
     assigned (`f := proc`) and called through (`f(x)`). Typed-
     record-consts (`const p: Point = (x: 1; y: 2);`) emit a
     default-constructed record plus per-field assignments --
@@ -527,13 +527,13 @@ several `no_cpython.txt` markers).
   `no_cpython.txt`; a few simple ones may be made compatible via the
   plugin emitting CPython-friendly Python that mimics TP. Decide
   per-test, lean on `no_cpython.txt` when in doubt.
-- **Default `--default-int` interaction.** Plugin emits `Int32` for
+- **Default `--default-int` interaction.** Plugin emits `int32` for
   Pascal `integer` regardless of TPy's `--default-int` flag. Confirm
   this is the right call; alternative is "respect `--default-int`
-  for type inference, but Pascal `integer` is always `Int32`".
+  for type inference, but Pascal `integer` is always `int32`".
 - **Pascal numeric overflow semantics.** TP's `integer` overflow is
   modular wrap (`{$Q+}` enables overflow checks). v1 uses TPy's
-  default (likely `Int32` wrap-on-overflow); document the mismatch.
+  default (likely `int32` wrap-on-overflow); document the mismatch.
 - **Real-number literal precision.** TP `real` is 6-byte; we map to
   `float` (8-byte IEEE 754). Edge cases around precision-sensitive
   arithmetic could differ from TP. Acceptable for the POC; document

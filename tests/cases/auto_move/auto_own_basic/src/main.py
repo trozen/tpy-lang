@@ -2,11 +2,11 @@
 # Consuming dispatch only happens for __iter__ via for-loop detection;
 # general method calls always use the borrowing overload.
 from typing import Self
-from tpy import Int32, auto_own, copy
+from tpy import int32, auto_own, copy
 
 class Node:
-    val: Int32
-    def __init__(self, val: Int32) -> None:
+    val: int32
+    def __init__(self, val: int32) -> None:
         self.val = val
 
 class Pair[T]:

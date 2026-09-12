@@ -9,12 +9,12 @@
 # declared divergence from CPython, where the field would alias the caller's
 # buffer, so the case does not mutate through the field afterwards -- doing so
 # would make the two runs print different lengths.
-from tpy import Int32
+from tpy import int32
 
 
 class Empty:
     buf: bytearray
-    tags: list[Int32]
+    tags: list[int32]
 
     def __init__(self) -> None:
         self.buf = bytearray()  # tpyc: ok
@@ -31,7 +31,7 @@ class Seeded:
 class Sized:
     buf: bytearray
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.buf = bytearray(n)  # tpyc: ok
 
 

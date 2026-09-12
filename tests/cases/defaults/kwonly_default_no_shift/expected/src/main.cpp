@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def combine(a: Int64, b: Int64 = 10, *, c: Int64 = 20) -> Int64:
+// def combine(a: int64, b: int64 = 10, *, c: int64 = 20) -> int64:
 int64_t combine(int64_t a, int64_t b, int64_t c) {
     // return a * 10000 + b * 100 + c
     return (::tpy::add_check<int64_t>((::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(a, 10000)), (::tpy::mul_check<int64_t>(b, 100)))), c));
 }
 
-// def partial(a: Int64, b: Int64 = 10, c: Int64 = 30, *, d: Int64 = 40) -> Int64:
+// def partial(a: int64, b: int64 = 10, c: int64 = 30, *, d: int64 = 40) -> int64:
 int64_t partial(int64_t a, int64_t b, int64_t c, int64_t d) {
     // return a * 1000000 + b * 10000 + c * 100 + d
     return (::tpy::add_check<int64_t>((::tpy::add_check<int64_t>((::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(a, 1000000)), (::tpy::mul_check<int64_t>(b, 10000)))), (::tpy::mul_check<int64_t>(c, 100)))), d));

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def maybe_apply(f: Callable[[Int32], Int32] | None, x: Int32) -> Int32:
+// def maybe_apply(f: Callable[[int32], int32] | None, x: int32) -> int32:
 int32_t maybe_apply(std::optional<std::function<int32_t(int32_t)>> f, int32_t x) {
     // if f is not None:
     if ((f.has_value())) {
@@ -15,7 +15,7 @@ int32_t maybe_apply(std::optional<std::function<int32_t(int32_t)>> f, int32_t x)
     return x;
 }
 
-// def make_doubler() -> Callable[[Int32], Int32]:
+// def make_doubler() -> Callable[[int32], int32]:
 std::function<int32_t(int32_t)> make_doubler() {
     // return lambda x: x * 2
     return [](int32_t x) -> int32_t { return (::tpy::mul_check<int32_t>(x, 2)); };

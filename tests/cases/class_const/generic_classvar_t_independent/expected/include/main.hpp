@@ -16,7 +16,7 @@ void main();
 // class C[T]:
 template<typename T>
 struct C {
-    // counter: ClassVar[Int32] = 0
+    // counter: ClassVar[int32] = 0
     static inline int32_t counter = 0;
 
     // def __init__(self) -> None:

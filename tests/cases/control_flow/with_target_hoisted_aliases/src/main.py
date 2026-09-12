@@ -3,11 +3,11 @@
 # manager. __exit__ runs against the manager, so a mutation through the target has
 # to be visible there; owning hoist storage would copy and show the old value.
 # Not a resumable function: this is the non-frame half of the same question.
-from tpy import Int32
+from tpy import int32
 
 
 class Logger:
-    def __init__(self, tag: Int32):
+    def __init__(self, tag: int32):
         self.tag = tag
 
     def __enter__(self) -> "Logger":
@@ -17,7 +17,7 @@ class Logger:
         print("exit sees tag:", self.tag)
 
 
-def run(flag: bool) -> Int32:
+def run(flag: bool) -> int32:
     with Logger(1) as outer:
         with Logger(10) as inner:
             inner.tag = 99

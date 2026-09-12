@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def total(t: "Tree") -> Int32:
+// def total(t: "Tree") -> int32:
 int32_t total(const Tree& t) {
     // s = t.value
     int32_t s = t.value;
@@ -23,11 +23,11 @@ int32_t total(const Tree& t) {
 
 // def main() -> None:
 void main() {
-    // root = Tree(Int32(10), None)
+    // root = Tree(int32(10), None)
     Tree root = Tree(10, std::nullopt);
-    // root.children.append(Tree(Int32(1), Int32(10)))
+    // root.children.append(Tree(int32(1), int32(10)))
     root.children.push_back(Tree(1, 10));
-    // root.children.append(Tree(Int32(2), Int32(10)))
+    // root.children.append(Tree(int32(2), int32(10)))
     root.children.push_back(Tree(2, 10));
     // print(total(root))
     std::cout << total(root) << "\n";

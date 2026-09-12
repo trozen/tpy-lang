@@ -6,9 +6,9 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // x: Int32 = Int32(2147483647)
+    // x: int32 = int32(2147483647)
     int32_t x = 2147483647;
-    // print(round(x, Int32(-1)))
+    // print(round(x, int32(-1)))
     std::cout << ::tpy::round_fixed<int32_t>(x, -1) << "\n";
 }
 

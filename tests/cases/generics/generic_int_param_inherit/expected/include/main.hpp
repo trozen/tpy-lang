@@ -36,10 +36,10 @@ inline std::ostream& operator<<(std::ostream& os, const Base<T, N>& obj) {
 // class Child[T, N: int](Base[T, N]):
 template<typename T, std::size_t N>
 struct Child : Base<T, N> {
-    // extra: Int32
+    // extra: int32
     int32_t extra;
 
-    // def __init__(self, v: T, e: Int32) -> None:
+    // def __init__(self, v: T, e: int32) -> None:
     Child() = default;
     explicit Child(::tpy::readonly_form_t<T> v, int32_t e) : extra(e) {
         // self.value = v
@@ -60,7 +60,7 @@ struct GrandChild : Child<T, N> {
     // name: str
     std::string name;
 
-    // def __init__(self, v: T, e: Int32, n: str) -> None:
+    // def __init__(self, v: T, e: int32, n: str) -> None:
     GrandChild() = default;
     explicit GrandChild(::tpy::readonly_form_t<T> v, int32_t e, std::string_view n) : name(n) {
         // self.value = v

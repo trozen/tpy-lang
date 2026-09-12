@@ -1,14 +1,14 @@
 # Union with None member uses std::monostate in codegen
-from tpy import Int32
+from tpy import int32
 
 
-def accept(x: Int32 | str | None) -> None:
+def accept(x: int32 | str | None) -> None:
     pass
 
 
 def test() -> None:
-    a: Int32 | str | None = Int32(42)
-    b: Int32 | str | None = "hello"
+    a: int32 | str | None = int32(42)
+    b: int32 | str | None = "hello"
     accept(a)
     accept(b)
     print("ok")

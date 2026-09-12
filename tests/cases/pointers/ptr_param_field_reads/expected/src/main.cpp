@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def read_elem(sector: Ptr[Sector], i: Int32) -> Int32:
+// def read_elem(sector: Ptr[Sector], i: int32) -> int32:
 int32_t read_elem(Sector* sector, int32_t i) {
     // return sector.nums[i]  # tpyc: ok
     return ::tpy::__getitem__(::tpy::deref_check(sector).nums, i);
 }
 
-// def read_cond(sector: Ptr[Sector], i: Int32) -> Int32:
+// def read_cond(sector: Ptr[Sector], i: int32) -> int32:
 int32_t read_cond(Sector* sector, int32_t i) {
     // if sector.flags[i]:  # tpyc: ok
     if (::tpy::__getitem__(::tpy::deref_check(sector).flags, i)) {
@@ -21,7 +21,7 @@ int32_t read_cond(Sector* sector, int32_t i) {
     return 0;
 }
 
-// def grow(sector: Ptr[Sector]) -> Int32:
+// def grow(sector: Ptr[Sector]) -> int32:
 int32_t grow(Sector* sector) {
     // # The alias binds the member itself, so the append is visible through the
     // # original object -- a copy here would print a stale length in main.
@@ -33,7 +33,7 @@ int32_t grow(Sector* sector) {
     return ::tpy::__len__(fl);
 }
 
-// def count_readonly(sector: Ptr[readonly[Sector]]) -> Int32:
+// def count_readonly(sector: Ptr[readonly[Sector]]) -> int32:
 int32_t count_readonly(const Sector* sector) {
     // fl = sector.flags  # tpyc: ok
     const std::vector<bool>& fl = ::tpy::deref_check(sector).flags;
@@ -41,7 +41,7 @@ int32_t count_readonly(const Sector* sector) {
     return ::tpy::__len__(fl);
 }
 
-// def pic_width(seg: Seg) -> Int32:
+// def pic_width(seg: Seg) -> int32:
 int32_t pic_width(Seg& seg) {
     // # The Optional member sits one Ptr-FIELD link deeper.
     // ceil_pic = seg.sector_front.ceil_pic  # tpyc: ok

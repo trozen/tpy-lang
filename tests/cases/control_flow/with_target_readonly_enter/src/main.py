@@ -5,11 +5,11 @@
 # The target is first declared inside branches and read after, which is what
 # forces the hoist. Mutating the MANAGER and reading through the target proves
 # the hoisted slot aliases rather than copies (the target itself is const).
-from tpy import Int32, readonly
+from tpy import int32, readonly
 
 
 class Reg:
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
     @readonly
@@ -20,7 +20,7 @@ class Reg:
         pass
 
 
-def probe(flag: bool) -> Int32:
+def probe(flag: bool) -> int32:
     r = Reg(1)
     if flag:
         with r as view:

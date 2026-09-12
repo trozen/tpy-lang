@@ -1,7 +1,7 @@
 # Multi-base class with __init__ on every base: the child calls
 # BaseN.__init__(self, ...) for each; the generated C++ hoists both into the
 # member initializer list.
-from tpy import Int32
+from tpy import int32
 
 
 class Named:
@@ -15,9 +15,9 @@ class Named:
 
 
 class Counted:
-    count: Int32
+    count: int32
 
-    def __init__(self, count: Int32) -> None:
+    def __init__(self, count: int32) -> None:
         self.count = count
 
     def inc(self) -> None:
@@ -27,14 +27,14 @@ class Counted:
 class Widget(Named, Counted):
     tag: str
 
-    def __init__(self, name: str, count: Int32, tag: str) -> None:
+    def __init__(self, name: str, count: int32, tag: str) -> None:
         Named.__init__(self, name)
         Counted.__init__(self, count)
         self.tag = tag
 
 
 def main() -> None:
-    w = Widget("button", Int32(5), "ui")
+    w = Widget("button", int32(5), "ui")
     print(w.name)
     print(w.count)
     print(w.tag)

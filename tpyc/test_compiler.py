@@ -47,10 +47,10 @@ class TestCompilerFromSource:
         lib = tmp_path / "lib"
         lib.mkdir()
         (lib / "slots.py").write_text(
-            "from tpy import Int32\n"
+            "from tpy import int32\n"
             "\n"
             "\n"
-            "def insert_slot[T](v: T) -> Int32:\n"
+            "def insert_slot[T](v: T) -> int32:\n"
             "    xs: list[T] = []\n"
             "    xs.append(v)\n"
             "    return len(xs)\n"
@@ -58,14 +58,14 @@ class TestCompilerFromSource:
         # The slot's source must be a NAME: an rvalue constructs in place and
         # copies nothing, so it would report nothing on either path.
         source = (
-            "from tpy import Int32\n"
+            "from tpy import int32\n"
             "from slots import insert_slot\n"
             "\n"
             "\n"
             "class Pinned:\n"
-            "    n: Int32\n"
+            "    n: int32\n"
             "\n"
-            "    def __init__(self, n: Int32) -> None:\n"
+            "    def __init__(self, n: int32) -> None:\n"
             "        self.n = n\n"
             "\n"
             # `__del__` is what deletes the generated copy ctor, which is the
@@ -117,31 +117,31 @@ class TestCompilerFromSource:
         lib = tmp_path / "lib"
         lib.mkdir()
         (lib / "slots.py").write_text(
-            "from tpy import Int32\n"
+            "from tpy import int32\n"
             "\n"
             "\n"
-            "def insert_slot[T](v: T) -> Int32:\n"
+            "def insert_slot[T](v: T) -> int32:\n"
             "    xs: list[T] = []\n"
             "    xs.append(v)\n"
             "    return len(xs)\n"
         )
         source = (
-            "from tpy import Int32, nocopy\n"
+            "from tpy import int32, nocopy\n"
             "from slots import insert_slot\n"
             "\n"
             "\n"
             "@nocopy\n"
             "class DeclaredA:\n"
-            "    n: Int32\n"
+            "    n: int32\n"
             "\n"
-            "    def __init__(self, n: Int32) -> None:\n"
+            "    def __init__(self, n: int32) -> None:\n"
             "        self.n = n\n"
             "\n"
             "\n"
             "class DestructorB:\n"
-            "    n: Int32\n"
+            "    n: int32\n"
             "\n"
-            "    def __init__(self, n: Int32) -> None:\n"
+            "    def __init__(self, n: int32) -> None:\n"
             "        self.n = n\n"
             "\n"
             "    def __del__(self) -> None:\n"
@@ -175,7 +175,7 @@ class TestCompilerFromSource:
         reference-typed nominal at ANY depth, not just the outer one. Three
         payloads under the same bound: `GBox[T] | None` still hedges (the
         reference nominal is one level in, under the optional), while
-        `tuple[T, Int32] | None` and `tuple[T, tuple[T, Int32]]` stay silent
+        `tuple[T, int32] | None` and `tuple[T, tuple[T, int32]]` stay silent
         (delegating all the way down, so no struct is ever copied).
 
         No snapshot case can pin these: every owning sink for a nested
@@ -187,7 +187,7 @@ class TestCompilerFromSource:
         compile rather than report.
         """
         source = (
-            "from tpy import Int32, ValueType\n"
+            "from tpy import int32, ValueType\n"
             "\n"
             "\n"
             "class GBox[T]:\n"
@@ -197,20 +197,20 @@ class TestCompilerFromSource:
             "        self.item = v\n"
             "\n"
             "\n"
-            "def nested_ref[T: ValueType](v: GBox[T] | None) -> Int32:\n"
+            "def nested_ref[T: ValueType](v: GBox[T] | None) -> int32:\n"
             "    xs: list[GBox[T] | None] = []\n"
             "    xs.append(v)  # ref\n"
             "    return len(xs)\n"
             "\n"
             "\n"
-            "def nested_val_opt[T: ValueType](v: tuple[T, Int32] | None) -> Int32:\n"
-            "    xs: list[tuple[T, Int32] | None] = []\n"
+            "def nested_val_opt[T: ValueType](v: tuple[T, int32] | None) -> int32:\n"
+            "    xs: list[tuple[T, int32] | None] = []\n"
             "    xs.append(v)  # val-opt\n"
             "    return len(xs)\n"
             "\n"
             "\n"
-            "def nested_val_tuple[T: ValueType](v: tuple[T, tuple[T, Int32]]) -> Int32:\n"
-            "    xs: list[tuple[T, tuple[T, Int32]]] = []\n"
+            "def nested_val_tuple[T: ValueType](v: tuple[T, tuple[T, int32]]) -> int32:\n"
+            "    xs: list[tuple[T, tuple[T, int32]]] = []\n"
             "    xs.append(v)  # val-tuple\n"
             "    return len(xs)\n"
             "\n"
@@ -267,8 +267,8 @@ class TestCompilerFromSource:
     @pytest.mark.parametrize(
         ("default_int", "expected"),
         [
-            ("Int32", INT32),
-            ("Int64", INT64),
+            ("int32", INT32),
+            ("int64", INT64),
             ("BigInt", BIGINT),
         ],
     )
@@ -282,7 +282,7 @@ class TestCompilerFromSource:
 
     def test_reassignment_from_bigint_widens_default_int(self):
         source = "x = 0\nx = int(5)\n"
-        compiler = Compiler.from_source(source, default_int="Int32", lib_dirs=_STDLIB_DIRS)
+        compiler = Compiler.from_source(source, default_int="int32", lib_dirs=_STDLIB_DIRS)
         modules = compiler.compile()
         entry = [m for m in modules if m.is_entry_point][0]
         hpp, _ = compiler.generate_code_to_strings(entry)
@@ -647,10 +647,10 @@ class TestCodegenStateIsolation:
 
 class TestCodegenRegression:
     def test_generic_ctor_invalid_arg_rejected(self, tmp_path):
-        """Invalid generic constructor arg (Int32 for Span[T] param) must be rejected by sema."""
+        """Invalid generic constructor arg (int32 for Span[T] param) must be rejected by sema."""
         source = (
-            'from tpy import Span, Int32\n'
-            'x: Span[Int32] = Span[Int32](Int32(1))\n'
+            'from tpy import Span, int32\n'
+            'x: Span[int32] = Span[int32](int32(1))\n'
         )
         src_file = tmp_path / "test.py"
         src_file.write_text(source)
@@ -764,7 +764,7 @@ class TestSendSync:
 
     def test_readonly_no_send_to_sync_lift(self):
         # The object may be mutated through other non-readonly aliases,
-        # so readonly[list[Int32]] is NOT Sync even though list is Send.
+        # so readonly[list[int32]] is NOT Sync even though list is Send.
         assert not make_list(INT32).is_sync()
         assert not ReadonlyType(make_list(INT32)).is_sync()
 
@@ -793,7 +793,7 @@ class TestSendSync:
 
     # -- frame slots: a tuple with reference elements lowers to a borrow-
     # pointer field (std::tuple<T*, ...>), so its slot is non-Send even when
-    # the tuple's storage-form is_send() is True. (list[Int32] is the
+    # the tuple's storage-form is_send() is True. (list[int32] is the
     # registry-free stand-in for a Send-but-non-value element.)
 
     def test_frame_slot_borrow_tuple_not_send(self):
@@ -909,15 +909,15 @@ class TestSendSyncRecordDerivation:
 
     def test_record_with_value_fields_is_send_sync(self):
         source = (
-            "from tpy import Int32\n"
+            "from tpy import int32\n"
             "class Point:\n"
-            "    x: Int32\n"
-            "    y: Int32\n"
-            "    def __init__(self, x: Int32, y: Int32) -> None:\n"
+            "    x: int32\n"
+            "    y: int32\n"
+            "    def __init__(self, x: int32, y: int32) -> None:\n"
             "        self.x = x\n"
             "        self.y = y\n"
             "def main() -> None:\n"
-            "    p = Point(Int32(1), Int32(2))\n"
+            "    p = Point(int32(1), int32(2))\n"
             "    print(p.x)\n"
             "main()\n"
         )
@@ -930,17 +930,17 @@ class TestSendSyncRecordDerivation:
 
     def test_record_with_ptr_field_not_send(self, tmp_path):
         source = (
-            "from tpy import Ptr, Int32, take_ptr\n"
+            "from tpy import Ptr, int32, take_ptr\n"
             "class Wrapper:\n"
-            "    x: Int32\n"
-            "    def __init__(self, x: Int32) -> None:\n"
+            "    x: int32\n"
+            "    def __init__(self, x: int32) -> None:\n"
             "        self.x = x\n"
             "class Holder:\n"
             "    p: Ptr[Wrapper]\n"
             "    def __init__(self, p: Ptr[Wrapper]) -> None:\n"
             "        self.p = p\n"
             "def main() -> None:\n"
-            "    w = Wrapper(Int32(1))\n"
+            "    w = Wrapper(int32(1))\n"
             "    h = Holder(take_ptr(w))\n"
             "    print(h.p.x)\n"
             "main()\n"
@@ -956,11 +956,11 @@ class TestSendSyncRecordDerivation:
 
     def test_record_with_list_field_send_not_sync(self):
         source = (
-            "from tpy import Int32\n"
+            "from tpy import int32\n"
             "class Container:\n"
-            "    items: list[Int32]\n"
+            "    items: list[int32]\n"
             "    def __init__(self) -> None:\n"
-            "        self.items = [Int32(1)]\n"
+            "        self.items = [int32(1)]\n"
             "def main() -> None:\n"
             "    c = Container()\n"
             "    print(len(c.items))\n"
@@ -1334,7 +1334,7 @@ class TestRepeatedCompilesAreIdentical:
     ITERATIONS = 8
 
     def _compile_once(self, src: Path) -> tuple[str, tuple[str, str]]:
-        compiler = Compiler(src, default_int="Int32", lib_dirs=_STDLIB_DIRS)
+        compiler = Compiler(src, default_int="int32", lib_dirs=_STDLIB_DIRS)
         modules = compiler.compile()
         entry = next(m for m in modules if m.is_entry_point)
         diags = [d.format("tpyc") for d in compiler.diagnostics]

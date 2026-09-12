@@ -1,12 +1,12 @@
 # A call may invoke a nonlocal-writing closure, so name-level narrowing
 # dies at every call site once such a closure exists (runtime check).
-from tpy import Int32
+from tpy import int32
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32):
+    def __init__(self, x: int32):
         self.x = x
 
 

@@ -1,10 +1,10 @@
-from tpy import Int32, Ptr
+from tpy import int32, Ptr
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32) -> None:
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 
@@ -12,7 +12,7 @@ def print_point(p: Point) -> None:
     print(p.x)
     print(p.y)
 
-def get_sum(p: Point) -> Int32:
+def get_sum(p: Point) -> int32:
     return p.x + p.y
 
 def modify_point(p: Point) -> None:
@@ -29,7 +29,7 @@ def test_ptr_to_value() -> None:
     # Ptr[Point] -> Point coercion in function call
     print_point(ptr)
 
-    result: Int32 = get_sum(ptr)
+    result: int32 = get_sum(ptr)
     print(result)
 
     # Modification through coerced pointer affects original

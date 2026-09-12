@@ -88,8 +88,8 @@ def test_update_mode_validates_after_the_snapshots_land(tmp_path, monkeypatch,
     src = case_dir / "src"
     src.mkdir(parents=True)
     main = src / "main.py"
-    main.write_text("from tpy import Int32\n\n"
-                    "too_big: Int32 = 3000000000  # tpyc: error(/no such message/)\n")
+    main.write_text("from tpy import int32\n\n"
+                    "too_big: int32 = 3000000000  # tpyc: error(/no such message/)\n")
     monkeypatch.setattr(conftest, "UPDATE_EXPECTED", True)
     monkeypatch.setattr(harness, "UPDATE_EXPECTED", True)
     # The options.json walk stops at the cases root; a temp case needs one.
@@ -97,7 +97,7 @@ def test_update_mode_validates_after_the_snapshots_land(tmp_path, monkeypatch,
     req = _Request(request)
     harness.test_case(case_dir, main, req)
     diag = case_dir / "expected" / "diag.txt"
-    assert diag.exists() and "outside Int32 range" in diag.read_text()
+    assert diag.exists() and "outside int32 range" in diag.read_text()
     assert len(req.finalizers) == 1
     with pytest.raises(pytest.fail.Exception) as info:
         req.finalizers[0]()
@@ -113,9 +113,9 @@ def test_error_case_gate_runs_before_the_update_wipe(tmp_path, monkeypatch,
     src = case_dir / "src"
     src.mkdir(parents=True)
     main = src / "main.py"
-    main.write_text("from tpy import Int32\n\n"
-                    "n: Int32 = 1  # tpyc: ok\n"
-                    "too_big: Int32 = 3000000000  # tpyc: error(/Int32 range/)\n")
+    main.write_text("from tpy import int32\n\n"
+                    "n: int32 = 1  # tpyc: ok\n"
+                    "too_big: int32 = 3000000000  # tpyc: error(/int32 range/)\n")
     diag = case_dir / "expected" / "diag.txt"
     diag.parent.mkdir()
     diag.write_text("stale\n")
@@ -142,8 +142,8 @@ def test_error_case_that_compiles_fails_at_once_in_update_mode(tmp_path,
     src = case_dir / "src"
     src.mkdir(parents=True)
     main = src / "main.py"
-    main.write_text("from tpy import Int32\n\n"
-                    "n: Int32 = 1  # tpyc: error(/never fires/)\n")
+    main.write_text("from tpy import int32\n\n"
+                    "n: int32 = 1  # tpyc: error(/never fires/)\n")
     monkeypatch.setattr(conftest, "UPDATE_EXPECTED", True)
     monkeypatch.setattr(harness, "UPDATE_EXPECTED", True)
     monkeypatch.setattr(conftest, "CASES_DIR", tmp_path)

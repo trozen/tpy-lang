@@ -42,7 +42,7 @@ std::optional<::tpyapp::main::Color> EnumUtil<::tpyapp::main::Color>::try_parse(
 namespace tpyapp::main {
 
 
-// def widen(n: Int64 = 5) -> Int64:
+// def widen(n: int64 = 5) -> int64:
 int64_t widen(int64_t n) {
     // return n
     return n;
@@ -58,25 +58,25 @@ double as_float(double x) {
     return ((x) + (0.5));
 }
 
-// def negative(n: Int8 = -5) -> Int8:
+// def negative(n: int8 = -5) -> int8:
 int8_t negative(int8_t n) {
     // return n
     return n;
 }
 
-// def bracket(ch: Char = "[") -> str:
+// def bracket(ch: char = "[") -> str:
 std::string bracket(char ch) {
     // return str(ch)
     return std::string(::tpy::char_to_str(ch));
 }
 
-// def raw(b: bytes = b"ab") -> Int32:
+// def raw(b: bytes = b"ab") -> int32:
 int32_t raw(::tpy::BytesView b) {
     // return len(b)
     return ::tpy::__len__(b);
 }
 
-// def view(s: StrView = "hi") -> Int32:
+// def view(s: StrView = "hi") -> int32:
 int32_t view(std::string_view s) {
     // return len(s)
     return ::tpy::__len__(s);
@@ -88,25 +88,25 @@ bool flagged(bool on) {
     return on;
 }
 
-// def optional(n: Int32 | None = None) -> Int32:
+// def optional(n: int32 | None = None) -> int32:
 int32_t optional(std::optional<int32_t> n) {
     // return n if n is not None else -1
     return (((n.has_value())) ? ((*n)) : (-1));
 }
 
-// def from_final(n: Int64 = STEP) -> Int64:
+// def from_final(n: int64 = STEP) -> int64:
 int64_t from_final(int64_t n) {
     // return n
     return n;
 }
 
-// def shade(c: Color = Color.BLUE) -> Int32:
+// def shade(c: Color = Color.BLUE) -> int32:
 int32_t shade(Color c) {
     // return 100 if c == Color.BLUE else 200
     return (((c == Color::BLUE)) ? (100) : (200));
 }
 
-// def wrapped(n: Int32 = Int32(7)) -> Int32:
+// def wrapped(n: int32 = int32(7)) -> int32:
 int32_t wrapped(int32_t n) {
     // return n
     return n;

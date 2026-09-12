@@ -1,10 +1,10 @@
-from tpy import Int32, auto_readonly
+from tpy import int32, auto_readonly
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32) -> None:
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 
@@ -14,11 +14,11 @@ class PointList:
     def __init__(self, pts: list[Point]) -> None:
         self.data = pts
 
-    def __len__(self) -> Int32:
+    def __len__(self) -> int32:
         return len(self.data)
 
     @auto_readonly
-    def __getitem__(self, index: Int32) -> Point:
+    def __getitem__(self, index: int32) -> Point:
         return self.data[index]
 
 def main() -> None:

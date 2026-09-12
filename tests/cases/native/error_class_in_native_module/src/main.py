@@ -1,7 +1,7 @@
 # Test that non-native classes in native_module produce an error
 # tpy: native_module
-from tpy import Int32
+from tpy import int32
 
 class Point:  # tpyc: error(/not allowed in native_module/)
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32

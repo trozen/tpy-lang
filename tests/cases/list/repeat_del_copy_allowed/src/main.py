@@ -2,13 +2,13 @@
 # is allowed (the gate must respect the __copy__ escape hatch). The __copy__
 # body is side-effect-free so output matches CPython, which aliases instead
 # of copying (the documented repeat divergence) -- reads only.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Res:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
     def __copy__(self) -> Own['Res']:

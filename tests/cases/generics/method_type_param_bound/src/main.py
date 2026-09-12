@@ -1,5 +1,5 @@
 # Per-method type param bounds on inherited class type params
-from tpy import Int32, Own, Default, Comparable, make_default
+from tpy import int32, Own, Default, Comparable, make_default
 
 class Pair[T]:
     a: T
@@ -18,7 +18,7 @@ class Pair[T]:
         return make_default()
 
 def main() -> None:
-    p = Pair[Int32](3, 7)
+    p = Pair[int32](3, 7)
     print(p.min_val())
     print(p.with_default())
 

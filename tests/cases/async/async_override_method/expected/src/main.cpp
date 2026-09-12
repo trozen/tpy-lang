@@ -56,7 +56,7 @@ void main() {
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
-// async def val(self) -> Int32:
+// async def val(self) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_Base_val::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -81,7 +81,7 @@ void main() {
 }
 
 
-// async def val(self) -> Int32:
+// async def val(self) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_Derived_val::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {

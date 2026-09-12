@@ -6,7 +6,7 @@
 # tpyc diagnostic. The structural-conformance (adapter) path handles
 # this shape correctly; users should use that.
 from typing import Protocol
-from tpy import Int32, dynamic
+from tpy import int32, dynamic
 
 
 @dynamic
@@ -15,6 +15,6 @@ class Sink[T](Protocol):
         ...
 
 
-class IntSink(Sink[Int32]):  # tpyc: error(/cannot directly inherit generic.*'put'.*type parameter 'T' in parameter position/)
-    def put(self, val: Int32) -> None:
+class IntSink(Sink[int32]):  # tpyc: error(/cannot directly inherit generic.*'put'.*type parameter 'T' in parameter position/)
+    def put(self, val: int32) -> None:
         pass

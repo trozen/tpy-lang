@@ -8,13 +8,13 @@ namespace tpyapp::main {
 void main() {
     // c = Container()
     Container c = Container();
-    // c.val = Int32(-1)
+    // c.val = int32(-1)
     c.val = -1;
     // p = Point()
     Point p = Point();
-    // p.x = Int32(3)
+    // p.x = int32(3)
     p.x = 3;
-    // p.y = Int32(4)
+    // p.y = int32(4)
     p.y = 4;
     // c.take(p)
     c.take(std::move(p));

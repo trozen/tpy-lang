@@ -1,5 +1,5 @@
 # Generic method defined in parent class, called on child instance
-from tpy import Int32
+from tpy import int32
 
 class Base[T]:
     val: T
@@ -15,7 +15,7 @@ class Child[T](Base[T]):
         super().__init__(val)
 
 def main() -> None:
-    c = Child[Int32](Int32(5))
+    c = Child[int32](int32(5))
     print(c.transform(42))
     print(c.transform("inherited"))
 

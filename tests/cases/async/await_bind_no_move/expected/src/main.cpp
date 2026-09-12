@@ -25,13 +25,13 @@ __coro_make make() {
     return __coro_make();
 }
 
-// def size_of(p: Own[Payload]) -> Int32:
+// def size_of(p: Own[Payload]) -> int32:
 int32_t size_of(Payload&& p) {
     // return len(p.items)
     return ::tpy::__len__(p.items);
 }
 
-// async def used_again() -> Int32:
+// async def used_again() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_used_again::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -62,7 +62,7 @@ int32_t size_of(Payload&& p) {
 }
 
 
-// async def used_again() -> Int32:
+// async def used_again() -> int32:
 __coro_used_again used_again() {
     return __coro_used_again();
 }

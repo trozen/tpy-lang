@@ -5,17 +5,17 @@
 # declaration precedes every record, so there the default is materialized at
 # the call site instead.
 from dataclasses import dataclass
-from tpy import ValueType, Int32
+from tpy import ValueType, int32
 
 
 @dataclass(frozen=True)
 class Fixed(ValueType):
-    off: Int32
+    off: int32
 
 
 @dataclass(frozen=True)
 class Zone(ValueType):
-    zid: Int32
+    zid: int32
 
 
 class Dog:
@@ -29,7 +29,7 @@ class Cat:
 
 
 class Holder:
-    kind: Int32
+    kind: int32
 
     def __init__(self, tz: Fixed | Zone | None = None) -> None:
         k = 0

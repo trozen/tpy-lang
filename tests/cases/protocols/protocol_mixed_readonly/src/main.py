@@ -1,38 +1,38 @@
 # Protocol with mixed readonly/non-readonly methods.
 # read() is @readonly, write() is not. In a @readonly context only read() is callable.
-from tpy import Int32, readonly
+from tpy import int32, readonly
 from typing import Protocol
 
 
 class Mixed(Protocol):
     @readonly
-    def read(self) -> Int32:
+    def read(self) -> int32:
         ...
 
-    def write(self, v: Int32) -> None:
+    def write(self, v: int32) -> None:
         ...
 
 
 class Impl:
-    value: Int32
+    value: int32
 
-    def __init__(self, value: Int32) -> None:
+    def __init__(self, value: int32) -> None:
         self.value = value
 
     @readonly
-    def read(self) -> Int32:
+    def read(self) -> int32:
         return self.value
 
-    def write(self, v: Int32) -> None:
+    def write(self, v: int32) -> None:
         self.value = v
 
 
 @readonly
-def safe_read(m: Mixed) -> Int32:
+def safe_read(m: Mixed) -> int32:
     return m.read()
 
 
-def use_both(m: Mixed) -> Int32:
+def use_both(m: Mixed) -> int32:
     m.write(10)
     return m.read()
 

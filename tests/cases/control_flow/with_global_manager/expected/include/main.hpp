@@ -16,13 +16,13 @@ void main();
 
 // class Counter:
 struct Counter {
-    // opens: Int32
+    // opens: int32
     int32_t opens;
 
     // def __init__(self) -> None:
     Counter();
 
-    // def __enter__(self) -> Int32:
+    // def __enter__(self) -> int32:
     int32_t __enter__();
 
     // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
@@ -39,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 // def __init__(self) -> None:
 inline Counter::Counter() : opens(0) {}
 
-// def __enter__(self) -> Int32:
+// def __enter__(self) -> int32:
 inline int32_t Counter::__enter__() {
     // self.opens += 1
     this->opens = ::tpy::add_check<int32_t>(this->opens, 1);

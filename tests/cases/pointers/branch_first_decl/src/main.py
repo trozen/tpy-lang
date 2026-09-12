@@ -1,37 +1,37 @@
-from tpy import Int32
+from tpy import int32
 
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32):
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32):
         self.x = x
         self.y = y
 
 
 # Value type first declared in both branches
-def value_type_branches(cond: bool) -> Int32:
+def value_type_branches(cond: bool) -> int32:
     if cond:
-        x: Int32 = 10
+        x: int32 = 10
     else:
         x = 20
     return x
 
 
 # One branch declares, other terminates
-def else_returns(cond: bool) -> Int32:
+def else_returns(cond: bool) -> int32:
     if cond:
-        x: Int32 = 42
+        x: int32 = 42
     else:
         return 0
     return x
 
 
 # Multiple variables first declared in same if
-def multi_var(cond: bool) -> Int32:
+def multi_var(cond: bool) -> int32:
     if cond:
-        a: Int32 = 1
-        b: Int32 = 2
+        a: int32 = 1
+        b: int32 = 2
     else:
         a = 3
         b = 4
@@ -50,7 +50,7 @@ def rvalue_branch(cond: bool) -> None:
 # Branch-declared variable reassigned after the if
 def reassign_after(cond: bool) -> None:
     if cond:
-        x: Int32 = 10
+        x: int32 = 10
     else:
         x = 20
     x = x + 1
@@ -58,13 +58,13 @@ def reassign_after(cond: bool) -> None:
 
 
 # Nested if — inner if has branch declarations
-def nested_if(a: bool, b: bool) -> Int32:
+def nested_if(a: bool, b: bool) -> int32:
     if a:
         if b:
-            x: Int32 = 1
+            x: int32 = 1
         else:
             x = 2
-        y: Int32 = x + 10
+        y: int32 = x + 10
     else:
         y = 99
     return y

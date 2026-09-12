@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def weight_of(t: tuple[Int32, Box]) -> Int32:
+// def weight_of(t: tuple[int32, Box]) -> int32:
 int32_t weight_of(const std::tuple<int32_t, const Box*>& t) {
     // return t[0]
     return std::get<0>(t);
 }
 
-// def first_weight(rows: list[tuple[Int32, Box]], again: bool) -> Int32:
+// def first_weight(rows: list[tuple[int32, Box]], again: bool) -> int32:
 int32_t first_weight(const std::vector<std::tuple<int32_t, Box>>& rows, bool again) {
     // p = rows[0]
     std::tuple<int32_t, const Box*> p = ::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(::tpy::__getitem__(rows, 0));

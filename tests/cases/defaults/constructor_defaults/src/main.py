@@ -1,17 +1,17 @@
 # Default parameter values in __init__ constructors
-from tpy import Int32
+from tpy import int32
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32 = Int32(0), y: Int32 = Int32(0)) -> None:
+    x: int32
+    y: int32
+    def __init__(self, x: int32 = int32(0), y: int32 = int32(0)) -> None:
         self.x = x
         self.y = y
 
 class Named:
     name: str
-    value: Int32
-    def __init__(self, name: str, value: Int32 = Int32(42)) -> None:
+    value: int32
+    def __init__(self, name: str, value: int32 = int32(42)) -> None:
         self.name = name
         self.value = value
 
@@ -20,11 +20,11 @@ def main() -> None:
     print(p1.x)
     print(p1.y)
 
-    p2 = Point(Int32(3))
+    p2 = Point(int32(3))
     print(p2.x)
     print(p2.y)
 
-    p3 = Point(Int32(3), Int32(4))
+    p3 = Point(int32(3), int32(4))
     print(p3.x)
     print(p3.y)
 
@@ -32,7 +32,7 @@ def main() -> None:
     print(n1.name)
     print(n1.value)
 
-    n2 = Named("test", Int32(99))
+    n2 = Named("test", int32(99))
     print(n2.name)
     print(n2.value)
 

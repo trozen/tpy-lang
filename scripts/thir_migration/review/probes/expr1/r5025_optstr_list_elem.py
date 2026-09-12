@@ -1,5 +1,5 @@
-from tpy import Int32
-def f(s: str | None) -> Int32:
+from tpy import int32
+def f(s: str | None) -> int32:
     xs = [s]
     return len(xs)
 def main() -> None:

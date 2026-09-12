@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def shrink(x: Int32 | None) -> Int32:
+// def shrink(x: int32 | None) -> int32:
 int32_t shrink(std::optional<int32_t> x) {
     // while x is not None and x > 0:
     while (((x.has_value()) && ((*x) > 0))) {

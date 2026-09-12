@@ -3,10 +3,10 @@
 
 namespace tpyapp::main {
 
-// vals: list[Int32 | None] = list()
+// vals: list[int32 | None] = list()
 std::vector<std::optional<int32_t>>* vals{};
 
-// def write_none(items: list[Int32 | None]) -> Int32:
+// def write_none(items: list[int32 | None]) -> int32:
 int32_t write_none(std::vector<std::optional<int32_t>>& items) {
     // items[0] = None
     ::tpy::__setitem__(items, 0, std::nullopt);
@@ -28,7 +28,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // vals: list[Int32 | None] = list()
+    // vals: list[int32 | None] = list()
     static std::vector<std::optional<int32_t>> __global_slot_1 = std::vector<std::optional<int32_t>>();
     vals = &__global_slot_1;
     // vals.append(7)

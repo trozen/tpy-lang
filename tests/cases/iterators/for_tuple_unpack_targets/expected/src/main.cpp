@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def sum_items(d: dict[Int32, Int32]) -> Int32:
+// def sum_items(d: dict[int32, int32]) -> int32:
 int32_t sum_items(const ::tpy::ordered_map<int32_t, int32_t>& d) {
     // s = 0
     int32_t s = 0;
@@ -25,7 +25,7 @@ int32_t sum_items(const ::tpy::ordered_map<int32_t, int32_t>& d) {
     return s;
 }
 
-// def sum_pairs(ps: list[tuple[Int32, Int32]]) -> Int32:
+// def sum_pairs(ps: list[tuple[int32, int32]]) -> int32:
 int32_t sum_pairs(const std::vector<std::tuple<int32_t, int32_t>>& ps) {
     // s = 0
     int32_t s = 0;
@@ -46,7 +46,7 @@ int32_t sum_pairs(const std::vector<std::tuple<int32_t, int32_t>>& ps) {
     return s;
 }
 
-// def discard_snd(ps: list[tuple[Int32, Int32]]) -> Int32:
+// def discard_snd(ps: list[tuple[int32, int32]]) -> int32:
 int32_t discard_snd(const std::vector<std::tuple<int32_t, int32_t>>& ps) {
     // s = 0
     int32_t s = 0;

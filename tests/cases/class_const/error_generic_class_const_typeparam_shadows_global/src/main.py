@@ -4,11 +4,11 @@
 # inside the template body, so emitting `BASE` would resolve to the type
 # parameter (a type) and fail to compile. Workaround: rename the type param.
 from typing import Final
-from tpy import Int32
+from tpy import int32
 
 
-BASE: Final[Int32] = 100
+BASE: Final[int32] = 100
 
 
 class Container[BASE]:
-    THRESHOLD: Final[Int32] = BASE  # tpyc: error(/class constant 'THRESHOLD' on generic class 'Container' references type parameter 'BASE' in its initializer/)
+    THRESHOLD: Final[int32] = BASE  # tpyc: error(/class constant 'THRESHOLD' on generic class 'Container' references type parameter 'BASE' in its initializer/)

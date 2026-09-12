@@ -1,11 +1,11 @@
 # Move-preservation guard: a capture reassigned between the consume and
 # the closure call reads the rebound object, so consuming the old object
 # still auto-moves silently (the capture seed is killed by the rebind).
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Point:
-    items: list[Int32]
+    items: list[int32]
 
     def __init__(self):
         self.items = [1, 2, 3]

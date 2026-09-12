@@ -2,7 +2,7 @@
 # still pending when copy() is analyzed, and codegen must read it through the
 # resolver. The copies are mutated after the boundary so a silent alias would
 # change the source's length.
-from tpy import copy, Int32
+from tpy import copy, int32
 
 
 def literal_list() -> None:
@@ -27,7 +27,7 @@ def literal_set() -> None:
 
 
 def annotated_list() -> None:
-    xs: list[Int32] = [1, 2]  # already resolved: the inverse of the literal case
+    xs: list[int32] = [1, 2]  # already resolved: the inverse of the literal case
     ys = copy(xs)
     ys.append(3)
     print(len(xs), len(ys))

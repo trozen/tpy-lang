@@ -5,14 +5,14 @@ namespace tpyapp::main {
 
 
 // # Warning: reads but never consumes
-// def borrow_only(b: Own[Box]) -> Int32:  # tpyc: warning(/never consumed/)
+// def borrow_only(b: Own[Box]) -> int32:  # tpyc: warning(/never consumed/)
 int32_t borrow_only(Box&& b) {
     // return b.value
     return b.value;
 }
 
 // # No warning: forwards to another Own[T] param at last use
-// def forward(b: Own[Box]) -> Int32:
+// def forward(b: Own[Box]) -> int32:
 int32_t forward(Box&& b) {
     // return borrow_only(b)
     return borrow_only(std::move(b));
@@ -26,7 +26,7 @@ Box passthrough(Box&& b) {
 }
 
 // # No warning: stores via copy()
-// def copy_store(b: Own[Box]) -> Int32:
+// def copy_store(b: Own[Box]) -> int32:
 int32_t copy_store(Box&& b) {
     // h = Holder(copy(b))
     Holder h = Holder(Box(b));
@@ -35,7 +35,7 @@ int32_t copy_store(Box&& b) {
 }
 
 // # Warning: conditional consumption -- only consumed on one branch
-// def partial_consume(b: Own[Box], cond: bool) -> Int32:  # tpyc: warning(/never consumed/)
+// def partial_consume(b: Own[Box], cond: bool) -> int32:  # tpyc: warning(/never consumed/)
 int32_t partial_consume(Box&& b, bool cond) {
     // if cond:
     if (cond) {
@@ -49,7 +49,7 @@ int32_t partial_consume(Box&& b, bool cond) {
 }
 
 // # No warning: consumed on both branches
-// def both_branches(b: Own[Box], cond: bool) -> Int32:
+// def both_branches(b: Own[Box], cond: bool) -> int32:
 int32_t both_branches(Box&& b, bool cond) {
     // if cond:
     if (cond) {
@@ -65,7 +65,7 @@ int32_t both_branches(Box&& b, bool cond) {
 }
 
 // # No warning: consumed after early return
-// def early_return(b: Own[Box], cond: bool) -> Int32:
+// def early_return(b: Own[Box], cond: bool) -> int32:
 int32_t early_return(Box&& b, bool cond) {
     // if cond:
     if (cond) {
@@ -77,7 +77,7 @@ int32_t early_return(Box&& b, bool cond) {
 }
 
 // # Warning: consumed inside loop that might not execute
-// def loop_consume(b: Own[Box], items: list[Int32]) -> Int32:  # tpyc: warning(/never consumed/)
+// def loop_consume(b: Own[Box], items: list[int32]) -> int32:  # tpyc: warning(/never consumed/)
 int32_t loop_consume(Box&& b, const std::vector<int32_t>& items) {
     // for item in items:
     auto& __obj_0 = items;
@@ -93,9 +93,9 @@ int32_t loop_consume(Box&& b, const std::vector<int32_t>& items) {
 }
 
 // # Warning: match -- consumed on one arm, wildcard only borrows
-// def match_partial_arm(b: Own[Box], x: Int32) -> Int32:  # tpyc: warning(/never consumed/)
+// def match_partial_arm(b: Own[Box], x: int32) -> int32:  # tpyc: warning(/never consumed/)
 int32_t match_partial_arm(Box&& b, int32_t x) {
-    // result: Int32 = 0
+    // result: int32 = 0
     int32_t result = 0;
     // match x:
     auto& __match_subject_1 = x;
@@ -120,7 +120,7 @@ int32_t match_partial_arm(Box&& b, int32_t x) {
 }
 
 // # No warning: match -- consumed on all arms (auto-move now works in match)
-// def match_all_arms(b: Own[Box], x: Int32) -> Int32:  # tpyc: ok
+// def match_all_arms(b: Own[Box], x: int32) -> int32:  # tpyc: ok
 int32_t match_all_arms(Box&& b, int32_t x) {
     // match x:
     auto& __match_subject_1 = x;

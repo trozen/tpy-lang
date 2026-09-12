@@ -38,8 +38,8 @@ def test_is_overload_lowers_to_overload_stub():
     # self-contained shape a @dispatch set requires.
     res = lower_module(
         FrontendModule(qname="m", functions=(
-            _overload_fn("Int32", "Int32"),
-            _overload_fn("float", "Int64"))),
+            _overload_fn("int32", "int32"),
+            _overload_fn("float", "int64"))),
         "testplugin")
     assert not res.diagnostics, res.diagnostics
     fns = res.module.functions
@@ -58,8 +58,8 @@ def test_native_is_overload_member_keeps_both_stub_flags():
         FrontendModule(qname="m", functions=(
             Function(
                 name="pick", is_overload=True,
-                params=(Param(name="x", type=NamedType(name="Int32")),),
-                return_type=NamedType(name="Int32"),
+                params=(Param(name="x", type=NamedType(name="int32")),),
+                return_type=NamedType(name="int32"),
                 decorators=(Decorator(
                     name="tpy.native", args=(StrLit(value="pick_i32"),)),)),)),
         "testplugin")
@@ -74,7 +74,7 @@ def test_without_is_overload_no_stub():
     # The flag is opt-in: a plain Function lowers to a non-overload TpyFunction.
     res = lower_module(
         FrontendModule(qname="m", functions=(
-            Function(name="f", return_type=NamedType(name="Int32"),
+            Function(name="f", return_type=NamedType(name="int32"),
                      body=(Return(value=IntLit(value=0)),)),)),
         "testplugin")
     assert not res.diagnostics, res.diagnostics

@@ -2,25 +2,25 @@
 # is scoped to owning returns, so the borrow source stays out. Concretely,
 # `self.data = first_of(h)` writes a borrowed list into a container field;
 # TPy rejects that assignment today.
-from tpy import Int32
+from tpy import int32
 
 
 class Holder:
-    items: list[Int32]
+    items: list[int32]
 
     def __init__(self) -> None:
         self.items = []
 
-    def peek(self) -> list[Int32]:
+    def peek(self) -> list[int32]:
         return self.items
 
 
-def first_of(h: Holder) -> list[Int32]:
+def first_of(h: Holder) -> list[int32]:
     return h.items
 
 
 class Sink:
-    data: list[Int32]
+    data: list[int32]
 
     def __init__(self) -> None:
         self.data = []

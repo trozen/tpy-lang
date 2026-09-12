@@ -1,11 +1,11 @@
 # asyncio streams EOF edges: readexactly past EOF raises IncompleteReadError
 # (carrying the partial bytes); read(-1) drains to EOF; at_eof reports closed.
 import asyncio
-from tpy import Int32
+from tpy import int32
 from socket import socket, AF_INET, SOCK_STREAM
 
 
-async def client_role(port: Int32) -> None:
+async def client_role(port: int32) -> None:
     reader, writer = await asyncio.open_connection("127.0.0.1", port)
     writer.write(b"abcdef")
     await writer.drain()

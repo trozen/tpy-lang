@@ -15,16 +15,16 @@ void main();
 
 // class Counter:
 struct Counter {
-    // limit: Int32
+    // limit: int32
     int32_t limit;
 
-    // def __init__(self, limit: Int32) -> None:
+    // def __init__(self, limit: int32) -> None:
     Counter() = default;
     explicit Counter(int32_t limit);
 
-    // def __iter__(self) -> Iterator[Int32]:
+    // def __iter__(self) -> Iterator[int32]:
     auto __iter__() const {
-        // i: Int32 = 0
+        // i: int32 = 0
         int32_t i = 0;
         return ::tpy::make_generator<int32_t>(
             [this, i]() mutable -> std::optional<int32_t> {
@@ -47,7 +47,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 }
 
 
-// def __init__(self, limit: Int32) -> None:
+// def __init__(self, limit: int32) -> None:
 inline Counter::Counter(int32_t limit) : limit(limit) {}
 void __tpy_init();
 } // namespace tpyapp::main

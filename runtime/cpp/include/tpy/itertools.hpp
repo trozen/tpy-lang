@@ -23,7 +23,7 @@ namespace tpy {
 template<typename T, typename Iter>
 class enumerate_iter : public next_iter_mixin<enumerate_iter<T, Iter>, std::tuple<int32_t, T>> {
     Iter iter_;
-    int32_t index_;  // TPy uses Int32; Python enumerate uses arbitrary-precision
+    int32_t index_;  // TPy uses int32; Python enumerate uses arbitrary-precision
 public:
     enumerate_iter(Iter&& iter, int32_t start = 0) : iter_(std::move(iter)), index_(start) {}
 

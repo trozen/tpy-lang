@@ -3,10 +3,10 @@
 
 namespace tpyapp::main {
 
-// vals: list[Int32 | None] = list()
+// vals: list[int32 | None] = list()
 std::vector<std::optional<int32_t>>* vals{};
 
-// def stale_after_write(items: list[Int32 | None], i: Int32) -> Int32:
+// def stale_after_write(items: list[int32 | None], i: int32) -> int32:
 int32_t stale_after_write(std::vector<std::optional<int32_t>>& items, int32_t i) {
     // while items[i] is not None:
     while ((::tpy::__getitem__(items, i).has_value())) {
@@ -29,7 +29,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // vals: list[Int32 | None] = list()
+    // vals: list[int32 | None] = list()
     static std::vector<std::optional<int32_t>> __global_slot_1 = std::vector<std::optional<int32_t>>();
     vals = &__global_slot_1;
     // vals.append(8)

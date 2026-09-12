@@ -10,7 +10,7 @@ namespace tpyapp::main {
     case S_INITIAL: {
         // h = Holder([1, 2])
         h.emplace(Holder({1, 2}));
-        // data: list[Int32] = [3, 4]
+        // data: list[int32] = [3, 4]
         data.emplace(std::vector<int32_t>{3, 4});
         // await h.run(data)
         __sub_0.emplace((*h), (*data));

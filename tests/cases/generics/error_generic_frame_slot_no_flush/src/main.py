@@ -3,7 +3,7 @@
 # whose frame may borrow the slot, at a value-typed instantiation.
 from typing import Iterator
 
-from tpy import Int32
+from tpy import int32
 
 
 class Labels[T]:
@@ -16,7 +16,7 @@ class Labels[T]:
 
 
 def main() -> None:
-    labels = Labels[Int32](1)
+    labels = Labels[int32](1)
     n = 0
     # The subject: the generator factory's temp cannot be hoisted here.
     while len(list(labels.gen_it(2))) > 0 and n < 1:  # tpyc: error(/not yet supported/)

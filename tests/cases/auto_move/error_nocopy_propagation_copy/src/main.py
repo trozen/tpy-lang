@@ -1,12 +1,12 @@
 # copy() on implicitly-nocopy type gives clear error explaining why
-from tpy import Int32, Own, nocopy, copy
+from tpy import int32, Own, nocopy, copy
 
 
 @nocopy
 class Handle:
-    fd: Int32
+    fd: int32
 
-    def __init__(self, fd: Int32):
+    def __init__(self, fd: int32):
         self.fd = fd
 
 

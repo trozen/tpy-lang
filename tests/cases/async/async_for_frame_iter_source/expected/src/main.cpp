@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def bump(bag: Bag) -> Int32:
+// async def bump(bag: Bag) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_bump::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -46,7 +46,7 @@ namespace tpyapp::main {
 }
 
 
-// async def bump(bag: Bag) -> Int32:
+// async def bump(bag: Bag) -> int32:
 __coro_bump bump(Bag& bag) {
     return __coro_bump(bag);
 }

@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // a = Atomic[UInt32](0)  # tpyc: is_send(yes) is_sync(yes)
+    // a = Atomic[uint32](0)  # tpyc: is_send(yes) is_sync(yes)
     ::tpystd::tpy::atomic::Atomic<uint32_t> a = ::tpystd::tpy::atomic::Atomic<uint32_t>(0);
     // print(a.load(MemoryOrder.RELAXED))            # 0
     std::cout << a.load(::std::memory_order::relaxed) << "\n";
@@ -70,7 +70,7 @@ void main() {
     // fence(MemoryOrder.SEQ_CST)
     ::tpystd::tpy::atomic::fence(::std::memory_order::seq_cst);
     // # Default ordering (seq_cst) -- no MemoryOrder argument needed.
-    // b = Atomic[UInt32](0)
+    // b = Atomic[uint32](0)
     ::tpystd::tpy::atomic::Atomic<uint32_t> b = ::tpystd::tpy::atomic::Atomic<uint32_t>(0);
     // b.store(50)
     b.store(50);
@@ -109,7 +109,7 @@ void main() {
     // print(repr(b))                                # Atomic(2)
     std::cout << ::tpy::repr_of(b) << "\n";
     // # Fixed-width wrapping matches std::atomic<T> (and the CPython stub's _coerce).
-    // w = Atomic[UInt32](0xFFFFFFFF)
+    // w = Atomic[uint32](0xFFFFFFFF)
     ::tpystd::tpy::atomic::Atomic<uint32_t> w = ::tpystd::tpy::atomic::Atomic<uint32_t>(static_cast<uint32_t>(4294967295));
     // print(w.fetch_add(1, MemoryOrder.RELAXED))    # 4294967295 (old), value wraps to 0
     std::cout << w.fetch_add(1, ::std::memory_order::relaxed) << "\n";

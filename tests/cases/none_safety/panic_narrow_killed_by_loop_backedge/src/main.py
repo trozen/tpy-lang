@@ -1,12 +1,12 @@
 # Narrowing proven before a loop must not survive the back-edge when the
 # body kills it: iteration 2+ re-enters with p possibly None (runtime check).
-from tpy import Int32
+from tpy import int32
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32):
+    def __init__(self, x: int32):
         self.x = x
 
 

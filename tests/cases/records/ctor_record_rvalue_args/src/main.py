@@ -2,13 +2,13 @@
 # inline; a slot the ctor mutates hoists a named temp; const chains nest.
 # The rvalues are anonymous temporaries, so no aliasing is observable and
 # plain value output pins both paths.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Inner:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32):
+    def __init__(self, v: int32):
         self.v = v
 
     def bump(self) -> None:
@@ -16,14 +16,14 @@ class Inner:
 
 
 class HolderConst:
-    x: Int32
+    x: int32
 
     def __init__(self, inner: Inner):
         self.x = inner.v
 
 
 class HolderMut:
-    x: Int32
+    x: int32
 
     def __init__(self, inner: Inner):
         inner.bump()
@@ -31,13 +31,13 @@ class HolderMut:
 
 
 class Outer:
-    y: Int32
+    y: int32
 
     def __init__(self, h: HolderConst):
         self.y = h.x
 
 
-def make_inner(v: Int32) -> Own[Inner]:
+def make_inner(v: int32) -> Own[Inner]:
     return Inner(v)
 
 

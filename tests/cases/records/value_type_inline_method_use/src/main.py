@@ -2,15 +2,15 @@
 # (which instantiates a template parameterised on the ValueType). The
 # `is_value_type` spec must precede the instantiation -- previously it
 # emitted at file end, causing "specialization after instantiation".
-from tpy import Int32, ValueType
+from tpy import int32, ValueType
 import heapq
 
 
 class TimerEntry(ValueType):
     deadline: float
-    tid: Int32
+    tid: int32
 
-    def __init__(self, deadline: float, tid: Int32) -> None:
+    def __init__(self, deadline: float, tid: int32) -> None:
         self.deadline = deadline
         self.tid = tid
 
@@ -24,7 +24,7 @@ class Owner:
     def __init__(self) -> None:
         self.heap = []
 
-    def add(self, d: float, t: Int32) -> None:
+    def add(self, d: float, t: int32) -> None:
         heapq.heappush(self.heap, TimerEntry(d, t))
 
 

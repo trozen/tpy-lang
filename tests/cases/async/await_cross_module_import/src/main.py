@@ -5,9 +5,9 @@ import asyncio
 import asyncmod
 from asyncmod import ping
 from asyncmod import ping as aliased
-from tpy import Int32
+from tpy import int32
 
-async def local_double(x: Int32) -> Int32:
+async def local_double(x: int32) -> int32:
     await asyncio.sleep(0)
     return x * 2
 

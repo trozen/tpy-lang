@@ -15,11 +15,11 @@ void main();
 
 // class Maybe:
 struct Maybe {
-    // _n: Int32
+    // _n: int32
     int32_t _n;
     bool __tpy_owned_ = true;
 
-    // def __init__(self, n: Int32):
+    // def __init__(self, n: int32):
     explicit Maybe(int32_t n);
     Maybe(const Maybe&) = delete;
     Maybe& operator=(const Maybe&) = delete;
@@ -37,7 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const Maybe& obj) {
 }
 
 
-// def __init__(self, n: Int32):
+// def __init__(self, n: int32):
 inline Maybe::Maybe(int32_t n) : _n(n) {}
 
 inline Maybe::Maybe(Maybe&& other) noexcept : _n(std::move(other._n)) {

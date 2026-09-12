@@ -17,9 +17,9 @@ void main();
 // @dataclass(frozen=True)
 // class Vec2:
 struct Vec2 {
-    // x: Int32
+    // x: int32
     int32_t x;
-    // y: Int32
+    // y: int32
     int32_t y;
 
     Vec2() = default;
@@ -55,7 +55,7 @@ namespace tpyapp::main {
 // @dataclass(frozen=True)
 // class Vec3(Vec2):
 struct Vec3 : Vec2 {
-    // z: Int32
+    // z: int32
     int32_t z;
 
     Vec3() = default;

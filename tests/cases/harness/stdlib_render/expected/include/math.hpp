@@ -49,10 +49,10 @@ template<::tpystd::typing::Iterable<double> T_p, ::tpystd::typing::Iterable<doub
 double dist(const T_p& p, const T_q& q);
 
 // @dispatch
-// def prod(iterable: Iterable[Int32], *, start: Int32 = Int32(1)) -> Int32:
+// def prod(iterable: Iterable[int32], *, start: int32 = int32(1)) -> int32:
 template<::tpystd::typing::Iterable<int32_t> T_iterable>
 int32_t prod(T_iterable& iterable, int32_t start) {
-    // result: Int32 = start
+    // result: int32 = start
     int32_t result = start;
     // for x in iterable:
     auto& __src_0 = iterable;

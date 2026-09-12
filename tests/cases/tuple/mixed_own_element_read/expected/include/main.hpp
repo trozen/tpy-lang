@@ -34,14 +34,14 @@ void main();
 
 // class Box:
 struct Box {
-    // val: Int32
+    // val: int32
     int32_t val;
 
-    // def __init__(self, val: Int32) -> None:
+    // def __init__(self, val: int32) -> None:
     Box() = default;
     explicit Box(int32_t val);
 
-    // def bump(self) -> Int32:
+    // def bump(self) -> int32:
     int32_t bump();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
@@ -52,10 +52,10 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 }
 
 
-// def __init__(self, val: Int32) -> None:
+// def __init__(self, val: int32) -> None:
 inline Box::Box(int32_t val) : val(val) {}
 
-// def bump(self) -> Int32:
+// def bump(self) -> int32:
 inline int32_t Box::bump() {
     // self.val = self.val + 1
     this->val = (::tpy::add_check<int32_t>(this->val, 1));

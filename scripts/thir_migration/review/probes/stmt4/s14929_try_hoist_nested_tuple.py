@@ -1,9 +1,9 @@
-from tpy import Int32
-def probe(n: Int32) -> Int32:
+from tpy import int32
+def probe(n: int32) -> int32:
     if n < 0:
         raise ValueError("neg")
     return n
-def run(n: Int32) -> Int32:
+def run(n: int32) -> int32:
     try:
         pair = ((1, 2), probe(n))
     except ValueError:

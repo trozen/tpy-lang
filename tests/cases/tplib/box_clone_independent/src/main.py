@@ -3,14 +3,14 @@
 # Ptr-field section pins the other half of the rule -- a Ptr[T] field copies the
 # POINTER, so its pointee stays shared.
 from __future__ import annotations
-from tpy import Int32, Ptr, take_ptr
+from tpy import int32, Ptr, take_ptr
 from tplib import Box
 
 
 class Cell:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
@@ -23,7 +23,7 @@ class PtrHolder:
 
 # value payload: the clone is trivially independent.
 def sec_value() -> None:
-    b = Box[Int32](1)
+    b = Box[int32](1)
     c = b.clone()  # tpyc: ok
     b.set(99)
     print("value:", b.get(), c.get())

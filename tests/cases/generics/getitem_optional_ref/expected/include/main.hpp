@@ -19,10 +19,10 @@ void main();
 
 // class Rec:
 struct Rec {
-    // x: Int32
+    // x: int32
     int32_t x;
 
-    // def __init__(self, x: Int32):
+    // def __init__(self, x: int32):
     Rec() = default;
     explicit Rec(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Rec";
@@ -42,10 +42,10 @@ struct Box {
     Box() = default;
     explicit Box(const Rec& v);
 
-    // def __getitem__(self, want: Int32) -> Rec | None:
+    // def __getitem__(self, want: int32) -> Rec | None:
     Rec* __getitem__(int32_t want);
 
-    // def __getitem__(self, want: Int32) -> Rec | None:
+    // def __getitem__(self, want: int32) -> Rec | None:
     const Rec* __getitem__(int32_t want) const;
 
     const Rec* operator[](int32_t want) const {
@@ -75,7 +75,7 @@ struct GenBox {
     GenBox() = default;
     explicit GenBox(::tpy::readonly_form_t<K> k, ::tpy::readonly_form_t<V> v) : _k(k), _v(v) {}
 
-    // def __getitem__(self, want: Int32) -> V | None:
+    // def __getitem__(self, want: int32) -> V | None:
     V* __getitem__(int32_t want) {
         // if want > 0:
         if ((want > 0)) {
@@ -86,7 +86,7 @@ struct GenBox {
         return nullptr;
     }
 
-    // def __getitem__(self, want: Int32) -> V | None:
+    // def __getitem__(self, want: int32) -> V | None:
     const V* __getitem__(int32_t want) const {
         // if want > 0:
         if ((want > 0)) {
@@ -113,7 +113,7 @@ inline std::ostream& operator<<(std::ostream& os, const GenBox<K, V>& obj) {
     return os;
 }
 
-// class SubBox(GenBox[Int32, Rec]):
+// class SubBox(GenBox[int32, Rec]):
 struct SubBox : GenBox<int32_t, Rec> {
 
     using GenBox<int32_t, Rec>::GenBox;
@@ -126,13 +126,13 @@ inline std::ostream& operator<<(std::ostream& os, const SubBox& obj) {
 }
 
 
-// def __init__(self, x: Int32):
+// def __init__(self, x: int32):
 inline Rec::Rec(int32_t x) : x(x) {}
 
 // def __init__(self, v: Rec):
 inline Box::Box(const Rec& v) : _v(v) {}
 
-// def __getitem__(self, want: Int32) -> Rec | None:
+// def __getitem__(self, want: int32) -> Rec | None:
 inline Rec* Box::__getitem__(int32_t want) {
     // if want > 0:
     if ((want > 0)) {
@@ -143,7 +143,7 @@ inline Rec* Box::__getitem__(int32_t want) {
     return nullptr;
 }
 
-// def __getitem__(self, want: Int32) -> Rec | None:
+// def __getitem__(self, want: int32) -> Rec | None:
 inline const Rec* Box::__getitem__(int32_t want) const {
     // if want > 0:
     if ((want > 0)) {

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def grow(xs: list[Int32], n: Int32) -> None:
+// def grow(xs: list[int32], n: int32) -> None:
 void grow(std::vector<int32_t>& xs, int32_t n) {
     // xs.append(5)
     xs.push_back(5);
@@ -22,7 +22,7 @@ void grow(std::vector<int32_t>& xs, int32_t n) {
     ::tpy::list_remove(xs, 5);
 }
 
-// def take_two(xs: list[Int32]) -> Int32:
+// def take_two(xs: list[int32]) -> int32:
 int32_t take_two(std::vector<int32_t>& xs) {
     // a = xs.pop()
     int32_t a = ::tpy::pop_back(xs);
@@ -30,13 +30,13 @@ int32_t take_two(std::vector<int32_t>& xs) {
     return (::tpy::add_check<int32_t>(a, ::tpy::pop_back(xs)));
 }
 
-// def wipe(xs: list[Int32]) -> None:
+// def wipe(xs: list[int32]) -> None:
 void wipe(std::vector<int32_t>& xs) {
     // xs.clear()
     xs.clear();
 }
 
-// def show_last(xs: list[Int32]) -> None:
+// def show_last(xs: list[int32]) -> None:
 void show_last(std::vector<int32_t>& xs) {
     // print(xs.pop())
     std::cout << ::tpy::pop_back(xs) << "\n";

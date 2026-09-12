@@ -1,11 +1,11 @@
-from tpy import Int32, ValueType
+from tpy import int32, ValueType
 class A(ValueType):
-    a: Int32
-    def __init__(self, a: Int32) -> None:
+    a: int32
+    def __init__(self, a: int32) -> None:
         self.a = a
 class B(ValueType):
-    b: Int32
-    def __init__(self, b: Int32) -> None:
+    b: int32
+    def __init__(self, b: int32) -> None:
         self.b = b
 type AB = A | B
 def main() -> None:

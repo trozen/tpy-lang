@@ -1,9 +1,9 @@
 # Test that negation on unsigned types is a compile error
-from tpy import UInt8
+from tpy import uint8
 
 def main() -> None:
-    x: UInt8 = UInt8(42)
-    y: UInt8 = -x  # tpyc: error(/unary.*UInt8/)
+    x: uint8 = uint8(42)
+    y: uint8 = -x  # tpyc: error(/unary.*uint8/)
     print(y)
 
 main()

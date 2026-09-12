@@ -1,2 +1,2 @@
-main.py:24: warning: Own[dict[str, Int32 | str]] param 'd' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:29: warning: Own[list[Int32 | str]] param 'items' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:24: warning: Own[dict[str, int32 | str]] param 'd' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:29: warning: Own[list[int32 | str]] param 'items' is never consumed (not stored in a field, forwarded to another Own[T], or returned)

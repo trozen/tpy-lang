@@ -1,12 +1,12 @@
 # Array and Span with nocopy type arg are nocopy
-from tpy import Int32, Own, nocopy, copy, Array
+from tpy import int32, Own, nocopy, copy, Array
 
 
 @nocopy
 class Handle:
-    fd: Int32
+    fd: int32
 
-    def __init__(self, fd: Int32):
+    def __init__(self, fd: int32):
         self.fd = fd
 
 

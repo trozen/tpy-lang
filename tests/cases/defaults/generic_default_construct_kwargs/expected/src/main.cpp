@@ -6,9 +6,9 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // three_params[Int32](10, c=5)
+    // three_params[int32](10, c=5)
     three_params<int32_t>(10, int32_t{}, 5);
-    // three_params[Int32](1, 2, 3)
+    // three_params[int32](1, 2, 3)
     three_params<int32_t>(1, 2, 3);
     // # T inferred from first arg
     // three_params(42)

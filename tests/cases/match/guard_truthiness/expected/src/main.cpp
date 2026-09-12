@@ -76,7 +76,7 @@ std::optional<::tpyapp::main::Level> EnumUtil<::tpyapp::main::Level>::try_parse(
 namespace tpyapp::main {
 
 
-// def opt_guard(k: Int32, v: Int32 | None) -> Int32:
+// def opt_guard(k: int32, v: int32 | None) -> int32:
 int32_t opt_guard(int32_t k, std::optional<int32_t> v) {
     // match k:
     auto& __match_subject_1 = k;
@@ -102,7 +102,7 @@ int32_t opt_guard(int32_t k, std::optional<int32_t> v) {
     // # an `if` -- a diagnostic gap tracked in BUGS.md, not a fix target.
 }
 
-// def str_guard(k: Int32, t: str) -> Int32:
+// def str_guard(k: int32, t: str) -> int32:
 int32_t str_guard(int32_t k, std::string_view t) {
     // match k:
     auto& __match_subject_1 = k;
@@ -126,7 +126,7 @@ int32_t str_guard(int32_t k, std::string_view t) {
     ::std::unreachable();
 }
 
-// def list_guard(k: Int32, xs: list[Int32]) -> Int32:
+// def list_guard(k: int32, xs: list[int32]) -> int32:
 int32_t list_guard(int32_t k, const std::vector<int32_t>& xs) {
     // match k:
     auto& __match_subject_1 = k;
@@ -150,7 +150,7 @@ int32_t list_guard(int32_t k, const std::vector<int32_t>& xs) {
     ::std::unreachable();
 }
 
-// def record_guard(k: Int32, g: Bag) -> Int32:
+// def record_guard(k: int32, g: Bag) -> int32:
 int32_t record_guard(int32_t k, const Bag& g) {
     // match k:
     auto& __match_subject_1 = k;
@@ -174,7 +174,7 @@ int32_t record_guard(int32_t k, const Bag& g) {
     ::std::unreachable();
 }
 
-// def not_guard(k: Int32, t: str) -> Int32:
+// def not_guard(k: int32, t: str) -> int32:
 int32_t not_guard(int32_t k, std::string_view t) {
     // match k:
     auto& __match_subject_1 = k;
@@ -198,7 +198,7 @@ int32_t not_guard(int32_t k, std::string_view t) {
     ::std::unreachable();
 }
 
-// def enum_guard(k: Int32, c: Color) -> Int32:
+// def enum_guard(k: int32, c: Color) -> int32:
 int32_t enum_guard(int32_t k, Color c) {
     // match k:
     auto& __match_subject_1 = k;
@@ -222,7 +222,7 @@ int32_t enum_guard(int32_t k, Color c) {
     ::std::unreachable();
 }
 
-// def int_enum_guard(k: Int32, lv: Level) -> Int32:
+// def int_enum_guard(k: int32, lv: Level) -> int32:
 int32_t int_enum_guard(int32_t k, Level lv) {
     // match k:
     auto& __match_subject_1 = k;
@@ -246,7 +246,7 @@ int32_t int_enum_guard(int32_t k, Level lv) {
     ::std::unreachable();
 }
 
-// def plain_record_guard(k: Int32, p: Plain) -> Int32:
+// def plain_record_guard(k: int32, p: Plain) -> int32:
 int32_t plain_record_guard(int32_t k, const Plain& p) {
     // match k:
     auto& __match_subject_1 = k;
@@ -270,7 +270,7 @@ int32_t plain_record_guard(int32_t k, const Plain& p) {
     ::std::unreachable();
 }
 
-// def any_guard(k: Int32, v: Any) -> Int32:
+// def any_guard(k: int32, v: Any) -> int32:
 int32_t any_guard(int32_t k, ::tpy::Any v) {
     // match k:
     auto& __match_subject_1 = k;
@@ -294,7 +294,7 @@ int32_t any_guard(int32_t k, ::tpy::Any v) {
     ::std::unreachable();
 }
 
-// def and_guard(k: Int32, t: str, xs: list[Int32]) -> Int32:
+// def and_guard(k: int32, t: str, xs: list[int32]) -> int32:
 int32_t and_guard(int32_t k, std::string_view t, const std::vector<int32_t>& xs) {
     // match k:
     auto& __match_subject_1 = k;

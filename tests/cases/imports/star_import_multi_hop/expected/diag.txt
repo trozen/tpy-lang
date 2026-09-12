@@ -1,1 +1,1 @@
-c.py:3: warning: ALL_CAPS variable 'LIMIT' without Final annotation; use Final[Int32] if this is a constant
+c.py:3: warning: ALL_CAPS variable 'LIMIT' without Final annotation; use Final[int32] if this is a constant

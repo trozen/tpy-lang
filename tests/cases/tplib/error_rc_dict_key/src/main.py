@@ -5,13 +5,13 @@
 # of the key, not a language-level design choice. Annotation alone
 # triggers the check (covers the `dict()` + subscript-assign bypass path
 # too). The dict[K, Rc[T]] (move-only *value*) path already works.
-from tpy import Int32
+from tpy import int32
 from tplib import Rc
 
 
 def main() -> None:
-    d: dict[Rc[Int32], Int32] = {}  # tpyc: error(/Rc\[Int32\].*non-copyable.*dict key/)
-    a = Rc.new(Int32(1))
+    d: dict[Rc[int32], int32] = {}  # tpyc: error(/Rc\[int32\].*non-copyable.*dict key/)
+    a = Rc.new(int32(1))
     d[a.clone()] = 1
     print(len(d))
 

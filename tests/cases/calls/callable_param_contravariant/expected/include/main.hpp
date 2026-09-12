@@ -17,7 +17,7 @@ template<typename __F0>
 void use(__F0&& f);
 void main();
 
-// def use(f: Fn[[Int32], None]) -> None:
+// def use(f: Fn[[int32], None]) -> None:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       __fn(__a0);

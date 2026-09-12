@@ -3,13 +3,13 @@
 # awaiter observes it. Exercises the method-path generator_locals fix and the
 # post-suspension (resume-state) write that the free-function test omits.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
-total: Int32 = 0
+total: int32 = 0
 
 
 class Worker:
-    async def add(self, n: Int32) -> None:
+    async def add(self, n: int32) -> None:
         global total
         await asyncio.sleep(0)
         total += n

@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def make_getter(cfg: Config) -> Callable[[], Int32]:
+// def make_getter(cfg: Config) -> Callable[[], int32]:
 std::function<int32_t()> make_getter(const Config& cfg) {
-    // def get_value() -> Int32:
+    // def get_value() -> int32:
     auto get_value = [&cfg]() -> int32_t {
         // return cfg.value
         return cfg.value;

@@ -3,24 +3,24 @@
 # the sema flag-forwarding (the hashable gate at validate_type's NominalType
 # branch fires on dict keys too) and the codegen topo-sort's hash-element
 # edge (which walks typ.type_args[0] for dict keys via is_dict).
-from tpy import Int32, UInt64
+from tpy import int32, uint64
 
 
 class Holder:
-    counts: dict["Point", Int32]
+    counts: dict["Point", int32]
 
     def __init__(self) -> None:
         self.counts = {}
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
-    def __hash__(self) -> UInt64:
-        return UInt64(self.x)
+    def __hash__(self) -> uint64:
+        return uint64(self.x)
 
     def __eq__(self, other: "Point") -> bool:
         return self.x == other.x

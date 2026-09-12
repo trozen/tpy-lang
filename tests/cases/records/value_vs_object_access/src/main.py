@@ -1,21 +1,21 @@
-from tpy import Int32
+from tpy import int32
 from tplib import ArrayList
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32):
+    def __init__(self, x: int32, y: int32):
         self.x = x
         self.y = y
 
 
 def test_value_types():
     # Value type on ArrayList - get_value (copy semantics)
-    nums = ArrayList[Int32, 4]()
+    nums = ArrayList[int32, 4]()
     nums.append(10)
     nums.append(20)
-    val: Int32 = nums[0]
+    val: int32 = nums[0]
     print(val)  # 10
 
     # Modifying val doesn't affect nums[0] (value semantics)
@@ -23,8 +23,8 @@ def test_value_types():
     print(nums[0])  # Still 10
 
     # Test with list[T] as well
-    int_list: list[Int32] = [5, 6, 7]
-    v: Int32 = int_list[1]  # get_value for Int32 element
+    int_list: list[int32] = [5, 6, 7]
+    v: int32 = int_list[1]  # get_value for int32 element
     print(v)  # 6
 
 

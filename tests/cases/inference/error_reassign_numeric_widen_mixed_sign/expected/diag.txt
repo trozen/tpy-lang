@@ -1,1 +1,1 @@
-main.py:6: error: Type mismatch in reassignment to 'x': expected Int32, got UInt32
+main.py:6: error: Type mismatch in reassignment to 'x': expected int32, got uint32

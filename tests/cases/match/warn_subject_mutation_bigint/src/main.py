@@ -1,7 +1,7 @@
 # A BigInt (`int`) binding is NOT a free-copy scalar (heap-backed arbitrary
 # precision), so it stays an auto& borrow and warns on subject mutation --
-# unlike a fixed-width Int32, which would be copied and safe.
-from tpy import Int32
+# unlike a fixed-width int32, which would be copied and safe.
+from tpy import int32
 
 
 class Big:
@@ -12,9 +12,9 @@ class Big:
 
 
 class Small:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 

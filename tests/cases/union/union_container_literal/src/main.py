@@ -1,5 +1,5 @@
 # Union-typed container literals: dict, list with annotation
-from tpy import Own, Int32
+from tpy import Own, int32
 
 class Dog:
     name: str
@@ -11,30 +11,30 @@ class Cat:
     def __init__(self, name: str) -> None:
         self.name = name
 
-def process_dict(d: dict[str, Int32 | str]) -> None:
+def process_dict(d: dict[str, int32 | str]) -> None:
     v = d["a"]
     if isinstance(v, str):
         print("str:", v)
 
-def process_list(items: list[Int32 | str]) -> None:
+def process_list(items: list[int32 | str]) -> None:
     for item in items:
         if isinstance(item, str):
             print("str:", item)
 
-def consume_dict(d: Own[dict[str, Int32 | str]]) -> None:
+def consume_dict(d: Own[dict[str, int32 | str]]) -> None:
     v = d["a"]
     if isinstance(v, str):
         print("own str:", v)
 
-def consume_list(items: Own[list[Int32 | str]]) -> None:
+def consume_list(items: Own[list[int32 | str]]) -> None:
     v = items[0]
     if isinstance(v, str):
         print("own list:", v)
 
-def make_dict() -> Own[dict[str, Int32 | str]]:
+def make_dict() -> Own[dict[str, int32 | str]]:
     return {"a": 1, "b": "hello"}
 
-def make_list() -> Own[list[Int32 | str]]:
+def make_list() -> Own[list[int32 | str]]:
     return [1, "hello", 2]
 
 def main() -> None:
@@ -65,14 +65,14 @@ def main() -> None:
             print("cat:", a.name)
 
     # Pass union dict as argument (by reference)
-    d3: dict[str, Int32 | str] = {"a": 1, "b": "world"}
+    d3: dict[str, int32 | str] = {"a": 1, "b": "world"}
     process_dict(d3)
 
     # Pass union dict literal as argument
     process_dict({"a": "direct"})
 
     # Pass union list as argument (variable)
-    items: list[Int32 | str] = ["hello", 1, "world"]
+    items: list[int32 | str] = ["hello", 1, "world"]
     process_list(items)
 
     # Pass union list literal as argument
@@ -103,31 +103,31 @@ def main() -> None:
         print(v3)
 
     # List of lists|str
-    mixed: list[list[Int32] | str] = [[10, 20], "hi"]
+    mixed: list[list[int32] | str] = [[10, 20], "hi"]
     v4 = mixed[1]
     if isinstance(v4, str):
         print(v4)
 
     # Constructor from list of tuples with union values
-    d7 = dict[str, Int32 | str]([("x", "hello"), ("y", 1)])
+    d7 = dict[str, int32 | str]([("x", "hello"), ("y", 1)])
     v5 = d7["x"]
     if isinstance(v5, str):
         print(v5)
 
     # Constructor from dict literal with union values
-    d8 = dict[str, Int32 | str]({"p": "hi", "q": 99})
+    d8 = dict[str, int32 | str]({"p": "hi", "q": 99})
     v6 = d8["p"]
     if isinstance(v6, str):
         print(v6)
 
     # Constructor from list of tuples with optional values
-    d9 = dict[str, Int32 | None]([("a", 42), ("b", None)])
+    d9 = dict[str, int32 | None]([("a", 42), ("b", None)])
     print(d9)
 
     # Printing containers with union elements
     print(d)
     print(lst)
-    d6: dict[str, Int32 | None] = {"x": 42, "y": None}
+    d6: dict[str, int32 | None] = {"x": 42, "y": None}
     print(d6)
 
 main()

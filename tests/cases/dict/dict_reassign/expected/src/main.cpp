@@ -18,7 +18,7 @@ void main() {
     // print(d["b"], d["c"])
     std::cout << ::tpy::__getitem__((*d), "b") << " " << ::tpy::__getitem__((*d), "c") << "\n";
     // # Union dict reassignment
-    // d2: dict[str, Int32 | str] = {"x": 1, "y": "hello"}
+    // d2: dict[str, int32 | str] = {"x": 1, "y": "hello"}
     ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>> __slot_3 = ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>({{"x", 1}, {"y", "hello"}});
     ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>* d2 = &__slot_3;
     // d2 = {"z": "world"}

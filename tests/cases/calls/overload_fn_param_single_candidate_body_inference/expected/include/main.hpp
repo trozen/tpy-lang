@@ -25,13 +25,13 @@ void main();
 // # _analyze_lambda_with_fn_hint -- preserving body-return-TPR
 // # inference for U.
 // @dispatch
-// def apply[T, U](f: Fn[[T], U], xs: list[T]) -> Int32:  # tpyc: ok
+// def apply[T, U](f: Fn[[T], U], xs: list[T]) -> int32:  # tpyc: ok
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
       { __fn(__a0) } -> std::convertible_to<U>;
   }
 int32_t apply(__F0&& f, const std::vector<T>& xs) {
-    // return Int32(0)
+    // return int32(0)
     return 0;
 }
 // @dispatch

@@ -1,22 +1,22 @@
-from tpy import Int32
+from tpy import int32
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32):
+    def __init__(self, x: int32):
         self.x = x
 
-    def mag(self) -> Int32:
+    def mag(self) -> int32:
         return self.x
 
 
-def get_x(p: Point | None) -> Int32:
+def get_x(p: Point | None) -> int32:
     assert p is not None
     return p.x
 
 
-def get_mag(p: Point | None) -> Int32:
+def get_mag(p: Point | None) -> int32:
     assert p is not None, "point required"
     return p.mag()
 

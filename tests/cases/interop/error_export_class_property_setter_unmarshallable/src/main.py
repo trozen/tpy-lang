@@ -1,7 +1,7 @@
 # A property setter whose value type isn't a boundary type is a located
 # error naming the setter value (the getter-return variant has its own case).
 # tpy: ext_module
-from tpy import Int32
+from tpy import int32
 from tpy.extern import export
 
 
@@ -13,7 +13,7 @@ class Box:
         self._b = bytearray(b"xy")
 
     @property
-    def buf(self) -> Int32:
+    def buf(self) -> int32:
         return len(self._b)
 
     @buf.setter

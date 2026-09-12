@@ -5,18 +5,18 @@
 # `generator_optional_fields`. Before the fix, body-emit's `(*a)` /
 # `(*b)` peel mis-fired on `a.n` / `b.n`.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
 class Item:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
-async def total(pairs: list[tuple[Item, Item]]) -> Int32:
-    s: Int32 = 0
+async def total(pairs: list[tuple[Item, Item]]) -> int32:
+    s: int32 = 0
     await asyncio.sleep(0)
     for a, b in pairs:
         s += a.n + b.n

@@ -1,13 +1,13 @@
 # A later-reassigned unpack target is NOT promoted to a movable owned local
 # (it stays an ordinary reassignable local); unpack, reassign, and read work.
-from tpy import Own, nocopy, Int32
+from tpy import Own, nocopy, int32
 
 
 @nocopy
 class Counter:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 

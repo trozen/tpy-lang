@@ -1,12 +1,12 @@
 # A non-ctor CALL element inside a recursive-union literal is outside the element
 # family, so the literal rejects.
 from dataclasses import dataclass
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 @dataclass
 class Leaf:
-    value: Int32
+    value: int32
 
 
 type Tree = Leaf | list[Tree]

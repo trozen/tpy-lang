@@ -1,12 +1,12 @@
 # `is not None` over a TWO-link record field chain (`t.outer.inner.value`):
 # TPy lowers the one-link form only, so the case pins the reject.
-from tpy import Int32
+from tpy import int32
 
 
 class Inner:
-    value: Int32 | None
+    value: int32 | None
 
-    def __init__(self, v: Int32 | None) -> None:
+    def __init__(self, v: int32 | None) -> None:
         self.value = v
 
 
@@ -24,7 +24,7 @@ class Top:
         self.outer = o
 
 
-def get_value(t: Top) -> Int32:
+def get_value(t: Top) -> int32:
     # The chain rule covers ONE plain record link; a second link is out.
     if t.outer.inner.value is not None:  # tpyc: error(/binop.shape.is not/)
         return t.outer.inner.value

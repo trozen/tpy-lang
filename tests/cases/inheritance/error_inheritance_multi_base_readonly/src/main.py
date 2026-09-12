@@ -1,14 +1,14 @@
 # A @readonly method cannot dispatch through the unbound-self form to an
 # ancestor method that would mutate self. The readonly guard mirrors the one
 # on regular self.method() calls and on super() dispatch.
-from tpy import Int32, readonly
+from tpy import int32, readonly
 
 
 class Counter:
-    n: Int32
+    n: int32
 
     def __init__(self) -> None:
-        self.n = Int32(0)
+        self.n = int32(0)
 
     def bump(self) -> None:
         self.n = self.n + 1
@@ -16,7 +16,7 @@ class Counter:
 
 class Wrapper(Counter):
     @readonly
-    def snapshot(self) -> Int32:
+    def snapshot(self) -> int32:
         Counter.bump(self)  # tpyc: error(/Cannot call non-readonly method 'bump' on readonly reference/)
         return self.n
 

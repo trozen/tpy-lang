@@ -464,8 +464,8 @@ def _run_cli(is_runner: bool) -> int:
     parser.add_argument(
         "--default-int",
         choices=DEFAULT_INT_CHOICES,
-        default="Int32",
-        help="Default type for unannotated integer literals (default: Int32)",
+        default="int32",
+        help="Default type for unannotated integer literals (default: int32)",
     )
     parser.add_argument(
         "-L", "--lib", action="append", default=None,

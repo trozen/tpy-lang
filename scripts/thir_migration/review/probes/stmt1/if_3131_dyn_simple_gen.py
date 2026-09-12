@@ -1,4 +1,4 @@
-from tpy import dynamic, readonly, Int32, Own
+from tpy import dynamic, readonly, int32, Own
 from typing import Protocol
 @dynamic
 class Pet(Protocol):

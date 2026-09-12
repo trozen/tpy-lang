@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def opt_branch(v: Int32 | None) -> Int32:
+// async def opt_branch(v: int32 | None) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_opt_branch::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -36,12 +36,12 @@ namespace tpyapp::main {
 }
 
 
-// async def opt_branch(v: Int32 | None) -> Int32:
+// async def opt_branch(v: int32 | None) -> int32:
 __coro_opt_branch opt_branch(std::optional<int32_t> v) {
     return __coro_opt_branch(v);
 }
 
-// async def list_branch(xs: list[Int32]) -> Int32:
+// async def list_branch(xs: list[int32]) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_list_branch::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -73,12 +73,12 @@ __coro_opt_branch opt_branch(std::optional<int32_t> v) {
 }
 
 
-// async def list_branch(xs: list[Int32]) -> Int32:
+// async def list_branch(xs: list[int32]) -> int32:
 __coro_list_branch list_branch(std::vector<int32_t>& xs) {
     return __coro_list_branch(xs);
 }
 
-// async def str_while(t: str) -> Int32:
+// async def str_while(t: str) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_str_while::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -118,12 +118,12 @@ __coro_list_branch list_branch(std::vector<int32_t>& xs) {
 }
 
 
-// async def str_while(t: str) -> Int32:
+// async def str_while(t: str) -> int32:
 __coro_str_while str_while(std::string_view t) {
     return __coro_str_while(t);
 }
 
-// async def and_branch(xs: list[Int32], v: Int32 | None) -> Int32:
+// async def and_branch(xs: list[int32], v: int32 | None) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_and_branch::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -155,7 +155,7 @@ __coro_str_while str_while(std::string_view t) {
 }
 
 
-// async def and_branch(xs: list[Int32], v: Int32 | None) -> Int32:
+// async def and_branch(xs: list[int32], v: int32 | None) -> int32:
 __coro_and_branch and_branch(std::vector<int32_t>& xs, std::optional<int32_t> v) {
     return __coro_and_branch(xs, v);
 }

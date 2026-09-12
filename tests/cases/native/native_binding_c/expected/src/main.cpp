@@ -8,9 +8,9 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // print(my_abs(Int32(-42)))
+    // print(my_abs(int32(-42)))
     std::cout << native_abs(-42) << "\n";
-    // print(add(Int32(10), Int32(32)))
+    // print(add(int32(10), int32(32)))
     std::cout << native_add(10, 32) << "\n";
 }
 

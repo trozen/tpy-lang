@@ -1,18 +1,18 @@
 # Explicit @readonly on methods generates const-qualified C++ overloads.
-from tpy import Int32, readonly
+from tpy import int32, readonly
 
 class Counter:
-    value: Int32
+    value: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.value = v
 
     @readonly
-    def get_value(self) -> Int32:
+    def get_value(self) -> int32:
         return self.value
 
     @readonly
-    def doubled(self) -> Int32:
+    def doubled(self) -> int32:
         return self.value + self.value
 
 def main() -> None:

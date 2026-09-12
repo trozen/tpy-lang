@@ -6,9 +6,9 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // # Tuple-shaped T: bare literal `3` coerces to Int32 in the second-arg
+    // # Tuple-shaped T: bare literal `3` coerces to int32 in the second-arg
     // # tuple even though T was determined by the first arg.
-    // pq: list[tuple[Int32, str]] = []
+    // pq: list[tuple[int32, str]] = []
     std::vector<std::tuple<int32_t, std::string>> pq = std::vector<std::tuple<int32_t, std::string>>{};
     // heappush(pq, (3, "third"))  # tpyc: ok
     ::tpystd::heapq::heappush<std::tuple<int32_t, std::string>>(pq, std::tuple<int32_t, std::string>{3, "third"});
@@ -18,8 +18,8 @@ void main() {
     push_t<std::tuple<int32_t, std::string>>(pq, std::tuple<int32_t, std::string>{2, "second"});
     // print(len(pq))
     std::cout << ::tpy::__len__(pq) << "\n";
-    // # Float-literal slot: same path, FloatLiteralType -> Float64.
-    // weighted: list[tuple[Float64, str]] = []
+    // # Float-literal slot: same path, FloatLiteralType -> float64.
+    // weighted: list[tuple[float64, str]] = []
     std::vector<std::tuple<double, std::string>> weighted = std::vector<std::tuple<double, std::string>>{};
     // push_t(weighted, (1.5, "a"))  # tpyc: ok
     push_t<std::tuple<double, std::string>>(weighted, std::tuple<double, std::string>{1.5, "a"});
@@ -28,21 +28,21 @@ void main() {
     // print(len(weighted))
     std::cout << ::tpy::__len__(weighted) << "\n";
     // # Nested tuple-of-tuple slot.
-    // nested: list[tuple[tuple[Int32, Int32], str]] = []
+    // nested: list[tuple[tuple[int32, int32], str]] = []
     std::vector<std::tuple<std::tuple<int32_t, int32_t>, std::string>> nested = std::vector<std::tuple<std::tuple<int32_t, int32_t>, std::string>>{};
     // push_t(nested, ((1, 2), "x"))  # tpyc: ok
     push_t<std::tuple<std::tuple<int32_t, int32_t>, std::string>>(nested, std::tuple<std::tuple<int32_t, int32_t>, std::string>{std::tuple<int32_t, int32_t>{1, 2}, "x"});
     // print(len(nested))
     std::cout << ::tpy::__len__(nested) << "\n";
     // # Dict K + V both fixed-int from separate args; literals coerce in place.
-    // counts: dict[Int32, Int32] = {}
+    // counts: dict[int32, int32] = {}
     ::tpy::ordered_map<int32_t, int32_t> counts = ::tpy::ordered_map<int32_t, int32_t>();
     // put_dict(counts, 7, 42)  # tpyc: ok
     put_dict<int32_t, int32_t>(counts, 7, 42);
     // print(counts[7])
     std::cout << ::tpy::__getitem__(counts, 7) << "\n";
     // # set[T] inference with bare literal element.
-    // seen: set[Int32] = set()
+    // seen: set[int32] = set()
     ::tpy::ordered_set<int32_t> seen = ::tpy::ordered_set<int32_t>();
     // add_to_set(seen, 11)  # tpyc: ok
     add_to_set<int32_t>(seen, 11);

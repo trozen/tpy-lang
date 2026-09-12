@@ -1,11 +1,11 @@
 # PEP 526 ClassVar[T] = value: mutable class-scoped storage.
 # Reads and writes via ClassName.X go to the same `static inline` slot.
 from typing import ClassVar
-from tpy import Int32
+from tpy import int32
 
 
 class Counter:
-    instances: ClassVar[Int32] = 0
+    instances: ClassVar[int32] = 0
 
     def __init__(self) -> None:
         Counter.instances += 1

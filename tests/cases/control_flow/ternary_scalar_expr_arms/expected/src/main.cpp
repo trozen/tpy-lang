@@ -4,15 +4,15 @@
 namespace tpyapp::main {
 
 
-// def double(k: Int32) -> Int32:
+// def double(k: int32) -> int32:
 int32_t double_(int32_t k) {
     // return k * 2
     return (::tpy::mul_check<int32_t>(k, 2));
 }
 
-// def maybe_sum(k: Int32, c: bool) -> Int32:
+// def maybe_sum(k: int32, c: bool) -> int32:
 int32_t maybe_sum(int32_t k, bool c) {
-    // x: Int32 | None = (k + 2) if c else None    # tpyc: ok -- a binop arm
+    // x: int32 | None = (k + 2) if c else None    # tpyc: ok -- a binop arm
     std::optional<int32_t> x = ((c) ? (std::optional<int32_t>((::tpy::add_check<int32_t>(k, 2)))) : (std::optional<int32_t>(std::nullopt)));
     // if x is not None:
     if ((x.has_value())) {
@@ -23,9 +23,9 @@ int32_t maybe_sum(int32_t k, bool c) {
     return -1;
 }
 
-// def maybe_call(k: Int32, c: bool) -> Int32:
+// def maybe_call(k: int32, c: bool) -> int32:
 int32_t maybe_call(int32_t k, bool c) {
-    // y: Int32 | None = double(k) if c else None  # tpyc: ok -- a call arm
+    // y: int32 | None = double(k) if c else None  # tpyc: ok -- a call arm
     std::optional<int32_t> y = ((c) ? (std::optional<int32_t>(double_(k))) : (std::optional<int32_t>(std::nullopt)));
     // if y is not None:
     if ((y.has_value())) {

@@ -1,1 +1,1 @@
-main.py:16: error: Type mismatch in return value: expected Int32, got Int32 | None
+main.py:16: error: Type mismatch in return value: expected int32, got int32 | None

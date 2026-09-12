@@ -2,7 +2,7 @@
 # method, or property getter (hidden outside children()) -- falls back to the
 # inline vector path: the unwrap's return/goto would mistarget from inside the
 # array_from_index lambda. Propagation must still work from the element expr.
-from tpy import Int32, error_return, ReturnException
+from tpy import int32, error_return, ReturnException
 
 
 class MyErr(Exception, ReturnException):
@@ -10,41 +10,41 @@ class MyErr(Exception, ReturnException):
 
 
 class Gauge:
-    raw: Int32
+    raw: int32
 
-    def __init__(self, raw: Int32) -> None:
+    def __init__(self, raw: int32) -> None:
         self.raw = raw
 
     @property
     @error_return(MyErr)
-    def val(self) -> Int32:
+    def val(self) -> int32:
         if self.raw < 0:
             raise MyErr()
         return self.raw
 
     @error_return(MyErr)
-    def scaled(self, k: Int32) -> Int32:
+    def scaled(self, k: int32) -> int32:
         if self.raw < 0:
             raise MyErr()
         return self.raw * k
 
 
 @error_return(MyErr)
-def half(n: Int32) -> Int32:
+def half(n: int32) -> int32:
     if n % 2 != 0:
         raise MyErr()
     return n // 2
 
 
 @error_return(MyErr)
-def halves() -> Int32:
-    hs = [half(i) for i in range(0, 8, 2)]  # tpyc: type(/list\[Int32\]/)
+def halves() -> int32:
+    hs = [half(i) for i in range(0, 8, 2)]  # tpyc: type(/list\[int32\]/)
     return hs[0] + hs[3]
 
 
 @error_return(MyErr)
-def bad() -> Int32:
-    hs = [half(i) for i in range(3)]  # tpyc: type(/list\[Int32\]/)
+def bad() -> int32:
+    hs = [half(i) for i in range(3)]  # tpyc: type(/list\[int32\]/)
     return hs[0]
 
 
@@ -59,8 +59,8 @@ def main():
         print("propagated")
     g = Gauge(5)
     try:
-        props = [g.val for i in range(4)]  # tpyc: type(/list\[Int32\]/)
-        meths = [g.scaled(i) for i in range(3)]  # tpyc: type(/list\[Int32\]/)
+        props = [g.val for i in range(4)]  # tpyc: type(/list\[int32\]/)
+        meths = [g.scaled(i) for i in range(3)]  # tpyc: type(/list\[int32\]/)
         print(props[0], len(props), meths[2])
     except MyErr:
         print("unexpected")

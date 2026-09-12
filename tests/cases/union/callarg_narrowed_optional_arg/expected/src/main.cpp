@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def take_opt(o: A | None) -> Int32:
+// def take_opt(o: A | None) -> int32:
 int32_t take_opt(const A* o) {
     // if o is None:
     if ((o == nullptr)) {
@@ -24,7 +24,7 @@ void bump_opt(A* o) {
     }
 }
 
-// def read_narrowed(u: A | B) -> Int32:
+// def read_narrowed(u: A | B) -> int32:
 int32_t read_narrowed(::tpy::Union<A*, B*> u) {
     // if isinstance(u, A):
     if (std::holds_alternative<A*>(u)) {
@@ -37,7 +37,7 @@ int32_t read_narrowed(::tpy::Union<A*, B*> u) {
     return -1;
 }
 
-// def mutate_narrowed(u: A | B) -> Int32:
+// def mutate_narrowed(u: A | B) -> int32:
 int32_t mutate_narrowed(::tpy::Union<A*, B*> u) {
     // if isinstance(u, A):
     if (std::holds_alternative<A*>(u)) {
@@ -52,7 +52,7 @@ int32_t mutate_narrowed(::tpy::Union<A*, B*> u) {
     return -1;
 }
 
-// def inline_narrowed(u: A | B) -> Int32:
+// def inline_narrowed(u: A | B) -> int32:
 int32_t inline_narrowed(::tpy::Union<A*, B*> u) {
     // if isinstance(u, A) and take_opt(u) > 2:
     if ((std::holds_alternative<A*>(u) && (take_opt(&((*std::get<A*>(u)))) > 2))) {

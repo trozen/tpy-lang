@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def dict_ops() -> Int32:
+// def dict_ops() -> int32:
 int32_t dict_ops() {
     // d = {1: 100, 2: 200, 3: 300}
     ::tpy::ordered_map<int32_t, int32_t> d = ::tpy::ordered_map<int32_t, int32_t>({{1, 100}, {2, 200}, {3, 300}});
@@ -27,9 +27,9 @@ int32_t dict_ops() {
     return (::tpy::add_check<int32_t>(total, ::tpy::__len__(d)));
 }
 
-// def empty_dict(k: Int32, v: Int32) -> Int32:
+// def empty_dict(k: int32, v: int32) -> int32:
 int32_t empty_dict(int32_t k, int32_t v) {
-    // e: dict[Int32, Int32] = {}
+    // e: dict[int32, int32] = {}
     ::tpy::ordered_map<int32_t, int32_t> e = ::tpy::ordered_map<int32_t, int32_t>();
     // print(len(e))
     std::cout << ::tpy::__len__(e) << "\n";
@@ -37,7 +37,7 @@ int32_t empty_dict(int32_t k, int32_t v) {
     return ::tpy::dict_pop_default(e, k, v);
 }
 
-// def set_ops() -> Int32:
+// def set_ops() -> int32:
 int32_t set_ops() {
     // s = {5, 6, 7}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({5, 6, 7});

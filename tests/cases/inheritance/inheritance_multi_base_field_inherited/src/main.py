@@ -1,11 +1,11 @@
 # BaseN.field resolves through BaseN's own MRO when BaseN doesn't declare
 # the field directly. Mirrors the v2.1 method-lookup semantics: `B.foo(self)`
 # works even if B inherits foo from an ancestor.
-from tpy import Int32
+from tpy import int32
 
 
 class Root:
-    token: Int32
+    token: int32
 
 
 class Middle(Root):

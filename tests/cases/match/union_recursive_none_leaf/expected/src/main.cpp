@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def branch_count(t: Tree[None]) -> Int32:
+// def branch_count(t: Tree[None]) -> int32:
 int32_t branch_count(const Tree<std::monostate>& t) {
     // match t:
     auto& __match_subject_1 = t;

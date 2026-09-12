@@ -7,7 +7,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // v = Vec2(Int32(3), Int32(7))
+    // v = Vec2(int32(3), int32(7))
     ::ns::Vec2 v = ::ns::Vec2(3, 7);
     // print(v.x)
     std::cout << v.x << "\n";
@@ -15,7 +15,7 @@ void main() {
     std::cout << ::vec2_sum(&v) << "\n";
     // print(v.sum())
     std::cout << v.sum() << "\n";
-    // r = MyRect(Int32(0), Int32(0), Int32(40), Int32(30))
+    // r = MyRect(int32(0), int32(0), int32(40), int32(30))
     ::Rect r = ::Rect{0, 0, 40, 30};
     // print(r.w)
     std::cout << r.w << "\n";

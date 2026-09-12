@@ -37,10 +37,10 @@ void main();
 
 // class Pt(ValueType):
 struct Pt {
-    // x: Int32
+    // x: int32
     int32_t x;
 
-    // def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: int32) -> None:
     Pt() = default;
     explicit Pt(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pt";
@@ -59,13 +59,13 @@ namespace tpyapp::main {
 
 // class Registry:
 struct Registry {
-    // cb: Callable[[Int32], Int32]
+    // cb: Callable[[int32], int32]
     std::function<int32_t(int32_t)> cb;
 
     // def __init__(self) -> None:
     Registry();
 
-    // def register(self, f: Callable[[Int32], Int32]) -> None:
+    // def register(self, f: Callable[[int32], int32]) -> None:
     void register_(const std::function<int32_t(int32_t)>& f);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Registry";
 };
@@ -77,13 +77,13 @@ inline std::ostream& operator<<(std::ostream& os, const Registry& obj) {
 
 // class C:
 struct C {
-    // n: Int32
+    // n: int32
     int32_t n;
 
     // def __init__(self) -> None:
     C();
 
-    // def emit(self, k: Int32) -> Iterator[Int32]:
+    // def emit(self, k: int32) -> Iterator[int32]:
     auto emit(int32_t k) const {
         return ::tpy::make_generator<int32_t>(
             [this, k, __i = int32_t(0), __stop = static_cast<int32_t>(k)]() mutable -> std::optional<int32_t> {
@@ -106,7 +106,7 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
 
 // class D:
 struct D {
-    // n: Int32
+    // n: int32
     int32_t n;
 
     // def __init__(self) -> None:
@@ -266,13 +266,13 @@ inline __gen_D_emit D::emit() {
 }
 
 
-// def __init__(self, x: Int32) -> None:
+// def __init__(self, x: int32) -> None:
 inline Pt::Pt(int32_t x) : x(x) {}
 
 // def __init__(self) -> None:
 inline Registry::Registry() : cb([](int32_t x) -> int32_t { return x; }) {}
 
-// def register(self, f: Callable[[Int32], Int32]) -> None:
+// def register(self, f: Callable[[int32], int32]) -> None:
 inline void Registry::register_(const std::function<int32_t(int32_t)>& f) {
     // self.cb = f
     this->cb = f;
@@ -283,7 +283,7 @@ inline C::C() : n(10) {}
 
 // def __init__(self) -> None:
 inline D::D() : n(10) {}
-// def apply_fn(f: Fn[[Int32], Int32], v: Int32) -> Int32:
+// def apply_fn(f: Fn[[int32], int32], v: int32) -> int32:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<int32_t>;

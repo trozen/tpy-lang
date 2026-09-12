@@ -1,14 +1,14 @@
 # A generator yielding a pointer-repr `Optional[record]`: the yield slot is
 # a plain pointer, not the whole-optional shape the frame row admits, so
 # `yield b` rejects.
-from tpy import Int32
+from tpy import int32
 from typing import Iterator
 
 
 class Box:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 

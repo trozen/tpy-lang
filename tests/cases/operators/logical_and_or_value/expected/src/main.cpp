@@ -6,19 +6,19 @@ namespace tpyapp::main {
 
 // def test_or_int() -> None:
 void test_or_int() {
-    // a: Int32 = 0
+    // a: int32 = 0
     int32_t a = 0;
-    // b: Int32 = 42
+    // b: int32 = 42
     int32_t b = 42;
-    // x = a or b  # tpyc: type(Int32)
+    // x = a or b  # tpyc: type(int32)
     int32_t x = (a ? a : b);
     // print(x)
     std::cout << x << "\n";
-    // c: Int32 = 1
+    // c: int32 = 1
     int32_t c = 1;
-    // d: Int32 = 2
+    // d: int32 = 2
     int32_t d = 2;
-    // y = c or d  # tpyc: type(Int32)
+    // y = c or d  # tpyc: type(int32)
     int32_t y = (c ? c : d);
     // print(y)
     std::cout << y << "\n";
@@ -26,19 +26,19 @@ void test_or_int() {
 
 // def test_and_int() -> None:
 void test_and_int() {
-    // a: Int32 = 0
+    // a: int32 = 0
     int32_t a = 0;
-    // b: Int32 = 42
+    // b: int32 = 42
     int32_t b = 42;
-    // x = a and b  # tpyc: type(Int32)
+    // x = a and b  # tpyc: type(int32)
     int32_t x = (a ? b : a);
     // print(x)
     std::cout << x << "\n";
-    // c: Int32 = 1
+    // c: int32 = 1
     int32_t c = 1;
-    // d: Int32 = 2
+    // d: int32 = 2
     int32_t d = 2;
-    // y = c and d  # tpyc: type(Int32)
+    // y = c and d  # tpyc: type(int32)
     int32_t y = (c ? d : c);
     // print(y)
     std::cout << y << "\n";
@@ -134,24 +134,24 @@ void test_or_bigint() {
 
 // def test_chained() -> None:
 void test_chained() {
-    // a: Int32 = 0
+    // a: int32 = 0
     int32_t a = 0;
-    // b: Int32 = 0
+    // b: int32 = 0
     int32_t b = 0;
-    // c: Int32 = 3
+    // c: int32 = 3
     int32_t c = 3;
-    // x = a or b or c  # tpyc: type(Int32)
+    // x = a or b or c  # tpyc: type(int32)
     auto&& __tmp_1 = (a ? a : b);
     int32_t x = (__tmp_1 ? __tmp_1 : c);
     // print(x)
     std::cout << x << "\n";
-    // d: Int32 = 1
+    // d: int32 = 1
     int32_t d = 1;
-    // e: Int32 = 2
+    // e: int32 = 2
     int32_t e = 2;
-    // f: Int32 = 3
+    // f: int32 = 3
     int32_t f = 3;
-    // y = d and e and f  # tpyc: type(Int32)
+    // y = d and e and f  # tpyc: type(int32)
     auto&& __tmp_2 = (d ? e : d);
     int32_t y = (__tmp_2 ? f : __tmp_2);
     // print(y)
@@ -160,21 +160,21 @@ void test_chained() {
 
 // def test_or_with_literal() -> None:
 void test_or_with_literal() {
-    // a: Int32 = 0
+    // a: int32 = 0
     int32_t a = 0;
-    // x = a or 99  # tpyc: type(Int32)
+    // x = a or 99  # tpyc: type(int32)
     int32_t x = (a ? a : 99);
     // print(x)
     std::cout << x << "\n";
 }
 
-// def accepts_int(v: Int32) -> None:
+// def accepts_int(v: int32) -> None:
 void accepts_int(int32_t v) {
     // print(v)
     std::cout << v << "\n";
 }
 
-// def returns_int(a: Int32, b: Int32) -> Int32:
+// def returns_int(a: int32, b: int32) -> int32:
 int32_t returns_int(int32_t a, int32_t b) {
     // return a or b
     return (a ? a : b);
@@ -182,9 +182,9 @@ int32_t returns_int(int32_t a, int32_t b) {
 
 // def test_as_arg_and_return() -> None:
 void test_as_arg_and_return() {
-    // a: Int32 = 0
+    // a: int32 = 0
     int32_t a = 0;
-    // b: Int32 = 7
+    // b: int32 = 7
     int32_t b = 7;
     // accepts_int(a or b)
     accepts_int((a ? a : b));
@@ -201,7 +201,7 @@ bool test_bool_operands(bool flag, bool other) {
 
 // def test_mixed_returns_bool() -> None:
 void test_mixed_returns_bool() {
-    // a: Int32 = 1
+    // a: int32 = 1
     int32_t a = 1;
     // b: float = 2.0
     double b = 2.0;
@@ -214,9 +214,9 @@ void test_mixed_returns_bool() {
 
 // def test_condition_context() -> None:
 void test_condition_context() {
-    // a: Int32 = 1
+    // a: int32 = 1
     int32_t a = 1;
-    // b: Int32 = 2
+    // b: int32 = 2
     int32_t b = 2;
     // if a and b:
     if ((a && b)) {
@@ -302,19 +302,19 @@ void test_record_or_constructor() {
 
 // def test_annotated() -> None:
 void test_annotated() {
-    // a: Int32 = 0
+    // a: int32 = 0
     int32_t a = 0;
-    // b: Int32 = 42
+    // b: int32 = 42
     int32_t b = 42;
-    // x: Int32 = a or b  # tpyc: type(Int32)
+    // x: int32 = a or b  # tpyc: type(int32)
     int32_t x = (a ? a : b);
     // print(x)
     std::cout << x << "\n";
-    // c: Int32 = 1
+    // c: int32 = 1
     int32_t c = 1;
-    // d: Int32 = 2
+    // d: int32 = 2
     int32_t d = 2;
-    // y: Int32 = c and d  # tpyc: type(Int32)
+    // y: int32 = c and d  # tpyc: type(int32)
     int32_t y = (c ? d : c);
     // print(y)
     std::cout << y << "\n";
@@ -338,12 +338,12 @@ void test_annotated() {
 
 // def test_literal_or_literal() -> None:
 void test_literal_or_literal() {
-    // x = 0 or 1  # tpyc: type(Int32)
+    // x = 0 or 1  # tpyc: type(int32)
     auto&& __tmp_5 = 0;
     int32_t x = (__tmp_5 ? __tmp_5 : 1);
     // print(x)
     std::cout << x << "\n";
-    // y = 3 and 0  # tpyc: type(Int32)
+    // y = 3 and 0  # tpyc: type(int32)
     auto&& __tmp_6 = 3;
     int32_t y = (__tmp_6 ? 0 : __tmp_6);
     // print(y)

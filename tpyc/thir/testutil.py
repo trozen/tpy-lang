@@ -14,7 +14,7 @@ from .lower import iter_module_callables, lower_function
 _STDLIB_DIRS = [get_lib_dir() / "tpy"]
 
 
-def _compile(source: str, extra_lib_dirs=None, default_int: str = "Int32"):
+def _compile(source: str, extra_lib_dirs=None, default_int: str = "int32"):
     dirs = list(extra_lib_dirs or []) + _STDLIB_DIRS
     compiler = Compiler.from_source(source, lib_dirs=dirs,
                                     default_int=default_int)
@@ -25,7 +25,7 @@ def _entry(modules):
     return [m for m in modules if m.is_entry_point][0]
 
 
-def _lower_fn(source: str, name: str, default_int: str = "Int32"):
+def _lower_fn(source: str, name: str, default_int: str = "int32"):
     """Compile `source` and lower ONE callable of the entry module through
     the same per-body entry codegen uses (`lower_function` under an active
     compiler), so a pin lowers the way a build does."""
@@ -85,7 +85,7 @@ def _assert_rejects_at(fallback, landmark: str, shape: str | None = None,
             f"got {got}: {fallback!r}")
 
 
-def _assert_byte_identical(source: str, default_int: str = "Int32",
+def _assert_byte_identical(source: str, default_int: str = "int32",
                            extra_lib_dirs=None, comments: bool = True):
     """Compile `source` and return the emitted `(hpp, cpp)`, asserting that
     nothing rejected.
@@ -109,7 +109,7 @@ def _assert_byte_identical(source: str, default_int: str = "Int32",
 _assert_routes_byte_identical = _assert_byte_identical
 
 
-def _strict_reject(source: str, default_int: str = "Int32",
+def _strict_reject(source: str, default_int: str = "int32",
                    extra_lib_dirs=None):
     """Emit `source` and return the `ThirRejectError` it raised, plus the
     one-element reason list `_assert_rejects_at` reads.

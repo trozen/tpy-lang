@@ -32,10 +32,10 @@ void main();
 
 // class Capped:
 struct Capped {
-    // cap: Int32
+    // cap: int32
     int32_t cap;
 
-    // def __init__(self, cap: Int32) -> None:
+    // def __init__(self, cap: int32) -> None:
     Capped() = default;
     explicit Capped(int32_t cap);
 
@@ -175,7 +175,7 @@ inline __gen_Capped_keep<F_pred> Capped::keep(F_pred&& pred, std::vector<int32_t
 }
 
 
-// def __init__(self, cap: Int32) -> None:
+// def __init__(self, cap: int32) -> None:
 inline Capped::Capped(int32_t cap) : cap(cap) {}
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {

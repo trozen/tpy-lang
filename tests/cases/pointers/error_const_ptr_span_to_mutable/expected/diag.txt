@@ -1,1 +1,1 @@
-main.py:5: error: Type mismatch in variable 's': expected Span[Int32], got Span[readonly[Int32]]
+main.py:5: error: Type mismatch in variable 's': expected Span[int32], got Span[readonly[int32]]

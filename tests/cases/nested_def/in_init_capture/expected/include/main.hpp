@@ -15,12 +15,12 @@ void main();
 
 // class Grid:
 struct Grid {
-    // w: Int32
+    // w: int32
     int32_t w;
-    // cells: Int32
+    // cells: int32
     int32_t cells;
 
-    // def __init__(self, w: Int32) -> None:
+    // def __init__(self, w: int32) -> None:
     Grid() = default;
     explicit Grid(int32_t w);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Grid";
@@ -32,7 +32,7 @@ inline std::ostream& operator<<(std::ostream& os, const Grid& obj) {
 }
 
 
-// def __init__(self, w: Int32) -> None:
+// def __init__(self, w: int32) -> None:
 inline Grid::Grid(int32_t w) : w(w), cells(0) {
     // def expand() -> None:
     auto expand = [this]() {

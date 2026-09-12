@@ -15,10 +15,10 @@ void main();
 
 // class Counter:
 struct Counter {
-    // count: Int32
+    // count: int32
     int32_t count;
 
-    // def __init__(self, count: Int32):
+    // def __init__(self, count: int32):
     Counter() = default;
     explicit Counter(int32_t count);
     // copyable via __copy__
@@ -38,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 }
 
 
-// def __init__(self, count: Int32):
+// def __init__(self, count: int32):
 inline Counter::Counter(int32_t count) : count(count) {}
 
 inline Counter::Counter(const Counter& other) : Counter(other.__copy__()) {}

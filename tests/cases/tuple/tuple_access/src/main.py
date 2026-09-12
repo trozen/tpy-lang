@@ -1,8 +1,8 @@
 # Tuple element access with compile-time index and negative indexing
-from tpy import Int32
+from tpy import int32
 
 def main() -> None:
-    t = (Int32(10), "hello", True)
+    t = (int32(10), "hello", True)
 
     # Positive indexing
     a = t[0]

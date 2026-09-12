@@ -1,18 +1,18 @@
-from tpy import Int32
+from tpy import int32
 
 class Counter:
-    value: Int32
+    value: int32
 
-    def __init__(self, start: Int32):
+    def __init__(self, start: int32):
         self.value = start
 
     def increment(self) -> None:
         self.value = self.value + 1
 
-    def add(self, n: Int32) -> None:
+    def add(self, n: int32) -> None:
         self.value = self.value + n
 
-    def get(self) -> Int32:
+    def get(self) -> int32:
         return self.value
 
     def reset(self) -> None:
@@ -33,8 +33,8 @@ c.reset()
 print(c.get())
 
 # Test multiple print arguments
-a: Int32 = 42
-b: Int32 = 99
+a: int32 = 42
+b: int32 = 99
 print(a, b)
 
 # Test string printing

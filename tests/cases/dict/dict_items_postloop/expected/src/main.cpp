@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main():
 void main() {
-    // d: dict[str, list[Int32]] = {}
+    // d: dict[str, list[int32]] = {}
     ::tpy::ordered_map<std::string, std::vector<int32_t>> d = ::tpy::ordered_map<std::string, std::vector<int32_t>>();
     // d["a"] = [1, 2, 3]
     ::tpy::__setitem__(d, "a", std::vector<int32_t>{1, 2, 3});
@@ -32,7 +32,7 @@ void main() {
     v->push_back(6);
     // print(d["b"])
     std::cout << ::tpy::ListPrinter(::tpy::__getitem__(d, "b")) << "\n";
-    // pairs: list[tuple[Int32, list[Int32]]] = [(1, [10]), (2, [20])]
+    // pairs: list[tuple[int32, list[int32]]] = [(1, [10]), (2, [20])]
     std::vector<std::tuple<int32_t, std::vector<int32_t>>> pairs = {::tpy::tuple_to_storage<std::tuple<int32_t, std::vector<int32_t>>>(std::tuple<int32_t, std::vector<int32_t>>{1, {10}}), ::tpy::tuple_to_storage<std::tuple<int32_t, std::vector<int32_t>>>(std::tuple<int32_t, std::vector<int32_t>>{2, {20}})};
     // for n, xs in pairs:
     std::vector<int32_t>* xs = nullptr;

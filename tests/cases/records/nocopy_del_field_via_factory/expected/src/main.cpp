@@ -12,7 +12,7 @@ void take(Holder&& h) {
 
 // def main() -> None:
 void main() {
-    // h = Holder(Int32(1), Int32(42))
+    // h = Holder(int32(1), int32(42))
     Holder h = Holder(1, 42);
     // print("held", h._r.id, "tag", h.tag)
     std::cout << "held" << " " << h._r.id << " " << "tag" << " " << h.tag << "\n";

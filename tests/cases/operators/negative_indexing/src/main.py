@@ -1,9 +1,9 @@
-from tpy import Int32, Array
+from tpy import int32, Array
 
 # Test negative indexing for various container types
 
 def test_list_negative_indexing() -> None:
-    nums: list[Int32] = [10, 20, 30, 40, 50]
+    nums: list[int32] = [10, 20, 30, 40, 50]
 
     # Last element
     print(nums[-1])
@@ -18,7 +18,7 @@ def test_list_negative_indexing() -> None:
     print(nums[-5])
 
 def test_array_negative_indexing() -> None:
-    arr: Array[Int32, 4] = [100, 200, 300, 400]
+    arr: Array[int32, 4] = [100, 200, 300, 400]
 
     print(arr[-1])
     print(arr[-2])
@@ -37,7 +37,7 @@ def test_string_negative_indexing() -> None:
     print(text[-5])
 
 def test_negative_index_assignment() -> None:
-    nums: list[Int32] = [1, 2, 3, 4, 5]
+    nums: list[int32] = [1, 2, 3, 4, 5]
 
     # Modify last element
     nums[-1] = 50
@@ -52,10 +52,10 @@ def test_negative_index_assignment() -> None:
     print(nums[4])
 
 def test_negative_index_in_expression() -> None:
-    nums: list[Int32] = [5, 10, 15, 20]
+    nums: list[int32] = [5, 10, 15, 20]
 
     # Arithmetic with negative indexed values
-    total: Int32 = nums[-1] + nums[-2]
+    total: int32 = nums[-1] + nums[-2]
     print(total)
 
     # Comparison with negative indexed values
@@ -65,7 +65,7 @@ def test_negative_index_in_expression() -> None:
         print("last <= second_last")
 
 def test_array_negative_assignment() -> None:
-    arr: Array[Int32, 3] = [1, 2, 3]
+    arr: Array[int32, 3] = [1, 2, 3]
 
     arr[-1] = 30
     arr[-2] = 20

@@ -1,9 +1,9 @@
 from tpy.extern import export
-from tpy import Int32
+from tpy import int32
 from mathlib import abs, get_clock
 
 @export(binding="C")
 def app_init() -> None:
-    abs(Int32(0))
-    x: Int32 = get_clock()
+    abs(int32(0))
+    x: int32 = get_clock()
     print(x)

@@ -24,10 +24,10 @@ int32_t ping(int32_t n);
 
 // class Src:
 struct Src {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Src() = default;
     explicit Src(int32_t n);
 

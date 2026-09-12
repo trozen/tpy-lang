@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def is_small(b: Box[Int32]) -> bool:
+// def is_small(b: Box[int32]) -> bool:
 bool is_small(const ::tpystd::tplib::box::Box<int32_t>& b) {
     // return b < Box(3)
     return ((b) < (::tpystd::tplib::box::Box<int32_t>(3)));
 }
 
-// def score(b: Box[Int32]) -> Int32:
+// def score(b: Box[int32]) -> int32:
 int32_t score(const ::tpystd::tplib::box::Box<int32_t>& b) {
     // return 1 if b < Box(3) else 0
     return ((((b) < (::tpystd::tplib::box::Box<int32_t>(3)))) ? (1) : (0));
@@ -18,7 +18,7 @@ int32_t score(const ::tpystd::tplib::box::Box<int32_t>& b) {
 
 // def array_comp() -> None:
 void array_comp() {
-    // xs = [Box(i) for i in range(4)]  # tpyc: type(/Array\[Box\[Int32\], 4\]/)
+    // xs = [Box(i) for i in range(4)]  # tpyc: type(/Array\[Box\[int32\], 4\]/)
     std::array<::tpystd::tplib::box::Box<int32_t>, 4> xs = ::tpy::array_from_index<::tpystd::tplib::box::Box<int32_t>, 4>([&](std::size_t __i_0) -> ::tpystd::tplib::box::Box<int32_t> {
         int32_t i = int32_t(__i_0);
         int32_t __tmp_1 = i;
@@ -28,7 +28,7 @@ void array_comp() {
     std::cout << ::tpy::__len__(xs) << " " << ::tpy::__getitem__(xs, 0).get() << " " << ::tpy::__getitem__(xs, 3).get() << "\n";
 }
 
-// def list_comp(n: Int32) -> None:
+// def list_comp(n: int32) -> None:
 void list_comp(int32_t n) {
     // ys = [Box(i) for i in range(n)]
     std::vector<::tpystd::tplib::box::Box<int32_t>> ys = ({
@@ -45,7 +45,7 @@ void list_comp(int32_t n) {
     std::cout << ::tpy::__len__(ys) << " " << ::tpy::__getitem__(ys, 0).get() << "\n";
 }
 
-// def genexpr(n: Int32) -> None:
+// def genexpr(n: int32) -> None:
 void genexpr(int32_t n) {
     // # owned move-temp in BOTH the genexpr element (score(Box(i))) and its filter
     // # condition (is_small(Box(i))) -- each must flush into the lambda body.
@@ -67,7 +67,7 @@ void genexpr(int32_t n) {
     )) << "\n";
 }
 
-// def filtered(n: Int32) -> None:
+// def filtered(n: int32) -> None:
 void filtered(int32_t n) {
     // # owned move-temp in a list-comp filter condition, re-evaluated per iteration
     // zs = [i for i in range(n) if is_small(Box(i))]
@@ -88,7 +88,7 @@ void filtered(int32_t n) {
     std::cout << ::tpy::__len__(zs) << "\n";
 }
 
-// def walrus_owned(n: Int32) -> None:
+// def walrus_owned(n: int32) -> None:
 void walrus_owned(int32_t n) {
     // # walrus target leaks to the enclosing scope (PEP 572) so its declaration
     // # must stay at function scope, while the owned move-temp in the condition

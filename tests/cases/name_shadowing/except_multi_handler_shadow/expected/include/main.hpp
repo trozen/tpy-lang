@@ -18,7 +18,7 @@ void main();
 
 // class Registry:
 struct Registry {
-    // code: ClassVar[Int32] = 999
+    // code: ClassVar[int32] = 999
     static inline int32_t code = 999;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.Registry";
@@ -34,7 +34,7 @@ struct NotFound : ::tpy::Exception {
     // self.code = code
     int32_t code;
 
-    // def __init__(self, code: Int32):
+    // def __init__(self, code: int32):
     NotFound() = default;
     explicit NotFound(int32_t code);
 
@@ -54,7 +54,7 @@ struct Denied : ::tpy::Exception {
     // self.code = code
     int32_t code;
 
-    // def __init__(self, code: Int32):
+    // def __init__(self, code: int32):
     Denied() = default;
     explicit Denied(int32_t code);
 
@@ -70,10 +70,10 @@ inline std::ostream& operator<<(std::ostream& os, const Denied& obj) {
 }
 
 
-// def __init__(self, code: Int32):
+// def __init__(self, code: int32):
 inline NotFound::NotFound(int32_t code) : code(code) {}
 
-// def __init__(self, code: Int32):
+// def __init__(self, code: int32):
 inline Denied::Denied(int32_t code) : code(code) {}
 void __tpy_init();
 } // namespace tpyapp::main

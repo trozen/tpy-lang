@@ -3,11 +3,11 @@
 # keeps rejecting here -- for every container source, not only the
 # comprehension (BUGS.md#nested-field-target-container-write) -- while the
 # one-level target lowers (field_write_comprehension).
-from tpy import Int32
+from tpy import int32
 
 
 class Inner:
-    data: list[list[Int32]]
+    data: list[list[int32]]
 
     def __init__(self) -> None:
         self.data = []
@@ -20,7 +20,7 @@ class Pic:
         self.inner = Inner()
 
 
-def fill(p: Pic, n: Int32) -> None:
+def fill(p: Pic, n: int32) -> None:
     p.inner.data = [[j] for j in range(n)]  # tpyc: error(/not yet supported/)
 
 

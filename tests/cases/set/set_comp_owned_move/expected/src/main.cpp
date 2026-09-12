@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def is_small(b: Box[Int32]) -> bool:
+// def is_small(b: Box[int32]) -> bool:
 bool is_small(const ::tpystd::tplib::box::Box<int32_t>& b) {
     // return b < Box(3)
     return ((b) < (::tpystd::tplib::box::Box<int32_t>(3)));
 }
 
-// def main(n: Int32) -> None:
+// def main(n: int32) -> None:
 void main(int32_t n) {
     // s = {i for i in range(n) if is_small(Box(i))}
     ::tpy::ordered_set<int32_t> s = ({

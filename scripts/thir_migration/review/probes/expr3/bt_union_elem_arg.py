@@ -1,15 +1,15 @@
-from tpy import Int32, Own
+from tpy import int32, Own
 class A:
-    n: Int32
-    def __init__(self, n: Int32) -> None:
+    n: int32
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 class B:
-    m: Int32
-    def __init__(self, m: Int32) -> None:
+    m: int32
+    def __init__(self, m: int32) -> None:
         self.m = m
 
-def f(t: tuple[A | B, Int32]) -> Int32:
+def f(t: tuple[A | B, int32]) -> int32:
     return t[1]
 def main() -> None:
     a = A(1)

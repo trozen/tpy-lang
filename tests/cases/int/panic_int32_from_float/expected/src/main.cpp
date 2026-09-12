@@ -3,8 +3,8 @@
 
 namespace tpyapp::main {
 
-// # Float value exceeds Int32 range
-// x: Int32 = Int32(3000000000.0)
+// # Float value exceeds int32 range
+// x: int32 = int32(3000000000.0)
 int32_t x{};
 
 void __tpy_init() {
@@ -12,8 +12,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Float value exceeds Int32 range
-    // x: Int32 = Int32(3000000000.0)
+    // # Float value exceeds int32 range
+    // x: int32 = int32(3000000000.0)
     x = ::tpy::from_float_check<int32_t>(3000000000.0);
     // print(x)
     std::cout << x << "\n";

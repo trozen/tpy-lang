@@ -23,9 +23,9 @@ void main();
 
 // class Holder:
 struct Holder {
-    // lst: list[Int32] | None
+    // lst: list[int32] | None
     std::optional<std::vector<int32_t>> lst;
-    // plain: list[Int32]
+    // plain: list[int32]
     std::vector<int32_t> plain;
 
     // def __init__(self):
@@ -35,7 +35,7 @@ struct Holder {
 
     __gen_Holder_via_alias via_alias() const;
 
-    // def simple_alias(self) -> Iterator[Int32]:
+    // def simple_alias(self) -> Iterator[int32]:
     auto simple_alias() const {
         // # Single yield, so this one takes the simple-gen lambda, which
         // # captures `a` by value (the documented escaping-closure snapshot):
@@ -68,10 +68,10 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 // class Counter:
 struct Counter {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32):
+    // def __init__(self, v: int32):
     Counter() = default;
     explicit Counter(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
@@ -90,7 +90,7 @@ struct Bumper {
     // def __init__(self):
     Bumper();
 
-    // def bump(self) -> Iterator[Int32]:
+    // def bump(self) -> Iterator[int32]:
     auto bump() {
         return ::tpy::make_generator<int32_t>(
             [this, __beg = decltype(((*this).cells).begin())(), __end = decltype(((*this).cells).begin())(), __init = false]() mutable -> std::optional<int32_t> {
@@ -233,7 +233,7 @@ inline __gen_Holder_live_alias Holder::live_alias() {
 // def __init__(self):
 inline Holder::Holder() : lst(std::vector<int32_t>{1, 2, 3}), plain(std::vector<int32_t>{10, 20}) {}
 
-// def __init__(self, v: Int32):
+// def __init__(self, v: int32):
 inline Counter::Counter(int32_t v) : v(v) {}
 
 // def __init__(self):

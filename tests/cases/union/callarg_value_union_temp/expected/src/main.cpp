@@ -4,11 +4,11 @@
 namespace tpyapp::main {
 
 
-// # Discriminates on Float64 (== float under CPython) so an int arg narrows
+// # Discriminates on float64 (== float under CPython) so an int arg narrows
 // # identically on both runtimes.
-// def take_vu(v: Int32 | Float64) -> Int32:
-int32_t take_vu(const ::tpy::Union<int32_t, double>& v) {
-    // if isinstance(v, Float64):
+// def take_vu(v: int32 | float64) -> int32:
+int32_t take_vu(const ::tpy::Union<double, int32_t>& v) {
+    // if isinstance(v, float64):
     if (std::holds_alternative<double>(v)) {
         const auto& __v = std::get<double>(v);
         // return -1
@@ -19,53 +19,53 @@ int32_t take_vu(const ::tpy::Union<int32_t, double>& v) {
     return __v;
 }
 
-// def two(a: Int32 | Float64, b: Int32 | Float64) -> Int32:
-int32_t two(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t, double>& b) {
+// def two(a: int32 | float64, b: int32 | float64) -> int32:
+int32_t two(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b) {
     // return take_vu(a) + take_vu(b)
     return (::tpy::add_check<int32_t>(take_vu(a), take_vu(b)));
 }
 
-// def use_decl(k: Int32) -> Int32:
+// def use_decl(k: int32) -> int32:
 int32_t use_decl(int32_t k) {
     // r = take_vu(k)
-    ::tpy::Union<int32_t, double> __tmp_1 = k;
+    ::tpy::Union<double, int32_t> __tmp_1 = k;
     int32_t r = take_vu(__tmp_1);
     // return r
     return r;
 }
 
-// def use_reassign(k: Int32) -> Int32:
+// def use_reassign(k: int32) -> int32:
 int32_t use_reassign(int32_t k) {
     // r = 0
     int32_t r = 0;
     // r = take_vu(k + 2)
-    ::tpy::Union<int32_t, double> __tmp_2 = (::tpy::add_check<int32_t>(k, 2));
+    ::tpy::Union<double, int32_t> __tmp_2 = (::tpy::add_check<int32_t>(k, 2));
     r = take_vu(__tmp_2);
     // return r
     return r;
 }
 
-// def use_stmt(k: Int32) -> Int32:
+// def use_stmt(k: int32) -> int32:
 int32_t use_stmt(int32_t k) {
     // take_vu(k)  # discarded result; the temp still evaluates
-    ::tpy::Union<int32_t, double> __tmp_3 = k;
+    ::tpy::Union<double, int32_t> __tmp_3 = k;
     take_vu(__tmp_3);
     // return k
     return k;
 }
 
-// def use_two(k: Int32, f: Float64) -> Int32:
+// def use_two(k: int32, f: float64) -> int32:
 int32_t use_two(int32_t k, double f) {
     // return two(k, f)
-    ::tpy::Union<int32_t, double> __tmp_4 = k;
-    ::tpy::Union<int32_t, double> __tmp_5 = f;
+    ::tpy::Union<double, int32_t> __tmp_4 = k;
+    ::tpy::Union<double, int32_t> __tmp_5 = f;
     return two(__tmp_4, __tmp_5);
 }
 
-// def use_float() -> Int32:
+// def use_float() -> int32:
 int32_t use_float() {
     // return take_vu(2.5)
-    ::tpy::Union<int32_t, double> __tmp_6 = 2.5;
+    ::tpy::Union<double, int32_t> __tmp_6 = 2.5;
     return take_vu(__tmp_6);
 }
 

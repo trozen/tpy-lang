@@ -18,7 +18,7 @@ int32_t push_to(std::vector<int32_t>& ys, int32_t v);
 int32_t sync_ref_capture(std::vector<int32_t>& xs);
 void main();
 
-// def apply_fn(f: Fn[[Int32], Int32], v: Int32) -> Int32:
+// def apply_fn(f: Fn[[int32], int32], v: int32) -> int32:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<int32_t>;

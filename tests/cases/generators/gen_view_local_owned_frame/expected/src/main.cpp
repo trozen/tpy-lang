@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def pair(n: Int32) -> tuple[str, str]:
+// def pair(n: int32) -> tuple[str, str]:
 std::tuple<std::string, std::string> pair(int32_t n) {
     // return ("host-" + str(n), "port-" + str(n))
     return std::tuple<std::string, std::string>{(::tpy::str_concat("host-", ::tpy::fixed_to_str<int32_t>(n))), (::tpy::str_concat("port-", ::tpy::fixed_to_str<int32_t>(n)))};
 }
 
-// def unpack_across_yield() -> Iterator[Int32]:
+// def unpack_across_yield() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_unpack_across_yield::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -41,12 +41,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_unpack_across_yield::__next__
 }
 
 
-// def unpack_across_yield() -> Iterator[Int32]:
+// def unpack_across_yield() -> Iterator[int32]:
 __gen_unpack_across_yield unpack_across_yield() {
     return __gen_unpack_across_yield();
 }
 
-// def dict_keys(d: dict[str, Int32]) -> Iterator[str]:
+// def dict_keys(d: dict[str, int32]) -> Iterator[str]:
 std::expected<std::string, ::tpy::StopIteration> __gen_dict_keys::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -80,12 +80,12 @@ std::expected<std::string, ::tpy::StopIteration> __gen_dict_keys::__next__() {
 }
 
 
-// def dict_keys(d: dict[str, Int32]) -> Iterator[str]:
+// def dict_keys(d: dict[str, int32]) -> Iterator[str]:
 __gen_dict_keys dict_keys(::tpy::ordered_map<std::string, int32_t>& d) {
     return __gen_dict_keys(d);
 }
 
-// def blob_slices(blobs: list[bytes]) -> Iterator[Int32]:
+// def blob_slices(blobs: list[bytes]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_blob_slices::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -126,12 +126,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_blob_slices::__next__() {
 }
 
 
-// def blob_slices(blobs: list[bytes]) -> Iterator[Int32]:
+// def blob_slices(blobs: list[bytes]) -> Iterator[int32]:
 __gen_blob_slices blob_slices(std::vector<::tpy::Bytes>& blobs) {
     return __gen_blob_slices(blobs);
 }
 
-// def static_sources() -> Iterator[Int32]:
+// def static_sources() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_static_sources::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -156,7 +156,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_static_sources::__next__() {
 }
 
 
-// def static_sources() -> Iterator[Int32]:
+// def static_sources() -> Iterator[int32]:
 __gen_static_sources static_sources() {
     return __gen_static_sources();
 }

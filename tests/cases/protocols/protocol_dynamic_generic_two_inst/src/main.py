@@ -2,7 +2,7 @@
 # Container<int32_t> and Container<std::string> share the template but have
 # independent vtables.
 from typing import Protocol
-from tpy import Int32, dynamic
+from tpy import int32, dynamic
 
 
 @dynamic
@@ -12,7 +12,7 @@ class Container[T](Protocol):
 
 
 class IntBox:
-    def get(self) -> Int32:
+    def get(self) -> int32:
         return 5
 
 
@@ -21,7 +21,7 @@ class StrBox:
         return "hi"
 
 
-def show_int(c: Container[Int32]) -> None:
+def show_int(c: Container[int32]) -> None:
     print(c.get())
 
 

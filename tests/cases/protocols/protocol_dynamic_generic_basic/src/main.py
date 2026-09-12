@@ -1,12 +1,12 @@
 # Generic @dynamic protocol: structural conformance + vtable dispatch.
-# Container[T] is generic; Box and Ratio both have `get() -> Int32`
-# and `set(val: Int32) -> None` structurally (no inheritance). Used as
-# Container[Int32] both as a local (Adapter slot) and as a function
+# Container[T] is generic; Box and Ratio both have `get() -> int32`
+# and `set(val: int32) -> None` structurally (no inheritance). Used as
+# Container[int32] both as a local (Adapter slot) and as a function
 # parameter (RefAdapter wrap). The set(val: T) method exercises
 # TypeParamRef in method *parameter* position (virtual-method param
 # rendering via `::tpy::param_val_or_ref_t<T>` in both base and override).
 from typing import Protocol
-from tpy import Int32, dynamic
+from tpy import int32, dynamic
 
 
 @dynamic
@@ -19,41 +19,41 @@ class Container[T](Protocol):
 
 
 class Box:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32):
+    def __init__(self, v: int32):
         self.v = v
 
-    def get(self) -> Int32:
+    def get(self) -> int32:
         return self.v
 
-    def set(self, val: Int32) -> None:
+    def set(self, val: int32) -> None:
         self.v = val
 
 
 class Ratio:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
-    def get(self) -> Int32:
+    def get(self) -> int32:
         return self.n
 
-    def set(self, val: Int32) -> None:
+    def set(self, val: int32) -> None:
         self.n = val
 
 
-def show(c: Container[Int32]) -> None:
+def show(c: Container[int32]) -> None:
     print(c.get())
 
 
-def bump(c: Container[Int32]) -> None:
+def bump(c: Container[int32]) -> None:
     c.set(c.get() + 1)
 
 
 def main() -> None:
-    c: Container[Int32] = Box(7)
+    c: Container[int32] = Box(7)
     print(c.get())
     bump(c)
     print(c.get())

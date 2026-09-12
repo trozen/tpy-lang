@@ -39,25 +39,25 @@ inline std::ostream& operator<<(std::ostream& os, const E& obj) {
 
 // class H:
 struct H {
-    // items: list[Int32]
+    // items: list[int32]
     std::vector<int32_t> items;
 
     // def __init__(self) -> None:
     H();
 
-    // def view(self) -> list[Int32]:
+    // def view(self) -> list[int32]:
     std::vector<int32_t>& view();
 
     // @readonly
-    // def rview(self) -> list[Int32]:
+    // def rview(self) -> list[int32]:
     const std::vector<int32_t>& rview() const;
 
     // @error_return(E)
-    // def poke(self) -> Int32:
+    // def poke(self) -> int32:
     std::expected<int32_t, E> poke() const;
 
     // @error_return(E)
-    // def er_view(self) -> list[Int32]:
+    // def er_view(self) -> list[int32]:
     std::expected<::tpy::val_or_ref<std::vector<int32_t>>, E> er_view();
     static constexpr std::string_view __tpy_class_name__ = "__main__.H";
 };
@@ -71,28 +71,28 @@ inline std::ostream& operator<<(std::ostream& os, const H& obj) {
 // def __init__(self) -> None:
 inline H::H() : items(std::vector<int32_t>{1, 2}) {}
 
-// def view(self) -> list[Int32]:
+// def view(self) -> list[int32]:
 inline std::vector<int32_t>& H::view() {
     // return self.items
     return this->items;
 }
 
 // @readonly
-// def rview(self) -> list[Int32]:
+// def rview(self) -> list[int32]:
 inline const std::vector<int32_t>& H::rview() const {
     // return self.items
     return this->items;
 }
 
 // @error_return(E)
-// def poke(self) -> Int32:
+// def poke(self) -> int32:
 inline std::expected<int32_t, E> H::poke() const {
     // return 1
     return 1;
 }
 
 // @error_return(E)
-// def er_view(self) -> list[Int32]:
+// def er_view(self) -> list[int32]:
 inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, E> H::er_view() {
     // return self.items
     return this->items;

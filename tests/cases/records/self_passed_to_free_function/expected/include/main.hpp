@@ -21,7 +21,7 @@ void main();
 struct Module {
     // _name: str
     std::string _name;
-    // _items: list[Int32]
+    // _items: list[int32]
     std::vector<int32_t> _items;
 
     // def __init__(self, name: str) -> None:
@@ -51,7 +51,7 @@ struct Module {
 
     // # Passes self to a free function that structurally mutates a field
     // # -- must NOT be const
-    // def add_item(self, val: Int32):
+    // def add_item(self, val: int32):
     void add_item(int32_t val);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Module";
 };
@@ -103,7 +103,7 @@ inline void Module::reinit() {
 
 // # Passes self to a free function that structurally mutates a field
 // # -- must NOT be const
-// def add_item(self, val: Int32):
+// def add_item(self, val: int32):
 inline void Module::add_item(int32_t val) {
     // append_item(self, val)
     append_item((*this), val);

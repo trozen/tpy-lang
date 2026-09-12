@@ -2,16 +2,16 @@
 # whichever arm cond selects, so a post-boundary mutation reaches that arm's
 # member. cond=True selects t (member b), so mutating pair[1] is visible in b.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    val: Int32
-    def __init__(self, v: Int32) -> None:
+    val: int32
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 
-def gen(b: Box, c: Box, cond: bool) -> Iterator[tuple[Int32, Box]]:
+def gen(b: Box, c: Box, cond: bool) -> Iterator[tuple[int32, Box]]:
     t = (1, b)
     t2 = (2, c)
     u = t if cond else t2

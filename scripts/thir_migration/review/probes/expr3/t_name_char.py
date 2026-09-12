@@ -1,6 +1,6 @@
-from tpy import Char
+from tpy import char
 def main() -> None:
-    c = Char("a")
+    c = char("a")
     if c:
         print("x")
 main()

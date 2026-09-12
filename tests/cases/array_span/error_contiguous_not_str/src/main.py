@@ -1,7 +1,7 @@
-"""Tests that str does NOT coerce to Span[Char] (str is not Spannable)."""
-from tpy import Char, Span
+"""Tests that str does NOT coerce to Span[char] (str is not Spannable)."""
+from tpy import char, Span
 
-def takes_span(values: Span[Char]) -> None:
+def takes_span(values: Span[char]) -> None:
     pass
 
 def main() -> None:

@@ -3,12 +3,12 @@
 # type (`Circle c = ...`) because `imported_record_qualification` looked
 # `Circle` up by bare name in main.py's registry and missed -- Circle isn't
 # imported there. Now resolved via qname-aware lookup.
-from tpy import Int32
+from tpy import int32
 import shapes
 
 
 def main() -> None:
-    c = shapes.make_circle(Int32(7))
+    c = shapes.make_circle(int32(7))
     print(c.radius)
 
 

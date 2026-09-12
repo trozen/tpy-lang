@@ -18,7 +18,7 @@ void main();
 // @dataclass
 // class Heavy:
 struct Heavy {
-    // value: Int32
+    // value: int32
     int32_t value;
 
     Heavy() = default;
@@ -47,7 +47,7 @@ inline std::ostream& operator<<(std::ostream& os, const Heavy& obj) {
 // @dataclass
 // class Light:
 struct Light {
-    // value: Int32
+    // value: int32
     int32_t value;
 
     Light() = default;

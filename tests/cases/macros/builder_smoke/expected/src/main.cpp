@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def main() -> Int32:
+// def main() -> int32:
 int32_t main() {
     // cfg = cfg_builder.build()
     __tpy_builder_config_1 cfg = __tpy_builder_build_config_1();

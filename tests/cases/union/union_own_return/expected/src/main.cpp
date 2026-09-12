@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def make_dog(name: str, age: Int32) -> Own[Dog | Cat]:
+// def make_dog(name: str, age: int32) -> Own[Dog | Cat]:
 ::tpy::Union<Cat, Dog> make_dog(std::string_view name, int32_t age) {
     // return Dog(name, age)
     return Dog(name, age);
 }
 
-// def make_cat(name: str, lives: Int32) -> Own[Dog | Cat]:
+// def make_cat(name: str, lives: int32) -> Own[Dog | Cat]:
 ::tpy::Union<Cat, Dog> make_cat(std::string_view name, int32_t lives) {
     // return Cat(name, lives)
     return Cat(name, lives);

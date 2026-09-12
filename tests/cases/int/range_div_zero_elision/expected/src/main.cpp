@@ -6,9 +6,9 @@ namespace tpyapp::main {
 
 // def test_if_not_zero_floordiv() -> None:
 void test_if_not_zero_floordiv() {
-    // a: Int32 = 10
+    // a: int32 = 10
     int32_t a = 10;
-    // b: Int32 = 3
+    // b: int32 = 3
     int32_t b = 3;
     // if b != 0:
     if ((b != 0)) {
@@ -21,9 +21,9 @@ void test_if_not_zero_floordiv() {
 
 // def test_if_not_zero_mod() -> None:
 void test_if_not_zero_mod() {
-    // a: Int32 = 10
+    // a: int32 = 10
     int32_t a = 10;
-    // b: Int32 = 3
+    // b: int32 = 3
     int32_t b = 3;
     // if b != 0:
     if ((b != 0)) {
@@ -36,9 +36,9 @@ void test_if_not_zero_mod() {
 
 // def test_no_elision_unchecked() -> None:
 void test_no_elision_unchecked() {
-    // a: Int32 = 10
+    // a: int32 = 10
     int32_t a = 10;
-    // b: Int32 = Int32(3)
+    // b: int32 = int32(3)
     int32_t b = 3;
     // x = a // b  # tpyc: div_checked(b)
     int32_t x = (::tpy::div_check<int32_t>(a, b));
@@ -48,9 +48,9 @@ void test_no_elision_unchecked() {
 
 // def test_assert_not_zero() -> None:
 void test_assert_not_zero() {
-    // a: Int32 = 17
+    // a: int32 = 17
     int32_t a = 17;
-    // b: Int32 = 5
+    // b: int32 = 5
     int32_t b = 5;
     // assert b != 0
     if (!((b != 0))) ::tpy::raise_assertion_error();
@@ -66,9 +66,9 @@ void test_assert_not_zero() {
 
 // def test_assert_positive() -> None:
 void test_assert_positive() {
-    // a: Int32 = 20
+    // a: int32 = 20
     int32_t a = 20;
-    // b: Int32 = 7
+    // b: int32 = 7
     int32_t b = 7;
     // assert b > 0
     if (!((b > 0))) ::tpy::raise_assertion_error();
@@ -80,9 +80,9 @@ void test_assert_positive() {
 
 // def test_no_elision_after_reassign() -> None:
 void test_no_elision_after_reassign() {
-    // a: Int32 = 10
+    // a: int32 = 10
     int32_t a = 10;
-    // b: Int32 = 3
+    // b: int32 = 3
     int32_t b = 3;
     // assert b != 0
     if (!((b != 0))) ::tpy::raise_assertion_error();
@@ -96,9 +96,9 @@ void test_no_elision_after_reassign() {
 
 // def test_else_of_eq_zero() -> None:
 void test_else_of_eq_zero() {
-    // a: Int32 = 10
+    // a: int32 = 10
     int32_t a = 10;
-    // b: Int32 = 3
+    // b: int32 = 3
     int32_t b = 3;
     // if b == 0:
     if ((b == 0)) {
@@ -115,7 +115,7 @@ void test_else_of_eq_zero() {
 
 // def test_literal_divisor() -> None:
 void test_literal_divisor() {
-    // a: Int32 = 10
+    // a: int32 = 10
     int32_t a = 10;
     // x = a // 3
     int32_t x = (::tpy::div_floor<int32_t>(a, 3));
@@ -129,9 +129,9 @@ void test_literal_divisor() {
 
 // def test_literal_named_divisor() -> None:
 void test_literal_named_divisor() {
-    // a: Int32 = 10
+    // a: int32 = 10
     int32_t a = 10;
-    // b: Int32 = 3
+    // b: int32 = 3
     int32_t b = 3;
     // x = a // b  # tpyc: div_safe(b)
     int32_t x = (::tpy::div_floor<int32_t>(a, b));

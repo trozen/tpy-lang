@@ -1,10 +1,10 @@
 # A for-each over a NESTED field chain (`self.inner.xs`): the field-receiver
 # row admits a bare name receiver only, so this nested chain is rejected today.
-from tpy import Int32
+from tpy import int32
 
 
 class Inner:
-    xs: list[Int32]
+    xs: list[int32]
 
     def __init__(self) -> None:
         self.xs = [1, 2]
@@ -16,7 +16,7 @@ class Outer:
     def __init__(self) -> None:
         self.inner = Inner()
 
-    def total(self) -> Int32:
+    def total(self) -> int32:
         n = 0
         for x in self.inner.xs:  # tpyc: error(/foreach.field_parent/)
             n = n + x

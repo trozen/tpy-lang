@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // a: list[Int32] = [0, 0]
+    // a: list[int32] = [0, 0]
     std::vector<int32_t> a = {0, 0};
     // b = 0
     int32_t b = 0;

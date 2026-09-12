@@ -4,11 +4,11 @@
 namespace tpyapp::main {
 
 
-// def borrow(p: P | None) -> Int32:
+// def borrow(p: P | None) -> int32:
 int32_t borrow(const P* p) {
     // if p is None:
     if ((p == nullptr)) {
-        // return Int32(-1)
+        // return int32(-1)
         return -1;
     }
     // return p.x
@@ -17,7 +17,7 @@ int32_t borrow(const P* p) {
 
 // def main() -> None:
 void main() {
-    // d: dict[str, P | None] = {"a": P(Int32(10)), "b": None, "c": P(Int32(30))}
+    // d: dict[str, P | None] = {"a": P(int32(10)), "b": None, "c": P(int32(30))}
     ::tpy::ordered_map<std::string, std::optional<P>> d = ::tpy::ordered_map<std::string, std::optional<P>>({{"a", P(10)}, {"b", std::nullopt}, {"c", P(30)}});
     // # Subscript-then-access
     // if d["a"] is not None:

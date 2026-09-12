@@ -3,16 +3,16 @@
 # form (const Cls*) while the per-element marshal builds storage form. Use a
 # list/dict of the class, or an enum/value-type tuple element.
 # tpy: ext_module
-from tpy import Int64
+from tpy import int64
 from tpy.extern import export
 
 
 @export
 class Counter:
-    def __init__(self, v: Int64):
+    def __init__(self, v: int64):
         self.value = v
 
 
 @export
-def f(t: tuple[Int64, Counter]) -> Int64:  # tpyc: error(/exposed-class tuple element 'Counter'/)
+def f(t: tuple[int64, Counter]) -> int64:  # tpyc: error(/exposed-class tuple element 'Counter'/)
     return t[0]

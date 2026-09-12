@@ -3,23 +3,23 @@
 # Optional element types), and NAME arms at an Array result. Each selection
 # aliases the element it picked, so mutation through the result is visible on
 # the container.
-from tpy import Int32, Array
+from tpy import int32, Array
 
 
 class Rec:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
-def pick_elem(rs: list[Rec], c: bool) -> Int32:
+def pick_elem(rs: list[Rec], c: bool) -> int32:
     r = rs[0] if c else rs[1]   # tpyc: ok -- two element lvalues
     r.n += 10                   # writes through to the picked element
     return r.n
 
 
-def pick_opt_elem(rs: list[Rec], c: bool) -> Int32:
+def pick_opt_elem(rs: list[Rec], c: bool) -> int32:
     # The copy warning is spurious for an element arm -- the select takes the
     # element's ADDRESS, and main() observes the mutation on the container
     # (BUGS.md#spurious-alias-warnings-select-and-own-literal).
@@ -30,7 +30,7 @@ def pick_opt_elem(rs: list[Rec], c: bool) -> Int32:
     return -1
 
 
-def pick_optional_element(xs: list[Rec | None], c: bool) -> Int32:
+def pick_optional_element(xs: list[Rec | None], c: bool) -> int32:
     # The element is a pointer-repr Optional, so the select yields the `Rec*`
     # itself; the same spurious copy warning fires here.
     q = xs[0] if c else None    # tpyc: warning(/ternary copies a reference type/)
@@ -40,7 +40,7 @@ def pick_optional_element(xs: list[Rec | None], c: bool) -> Int32:
     return -1
 
 
-def pick_array(a: Array[Int32, 2], b: Array[Int32, 2], c: bool) -> Int32:
+def pick_array(a: Array[int32, 2], b: Array[int32, 2], c: bool) -> int32:
     x = a if c else b           # tpyc: ok -- an Array select aliases
     x[0] = 7
     return a[0]
@@ -55,8 +55,8 @@ def main() -> None:
     first = xs[0]
     if first is not None:
         print(first.n)
-    arr: Array[Int32, 2] = [0, 0]
-    brr: Array[Int32, 2] = [0, 0]
+    arr: Array[int32, 2] = [0, 0]
+    brr: Array[int32, 2] = [0, 0]
     print(pick_array(arr, brr, True), arr[0])
 
 

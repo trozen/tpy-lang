@@ -5,7 +5,7 @@
 # If wrongly inferred const, the C++ build fails (e.g. Box.get() on const
 # self returns const Mutating&, can't dispatch the non-const protocol method).
 from typing import Optional, Protocol
-from tpy import Int32, dynamic, Own
+from tpy import int32, dynamic, Own
 from tplib.box import Box
 
 
@@ -15,7 +15,7 @@ class Mutating(Protocol):
 
 
 class Inner:
-    counter: Int32
+    counter: int32
 
     def __init__(self) -> None:
         self.counter = 0
@@ -25,7 +25,7 @@ class Inner:
 
 
 class Impl:
-    counter: Int32
+    counter: int32
 
     def __init__(self) -> None:
         self.counter = 0

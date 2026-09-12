@@ -12,17 +12,17 @@ inline constexpr std::string_view __name__ = "__main__";
 void main();
 
 inline auto fibonacci(int32_t n) {
-    // a: Int32 = 0
+    // a: int32 = 0
     int32_t a = 0;
-    // b: Int32 = 1
+    // b: int32 = 1
     int32_t b = 1;
-    // count: Int32 = 0
+    // count: int32 = 0
     int32_t count = 0;
     return ::tpy::make_generator<int32_t>(
         [n, a, b, count]() mutable -> std::optional<int32_t> {
             while ((count < n)) {
                 auto __val = a;
-                // temp: Int32 = a
+                // temp: int32 = a
                 int32_t temp = a;
                 // a = b
                 a = b;

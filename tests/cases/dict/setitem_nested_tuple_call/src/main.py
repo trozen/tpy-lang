@@ -1,25 +1,25 @@
 # A dict whose VALUE is a nested tuple, written from a CALL: the whole tuple
 # comes back by value, so the store needs no per-level lift (the tuple-literal
 # form of the same slot is the sibling shape).
-from tpy import Int32
+from tpy import int32
 
 
-def make() -> tuple[Int32, tuple[Int32, Int32]]:
+def make() -> tuple[int32, tuple[int32, int32]]:
     return (1, (2, 3))
 
 
 class Src:
-    base: Int32
+    base: int32
 
-    def __init__(self, base: Int32) -> None:
+    def __init__(self, base: int32) -> None:
         self.base = base
 
-    def pair(self) -> tuple[Int32, tuple[Int32, Int32]]:
+    def pair(self) -> tuple[int32, tuple[int32, int32]]:
         return (self.base, (self.base + 1, self.base + 2))
 
 
 def main() -> None:
-    d: dict[Int32, tuple[Int32, tuple[Int32, Int32]]] = {}
+    d: dict[int32, tuple[int32, tuple[int32, int32]]] = {}
     # The call source, free function and method.
     d[1] = make()
     d[2] = Src(10).pair()

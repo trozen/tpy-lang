@@ -40,11 +40,11 @@ void initial_value_and_overwrite() {
 void seek_then_read() {
     // b = io.BytesIO(b"abcdefgh")
     ::tpystd::io::BytesIO b = ::tpystd::io::BytesIO(::tpy::bytes_literal_owned("abcdefgh", 8));
-    // b.seek(Int32(3))
+    // b.seek(int32(3))
     b.seek(3);
     // print("read-from-3:", b.read())
     std::cout << "read-from-3:" << " " << ::tpy::BytesPrinter(b.read()) << "\n";
-    // b.seek(Int32(0))
+    // b.seek(int32(0))
     b.seek(0);
     // print("read-all:", b.read())
     std::cout << "read-all:" << " " << ::tpy::BytesPrinter(b.read()) << "\n";

@@ -3,15 +3,15 @@
 # for the constructor; using the Python class name would emit invalid C++.
 # tpy: include("native_types.hpp")
 from tpy.extern import native
-from tpy import Int32
+from tpy import int32
 
 @native("CppCounter")
 class PyCounter:
-    value: Int32
+    value: int32
 
-    def __init__(self, value: Int32) -> None: ...
+    def __init__(self, value: int32) -> None: ...
 
-    def get(self) -> Int32: ...
+    def get(self) -> int32: ...
 
 
 class Sub(PyCounter):
@@ -19,7 +19,7 @@ class Sub(PyCounter):
 
 
 def main() -> None:
-    s = Sub(Int32(7))
+    s = Sub(int32(7))
     print(s.get())
 
 

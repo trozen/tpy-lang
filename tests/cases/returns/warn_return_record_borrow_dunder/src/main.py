@@ -4,13 +4,13 @@
 # method-call spelling takes -- the dunder borrows an ARGUMENT (its operand),
 # which no temporary receiver can bound. The copy is the ACKNOWLEDGED CPython
 # divergence, so the case prints only what both agree on.
-from tpy import Int32, Own, copy
+from tpy import int32, Own, copy
 
 
 class Acc:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def __add__(self, o: 'Acc') -> 'Acc':

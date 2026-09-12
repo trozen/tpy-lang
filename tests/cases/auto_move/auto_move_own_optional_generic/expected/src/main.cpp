@@ -8,9 +8,9 @@ namespace tpyapp::main {
 void main() {
     // b = Box()
     Box b = Box();
-    // b.value = Int32(42)
+    // b.value = int32(42)
     b.value = 42;
-    // print(take_optional[Box](b, Int32(99)))
+    // print(take_optional[Box](b, int32(99)))
     std::cout << take_optional<Box>(std::move(b), 99) << "\n";
 }
 

@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def main() -> Int32:
+// def main() -> int32:
 int32_t main() {
-    // b: Box[Int32] = Box(Int32(42))
+    // b: Box[int32] = Box(int32(42))
     ::tpyapp::container::Box<int32_t> b = ::tpyapp::container::Box<int32_t>(42);
     // print(b.value)
     std::cout << b.value << "\n";
-    // return Int32(0)
+    // return int32(0)
     return 0;
 }
 

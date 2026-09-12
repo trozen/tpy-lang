@@ -2,20 +2,20 @@
 # element source. Subscript isn't a TpyName, so the is_auto_moved
 # fast-path (which gates on TpyName + last_use) must correctly fall
 # through to the borrowed-source diagnostic rather than short-circuit.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class P:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
-def take(t: Own[tuple[P | None, P | None]]) -> Int32:
-    return Int32(0)
+def take(t: Own[tuple[P | None, P | None]]) -> int32:
+    return int32(0)
 
 
-def helper(items: list[P]) -> Int32:
+def helper(items: list[P]) -> int32:
     # items[0] / items[1] are borrowed slot reads -- not movable into
     # the Own[tuple] storage form.
     return take((items[0], items[1]))  # tpyc: error(/tuple element 0.*explicit copy/)

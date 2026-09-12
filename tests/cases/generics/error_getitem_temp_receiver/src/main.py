@@ -2,13 +2,13 @@
 # borrow into the receiver; subscripting a TEMPORARY receiver would dangle
 # (the temporary is freed at end of the full-expression). Rejected loudly --
 # bind the receiver to a local (as `peek`/`main` in getitem_optional_ref do).
-from tpy import Int32
+from tpy import int32
 
 
 class Rec:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32):
+    def __init__(self, x: int32):
         self.x = x
 
 
@@ -18,7 +18,7 @@ class Box:
     def __init__(self, v: Rec):
         self._v = v
 
-    def __getitem__(self, want: Int32) -> Rec | None:
+    def __getitem__(self, want: int32) -> Rec | None:
         if want > 0:
             return self._v
         return None

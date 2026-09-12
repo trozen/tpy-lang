@@ -27,10 +27,10 @@ void main();
 
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
 
-    // def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: int32) -> None:
     Point() = default;
     explicit Point(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
@@ -43,10 +43,10 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 // class Tag:
 struct Tag {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Tag() = default;
     explicit Tag(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Tag";
@@ -109,10 +109,10 @@ struct __coro_main_coro {
 };
 
 
-// def __init__(self, x: Int32) -> None:
+// def __init__(self, x: int32) -> None:
 inline Point::Point(int32_t x) : x(x) {}
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Tag::Tag(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

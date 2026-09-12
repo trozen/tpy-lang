@@ -4,7 +4,7 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| `range()` as `Range[T]` type | **Done** | Generic over Int32/BigInt |
+| `range()` as `Range[T]` type | **Done** | Generic over int32/BigInt |
 | `range()` counter-loop optimization | **Done** | `for i in range(n)` → C-style `for` |
 | `Iterator[T]` protocol | **Done** | `__next__()` with `@error_return(StopIteration)` -> `std::expected` |
 | User `__next__` + `raise StopIteration` | **Done** | Auto `@error_return(StopIteration)`, `std::expected` codegen |
@@ -81,7 +81,7 @@ def sum_fast(it: Iterable[T]) -> T:
         for x in it: ...
 ```
 
-Because `NativeIterable[T]` extends `Iterable[T]`, sema threads the source's element type through `parent_protocols` to produce the narrowed `NativeIterable[Int32]`; codegen emits `if constexpr (::tpy::NativeIterable<T_it, int32_t>)` with both template args. The older `Iterable[T] | NativeIterable[T]` union form still works but is no longer required. Sema's protocol-isinstance narrowing is stored in `then_type_facts` and propagated into codegen via `CodeGenContext.protocol_narrowings` (save/restored around every if/elif/else/while body). `codegen_cpp/types.py::get_resolved_type(TpyName)` consults it first, so the for-loop dispatch inside each branch sees the narrower type and picks the matching peephole.
+Because `NativeIterable[T]` extends `Iterable[T]`, sema threads the source's element type through `parent_protocols` to produce the narrowed `NativeIterable[int32]`; codegen emits `if constexpr (::tpy::NativeIterable<T_it, int32_t>)` with both template args. The older `Iterable[T] | NativeIterable[T]` union form still works but is no longer required. Sema's protocol-isinstance narrowing is stored in `then_type_facts` and propagated into codegen via `CodeGenContext.protocol_narrowings` (save/restored around every if/elif/else/while body). `codegen_cpp/types.py::get_resolved_type(TpyName)` consults it first, so the for-loop dispatch inside each branch sees the narrower type and picks the matching peephole.
 
 The narrowing only fires when the check protocol inherits from the declared one (via `ProtocolChecker.protocol_inherits_from`); cross-protocol checks against an unrelated multi-arg protocol are rejected at sema with a clear error rather than silently emitting a wrong-arity C++ concept.
 
@@ -109,17 +109,17 @@ Automatic dispatch (emitting both branches inside every `Iterable[T]` template, 
 
 ```python
 class Counter:
-    current: Int32
-    limit: Int32
+    current: int32
+    limit: int32
 
-    def __init__(self, limit: Int32) -> None:
+    def __init__(self, limit: int32) -> None:
         self.current = 0
         self.limit = limit
 
     def __iter__(self) -> Counter:
         return self
 
-    def __next__(self) -> Int32:
+    def __next__(self) -> int32:
         if self.current < self.limit:
             result = self.current
             self.current += 1
@@ -202,10 +202,10 @@ The iterator returned by `__iter__()` is always owned (`auto`, not `auto&`) beca
 
 ```python
 class NumberRange:
-    start: Int32
-    limit: Int32
+    start: int32
+    limit: int32
 
-    def __init__(self, start: Int32, limit: Int32) -> None:
+    def __init__(self, start: int32, limit: int32) -> None:
         self.start = start
         self.limit = limit
 
@@ -213,14 +213,14 @@ class NumberRange:
         return RangeIter(self.start, self.limit)
 
 class RangeIter:
-    current: Int32
-    limit: Int32
+    current: int32
+    limit: int32
 
-    def __init__(self, start: Int32, limit: Int32) -> None:
+    def __init__(self, start: int32, limit: int32) -> None:
         self.current = start
         self.limit = limit
 
-    def __next__(self) -> Int32:
+    def __next__(self) -> int32:
         if self.current < self.limit:
             result = self.current
             self.current += 1
@@ -276,7 +276,7 @@ for i in range(0, 10, 3):    # → for (int32_t i = 0; i < 10; i = int32_add(i, 
 
 Non-literal start/stop arguments are pre-evaluated into temporaries to match Python's evaluate-once semantics.
 
-Int32 uses `tpy::int32_add()` for overflow checking; BigInt uses `+=`.
+int32 uses `tpy::int32_add()` for overflow checking; BigInt uses `+=`.
 
 When range optimization can't apply (e.g., zero step detected at codegen time), it falls back to the general Iterator while-loop path using `Range<T>.__next__()`.
 
@@ -288,9 +288,9 @@ Iterator yields hand out references like function returns -- mutations through t
 
 | Python yield type | C++ iterator slot |
 |---|---|
-| `tuple[Int32, Point]` | `std::tuple<int32_t, Point&>` |
+| `tuple[int32, Point]` | `std::tuple<int32_t, Point&>` |
 | `tuple[P \| None, P \| None]` | `std::tuple<P*, P*>` |
-| `tuple[Int32, Int32]` | `std::tuple<int32_t, int32_t>` (value form -- borrow=value for primitives) |
+| `tuple[int32, int32]` | `std::tuple<int32_t, int32_t>` (value form -- borrow=value for primitives) |
 | `T` (bare) | `T` (value form -- `T&` directly would make `std::optional<T&>` ill-formed pre-C++26) |
 
 The single decision point is `_iter_slot_for_yield(elem_type, cpp_elem)` in `tpyc/codegen_cpp/gen_generators.py`. All four simple-for branches (NativeIterable peephole, range, direct-iterator, universal-default), the simple-while branch, and state-machine generators (`__next__()`'s return type) route through it.
@@ -308,7 +308,7 @@ The asymmetry with field/container slots is by design: fields and containers own
 `NativeIterable[T]` is a **marker protocol** for types with C++ `begin()`/`end()`. It generates standard C++ range-based for loops:
 
 ```python
-for x in items:  # items: list[Int32]
+for x in items:  # items: list[int32]
 ```
 
 ```cpp
@@ -317,7 +317,7 @@ for (int32_t x : items) {
 }
 ```
 
-Conforming built-in types: `list[T]`, `Array[T, N]`, `Span[T]`, `str` (as `NativeIterable[Char]`).
+Conforming built-in types: `list[T]`, `Array[T, N]`, `Span[T]`, `str` (as `NativeIterable[char]`).
 
 This path is not user-extensible — it requires the C++ type to support `std::ranges::begin()`/`std::ranges::end()`.
 
@@ -341,7 +341,7 @@ Tests live in `tests/cases/iterators/`:
 | `for_range_step` | `range(start, stop, step)` |
 | `for_range_edge_cases` | Empty ranges, negative steps |
 | `for_range_bigint` | `range()` with BigInt args |
-| `for_range_mixed` | Mixed Int32/BigInt range args |
+| `for_range_mixed` | Mixed int32/BigInt range args |
 | `for_range_snapshot` | Generated C++ for range loops |
 | `iterable_protocol_ops` | `Iterable[T]` protocol parameter (nested loops, `in`, protocol-to-protocol forwarding) |
 | `iterable_native_narrowing` | `Iterable[T] \| NativeIterable[T]` + isinstance narrowing; elif / nested-if save/restore |

@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def make() -> Own[list[Int32]]:
+// def make() -> Own[list[int32]]:
 std::vector<int32_t> make() {
     // return [10, 20, 30]
     return {10, 20, 30};
 }
 
-// def gen() -> Iterator[Int32]:
+// def gen() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -50,7 +50,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
 }
 
 
-// def gen() -> Iterator[Int32]:
+// def gen() -> Iterator[int32]:
 __gen_gen gen() {
     return __gen_gen();
 }

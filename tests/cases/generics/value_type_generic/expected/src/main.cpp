@@ -4,16 +4,16 @@
 namespace tpyapp::main {
 
 
-// def swap(p: Pair[Int32]) -> Pair[Int32]:
+// def swap(p: Pair[int32]) -> Pair[int32]:
 Pair<int32_t> swap(Pair<int32_t> p) {
-    // return Pair[Int32](p.second, p.first)
+    // return Pair[int32](p.second, p.first)
     return Pair<int32_t>(p.second, p.first);
 }
 
 // def main() -> None:
 void main() {
     // # Builtin value type as bound
-    // p = Pair[Int32](1, 2)
+    // p = Pair[int32](1, 2)
     Pair<int32_t> p = Pair<int32_t>(1, 2);
     // q = p                      # copy (value type)
     Pair<int32_t> q = p;

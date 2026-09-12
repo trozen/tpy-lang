@@ -1,14 +1,14 @@
 # A subclass declares fields via `self.f = param` in __init__ (no class-level
 # annotation): `x` is inherited from Base (reuses the parent slot), `y` is new.
-from tpy import Int32
+from tpy import int32
 
 class Base:
-    x: Int32
-    def __init__(self, x: Int32):
+    x: int32
+    def __init__(self, x: int32):
         self.x = x
 
 class Child(Base):
-    def __init__(self, x: Int32, y: Int32):
+    def __init__(self, x: int32, y: int32):
         super().__init__(x)
         self.y = y          # new own field, inferred from the param
 

@@ -2,23 +2,23 @@
 # call argument, and it keys on the operand's DECLARED type: a literal-seeded
 # local retro-widened to BigInt by a later assignment must narrow at the
 # forward operand, the reflected operand and the `__contains__` needle even
-# though sema types each occurrence Int32.
-from tpy import Int32
+# though sema types each occurrence int32.
+from tpy import int32
 
 
 class Bag:
-    xs: list[Int32]
+    xs: list[int32]
 
     def __init__(self) -> None:
         self.xs = [1, 2, 3]
 
-    def __contains__(self, k: Int32) -> bool:
+    def __contains__(self, k: int32) -> bool:
         return k == 1
 
-    def __add__(self, k: Int32) -> Int32:
+    def __add__(self, k: int32) -> int32:
         return k + 1
 
-    def __radd__(self, k: Int32) -> Int32:
+    def __radd__(self, k: int32) -> int32:
         return k + 2
 
 

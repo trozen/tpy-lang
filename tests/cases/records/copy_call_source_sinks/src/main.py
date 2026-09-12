@@ -5,33 +5,33 @@
 # copied source is mutated afterwards and read back, and CPython agrees
 # because `copy()` deep-copies there.
 import tpy
-from tpy import Int32, copy
+from tpy import int32, copy
 
 
 class Payload:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 
 class Dog:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
 class Cat:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
 class Holder:
     p: Payload
-    items: list[Int32]
+    items: list[int32]
 
     def __init__(self) -> None:
         self.p = Payload(1)
@@ -40,13 +40,13 @@ class Holder:
     def brec(self) -> Payload:
         return self.p
 
-    def bctr(self) -> list[Int32]:
+    def bctr(self) -> list[int32]:
         return self.items
 
 
 class Sink:
     q: Payload
-    box: list[Int32]
+    box: list[int32]
 
     def __init__(self, h: Holder) -> None:
         # A ctor member-init write takes the NAME source only; the call
@@ -63,20 +63,20 @@ def rewrite(s: Sink, h: Holder) -> None:
     s.box = copy(h.bctr())  # tpyc: ok
 
 
-def setitem(h: Holder) -> Int32:
+def setitem(h: Holder) -> int32:
     xs = [Payload(0)]
     xs[0] = copy(h.brec())  # tpyc: ok
     h.p.v = 5
     return xs[0].v
 
 
-def container_element(h: Holder) -> Int32:
+def container_element(h: Holder) -> int32:
     xs = [copy(h.brec()), copy(h.p)]  # tpyc: ok
     h.p.v = 6
     return xs[0].v + xs[1].v
 
 
-def qualified_decl(h: Holder) -> Int32:
+def qualified_decl(h: Holder) -> int32:
     # The module-QUALIFIED spelling at a plain decl reaches the generic call
     # tail rather than the decl sink's own copy row -- same one-step source.
     dup = tpy.copy(h.brec())
@@ -84,7 +84,7 @@ def qualified_decl(h: Holder) -> Int32:
     return dup.v
 
 
-def variant_copy(pick: bool) -> Int32:
+def variant_copy(pick: bool) -> int32:
     # NOT the copy-construct tail: a ptr-variant union's copy is the
     # active-member deep copy, its own arm.
     u: Dog | Cat = Dog(1)
@@ -105,7 +105,7 @@ class OptSink:
         self.opt = None
 
 
-def optional_copy(o: Payload | None) -> Int32:
+def optional_copy(o: Payload | None) -> int32:
     # NOT the copy-construct tail either: a pointer-repr Optional is handed
     # back unwrapped, and the SINK's storage lift is what copies.
     s = OptSink()

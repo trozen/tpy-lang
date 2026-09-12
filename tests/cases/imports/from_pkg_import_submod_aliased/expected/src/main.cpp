@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def use(c: p.Counter) -> Int32:
+// def use(c: p.Counter) -> int32:
 int32_t use(const ::tpyapp::pkg::state::Counter& c) {
     // return c.n
     return c.n;
@@ -14,7 +14,7 @@ int32_t use(const ::tpyapp::pkg::state::Counter& c) {
 void main() {
     // print(p.LIMIT)
     std::cout << ::tpyapp::pkg::state::LIMIT << "\n";
-    // print(use(p.Counter(Int32(7))))
+    // print(use(p.Counter(int32(7))))
     ::tpyapp::pkg::state::Counter __tmp_1 = ::tpyapp::pkg::state::Counter(7);
     std::cout << use(__tmp_1) << "\n";
 }

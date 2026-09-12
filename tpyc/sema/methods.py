@@ -2312,7 +2312,7 @@ class MethodAnalyzer:
                 expr
             )
 
-        # Build type substitution for generic parent (e.g., Container[Int32] -> {"T": Int32})
+        # Build type substitution for generic parent (e.g., Container[int32] -> {"T": int32})
         type_subst = self.protocols.get_parent_type_subst(parent_type, parent_info)
 
         # Must be set before arg resolution: mutation-call-edge recording

@@ -5,13 +5,13 @@
 # exactly as the list flavour beside it does.
 from __future__ import annotations
 
-from tpy import Array, Int32, Own, UInt8
+from tpy import Array, int32, Own, uint8
 from tplib import ArrayList
 
 
 class Grid:
-    cells: Array[Int32, 3]
-    spare: Array[Int32, 3] | None
+    cells: Array[int32, 3]
+    spare: Array[int32, 3] | None
 
     def __init__(self) -> None:
         self.cells = [1, 2, 3]
@@ -20,7 +20,7 @@ class Grid:
     def same_cells(self, other: Grid) -> bool:
         return self.cells == other.cells      # the Array FIELD read as an operand
 
-    def spare_total(self) -> Int32:
+    def spare_total(self) -> int32:
         n = 0
         if self.spare is not None:
             for x in self.spare:              # for-each over a narrowed Array field
@@ -28,11 +28,11 @@ class Grid:
         return n
 
 
-def fresh() -> Own[Array[Int32, 3]]:
+def fresh() -> Own[Array[int32, 3]]:
     return [7, 8, 9]                          # the Own[Array] storage return slot
 
 
-def first_or_none(g: Grid, want: bool) -> Array[Int32, 3] | None:
+def first_or_none(g: Grid, want: bool) -> Array[int32, 3] | None:
     if want:
         return g.cells                        # the Optional[Array] borrow return
     return None
@@ -55,12 +55,12 @@ def main() -> None:
     print(a.cells[1])                         # ... is visible on the source
     print(first_or_none(a, False) is None)
 
-    xs: Array[Int32, 3] = [5, 6, 7]
-    al = ArrayList[Int32, 8](xs)              # an Array NAME at a protocol slot
+    xs: Array[int32, 3] = [5, 6, 7]
+    al = ArrayList[int32, 8](xs)              # an Array NAME at a protocol slot
     print(al[0], len(al))
 
     ba = bytearray(b"abc")                    # ... and the bytearray leg
-    bl = ArrayList[UInt8, 8](ba)
+    bl = ArrayList[uint8, 8](ba)
     print(bl[0], len(bl))
 
 

@@ -19,7 +19,7 @@ void main();
 
 // class Worker:
 struct Worker {
-    // n: Int32
+    // n: int32
     int32_t n;
 
     // def __init__(self) -> None:

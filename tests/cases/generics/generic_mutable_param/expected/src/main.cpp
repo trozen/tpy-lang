@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def modify_list(items: list[Int32]) -> None:
+// def modify_list(items: list[int32]) -> None:
 void modify_list(std::vector<int32_t>& items) {
     // items.append(100)
     items.push_back(100);
@@ -12,8 +12,8 @@ void modify_list(std::vector<int32_t>& items) {
 
 // def main() -> None:
 void main() {
-    // # Test 1: Box with value type (Int32) - param is const T&
-    // box_int: Box[Int32] = Box[Int32](42)
+    // # Test 1: Box with value type (int32) - param is const T&
+    // box_int: Box[int32] = Box[int32](42)
     Box<int32_t> box_int = Box<int32_t>(42);
     // box_int.set(99)
     box_int.set(99);
@@ -21,7 +21,7 @@ void main() {
     std::cout << box_int.get() << "\n";
     // # Test 2: Box with object type (list) - param is T&
     // # Pass a literal - should create a temporary
-    // box_list: Box[list[Int32]] = Box[list[Int32]]([1, 2, 3])
+    // box_list: Box[list[int32]] = Box[list[int32]]([1, 2, 3])
     Box<std::vector<int32_t>> box_list = Box<std::vector<int32_t>>({1, 2, 3});
     // box_list.set([4, 5, 6])
     std::vector<int32_t> __tmp_1 = {4, 5, 6};
@@ -36,7 +36,7 @@ void main() {
         std::cout << x << "\n";
     }
     // # Test 3: Direct list mutation through non-generic function
-    // nums: list[Int32] = [10, 20]
+    // nums: list[int32] = [10, 20]
     std::vector<int32_t> nums = {10, 20};
     // modify_list(nums)
     modify_list(nums);

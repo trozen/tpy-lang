@@ -19,10 +19,10 @@ void main();
 
 // class A:
 struct A {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     A() = default;
     explicit A(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.A";
@@ -36,10 +36,10 @@ inline std::ostream& operator<<(std::ostream& os, const A& obj) {
 // @nocopy
 // class B:
 struct B {
-    // m: Int32
+    // m: int32
     int32_t m;
 
-    // def __init__(self, m: Int32) -> None:
+    // def __init__(self, m: int32) -> None:
     B() = default;
     explicit B(int32_t m);
     // non-copyable (@nocopy)
@@ -56,10 +56,10 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 }
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline A::A(int32_t n) : n(n) {}
 
-// def __init__(self, m: Int32) -> None:
+// def __init__(self, m: int32) -> None:
 inline B::B(int32_t m) : m(m) {}
 void __tpy_init();
 } // namespace tpyapp::main

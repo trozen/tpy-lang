@@ -1,27 +1,27 @@
 # Test that Python identifiers matching C++ reserved keywords are
 # escaped correctly in generated code (params, locals, for-loop vars).
 
-from tpy import Int32
+from tpy import int32
 
-def get_or_default(x: Int32, default: Int32) -> Int32:
+def get_or_default(x: int32, default: int32) -> int32:
     if x > 0:
         return x
     return default
 
 def test_local_keywords() -> None:
-    delete: Int32 = 10
-    new: Int32 = 20
-    result: Int32 = delete + new
+    delete: int32 = 10
+    new: int32 = 20
+    result: int32 = delete + new
     print(result)
 
 def test_for_loop_keyword() -> None:
-    total: Int32 = 0
-    items: list[Int32] = [1, 2, 3]
+    total: int32 = 0
+    items: list[int32] = [1, 2, 3]
     for operator in items:
         total = total + operator
     print(total)
 
-def delete(x: Int32) -> Int32:
+def delete(x: int32) -> int32:
     return x * 2
 
 def main() -> None:

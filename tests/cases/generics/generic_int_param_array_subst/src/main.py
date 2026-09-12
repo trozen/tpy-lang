@@ -1,4 +1,4 @@
-from tpy import Int32, Array
+from tpy import int32, Array
 
 
 class Buffer[T, N: int]:
@@ -14,29 +14,29 @@ class Buffer[T, N: int]:
         self.data = arr
 
 
-def use_array(arr: Array[Int32, 3]) -> None:
-    """Function expecting concrete Array[Int32, 3]."""
+def use_array(arr: Array[int32, 3]) -> None:
+    """Function expecting concrete Array[int32, 3]."""
     print(arr[0])
     print(arr[1])
     print(arr[2])
 
 
-arr_global: Array[Int32, 3] = [Int32(10), Int32(20), Int32(30)]
+arr_global: Array[int32, 3] = [int32(10), int32(20), int32(30)]
 
-def get_global_array() -> Array[Int32, 3]:
-    """Function returning concrete Array[Int32, 3]."""
+def get_global_array() -> Array[int32, 3]:
+    """Function returning concrete Array[int32, 3]."""
     return arr_global
 
 
 def main() -> None:
-    b: Buffer[Int32, 3] = Buffer[Int32, 3]()
+    b: Buffer[int32, 3] = Buffer[int32, 3]()
 
     # Test 1: Pass concrete array to generic method
-    concrete: Array[Int32, 3] = [Int32(1), Int32(2), Int32(3)]
+    concrete: Array[int32, 3] = [int32(1), int32(2), int32(3)]
     b.set_data(concrete)
 
     # Test 2: Pass generic return type to concrete function
-    # get_data() returns Array[T, N], which should substitute to Array[Int32, 3]
+    # get_data() returns Array[T, N], which should substitute to Array[int32, 3]
     use_array(b.get_data())
 
     # Test 3: Assign concrete return to generic field via method

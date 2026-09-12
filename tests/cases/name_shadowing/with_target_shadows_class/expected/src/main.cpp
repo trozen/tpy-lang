@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def run() -> Int32:
+// def run() -> int32:
 int32_t run() {
     // g = Guard(7)
     Guard g = Guard(7);

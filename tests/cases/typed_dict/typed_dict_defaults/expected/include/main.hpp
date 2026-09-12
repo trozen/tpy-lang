@@ -17,7 +17,7 @@ void main();
 struct Config {
     // host: str = "localhost"  # tpyc: warning(/default value.*ignored/)
     std::string host = "localhost";
-    // port: Int32 = Int32(8080)  # tpyc: warning(/default value.*ignored/)
+    // port: int32 = int32(8080)  # tpyc: warning(/default value.*ignored/)
     int32_t port = 8080;
     // debug: bool = False  # tpyc: warning(/default value.*ignored/)
     bool debug = false;

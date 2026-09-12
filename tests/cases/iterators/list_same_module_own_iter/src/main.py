@@ -1,12 +1,12 @@
 # Regression guard: list() of a generator yielding a SAME-MODULE Own[record].
 # The cross-module cpp_template qualification must NOT over-qualify a
 # same-module element -- it stays the bare short name (not namespace-prefixed).
-from tpy import Int32, Own, copy
+from tpy import int32, Own, copy
 from typing import Iterator
 
 class Point:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 def points() -> Iterator[Own[Point]]:

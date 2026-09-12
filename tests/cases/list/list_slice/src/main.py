@@ -1,5 +1,5 @@
 # List slicing: basic, negative indices, clamping, empty, Array, type inference.
-from tpy import Int32, Array, Span, readonly
+from tpy import int32, Array, Span, readonly
 
 
 def test_basic() -> None:
@@ -33,30 +33,30 @@ def test_empty() -> None:
 
 
 def test_type_inference() -> None:
-    items: list[Int32] = [Int32(1), Int32(2), Int32(3)]
-    sub = items[0:2]  # tpyc: type(Span[Int32])
+    items: list[int32] = [int32(1), int32(2), int32(3)]
+    sub = items[0:2]  # tpyc: type(Span[int32])
     print(sub)
 
 
 def test_array() -> None:
-    arr: Array[Int32, 5] = [Int32(1), Int32(2), Int32(3), Int32(4), Int32(5)]
-    sub = arr[1:4]  # tpyc: type(Span[Int32])
+    arr: Array[int32, 5] = [int32(1), int32(2), int32(3), int32(4), int32(5)]
+    sub = arr[1:4]  # tpyc: type(Span[int32])
     print(sub)
 
 
-def test_span(s: Span[Int32]) -> None:
-    sub = s[1:3]  # tpyc: type(Span[Int32])
+def test_span(s: Span[int32]) -> None:
+    sub = s[1:3]  # tpyc: type(Span[int32])
     print(sub)
 
 
 @readonly
-def test_readonly_list(items: list[Int32]) -> None:
-    sub = items[0:2]  # tpyc: type(Span[readonly[Int32]])
+def test_readonly_list(items: list[int32]) -> None:
+    sub = items[0:2]  # tpyc: type(Span[readonly[int32]])
     print(sub)
 
 
-def test_readonly_span_param(s: Span[readonly[Int32]]) -> None:
-    sub = s[0:2]  # tpyc: type(Span[readonly[Int32]])
+def test_readonly_span_param(s: Span[readonly[int32]]) -> None:
+    sub = s[0:2]  # tpyc: type(Span[readonly[int32]])
     print(sub)
 
 
@@ -78,11 +78,11 @@ test_type_inference()
 print("---")
 test_array()
 print("---")
-span_src: list[Int32] = [Int32(10), Int32(20), Int32(30), Int32(40)]
+span_src: list[int32] = [int32(10), int32(20), int32(30), int32(40)]
 test_span(span_src)
 print("---")
-test_readonly_list([Int32(10), Int32(20), Int32(30)])
+test_readonly_list([int32(10), int32(20), int32(30)])
 print("---")
-test_readonly_span_param([Int32(10), Int32(20), Int32(30), Int32(40)])
+test_readonly_span_param([int32(10), int32(20), int32(30), int32(40)])
 print("---")
 test_single_element()

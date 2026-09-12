@@ -3,13 +3,13 @@
 # rebinds the name to the returned object (rebind-as-alias for aug-assign
 # targets is unimplemented, see BUGS.md). Own-returning fallbacks stay
 # accepted (op_own_return_fresh).
-from tpy import Int32
+from tpy import int32
 
 
 class Acc:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
     def __add__(self, o: "Acc") -> "Acc":

@@ -1,1 +1,1 @@
-main.py:5: error: Operator '+=' is not supported for Int32 | None
+main.py:5: error: Operator '+=' is not supported for int32 | None

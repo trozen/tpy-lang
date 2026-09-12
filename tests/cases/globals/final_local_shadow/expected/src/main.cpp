@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // X: Int32 = 99
+    // X: int32 = 99
     int32_t X = 99;
     // print(X)
     std::cout << X << "\n";

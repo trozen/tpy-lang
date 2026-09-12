@@ -1,10 +1,10 @@
-from tpy import Int32
+from tpy import int32
 from typing import Iterator
 from tpy import error_return, ReturnException
 class E(Exception, ReturnException):
     pass
 @error_return(E)
-def g(n: Int32) -> Iterator[Int32]:
+def g(n: int32) -> Iterator[int32]:
     for i in range(n):
         yield i
 def main() -> None:

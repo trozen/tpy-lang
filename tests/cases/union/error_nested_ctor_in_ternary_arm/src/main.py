@@ -1,13 +1,13 @@
 # A nested member ctor inside a DEFERRED ternary arm: the union lift would have
 # to hoist eager temps into a conditionally-evaluated arm, so it is rejected.
 from typing import Optional
-from tpy import Int32
+from tpy import int32
 
 
 class Collar:
-    size: Int32
+    size: int32
 
-    def __init__(self, size: Int32) -> None:
+    def __init__(self, size: int32) -> None:
         self.size = size
 
 
@@ -19,9 +19,9 @@ class Dog:
 
 
 class Cat:
-    tag: Int32
+    tag: int32
 
-    def __init__(self, tag: Int32) -> None:
+    def __init__(self, tag: int32) -> None:
         self.tag = tag
 
 

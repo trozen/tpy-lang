@@ -99,7 +99,7 @@ void print_colors() {
 
 // def count_members() -> None:
 void count_members() {
-    // count: Int32 = 0
+    // count: int32 = 0
     int32_t count = 0;
     // for s in Status:
     auto& __obj_0 = ::tpy::EnumUtil<Status>::members;

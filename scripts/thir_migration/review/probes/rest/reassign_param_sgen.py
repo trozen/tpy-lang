@@ -1,6 +1,6 @@
-from tpy import Int32
+from tpy import int32
 from typing import Iterator
-def g(s: str, n: Int32) -> Iterator[str]:
+def g(s: str, n: int32) -> Iterator[str]:
     s = s + "!"
     for i in range(n):
         yield s

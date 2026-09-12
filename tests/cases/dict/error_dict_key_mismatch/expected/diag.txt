@@ -1,1 +1,1 @@
-main.py:5: error: Dict has mixed key types: key 2 is Int32, but earlier keys are str
+main.py:5: error: Dict has mixed key types: key 2 is int32, but earlier keys are str

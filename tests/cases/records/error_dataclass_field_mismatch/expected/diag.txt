@@ -1,1 +1,1 @@
-main.py:7: error: default_factory 'dict' does not match field type 'list[Int32]'
+main.py:7: error: default_factory 'dict' does not match field type 'list[int32]'

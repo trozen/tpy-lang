@@ -1,12 +1,12 @@
 # Transitive propagation: A contains B contains @nocopy C -- A is implicitly nocopy
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 
 
 @nocopy
 class Resource:
-    id: Int32
+    id: int32
 
-    def __init__(self, id: Int32):
+    def __init__(self, id: int32):
         self.id = id
 
 
@@ -24,7 +24,7 @@ class Outer:
         self.w = w
 
 
-def consume(o: Own[Outer]) -> Int32:
+def consume(o: Own[Outer]) -> int32:
     return o.w.res.id
 
 

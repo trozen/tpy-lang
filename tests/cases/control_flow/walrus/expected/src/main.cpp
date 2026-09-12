@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def get_opt(x: Int32) -> Int32 | None:
+// def get_opt(x: int32) -> int32 | None:
 std::optional<int32_t> get_opt(int32_t x) {
     // if x > 0:
     if ((x > 0)) {
@@ -51,7 +51,7 @@ void test_optional_narrowing() {
 
 // def test_and_chain() -> None:
 void test_and_chain() {
-    // x: Int32 = 10
+    // x: int32 = 10
     int32_t x = 10;
     // if (y := x * 2) > 15 and (z := y + 1) > 20:  # tpyc: ok
     int32_t y;
@@ -66,7 +66,7 @@ void test_and_chain() {
 void test_while_loop() {
     // values = [10, 20, 30, 0, 40]
     std::array<int32_t, 5> values = {10, 20, 30, 0, 40};
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while (v := values[i]) != 0:  # tpyc: ok
     int32_t v;
@@ -115,7 +115,7 @@ void test_reuse_walrus_target() {
 
 // def test_walrus_in_branch() -> None:
 void test_walrus_in_branch() {
-    // x: Int32 = 10
+    // x: int32 = 10
     int32_t x = 10;
     // if x > 5:
     if ((x > 5)) {
@@ -129,7 +129,7 @@ void test_walrus_in_branch() {
     std::cout << "done" << "\n";
 }
 
-// def double(x: Int32) -> Int32:
+// def double(x: int32) -> int32:
 int32_t double_(int32_t x) {
     // return x * 2
     return (::tpy::mul_check<int32_t>(x, 2));
@@ -137,7 +137,7 @@ int32_t double_(int32_t x) {
 
 // def test_walrus_elif() -> None:
 void test_walrus_elif() {
-    // x: Int32 = 5
+    // x: int32 = 5
     int32_t x = 5;
     // if x > 10:
     if ((x > 10)) {

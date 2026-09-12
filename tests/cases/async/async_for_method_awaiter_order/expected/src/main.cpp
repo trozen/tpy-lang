@@ -36,7 +36,7 @@ __coro_amain amain() {
     return __coro_amain();
 }
 
-// async def run(self) -> Int32:
+// async def run(self) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_Collector_run::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -85,7 +85,7 @@ __coro_amain amain() {
 }
 
 
-// async def __anext__(self) -> Int32:
+// async def __anext__(self) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_Countdown___anext__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {

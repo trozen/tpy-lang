@@ -2,15 +2,15 @@
 # Verifies that iterators can be passed where iterables are expected.
 from __future__ import annotations
 from typing import Iterable
-from tpy import Int32
+from tpy import int32
 
 class Counter:
-    i: Int32
-    n: Int32
-    def __init__(self, n: Int32) -> None:
+    i: int32
+    n: int32
+    def __init__(self, n: int32) -> None:
         self.i = 0
         self.n = n
-    def __next__(self) -> Int32:
+    def __next__(self) -> int32:
         if self.i >= self.n:
             raise StopIteration
         val = self.i
@@ -19,8 +19,8 @@ class Counter:
     def __iter__(self) -> Counter:
         return self
 
-def sum_iterable(items: Iterable[Int32]) -> Int32:
-    total: Int32 = 0
+def sum_iterable(items: Iterable[int32]) -> int32:
+    total: int32 = 0
     for x in items:
         total += x
     return total

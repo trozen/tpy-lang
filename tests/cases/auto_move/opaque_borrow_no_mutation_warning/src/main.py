@@ -1,10 +1,10 @@
 # An unknown-shape borrow from a forward-referenced callee gates moves
 # only: it must not mint mutation-invalidation warnings on the source.
-from tpy import Int32
+from tpy import int32
 
 
 class P:
-    vals: list[Int32]
+    vals: list[int32]
 
     def __init__(self):
         self.vals = [7]

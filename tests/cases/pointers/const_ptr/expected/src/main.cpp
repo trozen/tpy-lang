@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def read_point(p: Ptr[readonly[Point]]) -> Int32:
+// def read_point(p: Ptr[readonly[Point]]) -> int32:
 int32_t read_point(const Point* p) {
     // return p.x + p.y
     return (::tpy::add_check<int32_t>(::tpy::deref_check(p).x, ::tpy::deref_check(p).y));
 }
 
-// def modify_via_ptr(p: Ptr[Point], new_x: Int32) -> None:
+// def modify_via_ptr(p: Ptr[Point], new_x: int32) -> None:
 void modify_via_ptr(Point* p, int32_t new_x) {
     // p.x = new_x
     ::tpy::deref_check(p).x = new_x;
@@ -37,7 +37,7 @@ void test_ptr_to_const_ptr() {
     // cp: Ptr[readonly[Point]] = mp
     const Point* cp = mp;
     // # Read through const pointer
-    // total: Int32 = read_point(cp)
+    // total: int32 = read_point(cp)
     int32_t total = read_point(cp);
     // print(total)
     std::cout << total << "\n";

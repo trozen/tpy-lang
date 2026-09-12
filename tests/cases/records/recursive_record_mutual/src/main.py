@@ -3,23 +3,23 @@
 # record, not only on a direct self-reference. Reads/mutations go through the
 # stored containers so the warned value-into-container copy stays CPython-parity.
 from __future__ import annotations
-from tpy import Int32
+from tpy import int32
 
 
 class A:
-    val: Int32
+    val: int32
     bs: list[B]
 
-    def __init__(self, val: Int32) -> None:
+    def __init__(self, val: int32) -> None:
         self.val = val
         self.bs = []
 
 
 class B:
-    val: Int32
+    val: int32
     as_: list[A]
 
-    def __init__(self, val: Int32) -> None:
+    def __init__(self, val: int32) -> None:
         self.val = val
         self.as_ = []
 

@@ -13,17 +13,17 @@ inline constexpr std::string_view __name__ = "factory";
 
 // class Counter:
 struct Counter {
-    // value: Int32
+    // value: int32
     int32_t value;
-    // LIMIT: ClassVar[Int32] = Int32(50)
+    // LIMIT: ClassVar[int32] = int32(50)
     static inline int32_t LIMIT = 50;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Counter() = default;
     explicit Counter(int32_t v);
 
     // @staticmethod
-    // def make(v: Int32) -> Own["Counter"]:
+    // def make(v: int32) -> Own["Counter"]:
     static Counter make(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "factory.Counter";
 };
@@ -34,11 +34,11 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Counter::Counter(int32_t v) : value(v) {}
 
 // @staticmethod
-// def make(v: Int32) -> Own["Counter"]:
+// def make(v: int32) -> Own["Counter"]:
 inline Counter Counter::make(int32_t v) {
     // return Counter(v)
     return Counter(v);

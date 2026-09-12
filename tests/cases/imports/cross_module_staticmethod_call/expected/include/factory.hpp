@@ -13,15 +13,15 @@ inline constexpr std::string_view __name__ = "factory";
 
 // class Counter:
 struct Counter {
-    // value: Int32
+    // value: int32
     int32_t value;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Counter() = default;
     explicit Counter(int32_t v);
 
     // @staticmethod
-    // def make(v: Int32) -> Own["Counter"]:
+    // def make(v: int32) -> Own["Counter"]:
     static Counter make(int32_t v);
 
     // @staticmethod
@@ -36,11 +36,11 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Counter::Counter(int32_t v) : value(v) {}
 
 // @staticmethod
-// def make(v: Int32) -> Own["Counter"]:
+// def make(v: int32) -> Own["Counter"]:
 inline Counter Counter::make(int32_t v) {
     // return Counter(v)
     return Counter(v);
@@ -49,7 +49,7 @@ inline Counter Counter::make(int32_t v) {
 // @staticmethod
 // def zero() -> Own["Counter"]:
 inline Counter Counter::zero() {
-    // return Counter(Int32(0))
+    // return Counter(int32(0))
     return Counter(0);
 }
 void __tpy_init();

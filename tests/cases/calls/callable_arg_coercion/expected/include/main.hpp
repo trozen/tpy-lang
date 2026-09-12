@@ -25,7 +25,7 @@ void use_list_fn(__F0&& f);
 void use_local();
 void main();
 
-// def use_fn(f: Fn[[Int32], None]) -> None:
+// def use_fn(f: Fn[[int32], None]) -> None:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       __fn(__a0);
@@ -36,7 +36,7 @@ void use_fn(__F0&& f) {
     // f(n)
     f((n).to_fixed_check<int32_t>());
 }
-// def use_list_fn(f: Fn[[list[Int32]], None]) -> None:
+// def use_list_fn(f: Fn[[list[int32]], None]) -> None:
 template<typename __F0>
   requires requires(__F0& __fn, std::vector<int32_t>& __a0) {
       __fn(__a0);

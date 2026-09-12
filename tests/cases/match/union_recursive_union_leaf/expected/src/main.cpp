@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def leaf_count(t: Tree[Int32 | str]) -> Int32:
+// def leaf_count(t: Tree[int32 | str]) -> int32:
 int32_t leaf_count(const Tree<::tpy::Union<int32_t, std::string>>& t) {
     // match t:
     auto& __match_subject_1 = t;
@@ -39,7 +39,7 @@ int32_t leaf_count(const Tree<::tpy::Union<int32_t, std::string>>& t) {
 
 // def main() -> None:
 void main() {
-    // forest: Tree[Int32 | str] = [1, "a", [2, "b"]]
+    // forest: Tree[int32 | str] = [1, "a", [2, "b"]]
     Tree<::tpy::Union<int32_t, std::string>> forest = std::vector<Tree<::tpy::Union<int32_t, std::string>>>{1, "a", std::vector<Tree<::tpy::Union<int32_t, std::string>>>{2, "b"}};
     // print(leaf_count(forest))
     std::cout << leaf_count(forest) << "\n";
@@ -62,7 +62,7 @@ void main() {
     }
     // print(leaf_count(forest))
     std::cout << leaf_count(forest) << "\n";
-    // leaf: Tree[Int32 | str] = "solo"
+    // leaf: Tree[int32 | str] = "solo"
     Tree<::tpy::Union<int32_t, std::string>> leaf = "solo";
     // print(leaf_count(leaf))
     std::cout << leaf_count(leaf) << "\n";

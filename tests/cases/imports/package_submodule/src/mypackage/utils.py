@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 
-def add(a: Int32, b: Int32) -> Int32:
+def add(a: int32, b: int32) -> int32:
     return a + b

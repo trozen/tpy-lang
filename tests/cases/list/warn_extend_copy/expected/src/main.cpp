@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def make_nodes() -> Own[list[Node]]:
 std::vector<Node> make_nodes() {
-    // return [Node(Int32(1))]
+    // return [Node(int32(1))]
     return {Node(1)};
 }
 
@@ -14,7 +14,7 @@ std::vector<Node> make_nodes() {
 void test_extend_ref_type_warns() {
     // a: list[Node] = []
     std::vector<Node> a = std::vector<Node>{};
-    // b: list[Node] = [Node(Int32(1))]
+    // b: list[Node] = [Node(int32(1))]
     std::vector<Node> b = {Node(1)};
     // a.extend(b)  # tpyc: warning(/copies Node elements/)
     ::tpy::list_extend(a, b);
@@ -24,9 +24,9 @@ void test_extend_ref_type_warns() {
 
 // def test_extend_value_type_no_warn() -> None:
 void test_extend_value_type_no_warn() {
-    // a: list[Int32] = []
+    // a: list[int32] = []
     std::vector<int32_t> a = std::vector<int32_t>{};
-    // b: list[Int32] = [Int32(1)]
+    // b: list[int32] = [int32(1)]
     std::vector<int32_t> b = {1};
     // a.extend(b)  # tpyc: ok
     ::tpy::list_extend(a, ::tpy::own_iter(std::move(b)));
@@ -38,7 +38,7 @@ void test_extend_value_type_no_warn() {
 void test_extend_copy_no_warn() {
     // a: list[Node] = []
     std::vector<Node> a = std::vector<Node>{};
-    // b: list[Node] = [Node(Int32(1))]
+    // b: list[Node] = [Node(int32(1))]
     std::vector<Node> b = {Node(1)};
     // a.extend(copy(b))  # tpyc: ok
     ::tpy::list_extend(a, std::vector<Node>(b));
@@ -50,7 +50,7 @@ void test_extend_copy_no_warn() {
 void test_extend_last_use_no_warn() {
     // a: list[Node] = []
     std::vector<Node> a = std::vector<Node>{};
-    // b: list[Node] = [Node(Int32(1))]
+    // b: list[Node] = [Node(int32(1))]
     std::vector<Node> b = {Node(1)};
     // a.extend(b)  # tpyc: ok -- b's last use
     ::tpy::list_extend(a, ::tpy::own_iter(std::move(b)));
@@ -64,7 +64,7 @@ void test_extend_rvalue_no_warn() {
     std::vector<Node> a = std::vector<Node>{};
     // a.extend(make_nodes())  # tpyc: ok
     ::tpy::list_extend(a, make_nodes());
-    // a.extend([Node(Int32(2))])  # tpyc: ok
+    // a.extend([Node(int32(2))])  # tpyc: ok
     ::tpy::list_extend(a, std::array<Node, 1>{Node(2)});
     // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";

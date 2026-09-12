@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // # Test negative indexing for various container types
 // def test_list_negative_indexing() -> None:
 void test_list_negative_indexing() {
-    // nums: list[Int32] = [10, 20, 30, 40, 50]
+    // nums: list[int32] = [10, 20, 30, 40, 50]
     std::vector<int32_t> nums = {10, 20, 30, 40, 50};
     // # Last element
     // print(nums[-1])
@@ -25,7 +25,7 @@ void test_list_negative_indexing() {
 
 // def test_array_negative_indexing() -> None:
 void test_array_negative_indexing() {
-    // arr: Array[Int32, 4] = [100, 200, 300, 400]
+    // arr: Array[int32, 4] = [100, 200, 300, 400]
     std::array<int32_t, 4> arr = {100, 200, 300, 400};
     // print(arr[-1])
     std::cout << ::tpy::__getitem__(arr, -1) << "\n";
@@ -52,7 +52,7 @@ void test_string_negative_indexing() {
 
 // def test_negative_index_assignment() -> None:
 void test_negative_index_assignment() {
-    // nums: list[Int32] = [1, 2, 3, 4, 5]
+    // nums: list[int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> nums = {1, 2, 3, 4, 5};
     // # Modify last element
     // nums[-1] = 50
@@ -73,10 +73,10 @@ void test_negative_index_assignment() {
 
 // def test_negative_index_in_expression() -> None:
 void test_negative_index_in_expression() {
-    // nums: list[Int32] = [5, 10, 15, 20]
+    // nums: list[int32] = [5, 10, 15, 20]
     std::vector<int32_t> nums = {5, 10, 15, 20};
     // # Arithmetic with negative indexed values
-    // total: Int32 = nums[-1] + nums[-2]
+    // total: int32 = nums[-1] + nums[-2]
     int32_t total = (::tpy::add_check<int32_t>(::tpy::__getitem__(nums, -1), ::tpy::__getitem__(nums, -2)));
     // print(total)
     std::cout << total << "\n";
@@ -94,7 +94,7 @@ void test_negative_index_in_expression() {
 
 // def test_array_negative_assignment() -> None:
 void test_array_negative_assignment() {
-    // arr: Array[Int32, 3] = [1, 2, 3]
+    // arr: Array[int32, 3] = [1, 2, 3]
     std::array<int32_t, 3> arr = {1, 2, 3};
     // arr[-1] = 30
     ::tpy::__setitem__(arr, -1, 30);

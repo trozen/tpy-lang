@@ -1,9 +1,9 @@
 # Missing-return enforcement applies to nested defs (shared body chokepoint).
-from tpy import Int32
+from tpy import int32
 
 
-def outer(n: Int32) -> Int32:
-    def inner(m: Int32) -> Int32:  # tpyc: error(/'inner' can reach the end of the function without returning/)
+def outer(n: int32) -> int32:
+    def inner(m: int32) -> int32:  # tpyc: error(/'inner' can reach the end of the function without returning/)
         if m > 0:
             return m
 

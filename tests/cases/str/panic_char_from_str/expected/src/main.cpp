@@ -8,7 +8,7 @@ namespace tpyapp::main {
 void main() {
     // s = "hello"
     std::string_view s = "hello";
-    // c = Char(s)
+    // c = char(s)
     char c = ::tpy::char_from_str(s);
     // print(c)
     std::cout << c << "\n";

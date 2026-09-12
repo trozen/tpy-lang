@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def ok(b: Box[Int32]) -> bool:
+// def ok(b: Box[int32]) -> bool:
 bool ok(const Box<int32_t>& b) {
     // return b.val > 0
     return (b.val > 0);
 }
 
-// def f(xs: list[Int32]) -> Int32:
+// def f(xs: list[int32]) -> int32:
 int32_t f(const std::vector<int32_t>& xs) {
     // ys = [x for x in xs if ok(wrap(1))]
     std::vector<int32_t> ys = ({

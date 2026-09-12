@@ -1,5 +1,5 @@
 # while loop with elif isinstance chain inside body
-from tpy import Int32
+from tpy import int32
 
 class Circle:
     radius: float
@@ -22,7 +22,7 @@ class Triangle:
         self.base = base
 
 def describe(s: Circle | Rect | Triangle) -> None:
-    i: Int32 = 0
+    i: int32 = 0
     while i < 2:
         if isinstance(s, Circle):
             print(s.radius)

@@ -14,7 +14,7 @@ inline constexpr std::string_view __name__ = "lib";
 
 // class Public:
 struct Public {
-    // val: Int32
+    // val: int32
     int32_t val;
 
     // def __init__(self) -> None:
@@ -29,7 +29,7 @@ inline std::ostream& operator<<(std::ostream& os, const Public& obj) {
 
 // class Hidden:
 struct Hidden {
-    // val: Int32
+    // val: int32
     int32_t val;
 
     // def __init__(self) -> None:

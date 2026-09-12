@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def double(n: Int32) -> Int32:
+// async def double(n: int32) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_double_::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -29,13 +29,13 @@ namespace tpyapp::main {
 }
 
 
-// async def double(n: Int32) -> Int32:
+// async def double(n: int32) -> int32:
 __coro_double_ double_(int32_t n) {
     return __coro_double_(n);
 }
 
-// async def run_twice(factory: Callable[[Int32], Own[Cancellable[Int32]]],
-// a: Int32, b: Int32) -> Int32:
+// async def run_twice(factory: Callable[[int32], Own[Cancellable[int32]]],
+// a: int32, b: int32) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_run_twice::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -74,13 +74,13 @@ __coro_double_ double_(int32_t n) {
 }
 
 
-// async def run_twice(factory: Callable[[Int32], Own[Cancellable[Int32]]],
-// a: Int32, b: Int32) -> Int32:
+// async def run_twice(factory: Callable[[int32], Own[Cancellable[int32]]],
+// a: int32, b: int32) -> int32:
 __coro_run_twice run_twice(std::function<std::unique_ptr<::tpystd::coro::Cancellable<int32_t>>(int32_t)> factory, int32_t a, int32_t b) {
     return __coro_run_twice(factory, a, b);
 }
 
-// async def main_coro() -> Int32:
+// async def main_coro() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -103,7 +103,7 @@ __coro_run_twice run_twice(std::function<std::unique_ptr<::tpystd::coro::Cancell
 }
 
 
-// async def main_coro() -> Int32:
+// async def main_coro() -> int32:
 __coro_main_coro main_coro() {
     return __coro_main_coro();
 }

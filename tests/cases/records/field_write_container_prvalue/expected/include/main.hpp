@@ -15,23 +15,23 @@ void main();
 
 // class Canvas:
 struct Canvas {
-    // pixels: list[Int32]
+    // pixels: list[int32]
     std::vector<int32_t> pixels;
     // lines: list[str]
     std::vector<std::string> lines;
-    // tags: set[Int32]
+    // tags: set[int32]
     ::tpy::ordered_set<int32_t> tags;
 
     // def __init__(self) -> None:
     Canvas();
 
-    // def fill(self, n: Int32, v: Int32) -> None:
+    // def fill(self, n: int32, v: int32) -> None:
     void fill(int32_t n, int32_t v);
 
     // def slurp(self, data: str) -> None:
     void slurp(std::string_view data);
 
-    // def merge(self, a: set[Int32], b: set[Int32]) -> None:
+    // def merge(self, a: set[int32], b: set[int32]) -> None:
     void merge(const ::tpy::ordered_set<int32_t>& a, const ::tpy::ordered_set<int32_t>& b);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Canvas";
 };
@@ -45,7 +45,7 @@ inline std::ostream& operator<<(std::ostream& os, const Canvas& obj) {
 // def __init__(self) -> None:
 inline Canvas::Canvas() : pixels(std::vector<int32_t>{}), lines(std::vector<std::string>{}), tags(::tpy::ordered_set<int32_t>()) {}
 
-// def fill(self, n: Int32, v: Int32) -> None:
+// def fill(self, n: int32, v: int32) -> None:
 inline void Canvas::fill(int32_t n, int32_t v) {
     // self.pixels = [v] * n  # tpyc: ok -- the repeat materializes the list
     this->pixels = ::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(n, {v}));
@@ -57,7 +57,7 @@ inline void Canvas::slurp(std::string_view data) {
     this->lines = ::tpy::str_splitlines(data);
 }
 
-// def merge(self, a: set[Int32], b: set[Int32]) -> None:
+// def merge(self, a: set[int32], b: set[int32]) -> None:
 inline void Canvas::merge(const ::tpy::ordered_set<int32_t>& a, const ::tpy::ordered_set<int32_t>& b) {
     // self.tags = a.union(b)  # tpyc: ok -- the same row on a set field
     this->tags = ::tpy::set_union(a, b);

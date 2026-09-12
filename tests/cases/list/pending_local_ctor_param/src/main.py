@@ -1,11 +1,11 @@
 # Pending container locals passed to CONSTRUCTOR params (plain, generic, raise)
 # resolve against the param type; copy warnings name concrete types.
 # (No overloaded-__init__ coverage: blocked by two pre-existing bugs in BUGS.md.)
-from tpy import Int32, Int64, Own
+from tpy import int32, int64, Own
 
 
 class Holder:
-    def __init__(self, xs: Own[list[Int32]]):
+    def __init__(self, xs: Own[list[int32]]):
         self.xs = xs
 
 
@@ -15,19 +15,19 @@ class Wrap[T]:
 
 
 class DictHolder:
-    def __init__(self, d: Own[dict[str, Int32]]):
+    def __init__(self, d: Own[dict[str, int32]]):
         self.d = d
 
 
 class SetHolder:
-    def __init__(self, s: Own[set[Int32]]):
+    def __init__(self, s: Own[set[int32]]):
         self.s = s
 
 
 class DataError(Exception):
-    n: Int32
+    n: int32
 
-    def __init__(self, xs: list[Int32]):
+    def __init__(self, xs: list[int32]):
         self.n = len(xs)
 
 
@@ -43,11 +43,11 @@ def main() -> None:
     print(w.xs)
 
     wide = [3]
-    w2 = Wrap[Int64](wide)
+    w2 = Wrap[int64](wide)
     print(w2.xs)
 
     dd = {"a": 1}
-    dh = DictHolder(dd)  # tpyc: warning(/copies dict\[str, Int32\] into owned storage/)
+    dh = DictHolder(dd)  # tpyc: warning(/copies dict\[str, int32\] into owned storage/)
     print(dd["a"], dh.d["a"])
 
     zs = [3, 4]
@@ -57,7 +57,7 @@ def main() -> None:
         print(e.n)
 
     ss = {1, 2}
-    sh = SetHolder(ss)  # tpyc: warning(/copies set\[Int32\] into owned storage/)
+    sh = SetHolder(ss)  # tpyc: warning(/copies set\[int32\] into owned storage/)
     print(len(ss), len(sh.s))
 
 main()

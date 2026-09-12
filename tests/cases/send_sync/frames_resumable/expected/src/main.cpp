@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def inner(n: Int32) -> Int32:     # tpyc: frame_send(yes)
+// async def inner(n: int32) -> int32:     # tpyc: frame_send(yes)
 ::tpystd::tpy::Poll<int32_t> __coro_inner::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
@@ -20,12 +20,12 @@ namespace tpyapp::main {
 }
 
 
-// async def inner(n: Int32) -> Int32:     # tpyc: frame_send(yes)
+// async def inner(n: int32) -> int32:     # tpyc: frame_send(yes)
 __coro_inner inner(int32_t n) {
     return __coro_inner(n);
 }
 
-// async def outer(n: Int32) -> Int32:     # tpyc: frame_send(yes)
+// async def outer(n: int32) -> int32:     # tpyc: frame_send(yes)
 ::tpystd::tpy::Poll<int32_t> __coro_outer::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -50,12 +50,12 @@ __coro_inner inner(int32_t n) {
 }
 
 
-// async def outer(n: Int32) -> Int32:     # tpyc: frame_send(yes)
+// async def outer(n: int32) -> int32:     # tpyc: frame_send(yes)
 __coro_outer outer(int32_t n) {
     return __coro_outer(n);
 }
 
-// async def borrowing(xs: list[Int32]) -> Int32:  # tpyc: frame_send(no)
+// async def borrowing(xs: list[int32]) -> int32:  # tpyc: frame_send(no)
 ::tpystd::tpy::Poll<int32_t> __coro_borrowing::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
@@ -71,12 +71,12 @@ __coro_outer outer(int32_t n) {
 }
 
 
-// async def borrowing(xs: list[Int32]) -> Int32:  # tpyc: frame_send(no)
+// async def borrowing(xs: list[int32]) -> int32:  # tpyc: frame_send(no)
 __coro_borrowing borrowing(std::vector<int32_t>& xs) {
     return __coro_borrowing(xs);
 }
 
-// async def chained(n: Int32) -> Int32:   # tpyc: frame_send(no)
+// async def chained(n: int32) -> int32:   # tpyc: frame_send(no)
 ::tpystd::tpy::Poll<int32_t> __coro_chained::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -101,12 +101,12 @@ __coro_borrowing borrowing(std::vector<int32_t>& xs) {
 }
 
 
-// async def chained(n: Int32) -> Int32:   # tpyc: frame_send(no)
+// async def chained(n: int32) -> int32:   # tpyc: frame_send(no)
 __coro_chained chained(int32_t n) {
     return __coro_chained(n);
 }
 
-// def gen_str(s: str) -> Iterator[Int32]:         # tpyc: frame_send(no) frame_sync(yes)
+// def gen_str(s: str) -> Iterator[int32]:         # tpyc: frame_send(no) frame_sync(yes)
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_str::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -124,12 +124,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_str::__next__() {
 }
 
 
-// def gen_str(s: str) -> Iterator[Int32]:         # tpyc: frame_send(no) frame_sync(yes)
+// def gen_str(s: str) -> Iterator[int32]:         # tpyc: frame_send(no) frame_sync(yes)
 __gen_gen_str gen_str(std::string_view s) {
     return __gen_gen_str(s);
 }
 
-// def gen_own(xs: Own[list[Int32]]) -> Iterator[Int32]:  # tpyc: frame_send(yes)
+// def gen_own(xs: Own[list[int32]]) -> Iterator[int32]:  # tpyc: frame_send(yes)
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_own::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -152,12 +152,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_own::__next__() {
 }
 
 
-// def gen_own(xs: Own[list[Int32]]) -> Iterator[Int32]:  # tpyc: frame_send(yes)
+// def gen_own(xs: Own[list[int32]]) -> Iterator[int32]:  # tpyc: frame_send(yes)
 __gen_gen_own gen_own(std::vector<int32_t> xs) {
     return __gen_gen_own(std::move(xs));
 }
 
-// async def tup_ref(pair: tuple[Counter, Counter]) -> Int32:  # tpyc: frame_send(no)
+// async def tup_ref(pair: tuple[Counter, Counter]) -> int32:  # tpyc: frame_send(no)
 ::tpystd::tpy::Poll<int32_t> __coro_tup_ref::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
@@ -173,12 +173,12 @@ __gen_gen_own gen_own(std::vector<int32_t> xs) {
 }
 
 
-// async def tup_ref(pair: tuple[Counter, Counter]) -> Int32:  # tpyc: frame_send(no)
+// async def tup_ref(pair: tuple[Counter, Counter]) -> int32:  # tpyc: frame_send(no)
 __coro_tup_ref tup_ref(std::tuple<const Counter*, const Counter*> pair) {
     return __coro_tup_ref(pair);
 }
 
-// async def tup_val(pair: tuple[Int32, Int32]) -> Int32:      # tpyc: frame_send(yes)
+// async def tup_val(pair: tuple[int32, int32]) -> int32:      # tpyc: frame_send(yes)
 ::tpystd::tpy::Poll<int32_t> __coro_tup_val::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
@@ -194,7 +194,7 @@ __coro_tup_ref tup_ref(std::tuple<const Counter*, const Counter*> pair) {
 }
 
 
-// async def tup_val(pair: tuple[Int32, Int32]) -> Int32:      # tpyc: frame_send(yes)
+// async def tup_val(pair: tuple[int32, int32]) -> int32:      # tpyc: frame_send(yes)
 __coro_tup_val tup_val(std::tuple<int32_t, int32_t> pair) {
     return __coro_tup_val(pair);
 }
@@ -224,7 +224,7 @@ void main() {
     std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(tup_val(std::tuple<int32_t, int32_t>{4, 5}))) << "\n";
 }
 
-// async def bump(self) -> Int32:      # tpyc: frame_send(no)
+// async def bump(self) -> int32:      # tpyc: frame_send(no)
 ::tpystd::tpy::Poll<int32_t> __coro_Counter_bump::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {

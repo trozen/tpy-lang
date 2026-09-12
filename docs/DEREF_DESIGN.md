@@ -26,12 +26,12 @@ A `__deref__` protocol (inspired by Rust's `Deref` trait) unifies pointer-like t
 Any type defining `__deref__(self) -> T` is deref-able. The compiler auto-dereferences when accessing fields or methods not found on the type itself.
 
 ```python
-from tpy import Ptr, Int32
+from tpy import Ptr, int32
 
 # Built-in: Ptr[T] has __deref__() -> T
-x: Int32 = 42
-p: Ptr[Int32] = take_ptr(x)
-p.__deref__()  # explicit deref, returns Int32
+x: int32 = 42
+p: Ptr[int32] = take_ptr(x)
+p.__deref__()  # explicit deref, returns int32
 
 # User-defined:
 class Box[T]:
@@ -42,8 +42,8 @@ class Box[T]:
         return self._value
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 b: Box[Point] = Box(Point(1, 2))
 print(b.x)       # auto-deref: b.__deref__().x

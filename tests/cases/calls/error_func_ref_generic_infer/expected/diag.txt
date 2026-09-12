@@ -1,1 +1,1 @@
-main.py:12: error: Cannot use 'factory' as function reference: cannot infer type parameter(s) T from Fn[[Int32], Int32]
+main.py:12: error: Cannot use 'factory' as function reference: cannot infer type parameter(s) T from Fn[[int32], int32]

@@ -18,7 +18,7 @@ void main();
 struct Recursive {
 
 
-    // def __call__(self, x: Int32) -> Int32:
+    // def __call__(self, x: int32) -> int32:
     int32_t __call__(int32_t x) const;
 
     int32_t operator()(int32_t x) const {
@@ -36,7 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Recursive& obj) {
 struct Fibonacci {
 
 
-    // def __call__(self, n: Int32) -> Int32:
+    // def __call__(self, n: int32) -> int32:
     int32_t __call__(int32_t n) const;
 
     int32_t operator()(int32_t n) const {
@@ -51,7 +51,7 @@ inline std::ostream& operator<<(std::ostream& os, const Fibonacci& obj) {
 }
 
 
-// def __call__(self, x: Int32) -> Int32:
+// def __call__(self, x: int32) -> int32:
 inline int32_t Recursive::__call__(int32_t x) const {
     // if x <= 0:
     if ((x <= 0)) {
@@ -62,7 +62,7 @@ inline int32_t Recursive::__call__(int32_t x) const {
     return (::tpy::add_check<int32_t>(this->__call__((::tpy::sub_check<int32_t>(x, 1))), 1));
 }
 
-// def __call__(self, n: Int32) -> Int32:
+// def __call__(self, n: int32) -> int32:
 inline int32_t Fibonacci::__call__(int32_t n) const {
     // if n <= 1:
     if ((n <= 1)) {

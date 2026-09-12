@@ -2,7 +2,7 @@
 # failure (missing top), aborts the walk when it raises; named + lambda forms.
 import os
 from typing import Callable
-from tpy import Int32, Own, readonly
+from tpy import int32, Own, readonly
 
 
 def report(e: readonly[OSError]) -> None:
@@ -14,7 +14,7 @@ def boom(e: readonly[OSError]) -> None:
     raise RuntimeError("stop")
 
 
-def yields(top: str, cb: Callable[[readonly[OSError]], None] | None) -> Int32:
+def yields(top: str, cb: Callable[[readonly[OSError]], None] | None) -> int32:
     n = 0
     for dirpath, dirnames, filenames in os.walk(top, onerror=cb):
         n += 1

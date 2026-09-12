@@ -1,10 +1,10 @@
-from tpy import Int32, ValueType
+from tpy import int32, ValueType
 
 
 class Key(ValueType):
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32 = 0):
+    def __init__(self, x: int32 = 0):
         self.x = x
 
     def __eq__(self, other: "Key") -> bool:

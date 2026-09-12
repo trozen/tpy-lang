@@ -1,10 +1,10 @@
 # Test Optional narrowing in ternary expressions inside comprehensions
 from typing import Optional
-from tpy import Int32
+from tpy import int32
 
 class Foo:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
     def __repr__(self) -> str:
         return f"Foo({self.x})"

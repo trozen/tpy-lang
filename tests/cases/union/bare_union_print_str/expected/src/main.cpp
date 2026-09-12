@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // a: Int32 | str = 5
+    // a: int32 | str = 5
     ::tpy::Union<int32_t, std::string> a = 5;
     // print(a)  # tpyc: ok
     std::cout << ::tpy::__str__(a) << "\n";

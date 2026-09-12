@@ -2,19 +2,19 @@
 # to dispatch on (mirrors the @override + @staticmethod rejection).
 from typing import override
 
-from tpy import Int32
+from tpy import int32
 
 
 class Base:
     @classmethod
-    def make(cls) -> Int32:
+    def make(cls) -> int32:
         return 1
 
 
 class Child(Base):
     @override
     @classmethod
-    def make(cls) -> Int32:  # tpyc: error(/@override cannot be combined with @classmethod/)
+    def make(cls) -> int32:  # tpyc: error(/@override cannot be combined with @classmethod/)
         return 2
 
 

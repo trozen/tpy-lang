@@ -3,16 +3,16 @@
 # Mutation after closure creation is NOT visible through the closure
 # (differs from CPython where the closure captures by reference).
 from typing import Callable
-from tpy import Int32
+from tpy import int32
 
 class Config:
-    value: Int32
-    def __init__(self, v: Int32) -> None:
+    value: int32
+    def __init__(self, v: int32) -> None:
         self.value = v
 
-def make_getter() -> Callable[[], Int32]:
+def make_getter() -> Callable[[], int32]:
     cfg = Config(42)
-    def get_value() -> Int32:  # tpyc: warning(/copies local 'cfg'.*used after closure/)
+    def get_value() -> int32:  # tpyc: warning(/copies local 'cfg'.*used after closure/)
         return cfg.value
     cfg.value = 999
     print(cfg.value)

@@ -3,13 +3,13 @@
 # so the deleted copy ctor is never invoked. Exercises the non-@nocopy
 # "non-copyable type" path. Mutation through the borrow reaches the source.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
 class Res:
-    fd: Int32
+    fd: int32
 
-    def __init__(self, fd: Int32) -> None:
+    def __init__(self, fd: int32) -> None:
         self.fd = fd
 
     def __del__(self) -> None:

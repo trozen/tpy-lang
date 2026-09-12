@@ -2,15 +2,15 @@
 # the sub-iterator must be captured once -- re-evaluating the call per pull
 # would restart it.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
-def src() -> Iterator[Int32]:
+def src() -> Iterator[int32]:
     yield 1
     yield 2
 
 
-def g() -> Iterator[Int32]:
+def g() -> Iterator[int32]:
     for x in src():  # tpyc: ok
         yield x
 

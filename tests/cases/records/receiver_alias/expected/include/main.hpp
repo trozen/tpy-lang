@@ -43,10 +43,10 @@ void main();
 
 // class Cell:
 struct Cell {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Cell() = default;
     explicit Cell(int32_t n);
 
@@ -54,10 +54,10 @@ struct Cell {
     void mutate();
 
     // @readonly
-    // def read(self) -> Int32:
+    // def read(self) -> int32:
     int32_t read() const;
 
-    // def inferred_read(self) -> Int32:
+    // def inferred_read(self) -> int32:
     int32_t inferred_read() const;
 
     // def nested(self) -> None:
@@ -75,7 +75,7 @@ struct Cell {
         return ::tpy::param_to_return<T>(value);
     }
 
-    // def concrete(self, value: Int32) -> Int32:
+    // def concrete(self, value: int32) -> int32:
     int32_t concrete(int32_t value);
 
     // def reassign(self, other: Cell) -> None:
@@ -99,10 +99,10 @@ inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
 // @nocopy
 // class Consumed:
 struct Consumed {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Consumed() = default;
     explicit Consumed(int32_t n);
     // non-copyable (@nocopy)
@@ -137,10 +137,10 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
 
 // class Derived(Base):
 struct Derived : Base {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Derived() = default;
     explicit Derived(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Derived";
@@ -283,7 +283,7 @@ inline __gen_Cell_readonly_steps Cell::readonly_steps() const {
 }
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Cell::Cell(int32_t n) : n(n) {
     // # Constructor: the alias observes the initialized receiver.
     // me = self  # tpyc: ok
@@ -306,7 +306,7 @@ inline void Cell::mutate() {
 }
 
 // @readonly
-// def read(self) -> Int32:
+// def read(self) -> int32:
 inline int32_t Cell::read() const {
     // # Explicit readonly receiver produces a const reference alias.
     // me = self  # tpyc: ok
@@ -315,7 +315,7 @@ inline int32_t Cell::read() const {
     return me.n;
 }
 
-// def inferred_read(self) -> Int32:
+// def inferred_read(self) -> int32:
 inline int32_t Cell::inferred_read() const {
     // # Inferred readonly receiver has the same alias representation.
     // me = self  # tpyc: ok
@@ -356,7 +356,7 @@ inline void Cell::nested() {
     // # A distinct name avoids the separate nested-scope prescan collision.
 }
 
-// def concrete(self, value: Int32) -> Int32:
+// def concrete(self, value: int32) -> int32:
 inline int32_t Cell::concrete(int32_t value) {
     // me = self  # tpyc: ok
     Cell& me = (*this);
@@ -386,7 +386,7 @@ inline void Cell::reassign(Cell& other) {
     std::cout << "reassign" << " " << this->n << " " << other.n << "\n";
 }
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Consumed::Consumed(int32_t n) : n(n) {}
 
 // def finish(self: Own[Self]) -> Own[Self]:
@@ -417,7 +417,7 @@ inline void Base::narrowed() {
     // # Narrowed self already has a named lvalue; preserve that path.
 }
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Derived::Derived(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

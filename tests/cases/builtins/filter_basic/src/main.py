@@ -1,7 +1,7 @@
 # filter() builtin with named functions and lambdas
-from tpy import Int32
+from tpy import int32
 
-def is_even(x: Int32) -> bool:
+def is_even(x: int32) -> bool:
     return x % 2 == 0
 
 def main() -> None:
@@ -20,7 +20,7 @@ def main() -> None:
         print(x)
 
     # filter over empty list
-    empty: list[Int32] = []
+    empty: list[int32] = []
     for x in filter(is_even, empty):
         print(x)
 

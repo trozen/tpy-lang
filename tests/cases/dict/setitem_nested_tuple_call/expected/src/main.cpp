@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def make() -> tuple[Int32, tuple[Int32, Int32]]:
+// def make() -> tuple[int32, tuple[int32, int32]]:
 std::tuple<int32_t, std::tuple<int32_t, int32_t>> make() {
     // return (1, (2, 3))
     return std::tuple<int32_t, std::tuple<int32_t, int32_t>>{1, std::tuple<int32_t, int32_t>{2, 3}};
@@ -12,7 +12,7 @@ std::tuple<int32_t, std::tuple<int32_t, int32_t>> make() {
 
 // def main() -> None:
 void main() {
-    // d: dict[Int32, tuple[Int32, tuple[Int32, Int32]]] = {}
+    // d: dict[int32, tuple[int32, tuple[int32, int32]]] = {}
     ::tpy::ordered_map<int32_t, std::tuple<int32_t, std::tuple<int32_t, int32_t>>> d = ::tpy::ordered_map<int32_t, std::tuple<int32_t, std::tuple<int32_t, int32_t>>>();
     // # The call source, free function and method.
     // d[1] = make()

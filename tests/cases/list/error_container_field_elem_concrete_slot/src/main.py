@@ -5,11 +5,11 @@
 # other flavour, a read through a NESTED receiver -- a rejected module
 # reports only its first blocking construct, so the two need separate cases
 # (list/error_container_field_chain_concrete_slot).
-from tpy import Int32
+from tpy import int32
 
 
 class Holder:
-    rows: list[dict[str, Int32]]
+    rows: list[dict[str, int32]]
 
     def __init__(self) -> None:
         self.rows = [{"a": 1}]
@@ -17,7 +17,7 @@ class Holder:
 
 def main() -> None:
     h = Holder()
-    d: dict[str, Int32] = {}
+    d: dict[str, int32] = {}
     d.update(h.rows[0])  # tpyc: error(/method\.arg_shape/)
     print(len(d))
 

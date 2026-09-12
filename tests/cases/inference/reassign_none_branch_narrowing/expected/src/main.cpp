@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def make_box() -> Own[Box]:
 Box make_box() {
-    // return Box(Int32(42))
+    // return Box(int32(42))
     return Box(42);
 }
 

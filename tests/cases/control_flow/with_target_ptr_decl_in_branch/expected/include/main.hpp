@@ -18,10 +18,10 @@ void main();
 
 // class Slot:
 struct Slot {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Slot() = default;
     explicit Slot(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Slot";
@@ -37,7 +37,7 @@ struct Res {
     // s: Slot
     Slot s;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Res() = default;
     explicit Res(int32_t v);
 
@@ -55,10 +55,10 @@ inline std::ostream& operator<<(std::ostream& os, const Res& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Slot::Slot(int32_t v) : v(v) {}
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Res::Res(int32_t v) : s(Slot(v)) {}
 
 // def __enter__(self) -> Slot:

@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // c_int = Container[Int32](Int32(7), "int")
+    // c_int = Container[int32](int32(7), "int")
     Container<int32_t> c_int = Container<int32_t>(7, "int");
     // c_str = Container[str](" s", "str")
     Container<std::string> c_str = Container<std::string>(" s", "str");

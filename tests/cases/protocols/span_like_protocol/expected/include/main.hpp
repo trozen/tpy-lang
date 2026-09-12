@@ -20,7 +20,7 @@ void main();
 
 // class Buffer:
 struct Buffer {
-    // _data: list[Int32]
+    // _data: list[int32]
     std::vector<int32_t> _data;
 
     // def __init__(self) -> None:
@@ -32,11 +32,11 @@ struct Buffer {
     auto end() const { return this->__span__().end(); }
 
     // @auto_readonly
-    // def __span__(self) -> Span[auto_readonly[Int32]]:
+    // def __span__(self) -> Span[auto_readonly[int32]]:
     std::span<int32_t> __span__();
 
     // @auto_readonly
-    // def __span__(self) -> Span[auto_readonly[Int32]]:
+    // def __span__(self) -> Span[auto_readonly[int32]]:
     std::span<const int32_t> __span__() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Buffer";
 };
@@ -51,22 +51,22 @@ inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {
 inline Buffer::Buffer() : _data(std::vector<int32_t>{1, 2, 3}) {}
 
 // @auto_readonly
-// def __span__(self) -> Span[auto_readonly[Int32]]:
+// def __span__(self) -> Span[auto_readonly[int32]]:
 inline std::span<int32_t> Buffer::__span__() {
     // return self._data
     return ::tpy::as_mut_span(this->_data);
 }
 
 // @auto_readonly
-// def __span__(self) -> Span[auto_readonly[Int32]]:
+// def __span__(self) -> Span[auto_readonly[int32]]:
 inline std::span<const int32_t> Buffer::__span__() const {
     // return self._data
     return ::tpy::as_span(this->_data);
 }
-// def sum_span(c: Spannable[Int32]) -> Int32:
+// def sum_span(c: Spannable[int32]) -> int32:
 template<::tpystd::tpy::Spannable<int32_t> T_c>
 int32_t sum_span(const T_c& c) {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for x in c:
     auto& __obj_0 = c;
@@ -80,7 +80,7 @@ int32_t sum_span(const T_c& c) {
     // return total
     return total;
 }
-// def test_pass_to_ro_span(c: Spannable[Int32]) -> Int32:
+// def test_pass_to_ro_span(c: Spannable[int32]) -> int32:
 template<::tpystd::tpy::Spannable<int32_t> T_c>
 int32_t test_pass_to_ro_span(const T_c& c) {
     // return accept_ro(c)

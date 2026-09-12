@@ -2,13 +2,13 @@
 # so the direct-construct row must not claim it. Concretely, `self.mine =
 # s.peek()` in `Holder.__init__` initializes a field from a borrow-returning
 # method; TPy rejects that member init today.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Val:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 

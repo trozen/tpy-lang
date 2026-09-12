@@ -15,17 +15,17 @@ void main();
 
 // class Box:
 struct Box {
-    // val: Int32
+    // val: int32
     int32_t val;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Box() = default;
     explicit Box(int32_t v);
 
     // def __repr__(self) -> str:
     std::string __repr__() const;
 
-    // def __hash__(self) -> UInt64:
+    // def __hash__(self) -> uint64:
     uint64_t __hash__() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
@@ -46,7 +46,7 @@ namespace tpyapp::main {
 
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Box::Box(int32_t v) : val(v) {}
 
 // def __repr__(self) -> str:
@@ -55,9 +55,9 @@ inline std::string Box::__repr__() const {
     return std::format("Box({})", this->val);
 }
 
-// def __hash__(self) -> UInt64:
+// def __hash__(self) -> uint64:
 inline uint64_t Box::__hash__() const {
-    // return UInt64(self.val)
+    // return uint64(self.val)
     return ::tpy::int_cast_check<uint64_t>(this->val);
 }
 void __tpy_init();

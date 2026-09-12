@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def grow(src: Tree[Int32]) -> None:
+// def grow(src: Tree[int32]) -> None:
 void grow(Tree<int32_t>& src) {
     // flag = True
     bool flag = true;
@@ -18,7 +18,7 @@ void grow(Tree<int32_t>& src) {
         // v = src
         v = &(src);
     }
-    // match v:               # v lowers to a hoisted pointer-local Tree<Int32>*
+    // match v:               # v lowers to a hoisted pointer-local Tree<int32>*
     auto& __match_subject_1 = (*v);
     switch (__match_subject_1.value.index()) {
     // case list() as b:
@@ -38,7 +38,7 @@ void grow(Tree<int32_t>& src) {
 
 // def main() -> None:
 void main() {
-    // tree: Tree[Int32] = [1, 2, 3]
+    // tree: Tree[int32] = [1, 2, 3]
     Tree<int32_t> tree = std::vector<Tree<int32_t>>{1, 2, 3};
     // grow(tree)
     grow(tree);

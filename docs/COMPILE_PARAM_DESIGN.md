@@ -8,7 +8,7 @@
 | 1 | `compile_param()` recognition in sema, `constexpr` codegen, `bool` params | Planned |
 | 2 | `instantiate()` support: compiler generates separate TU per param combination | Planned |
 | 3 | Sub-module propagation: dependency graph duplicated per instance | Planned |
-| 4 | `Int32`/`Int64` compile params | Planned |
+| 4 | `int32`/`int64` compile params | Planned |
 | 5 | Auto-registration: `@register` + static initializer codegen | Planned |
 
 ### Future Extensions
@@ -40,10 +40,10 @@ and capacity differ:
 
 ```python
 # engine/solver/__init__.py
-from tpy import compile_param, Int32
+from tpy import compile_param, int32
 
 HIGH_PRECISION: bool = compile_param("HIGH_PRECISION")
-MAX_BODIES: Int32 = compile_param("MAX_BODIES")
+MAX_BODIES: int32 = compile_param("MAX_BODIES")
 
 class Solver:
     def __init__(self):
@@ -112,10 +112,10 @@ branches eliminated, and `Array` sizes fixed at compile time.
 ### Syntax
 
 ```python
-from tpy import compile_param, Int32
+from tpy import compile_param, int32
 
 HIGH_PRECISION: bool = compile_param("HIGH_PRECISION")
-MAX_BODIES: Int32 = compile_param("MAX_BODIES")
+MAX_BODIES: int32 = compile_param("MAX_BODIES")
 ```
 
 The string argument must match the variable name. This is redundant for the
@@ -136,8 +136,8 @@ compiler (which knows the assignment target) but serves as:
 | Type | C++ | Phase | Notes |
 |------|-----|-------|-------|
 | `bool` | `constexpr bool` | 1 | Branch elimination, feature flags |
-| `Int32` | `constexpr int32_t` | 4 | Array sizes, buffer capacity, iteration bounds |
-| `Int64` | `constexpr int64_t` | 4 | Large sizes |
+| `int32` | `constexpr int32_t` | 4 | Array sizes, buffer capacity, iteration bounds |
+| `int64` | `constexpr int64_t` | 4 | Large sizes |
 
 ### Future types
 
@@ -152,7 +152,7 @@ Integer compile params can be used wherever a compile-time integer is expected,
 most notably as `Array` size parameters:
 
 ```python
-MAX_BODIES: Int32 = compile_param("MAX_BODIES")
+MAX_BODIES: int32 = compile_param("MAX_BODIES")
 
 class Solver:
     def __init__(self):
@@ -210,7 +210,7 @@ call produces an independent copy.
 |-----------|-------|
 | Unknown param name | `error: 'FOO' is not a compile_param of 'engine.solver'` |
 | Missing param | `error: compile_param 'MAX_BODIES' not provided in instantiate()` |
-| Wrong type | `error: compile_param 'HIGH_PRECISION' expects bool, got Int32` |
+| Wrong type | `error: compile_param 'HIGH_PRECISION' expects bool, got int32` |
 | Direct import of parameterized module | `error: module 'engine.solver' has compile_params; use instantiate()` |
 
 ---
@@ -279,11 +279,11 @@ Each instance registers under a unique name derived from its param values.
 
 ```python
 # engine/solver/__init__.py
-from tpy import compile_param, Int32
+from tpy import compile_param, int32
 from engine.registry import register_solver
 
 HIGH_PRECISION: bool = compile_param("HIGH_PRECISION")
-MAX_BODIES: Int32 = compile_param("MAX_BODIES")
+MAX_BODIES: int32 = compile_param("MAX_BODIES")
 
 _prec_tag = "hifi" if HIGH_PRECISION else "fast"
 
@@ -539,7 +539,7 @@ duplicate the sub-module tree per instance.
 | `tpyc/compiler.py` | Dependency graph duplication per (module, params) tuple |
 | `tpyc/parse/imports.py` | Track which imports are within a parameterized package |
 
-### Phase 4: `Int32`/`Int64` compile params
+### Phase 4: `int32`/`int64` compile params
 
 **Scope:** Extend `compile_param()` to accept integer types. Integer params
 can be used as `Array` size arguments and loop bounds.
@@ -548,7 +548,7 @@ can be used as `Array` size arguments and loop bounds.
 
 | File | Change |
 |------|--------|
-| `tpyc/sema/expressions.py` | Accept `Int32`/`Int64` type annotations on `compile_param()` |
+| `tpyc/sema/expressions.py` | Accept `int32`/`int64` type annotations on `compile_param()` |
 | `tpyc/sema/context.py` | Store integer param values, validate against type |
 | `tpyc/codegen_cpp/generator.py` | Emit `constexpr int32_t`/`int64_t` declarations |
 | `tpyc/codegen_cpp/types.py` | Resolve integer compile params in `Array[T, N]` template args |
@@ -572,8 +572,8 @@ can be used as `Array` size arguments and loop bounds.
 | Test | Description |
 |------|-------------|
 | `compile_param/basic_bool` | Single `compile_param("X")` bool, value substituted correctly |
-| `compile_param/basic_int` | Single `compile_param("N")` Int32, used as Array size |
-| `compile_param/multi_param` | Module with both bool and Int32 params |
+| `compile_param/basic_int` | Single `compile_param("N")` int32, used as Array size |
+| `compile_param/multi_param` | Module with both bool and int32 params |
 | `compile_param/error_missing` | `compile_param("X")` without `instantiate()` providing X |
 | `compile_param/error_direct_import` | Direct import of parameterized module without `instantiate()` |
 | `compile_param/error_wrong_type` | `instantiate(..., X=42)` when X is declared as `bool` |
@@ -584,6 +584,6 @@ can be used as `Array` size arguments and loop bounds.
 | `compile_param/submodule_partial` | Sub-module uses subset of parent's params |
 | `compile_param/shared_dep` | Non-parameterized dependency is compiled once, shared |
 | `compile_param/branch_elimination` | Verify generated C++ uses `constexpr`, optimizer can eliminate branches |
-| `compile_param/array_size` | Int32 compile param used as `Array[T, N]` size |
+| `compile_param/array_size` | int32 compile param used as `Array[T, N]` size |
 | `compile_param/registration` | Auto-registration via decorator, factory lookup |
 | `compile_param/cpython_compat` | Same source runs in CPython via `instantiate()` |

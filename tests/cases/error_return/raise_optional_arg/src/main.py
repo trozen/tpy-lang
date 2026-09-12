@@ -1,18 +1,18 @@
 # Return-tier sibling of exceptions/raise_optional_arg: raise E(None) in an
 # @error_return fn lowers through make_unexpected with the same None->nullopt coercion.
-from tpy import Int32, error_return, ReturnException
+from tpy import int32, error_return, ReturnException
 
 
 class Failed(Exception, ReturnException):
-    code: Int32 | None
+    code: int32 | None
 
-    def __init__(self, code: Int32 | None) -> None:
+    def __init__(self, code: int32 | None) -> None:
         super().__init__("failed")
         self.code = code
 
 
 @error_return(Failed)
-def run(ok: bool) -> Int32:
+def run(ok: bool) -> int32:
     if ok:
         return 1
     raise Failed(None)

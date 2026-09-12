@@ -3,14 +3,14 @@
 # owning it, so there is no rvalue to seat in a `__slot_N`.
 from typing import Sized
 
-from tpy import Int32
+from tpy import int32
 
 
 def identity[T: Sized](x: T) -> T:
     return x
 
 
-def reassigned(other: list[Int32]) -> None:
+def reassigned(other: list[int32]) -> None:
     zs = identity([1])  # tpyc: error(/not yet supported/)
     zs = other
     print(len(zs))

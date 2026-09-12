@@ -1,16 +1,16 @@
 # Helper functions for cross-module mutation inference tests.
-from tpy import Int32
+from tpy import int32
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32) -> None:
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 
-def sum_points(items: list[Point]) -> Int32:
+def sum_points(items: list[Point]) -> int32:
     """Reads only -- mutated_params = {}."""
-    total: Int32 = 0
+    total: int32 = 0
     for p in items:
         total += p.x
     return total
@@ -23,6 +23,6 @@ def add_point_wrapper(items: list[Point], p: Point) -> None:
     """Transitively mutates via add_point -- mutated_params = {0}."""
     add_point(items, p)
 
-def read_wrapper(items: list[Point]) -> Int32:
+def read_wrapper(items: list[Point]) -> int32:
     """Transitively reads via sum_points -- mutated_params = {}."""
     return sum_points(items)

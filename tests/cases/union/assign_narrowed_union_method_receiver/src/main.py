@@ -1,31 +1,31 @@
 # An ASSIGN-narrowed union local as a METHOD receiver: the read is the active
 # member's inline get, so both the direct and the delegating method see the
 # Circle the local was assigned.
-from tpy import Float64, Int32
+from tpy import float64, int32
 
 
 class Circle:
-    r: Float64
+    r: float64
 
-    def __init__(self, r: Float64) -> None:
+    def __init__(self, r: float64) -> None:
         self.r = r
 
-    def area(self) -> Float64:
+    def area(self) -> float64:
         return 3.14 * self.r * self.r
 
-    def scaled(self, k: Int32) -> Float64:
+    def scaled(self, k: int32) -> float64:
         return self.area() * k
 
 
 class Rect:
-    w: Float64
-    h: Float64
+    w: float64
+    h: float64
 
-    def __init__(self, w: Float64, h: Float64) -> None:
+    def __init__(self, w: float64, h: float64) -> None:
         self.w = w
         self.h = h
 
-    def area(self) -> Float64:
+    def area(self) -> float64:
         return self.w * self.h
 
 

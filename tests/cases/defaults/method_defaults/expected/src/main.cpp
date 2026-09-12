@@ -14,13 +14,13 @@ void main() {
     c.increment();
     // c.display()
     c.display();
-    // c.increment(Int32(5))
+    // c.increment(int32(5))
     c.increment(5);
     // c.display()
     c.display();
     // c.display("total")
     c.display("total");
-    // c2 = Counter(Int32(100))
+    // c2 = Counter(int32(100))
     Counter c2 = Counter(100);
     // c2.display()
     c2.display();

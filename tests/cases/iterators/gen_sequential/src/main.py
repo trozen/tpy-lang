@@ -1,8 +1,8 @@
 # Generator with multiple sequential yield points
-from tpy import Int32
+from tpy import int32
 from typing import Iterator
 
-def triple() -> Iterator[Int32]:
+def triple() -> Iterator[int32]:
     yield 10
     yield 20
     yield 30

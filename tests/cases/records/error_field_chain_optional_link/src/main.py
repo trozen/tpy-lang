@@ -1,11 +1,11 @@
 # An OPTIONAL intermediate in a field-chain subscript receiver: that link
 # renders a deref/unwrap the flat postfix chain does not carry, so the
 # chain row must keep rejecting rather than spell a bare member read.
-from tpy import Int32
+from tpy import int32
 
 
 class Inner:
-    items: list[Int32]
+    items: list[int32]
 
     def __init__(self) -> None:
         self.items = [1, 2, 3]

@@ -1,14 +1,14 @@
 # Mutual recursion + __copy__ on both records + a large __del__ on A: the copy
 # ops define after both structs, and A's big dtor/move family lands in the .cpp.
 from __future__ import annotations
-from tpy import Int32, Own, copy
+from tpy import int32, Own, copy
 
 
 class A:
-    val: Int32
+    val: int32
     bs: list[B]
 
-    def __init__(self, val: Int32) -> None:
+    def __init__(self, val: int32) -> None:
         self.val = val
         self.bs = []
 
@@ -27,10 +27,10 @@ class A:
 
 
 class B:
-    val: Int32
+    val: int32
     as_: list[A]
 
-    def __init__(self, val: Int32) -> None:
+    def __init__(self, val: int32) -> None:
         self.val = val
         self.as_ = []
 
@@ -38,7 +38,7 @@ class B:
         return B(self.val + 100)
 
 
-def copied_val(a: A) -> Int32:
+def copied_val(a: A) -> int32:
     a2 = copy(a)
     return a2.val
 

@@ -19,7 +19,7 @@ void literal_capture() {
 
 // def storage_source() -> None:
 void storage_source() {
-    // items: list[tuple[Int32, Box]] = [(2, Box(7))]
+    // items: list[tuple[int32, Box]] = [(2, Box(7))]
     std::vector<std::tuple<int32_t, Box>> items = {::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{2, Box(7)})};
     // print((t := items[0])[0])
     std::tuple<int32_t, Box*> t;

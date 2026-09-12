@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // d: dict[str, dict[str, Int32]] = {"inner": {"a": 1, "b": 2}}
+    // d: dict[str, dict[str, int32]] = {"inner": {"a": 1, "b": 2}}
     ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>> d = ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>({{"inner", ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}})}});
     // print(d["inner"]["a"])
     std::cout << ::tpy::__getitem__(::tpy::__getitem__(d, "inner"), "a") << "\n";

@@ -5,21 +5,21 @@
 # value form -- doubling side effects and leaking a hoisted temp; the
 # tuple-literal analog of the method-arg double-eval). Each "eval <tag>" once.
 from dataclasses import dataclass
-from tpy import ValueType, Int32
+from tpy import ValueType, int32
 
 
 @dataclass(frozen=True)
 class Fixed(ValueType):
-    off: Int32
+    off: int32
 
 
 @dataclass(frozen=True)
 class Zone(ValueType):
-    zid: Int32
+    zid: int32
 
 
 class Box:
-    v: Int32
+    v: int32
 
     def __init__(self, tz: Fixed | Zone | None = None) -> None:
         if tz is None:
@@ -35,7 +35,7 @@ def mk(tag: str, n: int) -> Fixed:
     return Fixed(n)
 
 
-def take(pair: tuple[Box, Int32]) -> int:
+def take(pair: tuple[Box, int32]) -> int:
     return int(pair[0].v) + int(pair[1])
 
 
@@ -43,8 +43,8 @@ def take2(pair: tuple[Box, Box]) -> int:
     return int(pair[0].v) + int(pair[1].v)
 
 
-def take_opt(pair: tuple[Box | None, Int32]) -> int:
-    # Reads only the Int32 slot: reading the Optional-Box element hits a
+def take_opt(pair: tuple[Box | None, int32]) -> int:
+    # Reads only the int32 slot: reading the Optional-Box element hits a
     # separate pre-existing const-propagation bug (BUGS.md). The point here
     # is the CONSTRUCTION of the rvalue element into the Optional-borrow
     # slot, which exercises the fix's elem_target.inner unwrap arm.

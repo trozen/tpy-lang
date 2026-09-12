@@ -1,12 +1,12 @@
 # A global slot initialized from a borrow whose type differs from the slot: the
 # retype is the polymorphic arm's business, so the exact-type row rejects.
-from tpy import Int32
+from tpy import int32
 
 
 class Base:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 

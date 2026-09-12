@@ -1,10 +1,10 @@
 # The OPERATOR spelling of a user comparison dunder whose operand is not a
 # record: `t == s` off `__eq__(self, other: str)`, the `!=` C++ rewrites from
 # it, an ordering dunder, and the reflected spelling `s == t` -- plus the other
-# operand families the row admits (Int32, bytes, Char). Every leg is compared
+# operand families the row admits (int32, bytes, char). Every leg is compared
 # against CPython, so a silently narrowing operand would show up as a
 # divergent line rather than as a render difference.
-from tpy import Char, Float64, Int32
+from tpy import char, float64, int32
 
 
 class Tag:
@@ -21,12 +21,12 @@ class Tag:
 
 
 class Count:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
-    def __eq__(self, other: Int32) -> bool:
+    def __eq__(self, other: int32) -> bool:
         return self.n == other
 
 
@@ -41,22 +41,22 @@ class Blob:
 
 
 class Ratio:
-    r: Float64
+    r: float64
 
-    def __init__(self, r: Float64) -> None:
+    def __init__(self, r: float64) -> None:
         self.r = r
 
-    def __eq__(self, other: Float64) -> bool:
+    def __eq__(self, other: float64) -> bool:
         return self.r == other
 
 
 class Initial:
-    c: Char
+    c: char
 
-    def __init__(self, c: Char) -> None:
+    def __init__(self, c: char) -> None:
         self.c = c
 
-    def __eq__(self, other: Char) -> bool:
+    def __eq__(self, other: char) -> bool:
         return self.c == other
 
 
@@ -75,7 +75,7 @@ def main() -> None:
     print(t.__eq__(s))  # tpyc: ok
 
     # The remaining operand families, each against a literal its own dunder
-    # slot accepts. The Int32 legs are the ones a narrowing conversion would
+    # slot accepts. The int32 legs are the ones a narrowing conversion would
     # have made diverge from CPython.
     c = Count(2)
     print(c == 2)  # tpyc: ok
@@ -91,9 +91,9 @@ def main() -> None:
     r = Ratio(2.0)
     print(r == 2)  # tpyc: ok
     print(r != 3)  # tpyc: ok
-    i = Initial(Char("a"))
-    print(i == Char("a"))  # tpyc: ok
-    print(i != Char("b"))  # tpyc: ok
+    i = Initial(char("a"))
+    print(i == char("a"))  # tpyc: ok
+    print(i != char("b"))  # tpyc: ok
 
 
 main()

@@ -4,21 +4,21 @@
 # rather than failing the build.
 from typing import overload
 
-from tpy import Int8, Int32
+from tpy import int8, int32
 
 
 @overload
-def total(a: Int32, b: Int8) -> Int32:
+def total(a: int32, b: int8) -> int32:
     ...
 
 
 @overload
-def total(a: Int32) -> Int32:
+def total(a: int32) -> int32:
     ...
 
 
-def total(a: Int32, b: Int8 = 201) -> Int32:  # tpyc: error(/201 is outside Int8 range/)
-    return a + Int32(b)
+def total(a: int32, b: int8 = 201) -> int32:  # tpyc: error(/201 is outside int8 range/)
+    return a + int32(b)
 
 
 def main() -> None:

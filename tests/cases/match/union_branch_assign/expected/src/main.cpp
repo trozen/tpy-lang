@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def describe(a: Dog | Cat) -> Int32:
+// def describe(a: Dog | Cat) -> int32:
 int32_t describe(::tpy::Union<const Cat*, const Dog*> a) {
     // match a:
     int32_t result;
@@ -14,7 +14,7 @@ int32_t describe(::tpy::Union<const Cat*, const Dog*> a) {
     case 1: {
         auto& __case_0 = *std::get<1>(__match_subject_1);
         auto x = __case_0.age;
-        // result: Int32 = x
+        // result: int32 = x
         result = x;
         break;
     }

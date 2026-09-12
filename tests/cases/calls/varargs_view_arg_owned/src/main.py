@@ -1,6 +1,6 @@
 # A str/bytes VIEW value passed to a same-family `*args` param is copied into
 # the owned varargs element; owned and value-type args are unaffected.
-from tpy import StrView, BytesView, Int32
+from tpy import StrView, BytesView, int32
 
 
 def joins(a: str, *parts: str) -> str:
@@ -10,14 +10,14 @@ def joins(a: str, *parts: str) -> str:
     return out
 
 
-def total_len(a: bytes, *parts: bytes) -> Int32:
+def total_len(a: bytes, *parts: bytes) -> int32:
     n = len(a)
     for p in parts:
         n += len(p)
     return n
 
 
-def addall(*nums: Int32) -> Int32:
+def addall(*nums: int32) -> int32:
     t = 0
     for n in nums:
         t += n
@@ -41,7 +41,7 @@ def from_str_view(sv: StrView) -> str:
     return joins("x", sv)              # view arg into *parts: str
 
 
-def from_bytes_view(bv: BytesView) -> Int32:
+def from_bytes_view(bv: BytesView) -> int32:
     return total_len(b"x", bv)         # view arg into *parts: bytes
 
 

@@ -1,7 +1,7 @@
 # super().__init__() in a multi-base child where the MRO-first __init__ base
-# is a generic instantiation. T -> Int32 substitution flows through the
+# is a generic instantiation. T -> int32 substitution flows through the
 # super() call.
-from tpy import Int32
+from tpy import int32
 
 
 class Box[T]:
@@ -16,13 +16,13 @@ class Logger:
         print("[log] " + msg)
 
 
-class IntBox(Box[Int32], Logger):
-    def __init__(self, v: Int32) -> None:
+class IntBox(Box[int32], Logger):
+    def __init__(self, v: int32) -> None:
         super().__init__(v)
 
 
 def main() -> None:
-    ib = IntBox(Int32(42))
+    ib = IntBox(int32(42))
     print(ib.val)
 
 

@@ -15,7 +15,7 @@ void main();
 
 // class Version:
 struct Version {
-    // SEMVER: Final[tuple[Int32, Int32, Int32]] = (1, 2, 3)
+    // SEMVER: Final[tuple[int32, int32, int32]] = (1, 2, 3)
     static constexpr std::tuple<int32_t, int32_t, int32_t> SEMVER = std::tuple<int32_t, int32_t, int32_t>{1, 2, 3};
     // LABEL: Final[tuple[str, bool]] = ("alpha", True)
     static constexpr std::tuple<std::string_view, bool> LABEL = std::tuple<std::string_view, bool>{"alpha", true};

@@ -1,6 +1,6 @@
-from tpy import Char, Float32, Int32
+from tpy import char, float32, int32
 def main() -> None:
-    c = Char("a")
+    c = char("a")
     if not c:
         print("x")
 main()

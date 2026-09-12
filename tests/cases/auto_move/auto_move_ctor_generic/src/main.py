@@ -1,9 +1,9 @@
 # Auto-move Own[T] in generic class __init__ uses std::move.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Inner:
-    value: Int32
+    value: int32
 
 
 class Box[T]:

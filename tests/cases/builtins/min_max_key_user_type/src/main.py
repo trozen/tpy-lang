@@ -1,10 +1,10 @@
 # min/max with key returning a user-defined Comparable type
 from __future__ import annotations
-from tpy import Int32, Own
+from tpy import int32, Own
 
 class Priority:
-    level: Int32
-    def __init__(self, level: Int32) -> None:
+    level: int32
+    def __init__(self, level: int32) -> None:
         self.level = level
     def __lt__(self, other: Priority) -> bool:
         return self.level < other.level

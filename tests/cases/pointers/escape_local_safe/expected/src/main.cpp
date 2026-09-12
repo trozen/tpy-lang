@@ -62,11 +62,11 @@ void foreach_outer_container() {
 // # Value type: no escape concern
 // def value_type_ok() -> None:
 void value_type_ok() {
-    // saved: Int32 = 0
+    // saved: int32 = 0
     int32_t saved = 0;
     // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // n: Int32 = i * 10
+        // n: int32 = i * 10
         int32_t n = (::tpy::mul_check<int32_t>(i, 10));
         // saved = n  # tpyc: ok
         saved = n;
@@ -254,7 +254,7 @@ void while_rvalue_rebind() {
     // p: Point = Point(0, 0)
     Point __slot_1 = Point(0, 0);
     Point* p = &__slot_1;
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < 3:
     while ((i < 3)) {

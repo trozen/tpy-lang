@@ -1,11 +1,11 @@
 # Reassigning a narrowed Optional inside a while loop invalidates the narrowing.
-from tpy import Int32
+from tpy import int32
 
 
-def narrowing_cleared_on_reassign(x: Int32 | None, other: Int32 | None, n: Int32) -> Int32:
-    total: Int32 = 0
+def narrowing_cleared_on_reassign(x: int32 | None, other: int32 | None, n: int32) -> int32:
+    total: int32 = 0
     if x is not None:
-        i: Int32 = 0
+        i: int32 = 0
         while i < n:
             x = other
             total = total + x  # tpyc: warning(/Potential None access/)

@@ -1,4 +1,4 @@
-# Literal-seeded variable (Int32 default) promoted to BigInt via
+# Literal-seeded variable (int32 default) promoted to BigInt via
 # reassignment inside an if-branch should keep BigInt after the branch.
 
 def get_big() -> int:

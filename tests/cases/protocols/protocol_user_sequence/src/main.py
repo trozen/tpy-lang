@@ -1,38 +1,38 @@
 from typing import Sequence
-from tpy import Int32
+from tpy import int32
 
 class IntWrapper:
-    data: list[Int32]
+    data: list[int32]
 
-    def __init__(self, items: list[Int32]) -> None:
+    def __init__(self, items: list[int32]) -> None:
         self.data = items
 
-    def __len__(self) -> Int32:
+    def __len__(self) -> int32:
         return len(self.data)
 
-    def __getitem__(self, index: Int32) -> Int32:
+    def __getitem__(self, index: int32) -> int32:
         return self.data[index]
 
-def sum_seq(s: Sequence[Int32]) -> Int32:
-    total: Int32 = 0
-    i: Int32 = 0
+def sum_seq(s: Sequence[int32]) -> int32:
+    total: int32 = 0
+    i: int32 = 0
     while i < len(s):
         total += s[i]
         i += 1
     return total
 
-def first(s: Sequence[Int32]) -> Int32:
+def first(s: Sequence[int32]) -> int32:
     return s[0]
 
 def main() -> None:
-    nums: list[Int32] = [10, 20, 30, 40]
+    nums: list[int32] = [10, 20, 30, 40]
     wrapper: IntWrapper = IntWrapper(nums)
 
     # Direct indexing on user record
     print(wrapper[0])      # 10
     print(wrapper[-1])     # 40
 
-    # User record conforms to Sequence[Int32]
+    # User record conforms to Sequence[int32]
     print(sum_seq(wrapper))  # 100
     print(first(wrapper))    # 10
 

@@ -17,7 +17,7 @@ executor's signal scope. The `signal` stdlib module exposes the user-facing
 bindings resolve at link time to the tpy_signal_* symbols.
 """
 
-from tpy import Int32
+from tpy import int32
 from tpy.extern import native
 
 
@@ -26,13 +26,13 @@ from tpy.extern import native
 # the `extern "C"` symbols from signal_h.hpp. Same convention as posix_epoll.py.
 
 @native("::tpy_signal_install_shutdown")
-def install_shutdown() -> Int32: ...
+def install_shutdown() -> int32: ...
 
 @native("::tpy_signal_restore")
 def restore() -> None: ...
 
 @native("::tpy_signal_consume")
-def consume() -> Int32: ...
+def consume() -> int32: ...
 
 @native("::tpy_signal_raise")
-def raise_signal(sig: Int32) -> Int32: ...
+def raise_signal(sig: int32) -> int32: ...

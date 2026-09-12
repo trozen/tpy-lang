@@ -1,5 +1,5 @@
 # Rvalue container access must stay std::string (temporary lifetime)
-from tpy import Int32, Own
+from tpy import int32, Own
 
 class Pair:
     first: str
@@ -9,8 +9,8 @@ class Pair:
         self.first = first
         self.second = second
 
-def get_tuple() -> tuple[Int32, str]:
-    return (Int32(1), "temp")
+def get_tuple() -> tuple[int32, str]:
+    return (int32(1), "temp")
 
 def get_pair() -> Own[Pair]:
     return Pair("x", "y")

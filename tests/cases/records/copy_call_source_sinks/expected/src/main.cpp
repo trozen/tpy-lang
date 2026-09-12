@@ -13,7 +13,7 @@ void rewrite(Sink& s, Holder& h) {
     s.box = std::vector<int32_t>(h.bctr());
 }
 
-// def setitem(h: Holder) -> Int32:
+// def setitem(h: Holder) -> int32:
 int32_t setitem(Holder& h) {
     // xs = [Payload(0)]
     std::array<Payload, 1> xs = {Payload(0)};
@@ -25,7 +25,7 @@ int32_t setitem(Holder& h) {
     return ::tpy::__getitem__(xs, 0).v;
 }
 
-// def container_element(h: Holder) -> Int32:
+// def container_element(h: Holder) -> int32:
 int32_t container_element(Holder& h) {
     // xs = [copy(h.brec()), copy(h.p)]  # tpyc: ok
     std::array<Payload, 2> xs = {Payload(h.brec()), Payload(h.p)};
@@ -35,7 +35,7 @@ int32_t container_element(Holder& h) {
     return (::tpy::add_check<int32_t>(::tpy::__getitem__(xs, 0).v, ::tpy::__getitem__(xs, 1).v));
 }
 
-// def qualified_decl(h: Holder) -> Int32:
+// def qualified_decl(h: Holder) -> int32:
 int32_t qualified_decl(Holder& h) {
     // # The module-QUALIFIED spelling at a plain decl reaches the generic call
     // # tail rather than the decl sink's own copy row -- same one-step source.
@@ -47,7 +47,7 @@ int32_t qualified_decl(Holder& h) {
     return dup.v;
 }
 
-// def variant_copy(pick: bool) -> Int32:
+// def variant_copy(pick: bool) -> int32:
 int32_t variant_copy(bool pick) {
     std::optional<::tpy::Union<Cat, Dog>> __slot_2;
     // # NOT the copy-construct tail: a ptr-variant union's copy is the
@@ -81,7 +81,7 @@ int32_t variant_copy(bool pick) {
     return 0;
 }
 
-// def optional_copy(o: Payload | None) -> Int32:
+// def optional_copy(o: Payload | None) -> int32:
 int32_t optional_copy(Payload* o) {
     // # NOT the copy-construct tail either: a pointer-repr Optional is handed
     // # back unwrapped, and the SINK's storage lift is what copies.

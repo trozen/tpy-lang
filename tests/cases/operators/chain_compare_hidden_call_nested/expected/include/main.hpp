@@ -33,14 +33,14 @@ inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
 
 // class P:
 struct P {
-    // small: Int8
+    // small: int8
     int8_t small;
 
     // def __init__(self) -> None:
     P();
 
     // @property
-    // def narrow(self) -> Int8:
+    // def narrow(self) -> int8:
     int8_t narrow() const;
 
     // @property
@@ -62,7 +62,7 @@ inline Inner::Inner(const ::tpy::BigInt& v) : v(v) {}
 inline P::P() : small(5) {}
 
 // @property
-// def narrow(self) -> Int8:
+// def narrow(self) -> int8:
 inline int8_t P::narrow() const {
     // global calls
     // calls += 1

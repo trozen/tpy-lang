@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // # --- Helper functions that take specific types ---
-// def take_int32(n: Int32) -> Int32:
+// def take_int32(n: int32) -> int32:
 int32_t take_int32(int32_t n) {
     // return n
     return n;
@@ -17,23 +17,23 @@ void take_ptr(Point* p) {
     ::tpy::deref_check(p).x = (::tpy::add_check<int32_t>(::tpy::deref_check(p).x, 1));
 }
 
-// def take_const_ptr(p: Ptr[readonly[Point]]) -> Int32:
+// def take_const_ptr(p: Ptr[readonly[Point]]) -> int32:
 int32_t take_const_ptr(const Point* p) {
     // return p.x + p.y
     return (::tpy::add_check<int32_t>(::tpy::deref_check(p).x, ::tpy::deref_check(p).y));
 }
 
-// def take_point(p: Point) -> Int32:
+// def take_point(p: Point) -> int32:
 int32_t take_point(const Point& p) {
     // return p.x + p.y
     return (::tpy::add_check<int32_t>(p.x, p.y));
 }
 
-// def take_span(s: Span[Int32]) -> Int32:
+// def take_span(s: Span[int32]) -> int32:
 int32_t take_span(std::span<int32_t> s) {
-    // result: Int32 = 0
+    // result: int32 = 0
     int32_t result = 0;
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < len(s):
     while ((i < ::tpy::__len__(s))) {
@@ -46,23 +46,23 @@ int32_t take_span(std::span<int32_t> s) {
     return result;
 }
 
-// # --- BigInt -> Int32 coercion ---
-// def return_bigint_as_int32() -> Int32:
+// # --- BigInt -> int32 coercion ---
+// def return_bigint_as_int32() -> int32:
 int32_t return_bigint_as_int32() {
     // big: int = 42
     ::tpy::BigInt big = ::tpy::BigInt(42);
-    // return big  # BigInt -> Int32 in return
+    // return big  # BigInt -> int32 in return
     return (big).to_fixed_check<int32_t>();
 }
 
 // def test_bigint_to_int32() -> None:
 void test_bigint_to_int32() {
-    // print("BigInt -> Int32 coercions:")
-    std::cout << "BigInt -> Int32 coercions:" << "\n";
+    // print("BigInt -> int32 coercions:")
+    std::cout << "BigInt -> int32 coercions:" << "\n";
     // # Variable declaration
     // big: int = 100
     ::tpy::BigInt big = ::tpy::BigInt(100);
-    // small: Int32 = big
+    // small: int32 = big
     int32_t small = (big).to_fixed_check<int32_t>();
     // print(small)  # 100
     std::cout << small << "\n";
@@ -74,7 +74,7 @@ void test_bigint_to_int32() {
     // print(small)  # 200
     std::cout << small << "\n";
     // # Return
-    // result: Int32 = return_bigint_as_int32()
+    // result: int32 = return_bigint_as_int32()
     int32_t result = return_bigint_as_int32();
     // print(result)  # 42
     std::cout << result << "\n";
@@ -185,7 +185,7 @@ void test_ptr_to_record() {
 }
 
 // # --- Ptr -> Ptr[readonly[...]] coercion ---
-// def take_const_ptr_val(p: Ptr[readonly[Point]]) -> Int32:
+// def take_const_ptr_val(p: Ptr[readonly[Point]]) -> int32:
 int32_t take_const_ptr_val(const Point* p) {
     // return p.x
     return ::tpy::deref_check(p).x;
@@ -227,7 +227,7 @@ void test_ptr_to_const_ptr() {
 void test_arraylist_to_span() {
     // print("ArrayList -> Span coercions:")
     std::cout << "ArrayList -> Span coercions:" << "\n";
-    // al = ArrayList[Int32, 8]()
+    // al = ArrayList[int32, 8]()
     ::tpystd::tplib::array_list::ArrayList<int32_t, 8> al = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
     // al.append(1)
     al.append(1);
@@ -245,7 +245,7 @@ void test_arraylist_to_span() {
 void test_array_to_span() {
     // print("Array -> Span coercions:")
     std::cout << "Array -> Span coercions:" << "\n";
-    // arr: Array[Int32, 3] = [10, 20, 30]
+    // arr: Array[int32, 3] = [10, 20, 30]
     std::array<int32_t, 3> arr = {10, 20, 30};
     // # Function argument
     // print(take_span(arr))  # 60
@@ -257,7 +257,7 @@ void test_array_to_span() {
 void test_list_to_span() {
     // print("List -> Span coercions:")
     std::cout << "List -> Span coercions:" << "\n";
-    // lst: list[Int32] = [100, 200, 300]
+    // lst: list[int32] = [100, 200, 300]
     std::vector<int32_t> lst = {100, 200, 300};
     // # Function argument
     // print(take_span(lst))  # 600

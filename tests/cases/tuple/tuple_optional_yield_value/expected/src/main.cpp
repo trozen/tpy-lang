@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // items = [Int32(1), Int32(2), Int32(3)]
+    // items = [int32(1), int32(2), int32(3)]
     std::vector<int32_t> items = {1, 2, 3};
     // for a, b in gen_value_pairs(items):
     {

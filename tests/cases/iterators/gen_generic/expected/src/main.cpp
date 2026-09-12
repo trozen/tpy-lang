@@ -53,7 +53,7 @@ void main() {
         std::cout << i << " " << w << "\n";
         }
     }
-    // # enumerate over list[Int32]
+    // # enumerate over list[int32]
     // nums = [10, 20, 30]
     std::array<int32_t, 3> nums = {10, 20, 30};
     // for i, n in enumerate(nums):

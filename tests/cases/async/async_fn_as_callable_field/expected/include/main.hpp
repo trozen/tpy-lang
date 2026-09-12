@@ -26,10 +26,10 @@ void main();
 // @nocopy
 // class Conn:
 struct Conn {
-    // id: Int32
+    // id: int32
     int32_t id;
 
-    // def __init__(self, id: Int32) -> None:
+    // def __init__(self, id: int32) -> None:
     Conn() = default;
     explicit Conn(int32_t id);
     // non-copyable (@nocopy)
@@ -153,7 +153,7 @@ struct __coro_main_coro {
 };
 
 
-// def __init__(self, id: Int32) -> None:
+// def __init__(self, id: int32) -> None:
 inline Conn::Conn(int32_t id) : id(id) {}
 
 // def __init__(self,

@@ -9,12 +9,12 @@
 # BUGS.md), so a drop-based single-threaded form would not close here. Drop-
 # based auto-close is covered by channel_mpsc (Sender in a spawned task's
 # field, dropped at task completion).
-from tpy import Int32
+from tpy import int32
 from tplib.channel import channel, ChannelClosed
 
 
 def main() -> None:
-    tx, rx = channel[Int32](4)
+    tx, rx = channel[int32](4)
     tx.close()
     try:
         rx.recv()

@@ -12,7 +12,7 @@ extern "C" void app_init() {
 }
 
 // @export("app_tick", binding="C")
-// def game_tick(time: Int32) -> None:
+// def game_tick(time: int32) -> None:
 extern "C" void app_tick(int32_t time) {
     // print(time)
     std::cout << time << "\n";
@@ -27,7 +27,7 @@ void __tpy_init() {
     // from tpy.extern import export
     // app_init()
     app_init();
-    // game_tick(Int32(42))
+    // game_tick(int32(42))
     app_tick(42);
 }
 

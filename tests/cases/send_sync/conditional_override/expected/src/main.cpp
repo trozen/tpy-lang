@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // # Int32 and bool are both Send + Sync, so the conditional grants the trait.
+    // # int32 and bool are both Send + Sync, so the conditional grants the trait.
     // # Send-only conditional: granted for a Send T, structural (non-Sync) otherwise.
     // print("ok")
     std::cout << "ok" << "\n";

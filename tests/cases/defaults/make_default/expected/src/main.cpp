@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def test_explicit() -> None:
 void test_explicit() {
-    // a = make_default[Int32]()
+    // a = make_default[int32]()
     int32_t a = int32_t{};
     // print(a)
     std::cout << a << "\n";
@@ -24,7 +24,7 @@ void test_explicit() {
 
 // def test_inferred() -> None:
 void test_inferred() {
-    // x: Int32 = make_default()
+    // x: int32 = make_default()
     int32_t x = int32_t{};
     // print(x)
     std::cout << x << "\n";

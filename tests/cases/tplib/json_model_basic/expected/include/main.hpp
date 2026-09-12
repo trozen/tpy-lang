@@ -37,7 +37,7 @@ void test_pretty();
 struct User {
     // name: str
     std::string name;
-    // age: Int32
+    // age: int32
     int32_t age;
     // active: bool
     bool active;
@@ -130,7 +130,7 @@ inline void User::save_json(std::string_view __path, int32_t indent) const {
     auto& __f = __ctx_1.__enter__();
     try {
         // # Test @model macro: basic serialization/deserialization, round-trip, optionals.
-        // from tpy import Int32
+        // from tpy import int32
         __f.write(this->to_json(indent));
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -151,7 +151,7 @@ inline User User::load_json(std::string_view __path) {
     auto& __f = __ctx_2.__enter__();
     try {
         // # Test @model macro: basic serialization/deserialization, round-trip, optionals.
-        // from tpy import Int32
+        // from tpy import int32
         __data = __f.read();
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
@@ -174,7 +174,7 @@ inline std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::try_l
     auto& __f = __ctx_3.__enter__();
     try {
         // # Test @model macro: basic serialization/deserialization, round-trip, optionals.
-        // from tpy import Int32
+        // from tpy import int32
         __data = __f.read();
         goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {

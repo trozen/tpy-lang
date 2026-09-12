@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def drain_circles(s: Circle | Rect) -> None:
 void drain_circles(::tpy::Union<const Circle*, const Rect*> s) {
-    // count: Int32 = 0
+    // count: int32 = 0
     int32_t count = 0;
     // while isinstance(s, Circle):
     while (std::holds_alternative<const Circle*>(s)) {

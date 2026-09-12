@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def boom() -> Int32:
+// def boom() -> int32:
 int32_t boom() {
     // try:
     {

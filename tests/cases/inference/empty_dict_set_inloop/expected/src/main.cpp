@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def build_dict(xs: list[Int32]) -> Own[dict[Int32, Int32]]:
+// def build_dict(xs: list[int32]) -> Own[dict[int32, int32]]:
 ::tpy::ordered_map<int32_t, int32_t> build_dict(const std::vector<int32_t>& xs) {
-    // d = {}  # tpyc: type(/dict\[Int32, Int32\]/)
+    // d = {}  # tpyc: type(/dict\[int32, int32\]/)
     ::tpy::ordered_map<int32_t, int32_t> d = ::tpy::ordered_map<int32_t, int32_t>();
     // for x in xs:
     auto& __obj_0 = xs;
@@ -21,9 +21,9 @@ namespace tpyapp::main {
     return d;
 }
 
-// def build_set(xs: list[Int32]) -> Own[set[Int32]]:
+// def build_set(xs: list[int32]) -> Own[set[int32]]:
 ::tpy::ordered_set<int32_t> build_set(const std::vector<int32_t>& xs) {
-    // s = set()  # tpyc: type(/set\[Int32\]/)
+    // s = set()  # tpyc: type(/set\[int32\]/)
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>();
     // for x in xs:
     auto& __obj_0 = xs;

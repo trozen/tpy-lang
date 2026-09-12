@@ -15,7 +15,7 @@ print(repr(ev.flip(ev.Shape.CIRCLE)))                  # <Shape.SQUARE: 2>
 print(ev.flip(ev.Shape.CIRCLE) is ev.Shape.SQUARE)     # True
 print(repr(ev.flip(ev.Shape.SQUARE)))                  # <Shape.CIRCLE: 1>
 
-# UInt64 member above INT64_MAX must round-trip unsigned (not wrap negative)
+# uint64 member above INT64_MAX must round-trip unsigned (not wrap negative)
 print(ev.echo_big(ev.Big.HIGH).value)                  # 9223372036854775808
 print(ev.echo_big(ev.Big.HIGH) is ev.Big.HIGH)         # True
 print(ev.echo_big(ev.Big.LOW) is ev.Big.LOW)           # True

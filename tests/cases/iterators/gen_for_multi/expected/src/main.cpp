@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def multi(items: list[Int32], n: Int32) -> Iterator[Int32]:
+// def multi(items: list[int32], n: int32) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_multi::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -64,7 +64,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_multi::__next__() {
 }
 
 
-// def multi(items: list[Int32], n: Int32) -> Iterator[Int32]:
+// def multi(items: list[int32], n: int32) -> Iterator[int32]:
 __gen_multi multi(std::vector<int32_t>& items, int32_t n) {
     return __gen_multi(items, n);
 }

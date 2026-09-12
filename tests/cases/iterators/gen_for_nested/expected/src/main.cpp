@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def matrix(rows: list[Int32], cols: list[Int32]) -> Iterator[Int32]:
+// def matrix(rows: list[int32], cols: list[int32]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_matrix::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -49,7 +49,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_matrix::__next__() {
 }
 
 
-// def matrix(rows: list[Int32], cols: list[Int32]) -> Iterator[Int32]:
+// def matrix(rows: list[int32], cols: list[int32]) -> Iterator[int32]:
 __gen_matrix matrix(std::vector<int32_t>& rows, std::vector<int32_t>& cols) {
     return __gen_matrix(rows, cols);
 }

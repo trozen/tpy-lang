@@ -4,20 +4,20 @@
 # -- so its `__del__` runs at the end of the enclosing scope. CPython drops the
 # manager at the end of the `with`, because there the target holds an independent
 # reference to what `__enter__` returned.
-from tpy import Int32
+from tpy import int32
 
 
 class Item:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
 
 class Owner:
     item: Item
 
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.item = Item(n)
 
     def __enter__(self) -> Item:
@@ -30,7 +30,7 @@ class Owner:
         print("owner dropped")
 
 
-def run(flag: bool) -> Int32:
+def run(flag: bool) -> int32:
     if flag:
         with Owner(5) as it:
             pass

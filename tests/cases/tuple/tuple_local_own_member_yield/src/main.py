@@ -9,32 +9,32 @@
 # where the generator keeps reading its slot after the resume, so the copy is
 # what makes the read valid.
 from typing import Iterator
-from tpy import Int32, Own, take_ptr
+from tpy import int32, Own, take_ptr
 
 
 class Box:
-    val: Int32
+    val: int32
     # A heap member, so a slot moved out from under a live borrow is observable
     # (the borrowed read sees the stolen buffer) rather than silently fine.
-    items: list[Int32]
+    items: list[int32]
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.val = v
         self.items = [v]
 
 
 # Reads the heap member through a borrow, so a moved-from Box shows up as an
 # empty list rather than an intact `val`.
-def first_item(b: Box) -> Int32:
+def first_item(b: Box) -> int32:
     return b.items[0]
 
 
-def mk(v: Int32) -> Own[tuple[Int32, Own[Box]]]:
+def mk(v: int32) -> Own[tuple[int32, Own[Box]]]:
     return (v, Box(v * 10))
 
 
-def gen(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
-    i = Int32(0)
+def gen(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
+    i = int32(0)
     while i < n:
         t = (i, Box(i * 10))
         yield t  # tpyc: ok
@@ -43,8 +43,8 @@ def gen(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
 
 # Free function, two yields -- the resumable frame; each slot is dead after its
 # own yield, so both move out.
-def gen_twice(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
-    i = Int32(0)
+def gen_twice(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
+    i = int32(0)
     while i < n:
         t = (i, Box(i * 10))
         yield t  # tpyc: ok
@@ -54,8 +54,8 @@ def gen_twice(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
 
 
 # The owning-CALL init position.
-def gen_call_init(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
-    i = Int32(0)
+def gen_call_init(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
+    i = int32(0)
     while i < n:
         # An owning CALL init keeps the per-element Own markers a literal init
         # drops, and binds the same storage tuple.
@@ -68,8 +68,8 @@ def gen_call_init(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
 
 # The owning-CALL init at a SINGLE yield -- the peephole ladder's half of the
 # same arm (the two-yield sibling above takes the resumable frame).
-def gen_call_init_once(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
-    i = Int32(0)
+def gen_call_init_once(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
+    i = int32(0)
     while i < n:
         t = mk(i)
         yield t  # tpyc: ok
@@ -80,8 +80,8 @@ def gen_call_init_once(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
 # is read after the resume, so the last-use mark is retracted and the slot
 # copies out. Moving it would hand the consumer the slot's buffer and leave
 # `saved` reading a moved-from Box.
-def gen_call_init_borrowed(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
-    i = Int32(0)
+def gen_call_init_borrowed(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
+    i = int32(0)
     while i < n:
         t = mk(i)
         saved = take_ptr(t[1])
@@ -97,8 +97,8 @@ def gen_call_init_borrowed(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
 # tracker holds a loan for the borrower's whole scope rather than to its last
 # read, so the yield still copies and warns -- pinned as the conservative
 # answer, not as the desired one.
-def gen_call_init_borrow_dead(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
-    i = Int32(0)
+def gen_call_init_borrow_dead(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
+    i = int32(0)
     while i < n:
         t = mk(i)
         saved = take_ptr(t[1])
@@ -112,7 +112,7 @@ def gen_call_init_borrow_dead(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
 # The tuple is bound BEFORE the loop, so the slot is live at every iteration:
 # each pass copies out (one warning at the yield site) instead of moving, and
 # the slot still holds its Box once the loop is done.
-def gen_preloop(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
+def gen_preloop(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
     t = mk(7)
     for _ in range(n):
         yield t  # tpyc: warning(/copies tuple.* into owned storage/)
@@ -120,8 +120,8 @@ def gen_preloop(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
 
 
 # The read-after-yield position.
-def gen_live(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
-    i = Int32(0)
+def gen_live(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
+    i = int32(0)
     while i < n:
         t = (i, Box(i * 10))
         # `t` is read after the yield, so the slot is still live: the tuple
@@ -137,14 +137,14 @@ def gen_live(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
 
 
 class Src:
-    base: Int32
+    base: int32
 
-    def __init__(self, base: Int32) -> None:
+    def __init__(self, base: int32) -> None:
         self.base = base
 
     # Method position on the frame: the slot reads through `__self`.
-    def pairs(self, n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
-        i = Int32(0)
+    def pairs(self, n: int32) -> Iterator[tuple[int32, Own[Box]]]:
+        i = int32(0)
         while i < n:
             t = (self.base + i, Box(i * 10))
             yield t  # tpyc: ok

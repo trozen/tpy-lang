@@ -9,27 +9,27 @@
 #
 # Sema reaches the union narrowing because `_filter_union_codegen_facts`
 # peels Own before checking declared-type unionness.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class A:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
 class B:
-    y: Int32
-    def __init__(self, y: Int32) -> None:
+    y: int32
+    def __init__(self, y: int32) -> None:
         self.y = y
 
 
-def describe(u: Own[A | B]) -> Int32:
+def describe(u: Own[A | B]) -> int32:
     if isinstance(u, A):
         return u.x
     if isinstance(u, B):
         return u.y
-    return Int32(0)
+    return int32(0)
 
 
 def pick(flag: bool) -> Own[A | B]:
@@ -38,15 +38,15 @@ def pick(flag: bool) -> Own[A | B]:
     return B(11)
 
 
-def borrow_union(u: A | B) -> Int32:
+def borrow_union(u: A | B) -> int32:
     if isinstance(u, A):
         return u.x
     if isinstance(u, B):
         return u.y
-    return Int32(0)
+    return int32(0)
 
 
-def forward_to_borrow(u: Own[A | B]) -> Int32:
+def forward_to_borrow(u: Own[A | B]) -> int32:
     # Forwarding the storage-form variant param into a pointer-variant
     # slot needs to_ptr_variant; the bare value-variant doesn't convert.
     return borrow_union(u)

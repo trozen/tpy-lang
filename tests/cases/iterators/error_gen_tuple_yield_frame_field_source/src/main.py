@@ -3,23 +3,23 @@
 # lowers at a pointer-repr yield slot there too, but a FIELD-read source must keep
 # rejecting -- the field read has no lowered storage-to-borrow lift at the slot.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
 class C:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 
 class H:
-    p: tuple[Int32, C]
+    p: tuple[int32, C]
 
-    def __init__(self, p: tuple[Int32, C]) -> None:
+    def __init__(self, p: tuple[int32, C]) -> None:
         self.p = p
 
-    def relay(self) -> Iterator[tuple[Int32, C]]:  # tpyc: error(/res.btuple_yield_source/)
+    def relay(self) -> Iterator[tuple[int32, C]]:  # tpyc: error(/res.btuple_yield_source/)
         for i in range(1):
             yield self.p
             yield self.p

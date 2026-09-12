@@ -100,9 +100,9 @@ def test_bigint_differential_fuzz_manual(tmp_path):
         "# Deterministic differential fuzz for bigint runtime semantics.",
         "# Generated inside the manual pytest test.",
         "",
-        "from tpy import Int32",
+        "from tpy import int32",
         "",
-        "def emit_case_str(a_s: str, b_s: str, sh: Int32) -> None:",
+        "def emit_case_str(a_s: str, b_s: str, sh: int32) -> None:",
         "    a: int = int(a_s)",
         "    b: int = int(b_s)",
         "    print(a)",
@@ -133,14 +133,14 @@ def test_bigint_differential_fuzz_manual(tmp_path):
     for a in edges:
         for b in edges[:10]:
             sh = (abs(a) + abs(b)) % 130
-            lines.append(f"emit_case_str('{a}', '{b}', Int32({sh}))")
+            lines.append(f"emit_case_str('{a}', '{b}', int32({sh}))")
 
     # Random pair matrix.
     for _ in range(pairs):
         a = _rand_bigint(rng)
         b = _rand_bigint(rng)
         sh = rng.randint(0, 220)
-        lines.append(f"emit_case_str('{a}', '{b}', Int32({sh}))")
+        lines.append(f"emit_case_str('{a}', '{b}', int32({sh}))")
 
     # Pow checks (non-negative exponents only; keep manageable to avoid huge runtime).
     lines.extend([

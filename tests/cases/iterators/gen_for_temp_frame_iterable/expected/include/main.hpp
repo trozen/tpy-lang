@@ -20,7 +20,7 @@ void main();
 
 // class Holder:
 struct Holder {
-    // items: list[Int32]
+    // items: list[int32]
     std::vector<int32_t> items;
 
     // def __init__(self) -> None:

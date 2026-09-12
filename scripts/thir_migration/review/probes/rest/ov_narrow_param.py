@@ -1,11 +1,11 @@
 from typing import overload
-from tpy import Int32
+from tpy import int32
 class Dog:
     name: str
     def __init__(self) -> None:
         self.name = "d"
 class Cat:
-    lives: Int32
+    lives: int32
     def __init__(self) -> None:
         self.lives = 9
 @overload

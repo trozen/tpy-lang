@@ -10,16 +10,16 @@
 #
 # The `Box` leg pins the MOVE half as a move: `Box` is @nocopy, so if that
 # write copied instead of moving, the case would not compile at all. The
-# bytearray leg cannot carry that check itself -- its elements are UInt8 --
+# bytearray leg cannot carry that check itself -- its elements are uint8 --
 # so the @nocopy payload rides the list sibling of the same arm.
-from tpy import Int32, Own
+from tpy import int32, Own
 from tplib.box import Box
 
 
 class Slot:
     b: bytearray | None
-    xs: list[Int32] | None
-    boxes: list[Box[Int32]] | None
+    xs: list[int32] | None
+    boxes: list[Box[int32]] | None
 
     def __init__(self) -> None:
         self.b = None
@@ -29,16 +29,16 @@ class Slot:
     def take(self, v: Own[bytearray]) -> None:
         self.b = v  # tpyc: ok
 
-    def take_list(self, v: Own[list[Int32]]) -> None:
+    def take_list(self, v: Own[list[int32]]) -> None:
         self.xs = v  # tpyc: ok
 
-    def take_boxes(self, v: Own[list[Box[Int32]]]) -> None:
+    def take_boxes(self, v: Own[list[Box[int32]]]) -> None:
         self.boxes = v  # tpyc: ok -- a copy here would not compile
 
     def copy_in(self, v: bytearray) -> None:
         self.b = v  # tpyc: warning(/copies bytearray into field/)
 
-    def size(self) -> Int32:
+    def size(self) -> int32:
         if self.b is None:
             return -1
         return len(self.b)
@@ -48,7 +48,7 @@ class Slot:
             self.b.append(90)
 
 
-def read_bound(s: Slot) -> Int32:
+def read_bound(s: Slot) -> int32:
     # The READ side of the same slot: the storage-form optional field
     # lifts through `optional_to_ptr` into a plain local, so the narrowed
     # binding ALIASES the field and `grow()` is visible through it.
@@ -85,7 +85,7 @@ def main() -> None:
     s.take_list(nums)
     if s.xs is not None:
         print(len(s.xs))
-    boxes: list[Box[Int32]] = [Box(4), Box(5)]
+    boxes: list[Box[int32]] = [Box(4), Box(5)]
     s.take_boxes(boxes)
     if s.boxes is not None:
         print(len(s.boxes))

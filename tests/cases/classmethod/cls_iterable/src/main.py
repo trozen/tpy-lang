@@ -1,18 +1,18 @@
 # `cls(...)` as a for-loop iterable: the construction is a prvalue, so it takes
 # an owning capture. Binding a reference to it would not compile, and the
 # decision must not depend on the callee's spelling -- `cls` names no record.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class CounterIter:
-    current: Int32
-    limit: Int32
+    current: int32
+    limit: int32
 
-    def __init__(self, start: Int32, limit: Int32) -> None:
+    def __init__(self, start: int32, limit: int32) -> None:
         self.current = start
         self.limit = limit
 
-    def __next__(self) -> Int32:
+    def __next__(self) -> int32:
         if self.current < self.limit:
             result = self.current
             self.current += 1
@@ -21,10 +21,10 @@ class CounterIter:
 
 
 class Counter:
-    start: Int32
-    limit: Int32
+    start: int32
+    limit: int32
 
-    def __init__(self, start: Int32, limit: Int32) -> None:
+    def __init__(self, start: int32, limit: int32) -> None:
         self.start = start
         self.limit = limit
 
@@ -32,14 +32,14 @@ class Counter:
         return CounterIter(self.start, self.limit)
 
     @classmethod
-    def total_through_cls(cls, n: Int32) -> Int32:
+    def total_through_cls(cls, n: int32) -> int32:
         total = 0
         for v in cls(0, n):
             total += v
         return total
 
     @staticmethod
-    def total_through_name(n: Int32) -> Int32:
+    def total_through_name(n: int32) -> int32:
         total = 0
         for v in Counter(0, n):
             total += v

@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def test_tuple() -> None:
 void test_tuple() {
-    // t = (Int32(10), "hello", True)
+    // t = (int32(10), "hello", True)
     std::tuple<int32_t, std::string, bool> t = std::tuple<int32_t, std::string, bool>{10, "hello", true};
     // b = t[1]  # tpyc: type(StrView)
     std::string_view b = std::get<1>(t);

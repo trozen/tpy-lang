@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def check(v: Int32 | None) -> str:
+// def check(v: int32 | None) -> str:
 std::string check(std::optional<int32_t> v) {
     // if v is None:
     if ((!v.has_value())) {
@@ -17,7 +17,7 @@ std::string check(std::optional<int32_t> v) {
 
 // def main() -> None:
 void main() {
-    // print(check(Int32(42)))
+    // print(check(int32(42)))
     std::cout << check(42) << "\n";
     // print(check(None))
     std::cout << check(std::nullopt) << "\n";

@@ -19,10 +19,10 @@ void main();
 
 // class A:
 struct A {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     A() = default;
     explicit A(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.A";
@@ -35,10 +35,10 @@ inline std::ostream& operator<<(std::ostream& os, const A& obj) {
 
 // class B:
 struct B {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     B() = default;
     explicit B(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.B";
@@ -51,10 +51,10 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 
 // class C:
 struct C {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     C() = default;
     explicit C(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.C";
@@ -67,10 +67,10 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
 
 // class D:
 struct D {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     D() = default;
     explicit D(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.D";
@@ -82,16 +82,16 @@ inline std::ostream& operator<<(std::ostream& os, const D& obj) {
 }
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline A::A(int32_t n) : n(n) {}
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline B::B(int32_t n) : n(n) {}
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline C::C(int32_t n) : n(n) {}
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline D::D(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

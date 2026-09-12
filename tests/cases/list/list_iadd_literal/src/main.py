@@ -1,5 +1,5 @@
 # list += [literal] -- BigInt element type requires explicit vector type for C++ deduction
-from tpy import Int32
+from tpy import int32
 
 
 def main() -> None:
@@ -8,8 +8,8 @@ def main() -> None:
     a += [4, 5]
     print(a)
 
-    # Int32 -- works with or without prefix, include for completeness
-    b: list[Int32] = [10, 20]
+    # int32 -- works with or without prefix, include for completeness
+    b: list[int32] = [10, 20]
     b += [30, 40]
     print(b)
 

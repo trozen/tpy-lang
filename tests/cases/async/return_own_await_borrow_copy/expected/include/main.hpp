@@ -25,10 +25,10 @@ __coro_amain amain();
 
 // class Payload:
 struct Payload {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Payload() = default;
     explicit Payload(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Payload";
@@ -44,7 +44,7 @@ struct Holder {
     // p: Payload
     Payload p;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Holder() = default;
     explicit Holder(int32_t v);
 
@@ -162,10 +162,10 @@ struct __coro_amain {
 };
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Payload::Payload(int32_t v) : v(v) {}
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Holder::Holder(int32_t v) : p(Payload(v)) {}
 void __tpy_init();
 } // namespace tpyapp::main

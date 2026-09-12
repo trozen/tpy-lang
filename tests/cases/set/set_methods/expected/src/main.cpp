@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // s: set[Int32] = {10, 20, 30}
+    // s: set[int32] = {10, 20, 30}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({10, 20, 30});
     // # discard (no error if missing)
     // s.discard(20)
@@ -23,16 +23,16 @@ void main() {
     // print(s)
     std::cout << ::tpy::SetPrinter(s) << "\n";
     // # pop (removes first element)
-    // val: Int32 = s.pop()
+    // val: int32 = s.pop()
     int32_t val = ::tpy::set_pop(s);
     // print(val)
     std::cout << val << "\n";
     // print(s)
     std::cout << ::tpy::SetPrinter(s) << "\n";
     // # copy
-    // a: set[Int32] = {1, 2, 3}
+    // a: set[int32] = {1, 2, 3}
     ::tpy::ordered_set<int32_t> a = ::tpy::ordered_set<int32_t>({1, 2, 3});
-    // b: set[Int32] = a.copy()
+    // b: set[int32] = a.copy()
     ::tpy::ordered_set<int32_t> b = ::tpy::set_copy(a);
     // b.add(4)
     b.insert(4);

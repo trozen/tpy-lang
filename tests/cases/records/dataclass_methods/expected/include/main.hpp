@@ -16,18 +16,18 @@ void main();
 // @dataclass
 // class Rect:
 struct Rect {
-    // width: Int32
+    // width: int32
     int32_t width;
-    // height: Int32
+    // height: int32
     int32_t height;
 
     Rect() = default;
     explicit Rect(int32_t width, int32_t height);
 
-    // def area(self) -> Int32:
+    // def area(self) -> int32:
     int32_t area() const;
 
-    // def scale(self, factor: Int32) -> None:
+    // def scale(self, factor: int32) -> None:
     void scale(int32_t factor);
 
     bool __eq__(const Rect& other) const;
@@ -48,13 +48,13 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
 
 inline Rect::Rect(int32_t width, int32_t height) : width(width), height(height) {}
 
-// def area(self) -> Int32:
+// def area(self) -> int32:
 inline int32_t Rect::area() const {
     // return self.width * self.height
     return (::tpy::mul_check<int32_t>(this->width, this->height));
 }
 
-// def scale(self, factor: Int32) -> None:
+// def scale(self, factor: int32) -> None:
 inline void Rect::scale(int32_t factor) {
     // self.width = self.width * factor
     this->width = (::tpy::mul_check<int32_t>(this->width, factor));

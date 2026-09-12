@@ -63,7 +63,7 @@ struct Flat {
     // self.n = n
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Flat() = default;
     explicit Flat(int32_t n);
     // non-copyable (@nocopy)
@@ -84,7 +84,7 @@ struct Pic {
     // self.n = n
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Pic() = default;
     explicit Pic(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pic";
@@ -100,11 +100,11 @@ struct Sq {
     // self.s = s
     int32_t s;
 
-    // def __init__(self, s: Int32) -> None:
+    // def __init__(self, s: int32) -> None:
     Sq() = default;
     explicit Sq(int32_t s);
 
-    // def area(self) -> Int32:
+    // def area(self) -> int32:
     int32_t area() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Sq";
 };
@@ -121,11 +121,11 @@ struct Rect {
     // self.h = h
     int32_t h;
 
-    // def __init__(self, w: Int32, h: Int32) -> None:
+    // def __init__(self, w: int32, h: int32) -> None:
     Rect() = default;
     explicit Rect(int32_t w, int32_t h);
 
-    // def area(self) -> Int32:
+    // def area(self) -> int32:
     int32_t area() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Rect";
 };
@@ -140,11 +140,11 @@ struct CM {
     // self.n = n
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     CM() = default;
     explicit CM(int32_t n);
 
-    // def __enter__(self) -> Int32:
+    // def __enter__(self) -> int32:
     int32_t __enter__() const;
 
     // def __exit__(self, et, ev, tb) -> None:
@@ -175,16 +175,16 @@ inline std::ostream& operator<<(std::ostream& os, const MyErr& obj) {
 
 // class Builder:
 struct Builder {
-    // total: Int32
+    // total: int32
     int32_t total;
 
     // # Constructor position.
-    // def __init__(self, k: Int32) -> None:
+    // def __init__(self, k: int32) -> None:
     Builder() = default;
     explicit Builder(int32_t k);
 
     // # Method position.
-    // def add(self, k: Int32) -> None:
+    // def add(self, k: int32) -> None:
     void add(int32_t k);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Builder";
 };
@@ -214,34 +214,34 @@ struct tpy::RefAdapter<tpyapp::main::Shape, T> : tpyapp::main::Shape {
 namespace tpyapp::main {
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Flat::Flat(int32_t n) : n(n) {}
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Pic::Pic(int32_t n) : n(n) {}
 
-// def __init__(self, s: Int32) -> None:
+// def __init__(self, s: int32) -> None:
 inline Sq::Sq(int32_t s) : s(s) {}
 
-// def area(self) -> Int32:
+// def area(self) -> int32:
 inline int32_t Sq::area() const {
     // return self.s * self.s
     return (::tpy::mul_check<int32_t>(this->s, this->s));
 }
 
-// def __init__(self, w: Int32, h: Int32) -> None:
+// def __init__(self, w: int32, h: int32) -> None:
 inline Rect::Rect(int32_t w, int32_t h) : w(w), h(h) {}
 
-// def area(self) -> Int32:
+// def area(self) -> int32:
 inline int32_t Rect::area() const {
     // return self.w * self.h
     return (::tpy::mul_check<int32_t>(this->w, this->h));
 }
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline CM::CM(int32_t n) : n(n) {}
 
-// def __enter__(self) -> Int32:
+// def __enter__(self) -> int32:
 inline int32_t CM::__enter__() const {
     // return self.n
     return this->n;
@@ -254,7 +254,7 @@ inline void CM::__exit__(std::monostate et, const ::tpy::BaseException* ev, std:
 }
 
 // # Constructor position.
-// def __init__(self, k: Int32) -> None:
+// def __init__(self, k: int32) -> None:
 inline Builder::Builder(int32_t k) : total(0) {
     std::optional<Flat> __slot_1;
     // for i in range(2):
@@ -277,7 +277,7 @@ inline Builder::Builder(int32_t k) : total(0) {
 }
 
 // # Method position.
-// def add(self, k: Int32) -> None:
+// def add(self, k: int32) -> None:
 inline void Builder::add(int32_t k) {
     std::optional<Flat> __slot_1;
     // for i in range(2):

@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // c = shapes.make_circle(Int32(7))
+    // c = shapes.make_circle(int32(7))
     ::tpyapp::shapes::Circle c = ::tpyapp::shapes::make_circle(7);
     // print(c.radius)
     std::cout << c.radius << "\n";

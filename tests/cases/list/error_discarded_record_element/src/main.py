@@ -2,13 +2,13 @@
 # NOT a storage-form container result. A record element popped off a
 # list[Record] has no bare-statement render, so statement position alone does
 # not admit it.
-from tpy import Int32
+from tpy import int32
 
 
 class Rec:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 

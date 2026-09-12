@@ -6,13 +6,13 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // a = WithMixin(Int32(7))
+    // a = WithMixin(int32(7))
     WithMixin a = WithMixin(7);
     // print(a.x)
     std::cout << a.x << "\n";
     // print(a.hello())
     std::cout << a.hello() << "\n";
-    // b = WithMixinReversed(Int32(13))
+    // b = WithMixinReversed(int32(13))
     WithMixinReversed b = WithMixinReversed(13);
     // print(b.x)
     std::cout << b.x << "\n";

@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def drop(d: dict[Int32, Int32], k: Int32) -> None:
+// def drop(d: dict[int32, int32], k: int32) -> None:
 void drop(::tpy::ordered_map<int32_t, int32_t>& d, int32_t k) {
     // d.pop(k)
     ::tpy::dict_pop(d, k);
 }
 
-// def take(d: dict[Int32, Int32], k: Int32) -> Int32:
+// def take(d: dict[int32, int32], k: int32) -> int32:
 int32_t take(::tpy::ordered_map<int32_t, int32_t>& d, int32_t k) {
     // v = d.pop(k)
     int32_t v = ::tpy::dict_pop(d, k);
@@ -18,13 +18,13 @@ int32_t take(::tpy::ordered_map<int32_t, int32_t>& d, int32_t k) {
     return (::tpy::add_check<int32_t>(v, ::tpy::dict_pop_default(d, k, 0)));
 }
 
-// def peek(d: dict[Int32, Int32], k: Int32) -> Int32:
+// def peek(d: dict[int32, int32], k: int32) -> int32:
 int32_t peek(const ::tpy::ordered_map<int32_t, int32_t>& d, int32_t k) {
     // return d.get(k, 0)
     return ::tpy::dict_get_default(d, k, 0);
 }
 
-// def wipe(d: dict[Int32, Int32]) -> None:
+// def wipe(d: dict[int32, int32]) -> None:
 void wipe(::tpy::ordered_map<int32_t, int32_t>& d) {
     // d.clear()
     d.clear();

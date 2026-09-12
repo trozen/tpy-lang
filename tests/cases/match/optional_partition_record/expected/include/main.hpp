@@ -21,10 +21,10 @@ void main();
 
 // class Leaf:
 struct Leaf {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32):
+    // def __init__(self, n: int32):
     Leaf() = default;
     explicit Leaf(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Leaf";
@@ -51,7 +51,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 }
 
 
-// def __init__(self, n: Int32):
+// def __init__(self, n: int32):
 inline Leaf::Leaf(int32_t n) : n(n) {}
 
 // def __init__(self):

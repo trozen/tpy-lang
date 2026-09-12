@@ -16,7 +16,7 @@ void main();
 
 // class Base:
 struct Base {
-    // tag: Int32
+    // tag: int32
     int32_t tag;
 
     // def __init__(self) -> None:
@@ -31,9 +31,9 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
 
 // class Derived(Base):
 struct Derived : Base {
-    // a: Int32
+    // a: int32
     int32_t a;
-    // b: Int32
+    // b: int32
     int32_t b;
 
     // def __init__(self) -> None:

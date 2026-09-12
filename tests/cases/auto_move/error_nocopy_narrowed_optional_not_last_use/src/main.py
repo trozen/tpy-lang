@@ -1,19 +1,19 @@
 # @nocopy narrowed Optional local used after consume point -> error.
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 
 
 @nocopy
 class Handle:
-    value: Int32
+    value: int32
 
 
-def consume(h: Own[Handle]) -> Int32:
+def consume(h: Own[Handle]) -> int32:
     return h.value
 
 
-def test() -> Int32:
+def test() -> int32:
     h: Handle | None = Handle()
-    h.value = Int32(1)
+    h.value = int32(1)
     assert h is not None
     result = consume(h)  # tpyc: error(/used after this point/)
     print(h.value)

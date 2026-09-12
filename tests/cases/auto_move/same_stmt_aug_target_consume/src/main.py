@@ -1,11 +1,11 @@
 # Aug-assign sibling of the same-statement split: the subscript-target
 # index reads b.items while the value consumes b in one C++
 # full-expression -- the consume must not auto-move b.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Blob:
-    items: list[Int32]
+    items: list[int32]
 
     def __init__(self):
         self.items = [10, 20, 30]
@@ -17,7 +17,7 @@ class K:
     def __init__(self):
         self.stored = []
 
-    def take(self, b: Own[Blob]) -> Int32:
+    def take(self, b: Own[Blob]) -> int32:
         self.stored.append(b)
         return 99
 
@@ -25,7 +25,7 @@ class K:
 def main():
     k = K()
     b = Blob()
-    d: dict[Int32, Int32] = {3: 1}
+    d: dict[int32, int32] = {3: 1}
     d[len(b.items)] += k.take(b)  # tpyc: warning(/copies/)
     print(d)
 

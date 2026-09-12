@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def inspect(h: Handle) -> Int32:
+// def inspect(h: Handle) -> int32:
 int32_t inspect(const Handle& h) {
     // return h.fd
     return h.fd;
 }
 
-// def close(h: Own[Handle]) -> Int32:
+// def close(h: Own[Handle]) -> int32:
 int32_t close(Handle&& h) {
     // return h.fd
     return h.fd;

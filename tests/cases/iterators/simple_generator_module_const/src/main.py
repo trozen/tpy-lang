@@ -4,12 +4,12 @@
 # the binding-based field-access dispatch and crashed codegen. Both the while
 # and for peephole forms are covered.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 import caps
 
 
-def upto_while(n: Int32) -> Iterator[Int32]:
-    i: Int32 = 0
+def upto_while(n: int32) -> Iterator[int32]:
+    i: int32 = 0
     while i < n:
         if i == caps.CAP:
             break
@@ -17,7 +17,7 @@ def upto_while(n: Int32) -> Iterator[Int32]:
         i += 1
 
 
-def upto_for(n: Int32) -> Iterator[Int32]:
+def upto_for(n: int32) -> Iterator[int32]:
     for i in range(n):
         if i == caps.CAP:
             break

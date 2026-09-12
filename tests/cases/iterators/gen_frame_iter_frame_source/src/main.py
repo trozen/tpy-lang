@@ -4,14 +4,14 @@
 # emitted first. Bag.__iter__ has two yields, which is what keeps it off the
 # simple-generator lambda (whose in-class `auto __iter__()` hid the ordering
 # requirement).
-from tpy import Int32, Own
+from tpy import int32, Own
 from typing import Iterator
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
@@ -30,7 +30,7 @@ class Bag:
 
 # The loop element must ALIAS the bag's element, not copy it: the mutation below
 # is observed through the bag's own field after the loop.
-def bump(bag: Bag) -> Iterator[Int32]:
+def bump(bag: Bag) -> Iterator[int32]:
     for p in bag:
         p.x += 100
         yield p.x

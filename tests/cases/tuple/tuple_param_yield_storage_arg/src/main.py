@@ -4,24 +4,24 @@
 # through the yielded element is observed in the source field (CPython
 # aliasing).
 from typing import Iterator
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Box:
-    val: Int32
+    val: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 
 class Holder:
-    pair: tuple[Int32, Box]
+    pair: tuple[int32, Box]
 
     def __init__(self, b: Own[Box]) -> None:
         self.pair = (1, b)
 
 
-def gen(p: tuple[Int32, Box]) -> Iterator[tuple[Int32, Box]]:
+def gen(p: tuple[int32, Box]) -> Iterator[tuple[int32, Box]]:
     yield p
 
 

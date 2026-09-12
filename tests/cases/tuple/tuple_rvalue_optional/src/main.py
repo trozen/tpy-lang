@@ -3,16 +3,16 @@
 # The fix routes rvalue elements through ::tpy::tuple_value_to_borrow,
 # which materializes a value-tuple temp (lifetime extends to end of full
 # expression) and addresses its slots inside.
-from tpy import Int32
+from tpy import int32
 
 
 class Point:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
-def show(p: tuple[Point | None, Int32]) -> None:
+def show(p: tuple[Point | None, int32]) -> None:
     a, n = p
     if a is not None:
         print(a.x)

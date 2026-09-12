@@ -282,7 +282,7 @@ Data:
 - `reach.json` / `reach_census.log` -- the reject-reachability census over
   both populations, from a sweep tool deleted with the migration scripts.
 - `asym_run.log` -- the asymmetry probe at three widths (control fails at
-  Int64/BigInt for one front-end-refused case; valid at Int32).
+  int64/BigInt for one front-end-refused case; valid at int32).
 - `shapes_unit.json`, `shapes_corpus.json` -- body-shape coverage of the
   routing unit programs against a whole-corpus shape dump taken before the
   cutover; the tally tool and `tpyc/thir/shape.py` went with the unit tests

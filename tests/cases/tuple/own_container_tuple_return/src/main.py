@@ -2,35 +2,35 @@
 # moves each member out, and the caller's unpack moves it back into a local.
 # Ownership transfer is the intent here -- the callee's local is gone, so the
 # post-unpack mutation shows the buffer survived the move rather than a copy.
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 
 
 # @nocopy: an Own transfer that copied instead would fail to compile.
 @nocopy
 class Rec:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 
-def two_lists() -> tuple[Own[list[float]], Own[list[Int32]]]:
+def two_lists() -> tuple[Own[list[float]], Own[list[int32]]]:
     a: list[float] = []
-    b: list[Int32] = []
+    b: list[int32] = []
     a.append(1.0)
     b.append(2)
     return a, b  # tpyc: ok
 
 
-def mixed() -> tuple[Own[list[float]], Int32]:
+def mixed() -> tuple[Own[list[float]], int32]:
     a: list[float] = []
     a.append(1.0)
     return a, 7  # tpyc: ok
 
 
-def dict_and_set() -> tuple[Own[dict[Int32, Int32]], Own[set[Int32]]]:
-    d: dict[Int32, Int32] = {}
-    s: set[Int32] = set()
+def dict_and_set() -> tuple[Own[dict[int32, int32]], Own[set[int32]]]:
+    d: dict[int32, int32] = {}
+    s: set[int32] = set()
     d[1] = 2
     s.add(3)
     return d, s  # tpyc: ok
@@ -42,7 +42,7 @@ def two_recs() -> tuple[Own[Rec], Own[Rec]]:
     return p, q  # tpyc: ok
 
 
-def recs_and_count() -> tuple[Own[list[Rec]], Int32]:
+def recs_and_count() -> tuple[Own[list[Rec]], int32]:
     rs: list[Rec] = []
     rs.append(Rec(5))
     rs.append(Rec(6))

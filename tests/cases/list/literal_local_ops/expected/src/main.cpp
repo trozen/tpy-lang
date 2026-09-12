@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def grown() -> Int32:
+// def grown() -> int32:
 int32_t grown() {
     // xs = [3, 1]
     std::vector<int32_t> xs = {3, 1};
@@ -29,7 +29,7 @@ int32_t grown() {
     return total;
 }
 
-// def fixed() -> Int32:
+// def fixed() -> int32:
 int32_t fixed() {
     // ys = [10, 20, 30]
     std::array<int32_t, 3> ys = {10, 20, 30};
@@ -47,9 +47,9 @@ int32_t fixed() {
     return total;
 }
 
-// def from_empty(n: Int32) -> Int32:
+// def from_empty(n: int32) -> int32:
 int32_t from_empty(int32_t n) {
-    // zs: list[Int32] = []
+    // zs: list[int32] = []
     std::vector<int32_t> zs = std::vector<int32_t>{};
     // zs.append(n)
     zs.push_back(n);

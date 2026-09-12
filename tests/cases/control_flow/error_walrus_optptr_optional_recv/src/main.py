@@ -2,17 +2,17 @@
 # optional whole, which suppresses the receiver's own None check too -- so an
 # unproven-Optional RECEIVER must keep rejecting rather than dereference it
 # blind.
-from tpy import Int32
+from tpy import int32
 
 
 class Rec:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
-def f(xs: list[Rec | None] | None) -> Int32:
+def f(xs: list[Rec | None] | None) -> int32:
     # `xs` is not proven non-None, so the element read would need a checked
     # deref the whole-read lowering cannot spell.
     if (r := xs[0]) is not None:  # tpyc: error(/expr\.walrus/)

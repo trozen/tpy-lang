@@ -17,10 +17,10 @@ void main();
 
 // class Data:
 struct Data {
-    // value: Int32
+    // value: int32
     int32_t value;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Data() = default;
     explicit Data(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Data";
@@ -41,13 +41,13 @@ struct Slots {
     // def __init__(self) -> None:
     Slots();
 
-    // def __setitem__(self, index: Int32, value: Data) -> None:
+    // def __setitem__(self, index: int32, value: Data) -> None:
     void __setitem__(int32_t index, const Data& value);
 
-    // def __getitem__(self, index: Int32) -> Data:
+    // def __getitem__(self, index: int32) -> Data:
     Data& __getitem__(int32_t index);
 
-    // def __getitem__(self, index: Int32) -> Data:
+    // def __getitem__(self, index: int32) -> Data:
     const Data& __getitem__(int32_t index) const;
 
     const Data& operator[](int32_t index) const {
@@ -66,13 +66,13 @@ inline std::ostream& operator<<(std::ostream& os, const Slots& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Data::Data(int32_t v) : value(v) {}
 
 // def __init__(self) -> None:
 inline Slots::Slots() : a(Data(0)), b(Data(0)) {}
 
-// def __setitem__(self, index: Int32, value: Data) -> None:
+// def __setitem__(self, index: int32, value: Data) -> None:
 inline void Slots::__setitem__(int32_t index, const Data& value) {
     // if index == 0:
     if ((index == 0)) {
@@ -85,7 +85,7 @@ inline void Slots::__setitem__(int32_t index, const Data& value) {
     }
 }
 
-// def __getitem__(self, index: Int32) -> Data:
+// def __getitem__(self, index: int32) -> Data:
 inline Data& Slots::__getitem__(int32_t index) {
     // if index == 0:
     if ((index == 0)) {
@@ -96,7 +96,7 @@ inline Data& Slots::__getitem__(int32_t index) {
     return this->b;
 }
 
-// def __getitem__(self, index: Int32) -> Data:
+// def __getitem__(self, index: int32) -> Data:
 inline const Data& Slots::__getitem__(int32_t index) const {
     // if index == 0:
     if ((index == 0)) {

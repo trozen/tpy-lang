@@ -1,8 +1,8 @@
 from tpy.extern import native
-from tpy import Int32
+from tpy import int32
 
 @native("physics::calculate_force")
 def calc_force(mass: float, accel: float) -> float: ...
 
 @native
-def global_func(x: Int32) -> Int32: ...
+def global_func(x: int32) -> int32: ...

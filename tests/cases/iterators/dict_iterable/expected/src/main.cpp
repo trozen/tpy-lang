@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // d: dict[str, Int32] = {"a": 1, "b": 2, "c": 3}
+    // d: dict[str, int32] = {"a": 1, "b": 2, "c": 3}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}, {"c", 3}});
     // # dict itself is Iterable[K]
     // print("keys via dict:")

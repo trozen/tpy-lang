@@ -1,1 +1,1 @@
-Union types (Int32 | None) as list element types not supported in CPython harness
+Union types (int32 | None) as list element types not supported in CPython harness

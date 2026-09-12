@@ -375,7 +375,7 @@ standard acknowledged-copy diagnostic, silenced by `set(x.copy())` (which
 restores parity: both sides then hold a copy). An rvalue or last-use lvalue
 moves in with no diagnostic. The canonical way to update a reference payload is
 still to mutate it in place through the guard's deref, not to replace it via
-`set()`. Value-type `set()` (e.g. `Mutex[Int32]`) is unaffected -- value types
+`set()`. Value-type `set()` (e.g. `Mutex[int32]`) is unaffected -- value types
 don't alias.
 
 ## Deferred: closures (D1) -- the ergonomic layer, own design pass

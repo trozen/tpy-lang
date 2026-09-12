@@ -6,13 +6,13 @@
 # the `via_free` leg carries the error annotation; `via_method` and
 # `via_ctor` are the same slot at the other two callee kinds, and all three
 # pin the warning.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Payload:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 

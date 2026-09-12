@@ -3,9 +3,9 @@
 
 namespace tpyapp::main {
 
-// a = Weight(Int32(50))
+// a = Weight(int32(50))
 Weight* a{};
-// b = Weight(Int32(30))
+// b = Weight(int32(30))
 Weight* b{};
 
 void __tpy_init() {
@@ -18,10 +18,10 @@ void __tpy_init() {
     // # table.
     // from functools import total_ordering
     ::tpystd::functools::__tpy_init();
-    // a = Weight(Int32(50))
+    // a = Weight(int32(50))
     static Weight __global_slot_1 = Weight(50);
     a = &__global_slot_1;
-    // b = Weight(Int32(30))
+    // b = Weight(int32(30))
     static Weight __global_slot_2 = Weight(30);
     b = &__global_slot_2;
     // print(a >= b)

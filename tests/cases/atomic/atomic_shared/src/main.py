@@ -3,16 +3,16 @@
 # point of the type). We share one Atomic by embedding it in an Arc-managed
 # Counter and cloning the Arc; Atomic is @nocopy, so a silent copy anywhere
 # would be a compile error rather than a hidden second cell.
-from tpy import UInt32
+from tpy import uint32
 from tplib.arc import Arc
 from tpy.atomic import Atomic, MemoryOrder
 
 
 class Counter:
-    n: Atomic[UInt32]
+    n: Atomic[uint32]
 
-    def __init__(self, start: UInt32) -> None:
-        self.n = Atomic[UInt32](start)
+    def __init__(self, start: uint32) -> None:
+        self.n = Atomic[uint32](start)
 
 
 def main() -> None:

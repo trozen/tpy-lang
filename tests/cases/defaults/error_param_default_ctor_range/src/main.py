@@ -1,10 +1,10 @@
 # A fixed-int constructor default carries its own range contract: the wrapped
 # literal is checked against the constructor's type before that type is
 # checked against the parameter's.
-from tpy import Int8
+from tpy import int8
 
 
-def offset(x: Int8 = Int8(200)) -> Int8:  # tpyc: error(/200 is outside Int8 range/)
+def offset(x: int8 = int8(200)) -> int8:  # tpyc: error(/200 is outside int8 range/)
     return x
 
 

@@ -8,7 +8,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_collect::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // out: list[list[Int32]] = []
+        // out: list[list[int32]] = []
         out.emplace(std::vector<std::vector<int32_t>>{});
         // seen: list[bytes] = []
         seen.emplace(std::vector<::tpy::Bytes>{});
@@ -87,7 +87,7 @@ void __tpy_init() {
     // # materialized temporary, or the last-use move is silently dropped. The second
     // # append is the contrast: `bytearray` and `bytes` are distinct types, so an
     // # owning `bytes` sink refuses a bytearray outright and the copy is WRITTEN --
-    // # `bytes(ba)`, which is never a move. The moved local is a `list[Int32]` rather
+    // # `bytes(ba)`, which is never a move. The moved local is a `list[int32]` rather
     // # than the bytearray it used to be for the same reason: that pair no longer
     // # reaches the move arm at all. What the written copy does to the two objects is
     // # pinned in tests/cases/bytes/bytearray_copy_into_bytes_sink.

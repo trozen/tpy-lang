@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def greet(ch: Char = 'X') -> None:
+// def greet(ch: char = 'X') -> None:
 void greet(char ch) {
     // print(ch)
     std::cout << ch << "\n";
 }
 
-// def bracket(text: str, open_ch: Char = '(', close_ch: Char = ')') -> str:
+// def bracket(text: str, open_ch: char = '(', close_ch: char = ')') -> str:
 std::string bracket(std::string_view text, char open_ch, char close_ch) {
     // return str(open_ch) + text + str(close_ch)
     return (::tpy::str_concat((::tpy::str_concat(std::string(::tpy::char_to_str(open_ch)), text)), std::string(::tpy::char_to_str(close_ch))));

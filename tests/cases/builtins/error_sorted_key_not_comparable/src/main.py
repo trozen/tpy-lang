@@ -1,9 +1,9 @@
 # sorted(key=) where key returns a non-Comparable type
-from tpy import Int32
+from tpy import int32
 
 class Opaque:
-    val: Int32
-    def __init__(self, val: Int32) -> None:
+    val: int32
+    def __init__(self, val: int32) -> None:
         self.val = val
 
 def main() -> None:

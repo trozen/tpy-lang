@@ -5,7 +5,7 @@
 # - generated values stay in their advertised ranges
 import random
 from random import Random
-from tpy import Int32
+from tpy import int32
 
 def main() -> None:
     # Module-level seed() with no arg: re-seed from entropy.

@@ -1,33 +1,33 @@
 # Mutation visibility through @dynamic protocol dispatch
 # Verifies all three paths: direct inheritance, ref adapter, and local owning
-from tpy import dynamic, Int32
+from tpy import dynamic, int32
 from typing import Protocol
 
 @dynamic
 class Counter(Protocol):
     def increment(self) -> None:
         ...
-    def value(self) -> Int32:
+    def value(self) -> int32:
         ...
 
 # Direct inheritor
 class MyCounter(Counter):
-    count: Int32
+    count: int32
     def __init__(self) -> None:
         self.count = 0
     def increment(self) -> None:
-        self.count = self.count + Int32(1)
-    def value(self) -> Int32:
+        self.count = self.count + int32(1)
+    def value(self) -> int32:
         return self.count
 
 # Structural conformance (no inheritance)
 class Tally:
-    count: Int32
+    count: int32
     def __init__(self) -> None:
         self.count = 0
     def increment(self) -> None:
-        self.count = self.count + Int32(1)
-    def value(self) -> Int32:
+        self.count = self.count + int32(1)
+    def value(self) -> int32:
         return self.count
 
 def bump(c: Counter) -> None:

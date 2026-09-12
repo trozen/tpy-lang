@@ -16,10 +16,10 @@ void main();
 
 // class Score:
 struct Score {
-    // val: Int32
+    // val: int32
     int32_t val;
 
-    // def __init__(self, val: Int32) -> None:
+    // def __init__(self, val: int32) -> None:
     Score() = default;
     explicit Score(int32_t val);
 
@@ -56,7 +56,7 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
 }
 
 
-// def __init__(self, val: Int32) -> None:
+// def __init__(self, val: int32) -> None:
 inline Score::Score(int32_t val) : val(val) {}
 
 // def __lt__(self, other: Score) -> bool:

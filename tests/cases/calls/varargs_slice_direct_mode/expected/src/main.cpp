@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def sum_middle(*items: Box) -> Int32:  # tpyc: ok
+// def sum_middle(*items: Box) -> int32:  # tpyc: ok
 int32_t sum_middle(::tpy::varargs<const Box> items) {
-    // n: Int32 = 0
+    // n: int32 = 0
     int32_t n = 0;
     // for b in items[1:3]:
     auto __obj_0 = ::tpy::list_slice(items, ::tpy::BasicSlice{1, 3});

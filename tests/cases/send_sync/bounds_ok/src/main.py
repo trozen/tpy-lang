@@ -1,6 +1,6 @@
 # T: Send generic bounds on functions and records, satisfied at call /
-# construction sites (Int32 and list[Int32] are Send).
-from tpy import Int32, Send
+# construction sites (int32 and list[int32] are Send).
+from tpy import int32, Send
 
 class Channel[T: Send]:
     item: T
@@ -8,7 +8,7 @@ class Channel[T: Send]:
     def __init__(self, item: T) -> None:
         self.item = item
 
-def use[T: Send](x: T) -> Int32:
+def use[T: Send](x: T) -> int32:
     return 1
 
 def main() -> None:

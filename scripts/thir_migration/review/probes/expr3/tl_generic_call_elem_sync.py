@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 def ident[T](x: T) -> T:
     return x
 def pick[K, V](k: K, v: V) -> tuple[K, V]:

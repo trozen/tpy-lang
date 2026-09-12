@@ -57,7 +57,7 @@ void main();
 
 // class Tally:
 struct Tally {
-    // n: Int32
+    // n: int32
     int32_t n;
 
     // def __init__(self) -> None:
@@ -72,10 +72,10 @@ inline std::ostream& operator<<(std::ostream& os, const Tally& obj) {
 
 // class Holder:
 struct Holder {
-    // n: Int64
+    // n: int64
     int64_t n;
 
-    // def __init__(self, o: list[Int64]) -> None:
+    // def __init__(self, o: list[int64]) -> None:
     Holder() = default;
     explicit Holder(std::vector<int64_t>& o);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
@@ -89,10 +89,10 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 // class Boxed[T]:
 template<typename T>
 struct Boxed {
-    // n: Int64
+    // n: int64
     int64_t n;
 
-    // def __init__(self, o: list[Int64]) -> None:
+    // def __init__(self, o: list[int64]) -> None:
     Boxed() = default;
     explicit Boxed(std::vector<int64_t>& o) {
         // o.append(4)
@@ -111,13 +111,13 @@ inline std::ostream& operator<<(std::ostream& os, const Boxed<T>& obj) {
 
 // class Bx:
 struct Bx {
-    // tag: Int32
+    // tag: int32
     int32_t tag;
 
     // def __init__(self) -> None:
     Bx();
 
-    // def gen(self, o: list[Int64]) -> Iterator[Int64]:
+    // def gen(self, o: list[int64]) -> Iterator[int64]:
     auto gen(std::vector<int64_t>& o) const {
         return ::tpy::make_generator<int64_t>(
             [this, &o, __beg = decltype((o).begin())(), __end = decltype((o).begin())(), __init = false]() mutable -> std::optional<int64_t> {
@@ -143,7 +143,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bx& obj) {
 // def __init__(self) -> None:
 inline Tally::Tally() : n(0) {}
 
-// def __init__(self, o: list[Int64]) -> None:
+// def __init__(self, o: list[int64]) -> None:
 inline Holder::Holder(std::vector<int64_t>& o) {
     // o.append(4)
     o.push_back(4);
@@ -153,7 +153,7 @@ inline Holder::Holder(std::vector<int64_t>& o) {
 
 // def __init__(self) -> None:
 inline Bx::Bx() : tag(0) {}
-// def take_any[T](o: T) -> Int64:
+// def take_any[T](o: T) -> int64:
 template<typename T>
 int64_t take_any(::tpy::param_val_or_ref_t<T> o) {
     // return 1

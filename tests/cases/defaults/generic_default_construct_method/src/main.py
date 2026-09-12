@@ -1,5 +1,5 @@
 # T() default-construction in methods with class-level type params
-from tpy import Int32, copy
+from tpy import int32, copy
 
 class Container[T]:
     val: T
@@ -11,7 +11,7 @@ class Container[T]:
         return fallback
 
 def main() -> None:
-    c = Container[Int32](10)
+    c = Container[int32](10)
     print(c.get_or_default())
     print(c.get_or_default(99))
 

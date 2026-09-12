@@ -1,7 +1,7 @@
 # match/case guard on wildcard/capture pattern with fallthrough
-from tpy import Int32
+from tpy import int32
 
-def classify(x: Int32) -> str:
+def classify(x: int32) -> str:
     match x:
         case _ if x > 10:
             return "big"
@@ -11,7 +11,7 @@ def classify(x: Int32) -> str:
             return "small"
     return ""
 
-def describe(x: Int32) -> str:
+def describe(x: int32) -> str:
     match x:
         case n if n == 0:
             return "zero"
@@ -20,10 +20,10 @@ def describe(x: Int32) -> str:
     return ""
 
 def main() -> None:
-    print(classify(Int32(20)))
-    print(classify(Int32(7)))
-    print(classify(Int32(3)))
-    print(describe(Int32(0)))
-    print(describe(Int32(42)))
+    print(classify(int32(20)))
+    print(classify(int32(7)))
+    print(classify(int32(3)))
+    print(describe(int32(0)))
+    print(describe(int32(42)))
 
 main()

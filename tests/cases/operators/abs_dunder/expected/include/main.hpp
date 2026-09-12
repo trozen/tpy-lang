@@ -15,10 +15,10 @@ void main();
 
 // class Temp(ValueType):
 struct Temp {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Temp() = default;
     explicit Temp(int32_t v);
 
@@ -39,7 +39,7 @@ namespace tpyapp::main {
 
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Temp::Temp(int32_t v) : v(v) {}
 
 // def __abs__(self) -> "Temp":

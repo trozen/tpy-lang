@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def classify(v: A | B | C | D) -> Int32:
+// def classify(v: A | B | C | D) -> int32:
 int32_t classify(::tpy::Union<A*, B*, C*, D*> v) {
     // if not isinstance(v, A | B | C):
     if ((!((std::holds_alternative<A*>(v) || std::holds_alternative<B*>(v) || std::holds_alternative<C*>(v))))) {

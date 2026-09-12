@@ -1,11 +1,11 @@
 # raise E (bare) on a type with fields but no __init__ default-constructs
-from tpy import Int32, error_return, ReturnException
+from tpy import int32, error_return, ReturnException
 
 class MyError(Exception, ReturnException):
-    code: Int32
+    code: int32
 
 @error_return(MyError)
-def fail() -> Int32:
+def fail() -> int32:
     raise MyError
 
 def main() -> None:

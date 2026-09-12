@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 from typing import Final
 
-CAP: Final[Int32] = 4
+CAP: Final[int32] = 4

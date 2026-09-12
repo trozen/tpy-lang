@@ -7,17 +7,17 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // # Annotated tuple (testing annotation support)
-    // t: tuple[Int32, str] = (Int32(1), "hello")
+    // t: tuple[int32, str] = (int32(1), "hello")
     std::tuple<int32_t, std::string> t = std::tuple<int32_t, std::string>{1, "hello"};
     // print(t)
     std::cout << ::tpy::TuplePrinter(t) << "\n";
     // # Inferred tuple type
-    // t2 = (Int32(42), True, "world")
+    // t2 = (int32(42), True, "world")
     std::tuple<int32_t, bool, std::string> t2 = std::tuple<int32_t, bool, std::string>{42, true, "world"};
     // print(t2)
     std::cout << ::tpy::TuplePrinter(t2) << "\n";
     // # Nested tuple (inferred)
-    // t3 = (Int32(10), ("inner", False))
+    // t3 = (int32(10), ("inner", False))
     std::tuple<int32_t, std::tuple<std::string, bool>> t3 = std::tuple<int32_t, std::tuple<std::string, bool>>{10, std::tuple<std::string, bool>{"inner", false}};
     // print(t3)
     std::cout << ::tpy::TuplePrinter(t3) << "\n";

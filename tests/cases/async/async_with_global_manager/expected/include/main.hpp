@@ -23,7 +23,7 @@ void main();
 
 // class Counter:
 struct Counter {
-    // opens: Int32
+    // opens: int32
     int32_t opens;
 
     // def __init__(self) -> None:

@@ -10,7 +10,7 @@ Holder make() {
     return Holder();
 }
 
-// def g_resumable() -> Iterator[Int32]:
+// def g_resumable() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_g_resumable::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -45,7 +45,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_g_resumable::__next__() {
 }
 
 
-// def g_resumable() -> Iterator[Int32]:
+// def g_resumable() -> Iterator[int32]:
 __gen_g_resumable g_resumable() {
     return __gen_g_resumable();
 }

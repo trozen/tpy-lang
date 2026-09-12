@@ -8,32 +8,32 @@
 # beside it is what proves the row MOVES: mutating through the field after
 # the write only shows the field owns *a* buffer, while a `Box` element makes
 # a copy at that boundary a C++ compile error. The bytearray leg cannot carry
-# that check itself (its elements are UInt8), so it rides the list sibling of
+# that check itself (its elements are uint8), so it rides the list sibling of
 # the same arm.
-from tpy import Int32
+from tpy import int32
 from tplib.box import Box
 
 
 class Buf:
     data: bytearray
-    tags: list[Int32]
-    boxes: list[Box[Int32]]
+    tags: list[int32]
+    boxes: list[Box[int32]]
 
     def __init__(self) -> None:
         self.data = bytearray()
         self.tags = []
         self.boxes = []
 
-    def reset(self, n: Int32) -> None:
+    def reset(self, n: int32) -> None:
         fresh = bytearray(n)
         self.data = fresh  # tpyc: ok -- the moved bytes-family name
 
-    def retag(self, n: Int32) -> None:
-        fresh: list[Int32] = [n]
+    def retag(self, n: int32) -> None:
+        fresh: list[int32] = [n]
         self.tags = fresh  # tpyc: ok -- the same row, container leg
 
-    def rebox(self, n: Int32) -> None:
-        fresh: list[Box[Int32]] = [Box(n)]
+    def rebox(self, n: int32) -> None:
+        fresh: list[Box[int32]] = [Box(n)]
         self.boxes = fresh  # tpyc: ok -- a copy here would not compile
 
 

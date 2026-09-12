@@ -6,7 +6,7 @@
 # Each generic section is followed by its monomorphic twin printing the same line.
 # The inverse leg pins that a NON-element `str` param on the same record keeps
 # its view form, which is what makes the element slot's spelling the outlier.
-from tpy import Equatable, Int32
+from tpy import Equatable, int32
 from tplib import ArrayList
 
 
@@ -31,7 +31,7 @@ class Labels[T: Equatable, N: int]:
                 return True
         return False
 
-    def tag_len(self, tag: str) -> Int32:
+    def tag_len(self, tag: str) -> int32:
         # INVERSE: a non-element str param -- still a std::string_view.
         return len(tag)
 
@@ -56,15 +56,15 @@ class StrLabels:
         return False
 
 
-def drop_from(al: ArrayList[Int32, 4], k: Int32) -> None:
+def drop_from(al: ArrayList[int32, 4], k: int32) -> None:
     al.remove(k)  # tpyc: ok -- the library generic record's T slot
 
 
-def drop_literal(al: ArrayList[Int32, 4]) -> None:
+def drop_literal(al: ArrayList[int32, 4]) -> None:
     al.remove(3)  # tpyc: ok
 
 
-def drop_from_record(box: Labels[Int32, 4], k: Int32) -> None:
+def drop_from_record(box: Labels[int32, 4], k: int32) -> None:
     box.drop(k)  # tpyc: ok -- a user generic record's T slot
 
 
@@ -110,7 +110,7 @@ def has_item_str(xs: list[str], v: str) -> bool:
 
 
 def main() -> None:
-    al = ArrayList[Int32, 4]()
+    al = ArrayList[int32, 4]()
     al.append(1)
     al.append(2)
     al.append(3)
@@ -119,7 +119,7 @@ def main() -> None:
     drop_literal(al)
     print("scalar", len(al), al[0])
 
-    box = Labels[Int32, 4]()
+    box = Labels[int32, 4]()
     box.add(7)
     box.add(8)
     drop_from_record(box, 7)

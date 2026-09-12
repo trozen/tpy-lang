@@ -4,14 +4,14 @@
 namespace tpyapp::main {
 
 
-// def make_value() -> Int32:
+// def make_value() -> int32:
 int32_t make_value() {
-    // def inner(w: Widget) -> Int32:
+    // def inner(w: Widget) -> int32:
     auto inner = [](::tpyapp::widgets::Widget& w) -> int32_t {
         // return w.get()
         return w.get();
     };
-    // obj = Widget(Int32(42))
+    // obj = Widget(int32(42))
     ::tpyapp::widgets::Widget obj = ::tpyapp::widgets::Widget(42);
     // return inner(obj)
     return inner(obj);

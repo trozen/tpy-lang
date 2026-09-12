@@ -1,24 +1,24 @@
 # A readonly Rc/Weak handle can clone/downgrade/upgrade -- the refcount bump
 # is interior (outside the readonly boundary) and yields a readonly-payload
 # handle, so readonly can't be laundered into mutable T.
-from tpy import Int32, Own, readonly
+from tpy import int32, Own, readonly
 from tplib import Rc
 from tplib.rc import Weak
 
 
 class Counter:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
-def observe(r: readonly[Rc[Counter]]) -> Int32:
+def observe(r: readonly[Rc[Counter]]) -> int32:
     shared = r.clone()  # tpyc: type(/readonly\[Counter\]/)
     return shared.get().n
 
 
-def via_readonly_weak(w: readonly[Weak[Counter]]) -> Int32:
+def via_readonly_weak(w: readonly[Weak[Counter]]) -> int32:
     w2 = w.clone()      # Weak.clone on a readonly receiver
     a2 = w2.upgrade()
     b2 = w.upgrade()    # Weak.upgrade on a readonly receiver
@@ -27,7 +27,7 @@ def via_readonly_weak(w: readonly[Weak[Counter]]) -> Int32:
     return a2.get().n
 
 
-def downgrade_readonly(r: readonly[Rc[Counter]]) -> Int32:
+def downgrade_readonly(r: readonly[Rc[Counter]]) -> int32:
     w = r.downgrade()
     up = w.upgrade()
     return up.get().n if up is not None else -1

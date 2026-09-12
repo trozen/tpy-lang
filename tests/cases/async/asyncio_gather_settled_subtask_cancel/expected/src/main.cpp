@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def slow() -> Int32:
+// async def slow() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_slow::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -17,7 +17,7 @@ namespace tpyapp::main {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
             (void)std::move(__r0).value();
             __sub_0.reset();
-            // return Int32(1)
+            // return int32(1)
             __state = S_DONE;
             int32_t __tpy_async_ret = 1;
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -51,12 +51,12 @@ namespace tpyapp::main {
 }
 
 
-// async def slow() -> Int32:
+// async def slow() -> int32:
 __coro_slow slow() {
     return __coro_slow();
 }
 
-// async def fast() -> Int32:
+// async def fast() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_fast::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -70,7 +70,7 @@ __coro_slow slow() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return Int32(2)
+        // return int32(2)
         __state = S_DONE;
         int32_t __tpy_async_ret = 2;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -81,12 +81,12 @@ __coro_slow slow() {
 }
 
 
-// async def fast() -> Int32:
+// async def fast() -> int32:
 __coro_fast fast() {
     return __coro_fast();
 }
 
-// async def canceller(target: Own[asyncio.Task[Int32]]) -> None:
+// async def canceller(target: Own[asyncio.Task[int32]]) -> None:
 ::tpystd::tpy::Poll<::std::monostate> __coro_canceller::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -111,12 +111,12 @@ __coro_fast fast() {
 }
 
 
-// async def canceller(target: Own[asyncio.Task[Int32]]) -> None:
+// async def canceller(target: Own[asyncio.Task[int32]]) -> None:
 __coro_canceller canceller(::tpystd::asyncio::_executor::Task<int32_t> target) {
     return __coro_canceller(std::move(target));
 }
 
-// async def gather_helper() -> Own[list[asyncio.Settled[Int32]]]:
+// async def gather_helper() -> Own[list[asyncio.Settled[int32]]]:
 ::tpystd::tpy::Poll<std::vector<::tpystd::asyncio::Settled<int32_t>>> __coro_gather_helper::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -131,7 +131,7 @@ __coro_canceller canceller(::tpystd::asyncio::_executor::Task<int32_t> target) {
         // # clones move cleanly.
         // asyncio.create_task(canceller(a.clone()))
         ::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(canceller((*a).clone())));
-        // tasks: list[asyncio.Task[Int32]] = []
+        // tasks: list[asyncio.Task[int32]] = []
         tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<int32_t>>{});
         // tasks.append(a.clone())
         (*tasks).push_back((*a).clone());
@@ -156,7 +156,7 @@ __coro_canceller canceller(::tpystd::asyncio::_executor::Task<int32_t> target) {
 }
 
 
-// async def gather_helper() -> Own[list[asyncio.Settled[Int32]]]:
+// async def gather_helper() -> Own[list[asyncio.Settled[int32]]]:
 __coro_gather_helper gather_helper() {
     return __coro_gather_helper();
 }

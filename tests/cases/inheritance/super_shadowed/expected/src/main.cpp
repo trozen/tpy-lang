@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def super() -> Int32:
+// def super() -> int32:
 int32_t super() {
-    // return Int32(42)
+    // return int32(42)
     return 42;
 }
 

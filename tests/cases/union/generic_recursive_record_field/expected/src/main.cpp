@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def leaf_count(t: Tree[Int32]) -> Int32:
+// def leaf_count(t: Tree[int32]) -> int32:
 int32_t leaf_count(const Tree<int32_t>& t) {
     // match t:
     auto& __match_subject_1 = t;
@@ -39,7 +39,7 @@ int32_t leaf_count(const Tree<int32_t>& t) {
 
 // def main() -> None:
 void main() {
-    // seed: Tree[Int32] = [1, [2, 3], 4]
+    // seed: Tree[int32] = [1, [2, 3], 4]
     Tree<int32_t> seed = std::vector<Tree<int32_t>>{1, std::vector<Tree<int32_t>>{2, 3}, 4};
     // h = Holder(seed)
     Holder h = Holder(std::move(seed));
@@ -49,7 +49,7 @@ void main() {
     std::cout << leaf_count(g) << "\n";
     // print(leaf_count(h.get()))
     std::cout << leaf_count(h.get()) << "\n";
-    // probe: Tree[Int32] = [9, 9, 9, 9]
+    // probe: Tree[int32] = [9, 9, 9, 9]
     Tree<int32_t> probe = std::vector<Tree<int32_t>>{9, 9, 9, 9};
     // print(h.matches(probe))
     std::cout << ::tpy::print_bool(h.matches(probe)) << "\n";

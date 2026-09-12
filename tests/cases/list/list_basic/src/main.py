@@ -1,14 +1,14 @@
-from tpy import Int32
+from tpy import int32
 
-def sum_list(nums: list[Int32]) -> Int32:
-    total: Int32 = 0
-    i: Int32 = 0
+def sum_list(nums: list[int32]) -> int32:
+    total: int32 = 0
+    i: int32 = 0
     while i < len(nums):
         total += nums[i]
         i += 1
     return total
 
-mem: list[Int32] = [0] * 10
+mem: list[int32] = [0] * 10
 mem[0] = 42
 mem[1] = 8
 print(sum_list(mem))

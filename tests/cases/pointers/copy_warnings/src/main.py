@@ -1,26 +1,26 @@
-from tpy import Int32, copy
+from tpy import int32, copy
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 class Rect:
     corner: Point
-    width: Int32
+    width: int32
 
     def set_corner(self, p: Point) -> None:
         self.corner = p           # tpyc: warning(/copies Point into field/)
         self.corner = copy(p)     # tpyc: ok
         self.corner = Point()     # tpyc: ok
 
-    def set_width(self, w: Int32) -> None:
+    def set_width(self, w: int32) -> None:
         self.width = w            # tpyc: ok
 
 class Container:
-    items: list[Int32]
+    items: list[int32]
 
-    def set_items(self, data: list[Int32]) -> None:
-        self.items = data         # tpyc: warning(/copies list\[Int32\] into field/)
+    def set_items(self, data: list[int32]) -> None:
+        self.items = data         # tpyc: warning(/copies list\[int32\] into field/)
         self.items = copy(data)   # tpyc: ok
         self.items = [1, 2, 3]    # tpyc: ok
 
@@ -41,7 +41,7 @@ class OptHolder:
         self.value = p            # tpyc: warning(/copies Point | None into field/)
         self.value = copy(p)      # tpyc: ok
 
-def find_point(pts: list[Point], x: Int32) -> Point | None:
+def find_point(pts: list[Point], x: int32) -> Point | None:
     for p in pts:
         if p.x == x:
             return p

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def show(c: Container[Int32]) -> None:
+// def show(c: Container[int32]) -> None:
 void show(Container<int32_t>& c) {
     // print(c.get())
     std::cout << c.get() << "\n";
@@ -16,7 +16,7 @@ void main() {
     IntBox b = IntBox();
     // show(b)
     show(b);
-    // c: Container[Int32] = IntBox()
+    // c: Container[int32] = IntBox()
     IntBox __slot_1{IntBox()};
     Container<int32_t>* c = &__slot_1;
     // print(c.get())

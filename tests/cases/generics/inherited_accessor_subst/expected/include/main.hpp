@@ -17,10 +17,10 @@ void main();
 
 // class Rec:
 struct Rec {
-    // x: Int32
+    // x: int32
     int32_t x;
 
-    // def __init__(self, x: Int32):
+    // def __init__(self, x: int32):
     Rec() = default;
     explicit Rec(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Rec";
@@ -78,7 +78,7 @@ struct Holder {
         return this->_v;
     }
 
-    // def find(self, want: Int32) -> V | None:
+    // def find(self, want: int32) -> V | None:
     V* find(int32_t want) {
         // if want > 0:
         if ((want > 0)) {
@@ -97,7 +97,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder<K, V>& obj) {
     return os;
 }
 
-// class Sub(Holder[Int32, Rec]):
+// class Sub(Holder[int32, Rec]):
 struct Sub : Holder<int32_t, Rec> {
 
     using Holder<int32_t, Rec>::Holder;
@@ -110,7 +110,7 @@ inline std::ostream& operator<<(std::ostream& os, const Sub& obj) {
 }
 
 
-// def __init__(self, x: Int32):
+// def __init__(self, x: int32):
 inline Rec::Rec(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

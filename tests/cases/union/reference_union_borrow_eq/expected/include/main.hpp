@@ -40,7 +40,7 @@ bool local_vs_param(const std::vector<::tpy::Union<Cat, Dog>>& xs, ::tpy::Union<
 bool anon_eq(::tpy::Union<const Other*, const Plain*> a, ::tpy::Union<const Other*, const Plain*> b);
 bool anon_ne(::tpy::Union<const Other*, const Plain*> a, ::tpy::Union<const Other*, const Plain*> b);
 bool held_eq(::tpy::Union<const Locked*, const Sealed*> a, ::tpy::Union<const Locked*, const Sealed*> b);
-void mixed_eq(const std::vector<::tpy::Union<Dog, int32_t, double>>& xs);
+void mixed_eq(const std::vector<::tpy::Union<Dog, double, int32_t>>& xs);
 bool elem_eq(const std::vector<::tpy::Union<Cat, Dog>>& xs);
 int32_t count_eq(::tpy::Union<const Cat*, const Dog*> a, ::tpy::Union<const Cat*, const Dog*> b);
 __gen_gen_eq gen_eq(::tpy::Union<const Cat*, const Dog*> a, ::tpy::Union<const Cat*, const Dog*> b);
@@ -89,10 +89,10 @@ inline std::ostream& operator<<(std::ostream& os, const Guard& obj) {
 
 // class Dog:
 struct Dog {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Dog() = default;
     explicit Dog(int32_t n);
 
@@ -140,10 +140,10 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 
 // class Cat:
 struct Cat {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Cat() = default;
     explicit Cat(int32_t n);
 
@@ -193,10 +193,10 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 // # deriving one from `__eq__`, so both rows below disagree with the negation.
 // class Tag:
 struct Tag {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Tag() = default;
     explicit Tag(int32_t n);
 
@@ -223,10 +223,10 @@ inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
 
 // class Mark:
 struct Mark {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Mark() = default;
     explicit Mark(int32_t n);
 
@@ -248,10 +248,10 @@ inline std::ostream& operator<<(std::ostream& os, const Mark& obj) {
 // # to identity, so the two operators answer from different rules on one pair.
 // class OnlyNe:
 struct OnlyNe {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     OnlyNe() = default;
     explicit OnlyNe(int32_t n);
 
@@ -274,10 +274,10 @@ inline std::ostream& operator<<(std::ostream& os, const OnlyNe& obj) {
 // # copy of the object rather than the object.
 // class Plain:
 struct Plain {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Plain() = default;
     explicit Plain(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Plain";
@@ -290,10 +290,10 @@ inline std::ostream& operator<<(std::ostream& os, const Plain& obj) {
 
 // class Other:
 struct Other {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Other() = default;
     explicit Other(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Other";
@@ -307,10 +307,10 @@ inline std::ostream& operator<<(std::ostream& os, const Other& obj) {
 // @nocopy
 // class Locked:
 struct Locked {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Locked() = default;
     explicit Locked(int32_t n);
     // non-copyable (@nocopy)
@@ -336,10 +336,10 @@ inline std::ostream& operator<<(std::ostream& os, const Locked& obj) {
 // @nocopy
 // class Sealed:
 struct Sealed {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Sealed() = default;
     explicit Sealed(int32_t n);
     // non-copyable (@nocopy)
@@ -364,12 +364,12 @@ inline std::ostream& operator<<(std::ostream& os, const Sealed& obj) {
 
 // class Shelter:
 struct Shelter {
-    // tag: Int32
+    // tag: int32
     int32_t tag;
     // flag: bool
     bool flag;
 
-    // def __init__(self, tag: Int32, a: Pet, b: Pet) -> None:  # constructor
+    // def __init__(self, tag: int32, a: Pet, b: Pet) -> None:  # constructor
     Shelter() = default;
     explicit Shelter(int32_t tag, ::tpy::Union<const Cat*, const Dog*> a, ::tpy::Union<const Cat*, const Dog*> b);
 
@@ -471,7 +471,7 @@ inline void Guard::__exit__(std::monostate exc_type, const ::tpy::BaseException*
     // pass
 }
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Dog::Dog(int32_t n) : n(n) {}
 
 // def __eq__(self, other: "Dog") -> bool:
@@ -512,7 +512,7 @@ inline bool Dog::__ge__(const Dog& other) const {
     return (this->n >= other.n);
 }
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Cat::Cat(int32_t n) : n(n) {}
 
 // def __eq__(self, other: "Cat") -> bool:
@@ -550,7 +550,7 @@ inline bool Cat::__ge__(const Cat& other) const {
     return (this->n >= other.n);
 }
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Tag::Tag(int32_t n) : n(n) {}
 
 // def __eq__(self, other: "Tag") -> bool:
@@ -575,7 +575,7 @@ inline bool Tag::__ne__(const Tag& other) const {
     return (this->n == other.n);
 }
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Mark::Mark(int32_t n) : n(n) {}
 
 // def __eq__(self, other: "Mark") -> bool:
@@ -589,7 +589,7 @@ inline bool Mark::__eq__(const Mark& other) const {
     return (this->n == other.n);
 }
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline OnlyNe::OnlyNe(int32_t n) : n(n) {}
 
 // def __ne__(self, other: "OnlyNe") -> bool:
@@ -603,13 +603,13 @@ inline bool OnlyNe::__ne__(const OnlyNe& other) const {
     return (this->n != other.n);
 }
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Plain::Plain(int32_t n) : n(n) {}
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Other::Other(int32_t n) : n(n) {}
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Locked::Locked(int32_t n) : n(n) {}
 
 // def __eq__(self, other: "Locked") -> bool:
@@ -623,7 +623,7 @@ inline bool Locked::__eq__(const Locked& other) const {
     return (this->n == other.n);
 }
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Sealed::Sealed(int32_t n) : n(n) {}
 
 // def __eq__(self, other: "Sealed") -> bool:
@@ -637,7 +637,7 @@ inline bool Sealed::__eq__(const Sealed& other) const {
     return (this->n == other.n);
 }
 
-// def __init__(self, tag: Int32, a: Pet, b: Pet) -> None:  # constructor
+// def __init__(self, tag: int32, a: Pet, b: Pet) -> None:  # constructor
 inline Shelter::Shelter(int32_t tag, ::tpy::Union<const Cat*, const Dog*> a, ::tpy::Union<const Cat*, const Dog*> b) : tag(tag), flag((a == b)) {}
 
 // def same(self, a: Pet, b: Pet) -> bool:  # method param
@@ -656,7 +656,7 @@ using Anon = ::tpy::Union<Other, Plain>;
 using Held = ::tpy::Union<Locked, Sealed>;
 using Labelled = ::tpy::Union<Mark, Tag>;
 using Lopsided = ::tpy::Union<OnlyNe, Other>;
-using Mixed = ::tpy::Union<Dog, int32_t, double>;
+using Mixed = ::tpy::Union<Dog, double, int32_t>;
 using Pet = ::tpy::Union<Cat, Dog>;
 
 void __tpy_init();

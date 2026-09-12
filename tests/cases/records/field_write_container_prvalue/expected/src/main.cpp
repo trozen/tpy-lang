@@ -20,9 +20,9 @@ void main() {
     c.lines.push_back("delta");
     // print(len(c.lines), c.lines[1], c.lines[3])
     std::cout << ::tpy::__len__(c.lines) << " " << ::tpy::__getitem__(c.lines, 1) << " " << ::tpy::__getitem__(c.lines, 3) << "\n";
-    // x: set[Int32] = {1, 2}
+    // x: set[int32] = {1, 2}
     ::tpy::ordered_set<int32_t> x = ::tpy::ordered_set<int32_t>({1, 2});
-    // y: set[Int32] = {2, 3}
+    // y: set[int32] = {2, 3}
     ::tpy::ordered_set<int32_t> y = ::tpy::ordered_set<int32_t>({2, 3});
     // c.merge(x, y)
     c.merge(x, y);

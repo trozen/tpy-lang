@@ -1,34 +1,34 @@
 # Cross-type casts between fixed-width integer types
-from tpy import Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64
+from tpy import int8, int16, int32, int64, uint8, uint16, uint32, uint64
 
 # Widening: signed -> larger signed
-a: Int8 = Int8(42)
-print(Int16(a))
-print(Int32(a))
-print(Int64(a))
+a: int8 = int8(42)
+print(int16(a))
+print(int32(a))
+print(int64(a))
 
 # Widening: unsigned -> larger unsigned
-b: UInt8 = UInt8(200)
-print(UInt16(b))
-print(UInt32(b))
-print(UInt64(b))
+b: uint8 = uint8(200)
+print(uint16(b))
+print(uint32(b))
+print(uint64(b))
 
 # Unsigned -> signed (widening)
-print(Int16(b))
-print(Int32(b))
-print(Int64(b))
+print(int16(b))
+print(int32(b))
+print(int64(b))
 
 # Narrowing: larger -> smaller (in range)
-c: Int32 = Int32(100)
-print(Int8(c))
-print(UInt8(c))
+c: int32 = int32(100)
+print(int8(c))
+print(uint8(c))
 
 # Signed -> unsigned (in range)
-d: Int16 = Int16(255)
-print(UInt8(d))
+d: int16 = int16(255)
+print(uint8(d))
 
 # Negative signed -> larger signed
-e: Int8 = Int8(-42)
-print(Int16(e))
-print(Int32(e))
-print(Int64(e))
+e: int8 = int8(-42)
+print(int16(e))
+print(int32(e))
+print(int64(e))

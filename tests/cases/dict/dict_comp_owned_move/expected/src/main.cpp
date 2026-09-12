@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def main(n: Int32) -> None:
+// def main(n: int32) -> None:
 void main(int32_t n) {
     // d = {i: Box(i * 10) for i in range(n)}
     ::tpy::ordered_map<int32_t, ::tpystd::tplib::box::Box<int32_t>> d = ({

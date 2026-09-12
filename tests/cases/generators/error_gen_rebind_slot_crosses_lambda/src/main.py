@@ -7,18 +7,18 @@
 # alias here, and the same body on the resumable frame is CORRECT (it prints
 # CPython's values exactly), so it retires when the peephole is deleted, not
 # with the alias-rebind clobber diagnostic -- see TODO.md's peephole entry.
-from tpy import Int32
+from tpy import int32
 from typing import Iterator
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
-def before_while(n: Int32) -> Iterator[Int32]:
+def before_while(n: int32) -> Iterator[int32]:
     p = Point(11)
     i = 0
     while i < n:

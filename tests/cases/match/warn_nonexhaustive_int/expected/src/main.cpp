@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def f(n: Int32) -> Int32:
+// def f(n: int32) -> int32:
 int32_t f(int32_t n) {
     // match n:  # tpyc: warning(/non-exhaustive match.*no unconditional catch-all/)
     auto& __match_subject_1 = n;

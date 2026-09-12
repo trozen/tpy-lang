@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def stride(n: Int32) -> Int32:
+// def stride(n: int32) -> int32:
 int32_t stride(int32_t n) {
     // return n * 2
     return (::tpy::mul_check<int32_t>(n, 2));
 }
 
-// def fixed_steps(end: Int32) -> Int32:
+// def fixed_steps(end: int32) -> int32:
 int32_t fixed_steps(int32_t end) {
     // aux = 7
     int32_t aux = 7;

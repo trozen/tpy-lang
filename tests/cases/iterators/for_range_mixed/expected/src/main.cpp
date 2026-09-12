@@ -3,18 +3,18 @@
 
 namespace tpyapp::main {
 
-// # Mixed Int32/BigInt args should widen to BigInt (not truncate to Int32)
-// start: Int32 = 0
+// # Mixed int32/BigInt args should widen to BigInt (not truncate to int32)
+// start: int32 = 0
 int32_t start{};
-// big_end = 1 << 40  # tpyc: warning(/outside default Int32 range/)
+// big_end = 1 << 40  # tpyc: warning(/outside default int32 range/)
 ::tpy::BigInt big_end;
-// # 1. Int32 start, BigInt stop
-// count: Int32 = 0
+// # 1. int32 start, BigInt stop
+// count: int32 = 0
 int32_t count{};
-// # 2. BigInt start, Int32 stop -- stop widened to BigInt
-// end: Int32 = 5
+// # 2. BigInt start, int32 stop -- stop widened to BigInt
+// end: int32 = 5
 int32_t end{};
-// big_start = 1 << 40  # tpyc: warning(/outside default Int32 range/)
+// big_start = 1 << 40  # tpyc: warning(/outside default int32 range/)
 ::tpy::BigInt big_start;
 
 void __tpy_init() {
@@ -22,13 +22,13 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Mixed Int32/BigInt args should widen to BigInt (not truncate to Int32)
-    // start: Int32 = 0
+    // # Mixed int32/BigInt args should widen to BigInt (not truncate to int32)
+    // start: int32 = 0
     start = 0;
-    // big_end = 1 << 40  # tpyc: warning(/outside default Int32 range/)
+    // big_end = 1 << 40  # tpyc: warning(/outside default int32 range/)
     big_end = ((::tpy::BigInt(1)) << (::tpy::BigInt(40)));
-    // # 1. Int32 start, BigInt stop
-    // count: Int32 = 0
+    // # 1. int32 start, BigInt stop
+    // count: int32 = 0
     count = 0;
     // for i in range(start, big_end):
     ::tpy::BigInt __start_0 = ::tpy::BigInt(start);
@@ -44,10 +44,10 @@ void __tpy_init() {
     }
     // print(count)
     std::cout << count << "\n";
-    // # 2. BigInt start, Int32 stop -- stop widened to BigInt
-    // end: Int32 = 5
+    // # 2. BigInt start, int32 stop -- stop widened to BigInt
+    // end: int32 = 5
     end = 5;
-    // big_start = 1 << 40  # tpyc: warning(/outside default Int32 range/)
+    // big_start = 1 << 40  # tpyc: warning(/outside default int32 range/)
     big_start = ((::tpy::BigInt(1)) << (::tpy::BigInt(40)));
     // for i in range(big_start, big_start + end):
     ::tpy::BigInt __start_1 = big_start;

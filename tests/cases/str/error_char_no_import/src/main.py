@@ -1,5 +1,5 @@
-# Char used without import should give a clear error.
+# char used without import should give a clear error.
 def main() -> None:
-    c = Char("A")  # tpyc: error(/requires: from tpy import Char/)
+    c = char("A")  # tpyc: error(/requires: from tpy import char/)
 
 main()

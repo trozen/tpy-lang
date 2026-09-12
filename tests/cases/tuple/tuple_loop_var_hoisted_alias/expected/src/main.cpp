@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // items: list[tuple[Int32, Box]] = [(1, Box(10)), (2, Box(20))]
+    // items: list[tuple[int32, Box]] = [(1, Box(10)), (2, Box(20))]
     std::vector<std::tuple<int32_t, Box>> items = {::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, Box(10)}), ::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{2, Box(20)})};
     // for t in items:
     std::tuple<int32_t, Box*> t;

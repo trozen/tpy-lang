@@ -7,17 +7,17 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // # Dict with union values
-    // d: dict[str, Int32 | str] = {"a": 1, "b": "hello"}
+    // d: dict[str, int32 | str] = {"a": 1, "b": "hello"}
     ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>> d = ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>({{"a", 1}, {"b", "hello"}});
     // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
     // # List with union elements
-    // lst: list[Int32 | str] = [1, "two", 3]
+    // lst: list[int32 | str] = [1, "two", 3]
     std::vector<::tpy::Union<int32_t, std::string>> lst = {1, "two", 3};
     // print(lst)
     std::cout << ::tpy::ListPrinter(lst) << "\n";
     // # Dict with optional values
-    // d2: dict[str, Int32 | None] = {"x": 42, "y": None}
+    // d2: dict[str, int32 | None] = {"x": 42, "y": None}
     ::tpy::ordered_map<std::string, std::optional<int32_t>> d2 = ::tpy::ordered_map<std::string, std::optional<int32_t>>({{"x", 42}, {"y", std::nullopt}});
     // print(d2)
     std::cout << ::tpy::DictPrinter(d2) << "\n";
@@ -27,7 +27,7 @@ void main() {
     // print(l2)
     std::cout << ::tpy::ListPrinter(l2) << "\n";
     // # Tuple with union members
-    // t: tuple[Int32 | str, Int32 | str] = (1, "hi")
+    // t: tuple[int32 | str, int32 | str] = (1, "hi")
     std::tuple<::tpy::Union<int32_t, std::string>, ::tpy::Union<int32_t, std::string>> t = std::tuple<::tpy::Union<int32_t, std::string>, ::tpy::Union<int32_t, std::string>>{1, "hi"};
     // print(t)
     std::cout << ::tpy::TuplePrinter(t) << "\n";
@@ -47,12 +47,12 @@ void main() {
     // print(d4)
     std::cout << ::tpy::DictPrinter(d4) << "\n";
     // # List of tuples with union
-    // l4: list[tuple[str, Int32 | str]] = [("a", 1), ("b", "two")]
+    // l4: list[tuple[str, int32 | str]] = [("a", 1), ("b", "two")]
     std::vector<std::tuple<std::string, ::tpy::Union<int32_t, std::string>>> l4 = {std::tuple<std::string, ::tpy::Union<int32_t, std::string>>{"a", 1}, std::tuple<std::string, ::tpy::Union<int32_t, std::string>>{"b", "two"}};
     // print(l4)
     std::cout << ::tpy::ListPrinter(l4) << "\n";
     // # Three-way union with None (exercises std::monostate path)
-    // l5: list[Int32 | str | None] = [1, "two", None]
+    // l5: list[int32 | str | None] = [1, "two", None]
     std::vector<::tpy::Union<std::monostate, int32_t, std::string>> l5 = {1, "two", std::monostate{}};
     // print(l5)
     std::cout << ::tpy::ListPrinter(l5) << "\n";

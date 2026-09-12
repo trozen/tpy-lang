@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def feed(data: bytes) -> Int64:
+// def feed(data: bytes) -> int64:
 int64_t feed(::tpy::BytesView data) {
     // r, w = os.pipe()
     auto __tup_1 = ::tpystd::os::pipe();
@@ -63,7 +63,7 @@ void main() {
     // try:
     {
         try {
-            // FileIO(Int64(-1))
+            // FileIO(int64(-1))
             ::tpystd::io::FileIO(-1);
             // print("no-raise")
             std::cout << "no-raise" << "\n";

@@ -49,9 +49,9 @@ class TestDesugarShape:
         # An element that can raise/suspend (here a constructor call) takes the
         # temp form: evaluate all elements first, then bind.
         _, modules = _compile(
-            "from tpy import Int32\n"
+            "from tpy import int32\n"
             "def f() -> None:\n"
-            "    a, b = (Int32(1), Int32(2))\n"
+            "    a, b = (int32(1), int32(2))\n"
             "    print(a)\n"
             "    print(b)\n"
         )
@@ -95,8 +95,8 @@ class TestDesugarShape:
         # single-assigns alias reference elements (CPython parity) and avoid
         # the global-unpack T*->T copy.
         _, modules = _compile(
-            "from tpy import Int32\n"
-            "a, b = (Int32(1), Int32(2))\n"
+            "from tpy import int32\n"
+            "a, b = (int32(1), int32(2))\n"
             "print(a)\n"
         )
         top = _entry(modules).ast.top_level_stmts
@@ -107,8 +107,8 @@ class TestDesugarShape:
     def test_name_source_unpack_not_desugared(self):
         # Only a tuple-LITERAL RHS desugars; a name source keeps the node.
         _, modules = _compile(
-            "from tpy import Int32\n"
-            "def f(t: tuple[Int32, Int32]) -> None:\n"
+            "from tpy import int32\n"
+            "def f(t: tuple[int32, int32]) -> None:\n"
             "    a, b = t\n"
             "    print(a)\n"
             "    print(b)\n"
@@ -126,10 +126,10 @@ class TestResidualCopyWarning:
         # Reference elements now alias via the desugar; the residual-copy
         # warning must NOT fire (the old residual is fixed at module scope).
         _, modules = _compile(
-            "from tpy import Int32\n"
+            "from tpy import int32\n"
             "class C:\n"
-            "    n: Int32\n"
-            "    def __init__(self, n: Int32) -> None:\n"
+            "    n: int32\n"
+            "    def __init__(self, n: int32) -> None:\n"
             "        self.n = n\n"
             "g0 = C(1)\n"
             "g1 = C(2)\n"
@@ -143,8 +143,8 @@ class TestResidualCopyWarning:
     def test_module_level_value_unpack_does_not_warn(self):
         # Value-type elements copy correctly either way -- no warning.
         _, modules = _compile(
-            "from tpy import Int32\n"
-            "a, b = (Int32(1), Int32(2))\n"
+            "from tpy import int32\n"
+            "a, b = (int32(1), int32(2))\n"
             "print(a)\n"
         )
         assert not any("copies reference-type element" in w

@@ -18,14 +18,14 @@ void main();
 
 // class Buf:
 struct Buf {
-    // n: Int32
+    // n: int32
     int32_t n;
-    // a: Array[Int32, 4]
+    // a: Array[int32, 4]
     std::array<int32_t, 4> a;
     // ba: bytearray
     ::tpy::ByteArray ba;
 
-    // def __init__(self, k: Int32) -> None:
+    // def __init__(self, k: int32) -> None:
     explicit Buf(int32_t k);
 
     // def load(self, src: bytes) -> None:
@@ -37,7 +37,7 @@ struct Buf {
     // def repeat(self) -> None:
     void repeat();
 
-    // def alias(self, x: Array[Int32, 4]) -> None:
+    // def alias(self, x: Array[int32, 4]) -> None:
     void alias(std::array<int32_t, 4>& x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Buf";
 };
@@ -48,7 +48,7 @@ inline std::ostream& operator<<(std::ostream& os, const Buf& obj) {
 }
 
 
-// def __init__(self, k: Int32) -> None:
+// def __init__(self, k: int32) -> None:
 inline Buf::Buf(int32_t k) : n(k) {
     // # The raise keeps the field writes in the ctor BODY rather than the
     // # member-init list, whose nominal-call row still rejects them.
@@ -57,7 +57,7 @@ inline Buf::Buf(int32_t k) : n(k) {
         // raise ValueError("neg")
         throw ::tpy::ValueError("neg");
     }
-    // self.a = Array[Int32, 4]()
+    // self.a = Array[int32, 4]()
     this->a = std::array<int32_t, 4>();
     // self.ba = bytearray()
     this->ba = ::tpy::ByteArray();
@@ -87,12 +87,12 @@ inline void Buf::repeat() {
     });
 }
 
-// def alias(self, x: Array[Int32, 4]) -> None:
+// def alias(self, x: Array[int32, 4]) -> None:
 inline void Buf::alias(std::array<int32_t, 4>& x) {
     // # A borrow-returning call COPIES into the field; sema warns it, so the
     // # copy is declared rather than silent. The caller does not observe the
     // # copy-vs-alias split, which CPython would resolve the other way.
-    // self.a = borrow_arr(x)  # tpyc: warning(/copies Array\[Int32, 4\] into field/)
+    // self.a = borrow_arr(x)  # tpyc: warning(/copies Array\[int32, 4\] into field/)
     this->a = borrow_arr(x);
 }
 void __tpy_init();

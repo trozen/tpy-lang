@@ -17,7 +17,7 @@ void main();
 
 // class Tally:
 struct Tally {
-    // total: Int32
+    // total: int32
     int32_t total;
 
     // def __init__(self) -> None:

@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def main() -> Int32:
+// def main() -> int32:
 int32_t main() {
     // m = Message("Hello")
     Message m = Message("Hello");
     // show(m)
     show(m);
-    // return Int32(0)
+    // return int32(0)
     return 0;
 }
 

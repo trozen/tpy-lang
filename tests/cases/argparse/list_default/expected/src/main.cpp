@@ -26,7 +26,7 @@ void present_case() {
     std::cout << ::tpy::ListPrinter(args.count) << "\n";
 }
 
-// def main() -> Int32:
+// def main() -> int32:
 int32_t main() {
     // absent_case()
     absent_case();

@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 from typing import Protocol
 
 # Define custom protocols
@@ -13,16 +13,16 @@ class Describable(Protocol):
 
 
 class Measurable(Protocol):
-    def size(self) -> Int32:
+    def size(self) -> int32:
         ...
 
 
 # Class that implements multiple protocols
 class Box(Printable, Describable, Measurable):
-    width: Int32
-    height: Int32
+    width: int32
+    height: int32
 
-    def __init__(self, width: Int32, height: Int32) -> None:
+    def __init__(self, width: int32, height: int32) -> None:
         self.width = width
         self.height = height
 
@@ -32,7 +32,7 @@ class Box(Printable, Describable, Measurable):
     def describe(self) -> str:
         return "A rectangular box"
 
-    def size(self) -> Int32:
+    def size(self) -> int32:
         return self.width * self.height
 
 

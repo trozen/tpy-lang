@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def sum_all(*items: Box) -> Int32:
+// def sum_all(*items: Box) -> int32:
 int32_t sum_all(::tpy::varargs<const Box> items) {
-    // n: Int32 = 0
+    // n: int32 = 0
     int32_t n = 0;
     // for it in items:
     auto& __obj_0 = items;
@@ -21,14 +21,14 @@ int32_t sum_all(::tpy::varargs<const Box> items) {
     return n;
 }
 
-// def via_field(p: Pair) -> Int32:
+// def via_field(p: Pair) -> int32:
 int32_t via_field(const Pair& p) {
     // return sum_all(p.a, p.b)  # tpyc: ok
     std::array<const Box*, 2> __tmp_1{&p.a, &p.b};
     return sum_all(::tpy::varargs<const Box>(__tmp_1));
 }
 
-// def via_subscript(items: list[Box]) -> Int32:
+// def via_subscript(items: list[Box]) -> int32:
 int32_t via_subscript(const std::vector<Box>& items) {
     // return sum_all(items[0], items[1])  # tpyc: ok
     std::array<const Box*, 2> __tmp_2{&::tpy::__getitem__(items, 0), &::tpy::__getitem__(items, 1)};

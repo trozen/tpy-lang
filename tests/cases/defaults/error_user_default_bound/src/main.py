@@ -1,11 +1,11 @@
 # Error: calling a T: Default bounded function with a non-Default type
-from tpy import Int32, Default, make_default
+from tpy import int32, Default, make_default
 
 class Pair:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32) -> None:
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 

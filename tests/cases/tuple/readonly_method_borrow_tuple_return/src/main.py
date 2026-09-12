@@ -6,19 +6,19 @@
 #
 # `Cell` is @nocopy so a regression to whole-tuple storage form is a compile
 # error rather than a silent copy: the borrowed element cannot be copied in.
-from tpy import Int32, Own, nocopy, readonly
+from tpy import int32, Own, nocopy, readonly
 
 
 @nocopy
 class Cell:
-    val: Int32
+    val: int32
 
-    def __init__(self, val: Int32) -> None:
+    def __init__(self, val: int32) -> None:
         self.val = val
 
 
 class Maker:
-    n: Int32
+    n: int32
 
     def __init__(self) -> None:
         self.n = 0

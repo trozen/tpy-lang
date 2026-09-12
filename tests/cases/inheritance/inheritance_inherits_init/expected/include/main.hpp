@@ -17,14 +17,14 @@ void main();
 
 // class Box:
 struct Box {
-    // value: Int32
+    // value: int32
     int32_t value;
 
-    // def __init__(self, value: Int32) -> None:
+    // def __init__(self, value: int32) -> None:
     Box() = default;
     explicit Box(int32_t value);
 
-    // def get(self) -> Int32:
+    // def get(self) -> int32:
     int32_t get() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
@@ -59,10 +59,10 @@ inline std::ostream& operator<<(std::ostream& os, const TaggedBox& obj) {
 }
 
 
-// def __init__(self, value: Int32) -> None:
+// def __init__(self, value: int32) -> None:
 inline Box::Box(int32_t value) : value(value) {}
 
-// def get(self) -> Int32:
+// def get(self) -> int32:
 inline int32_t Box::get() const {
     // return self.value
     return this->value;

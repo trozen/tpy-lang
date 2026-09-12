@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // nums: list[Int32] = [3, 1, 2]
+    // nums: list[int32] = [3, 1, 2]
     std::vector<int32_t> nums = {3, 1, 2};
     // print(total(nums))
     std::cout << ::tpyapp::agg::total(::tpy::own_iter(std::move(nums))) << "\n";
@@ -18,7 +18,7 @@ void __tpy_init() {
     initialized = true;
 
     // # Cross-module call of a template (protocol-param) overload: guards that
-    // # agg.total's Iterable[Own[Int32]] overload instantiates here (header, not .cpp).
+    // # agg.total's Iterable[Own[int32]] overload instantiates here (header, not .cpp).
     // from agg import total
     ::tpyapp::agg::__tpy_init();
     // main()

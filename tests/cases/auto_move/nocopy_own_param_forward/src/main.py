@@ -1,17 +1,17 @@
 # Own[T] param forwarding with @nocopy
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 
 
 @nocopy
 class Handle:
-    fd: Int32
+    fd: int32
 
 
-def close(h: Own[Handle]) -> Int32:
+def close(h: Own[Handle]) -> int32:
     return h.fd
 
 
-def forward(h: Own[Handle]) -> Int32:
+def forward(h: Own[Handle]) -> int32:
     return close(h)  # tpyc: ok
 
 

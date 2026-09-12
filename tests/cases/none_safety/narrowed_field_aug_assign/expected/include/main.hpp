@@ -17,10 +17,10 @@ void main();
 struct Counter {
     // big: int | None
     std::optional<::tpy::BigInt> big;
-    // small: Int32 | None
+    // small: int32 | None
     std::optional<int32_t> small;
 
-    // def __init__(self, big: int | None, small: Int32 | None) -> None:
+    // def __init__(self, big: int | None, small: int32 | None) -> None:
     Counter() = default;
     explicit Counter(std::optional<::tpy::BigInt> big, std::optional<int32_t> small);
 
@@ -38,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 }
 
 
-// def __init__(self, big: int | None, small: Int32 | None) -> None:
+// def __init__(self, big: int | None, small: int32 | None) -> None:
 inline Counter::Counter(std::optional<::tpy::BigInt> big, std::optional<int32_t> small) : big(big), small(small) {}
 
 // def show(self) -> None:

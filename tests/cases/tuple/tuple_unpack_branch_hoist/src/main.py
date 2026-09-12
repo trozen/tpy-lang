@@ -1,10 +1,10 @@
 # Tuple unpack where both if/else branches assign the targets, then read
 # after the if -- the targets must hoist to the enclosing scope (mirroring
 # scalar definite-assignment) so the post-if read sees them.
-from tpy import Int32
+from tpy import int32
 
 
-def pair(n: Int32) -> tuple[Int32, Int32]:
+def pair(n: int32) -> tuple[int32, int32]:
     return (n, n + 1)
 
 

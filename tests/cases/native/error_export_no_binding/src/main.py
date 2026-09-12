@@ -1,7 +1,7 @@
 # Test that @export without binding="C" produces an error
 from tpy.extern import export
-from tpy import Int32
+from tpy import int32
 
 @export  # tpyc: error(/requires binding/)
-def bad_func(x: Int32) -> Int32:
+def bad_func(x: int32) -> int32:
     return x

@@ -1,19 +1,19 @@
 # Test tuple[Optional[nonvalue], ...] as a record field
 from typing import Optional
-from tpy import Int32
+from tpy import int32
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32) -> None:
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
     def __repr__(self) -> str:
         return f"Point({self.x}, {self.y})"
 
 class Holder:
-    pair: tuple[Optional[Point], Int32]
-    def __init__(self, pair: tuple[Optional[Point], Int32]) -> None:
+    pair: tuple[Optional[Point], int32]
+    def __init__(self, pair: tuple[Optional[Point], int32]) -> None:
         self.pair = pair  # tpyc: warning(/copies/)
 
 def main() -> None:

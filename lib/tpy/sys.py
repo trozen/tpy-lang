@@ -1,7 +1,7 @@
 # sys module: argv requires runtime init (not native_module)
 # tpy: cpp_namespace("tpystd::sys")
 from typing import Final
-from tpy import Int32
+from tpy import int32
 from tpy.extern import native
 
 
@@ -26,7 +26,7 @@ maxunicode: Final[int] = 0x10FFFF
 @native("tpy::StdStream")
 class _StdStream:
     @native("write")
-    def write(self, text: str) -> Int32: ...
+    def write(self, text: str) -> int32: ...
 
     @native("flush")
     def flush(self) -> None: ...
@@ -49,4 +49,4 @@ stderr: _StdStream = _get_sys_stderr()
 # and won't flag dead code after a ``sys.exit()``. The C++ shim is
 # ``[[noreturn]]``, so the runtime behavior is correct.
 @native("tpy::sys_exit")
-def exit(code: Int32) -> None: ...
+def exit(code: int32) -> None: ...

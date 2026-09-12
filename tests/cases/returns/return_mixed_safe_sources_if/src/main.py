@@ -4,11 +4,11 @@
 # (trusted). Either source alone is safe to return, and the merge
 # must preserve that.
 
-from tpy import Int32, StrView
+from tpy import int32, StrView
 
 
 class Point:
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 

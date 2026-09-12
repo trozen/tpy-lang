@@ -4,15 +4,15 @@
 # wrapper, so a silent copy would be a compile error (forces the move path).
 import asyncio
 from typing import Callable
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 from tpy.coro import Cancellable
 
 
 @nocopy
 class Conn:
-    id: Int32
+    id: int32
 
-    def __init__(self, id: Int32) -> None:
+    def __init__(self, id: int32) -> None:
         self.id = id
 
 
@@ -29,9 +29,9 @@ class Dispatcher:
                  cb: Callable[[Own[Conn]], Own[Cancellable[None]]]) -> None:
         self._cb = cb
 
-    async def run(self, count: Int32) -> None:
+    async def run(self, count: int32) -> None:
         tasks: list[asyncio.Task[None]] = []
-        i: Int32 = 0
+        i: int32 = 0
         while i < count:
             tasks.append(asyncio.create_task(self._cb(Conn(i))))
             i += 1

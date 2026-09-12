@@ -1,19 +1,19 @@
 # When multiple bases define __init__, the child must define its own __init__
 # and invoke each base explicitly via BaseN.__init__(self, ...).
-from tpy import Int32
+from tpy import int32
 
 
 class HasInitA:
-    a: Int32
+    a: int32
 
-    def __init__(self, a: Int32) -> None:
+    def __init__(self, a: int32) -> None:
         self.a = a
 
 
 class HasInitB:
-    b: Int32
+    b: int32
 
-    def __init__(self, b: Int32) -> None:
+    def __init__(self, b: int32) -> None:
         self.b = b
 
 

@@ -1,7 +1,7 @@
 # Test error when calling a non-callable expression.
-from tpy import Int32
+from tpy import int32
 
-def get_value() -> Int32:
+def get_value() -> int32:
     return 42
 
 def main() -> None:

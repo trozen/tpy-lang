@@ -8,7 +8,7 @@ namespace tpyapp::main {
 void main() {
     // r = Runner()
     Runner r = Runner();
-    // print(r.pick[Int32, IntBox](IntBox(42)))   # tpyc: ok
+    // print(r.pick[int32, IntBox](IntBox(42)))   # tpyc: ok
     IntBox __tmp_1 = IntBox(42);
     std::cout << r.pick<int32_t, IntBox>(__tmp_1) << "\n";
 }

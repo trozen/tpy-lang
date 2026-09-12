@@ -25,14 +25,14 @@ void main();
 
 // class IntBox:
 struct IntBox {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     IntBox() = default;
     explicit IntBox(int32_t v);
 
-    // def get(self) -> Int32:
+    // def get(self) -> int32:
     int32_t get() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.IntBox";
 };
@@ -52,11 +52,11 @@ struct BoxContainer {
     BoxContainer();
 
     // @auto_readonly
-    // def __getitem__(self, i: Int32) -> IntBox:
+    // def __getitem__(self, i: int32) -> IntBox:
     IntBox& __getitem__(int32_t i);
 
     // @auto_readonly
-    // def __getitem__(self, i: Int32) -> IntBox:
+    // def __getitem__(self, i: int32) -> IntBox:
     const IntBox& __getitem__(int32_t i) const;
 
     const IntBox& operator[](int32_t i) const {
@@ -75,10 +75,10 @@ inline std::ostream& operator<<(std::ostream& os, const BoxContainer& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline IntBox::IntBox(int32_t v) : v(v) {}
 
-// def get(self) -> Int32:
+// def get(self) -> int32:
 inline int32_t IntBox::get() const {
     // return self.v
     return this->v;
@@ -88,14 +88,14 @@ inline int32_t IntBox::get() const {
 inline BoxContainer::BoxContainer() : items(std::vector<IntBox>{IntBox(10), IntBox(20), IntBox(30)}) {}
 
 // @auto_readonly
-// def __getitem__(self, i: Int32) -> IntBox:
+// def __getitem__(self, i: int32) -> IntBox:
 inline IntBox& BoxContainer::__getitem__(int32_t i) {
     // return self.items[i]
     return ::tpy::__getitem__(this->items, i);
 }
 
 // @auto_readonly
-// def __getitem__(self, i: Int32) -> IntBox:
+// def __getitem__(self, i: int32) -> IntBox:
 inline const IntBox& BoxContainer::__getitem__(int32_t i) const {
     // return self.items[i]
     return ::tpy::__getitem__(this->items, i);

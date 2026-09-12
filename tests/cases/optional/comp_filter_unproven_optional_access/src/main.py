@@ -3,13 +3,13 @@
 # The filter clause should narrow and does not, which is a filed defect
 # (BUGS.md#comp-filter-none-test-not-narrowing); this case pins the warning.
 from typing import Optional
-from tpy import Int32
+from tpy import int32
 
 
 class Foo:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 

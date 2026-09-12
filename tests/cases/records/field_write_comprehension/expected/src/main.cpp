@@ -8,7 +8,7 @@ namespace tpyapp::main {
 Pic* top{};
 
 // # Free function: the dict and set comprehensions, and the Optional field.
-// def fill_free(p: Pic, n: Int32) -> None:
+// def fill_free(p: Pic, n: int32) -> None:
 void fill_free(Pic& p, int32_t n) {
     // p.d = {str(j): j for j in range(n)}  # tpyc: ok
     p.d = ({
@@ -65,9 +65,9 @@ void reseat_opt(Pic& p) {
 }
 
 // # Element setitems: a local list, a dict, and a field container.
-// def setitems(p: Pic, n: Int32) -> None:
+// def setitems(p: Pic, n: int32) -> None:
 void setitems(Pic& p, int32_t n) {
-    // rows: list[list[Int32]] = [[], []]
+    // rows: list[list[int32]] = [[], []]
     std::vector<std::vector<int32_t>> rows = {{}, {}};
     // rows[0] = [j for j in range(n)]  # tpyc: ok
     ::tpy::__setitem__(rows, 0, ({
@@ -102,7 +102,7 @@ void setitems(Pic& p, int32_t n) {
     }
     // print("setitem_list_safe", rows)
     std::cout << "setitem_list_safe" << " " << ::tpy::ListPrinter(rows) << "\n";
-    // d: dict[str, list[Int32]] = {}
+    // d: dict[str, list[int32]] = {}
     ::tpy::ordered_map<std::string, std::vector<int32_t>> d = ::tpy::ordered_map<std::string, std::vector<int32_t>>();
     // d["a"] = [j for j in range(n)]  # tpyc: ok
     ::tpy::__setitem__(d, "a", ({
@@ -137,7 +137,7 @@ void setitems(Pic& p, int32_t n) {
 // # Closure body.
 // def closure(p: Pic) -> None:
 void closure(Pic& p) {
-    // def inner(n: Int32) -> Int32:
+    // def inner(n: int32) -> int32:
     auto inner = [&p](int32_t n) -> int32_t {
         // p.flat = [j for j in range(n)]  # tpyc: ok
         p.flat = ({

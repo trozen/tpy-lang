@@ -1,12 +1,12 @@
-from tpy import Int32
+from tpy import int32
 from typing import Protocol
 
 # Base class
 class Vehicle:
     brand: str
-    year: Int32
+    year: int32
 
-    def __init__(self, brand: str, year: Int32) -> None:
+    def __init__(self, brand: str, year: int32) -> None:
         self.brand = brand
         self.year = year
 
@@ -21,7 +21,7 @@ class Printable(Protocol):
 
 
 class Measurable(Protocol):
-    def weight(self) -> Int32:
+    def weight(self) -> int32:
         ...
 
 
@@ -33,9 +33,9 @@ class Describable(Protocol):
 # Inherit from class AND implement multiple protocols
 class Car(Vehicle, Printable, Measurable, Describable):
     model: str
-    car_weight: Int32
+    car_weight: int32
 
-    def __init__(self, brand: str, year: Int32, model: str, car_weight: Int32) -> None:
+    def __init__(self, brand: str, year: int32, model: str, car_weight: int32) -> None:
         self.brand = brand
         self.year = year
         self.model = model
@@ -44,7 +44,7 @@ class Car(Vehicle, Printable, Measurable, Describable):
     def __str__(self) -> str:
         return self.model
 
-    def weight(self) -> Int32:
+    def weight(self) -> int32:
         return self.car_weight
 
     def describe(self) -> str:

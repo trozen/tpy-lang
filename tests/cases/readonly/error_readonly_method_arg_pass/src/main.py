@@ -1,14 +1,14 @@
 # @readonly: passing a readonly param as mutable arg to a method is rejected.
-from tpy import Int32, readonly
+from tpy import int32, readonly
 
 class Box:
-    v: Int32
-    def __init__(self, v: Int32) -> None:
+    v: int32
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 class Sink:
     def take(self, b: Box) -> None:
-        b.v = Int32(123)
+        b.v = int32(123)
 
 @readonly
 def observe(p: Box) -> None:

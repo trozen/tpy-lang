@@ -42,7 +42,7 @@
   "reason": "call_reject_reason(\"expr.call\")",
   "bin": "UNSURE",
   "confidence": "medium",
-  "evidence": "Guard is `_template_init_call_fi(e) is None` (tpyc/thir/lower/predicates.py:10444-10464) on a non-native `__init__` fi. Sema removes its kwargs leg outright (`Keyword arguments not supported for builtin 'Int32'` / `'slice'`), and user-record ctors take the earlier call_type arm. Missing: a builtin type-ctor call that resolves to an `__init__` fi while carrying explicit type_args or another marker field (enum_from_value / cast_target / dunder_call / subscript_callee).",
+  "evidence": "Guard is `_template_init_call_fi(e) is None` (tpyc/thir/lower/predicates.py:10444-10464) on a non-native `__init__` fi. Sema removes its kwargs leg outright (`Keyword arguments not supported for builtin 'int32'` / `'slice'`), and user-record ctors take the earlier call_type arm. Missing: a builtin type-ctor call that resolves to an `__init__` fi while carrying explicit type_args or another marker field (enum_from_value / cast_target / dunder_call / subscript_callee).",
   "probe": null,
   "plain_raise": false,
   "known_shape": null
@@ -54,7 +54,7 @@
   "reason": "call_reject_reason(\"expr.call\")",
   "bin": "UNSURE",
   "confidence": "medium",
-  "evidence": "Guard rejects a template `__init__` whose result is none of scalar / slice-object / owned str / bytearray / Char / str-bytes view. Every builtin @cpp_template ctor probed (`dict()`, `list()`, `set()`, `bytes()`, `bytearray()`, `Span`, `Ptr`, `Char`, `Int32`, `String`, `slice`) either routes or is taken by the earlier instantiation-template arm at expressions.py:7994. Missing: a type carrying a cpp_template `__init__` whose result family is outside that list.",
+  "evidence": "Guard rejects a template `__init__` whose result is none of scalar / slice-object / owned str / bytearray / char / str-bytes view. Every builtin @cpp_template ctor probed (`dict()`, `list()`, `set()`, `bytes()`, `bytearray()`, `Span`, `Ptr`, `char`, `int32`, `String`, `slice`) either routes or is taken by the earlier instantiation-template arm at expressions.py:7994. Missing: a type carrying a cpp_template `__init__` whose result family is outside that list.",
   "probe": null,
   "plain_raise": false,
   "known_shape": null
@@ -126,7 +126,7 @@
   "reason": "\"expr.list_repeat\"",
   "bin": "UNSURE",
   "confidence": "medium",
-  "evidence": "Guard rejects a `[x] * n` whose resolved result is neither list nor Array nor the lazy ListRepeatType. Span targets are refused by sema ('Cannot pass list repeat directly to Span[Int32]'), set/dict/tuple sinks reject at earlier call/decl gates (expressions.py:7994, 12307; statements.py:4081). Missing: a repeat whose resolved container stays pending or off-family at this point.",
+  "evidence": "Guard rejects a `[x] * n` whose resolved result is neither list nor Array nor the lazy ListRepeatType. Span targets are refused by sema ('Cannot pass list repeat directly to Span[int32]'), set/dict/tuple sinks reject at earlier call/decl gates (expressions.py:7994, 12307; statements.py:4081). Missing: a repeat whose resolved container stays pending or off-family at this point.",
   "probe": null,
   "plain_raise": false,
   "known_shape": null
@@ -882,7 +882,7 @@
   "reason": "\"expr.container_literal\"",
   "bin": "UNSURE",
   "confidence": "medium",
-  "evidence": "The dict sibling of line 11098: a dict literal at a union element slot with != 1 dict member. Single-dict-member unions ROUTE and the two-dict-member union is refused by sema ('List literal element 1 has type dict[str, Int32], incompatible with annotated element type dict[StrView, Int32] | dict[StrView, StrView]'). Missing: a union element slot with two dict members that sema accepts.",
+  "evidence": "The dict sibling of line 11098: a dict literal at a union element slot with != 1 dict member. Single-dict-member unions ROUTE and the two-dict-member union is refused by sema ('List literal element 1 has type dict[str, int32], incompatible with annotated element type dict[StrView, int32] | dict[StrView, StrView]'). Missing: a union element slot with two dict members that sema accepts.",
   "probe": null,
   "plain_raise": false,
   "known_shape": null

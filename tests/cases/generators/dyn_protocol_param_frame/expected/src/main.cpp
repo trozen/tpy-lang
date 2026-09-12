@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // GLOBAL_SRC = Impl(80)
 Impl* GLOBAL_SRC{};
 
-// def free_gen(s: Src) -> Iterator[Int32]:  # tpyc: ok
+// def free_gen(s: Src) -> Iterator[int32]:  # tpyc: ok
 std::expected<int32_t, ::tpy::StopIteration> __gen_free_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -32,12 +32,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_free_gen::__next__() {
 }
 
 
-// def free_gen(s: Src) -> Iterator[Int32]:  # tpyc: ok
+// def free_gen(s: Src) -> Iterator[int32]:  # tpyc: ok
 __gen_free_gen free_gen(Src& s) {
     return __gen_free_gen(s);
 }
 
-// def ro_gen(s: readonly[RoSrc]) -> Iterator[Int32]:  # tpyc: ok
+// def ro_gen(s: readonly[RoSrc]) -> Iterator[int32]:  # tpyc: ok
 std::expected<int32_t, ::tpy::StopIteration> __gen_ro_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -60,12 +60,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_ro_gen::__next__() {
 }
 
 
-// def ro_gen(s: readonly[RoSrc]) -> Iterator[Int32]:  # tpyc: ok
+// def ro_gen(s: readonly[RoSrc]) -> Iterator[int32]:  # tpyc: ok
 __gen_ro_gen ro_gen(const RoSrc& s) {
     return __gen_ro_gen(s);
 }
 
-// def generic_gen(s: Src2[Int32]) -> Iterator[Int32]:  # tpyc: ok
+// def generic_gen(s: Src2[int32]) -> Iterator[int32]:  # tpyc: ok
 std::expected<int32_t, ::tpy::StopIteration> __gen_generic_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -90,12 +90,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_generic_gen::__next__() {
 }
 
 
-// def generic_gen(s: Src2[Int32]) -> Iterator[Int32]:  # tpyc: ok
+// def generic_gen(s: Src2[int32]) -> Iterator[int32]:  # tpyc: ok
 __gen_generic_gen generic_gen(Src2<int32_t>& s) {
     return __gen_generic_gen(s);
 }
 
-// def forward_gen(s: Src) -> Iterator[Int32]:  # tpyc: ok
+// def forward_gen(s: Src) -> Iterator[int32]:  # tpyc: ok
 std::expected<int32_t, ::tpy::StopIteration> __gen_forward_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -134,12 +134,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_forward_gen::__next__() {
 }
 
 
-// def forward_gen(s: Src) -> Iterator[Int32]:  # tpyc: ok
+// def forward_gen(s: Src) -> Iterator[int32]:  # tpyc: ok
 __gen_forward_gen forward_gen(Src& s) {
     return __gen_forward_gen(s);
 }
 
-// def own_gen(s: Own[Src]) -> Iterator[Int32]:  # tpyc: warning(/never consumed/)
+// def own_gen(s: Own[Src]) -> Iterator[int32]:  # tpyc: warning(/never consumed/)
 std::expected<int32_t, ::tpy::StopIteration> __gen_own_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -164,7 +164,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_own_gen::__next__() {
 }
 
 
-// def own_gen(s: Own[Src]) -> Iterator[Int32]:  # tpyc: warning(/never consumed/)
+// def own_gen(s: Own[Src]) -> Iterator[int32]:  # tpyc: warning(/never consumed/)
 __gen_own_gen own_gen(std::unique_ptr<Src> s) {
     return __gen_own_gen(std::move(s));
 }
@@ -336,7 +336,7 @@ void main() {
     std::cout << "global after" << " " << GLOBAL_SRC->get() << "\n";
 }
 
-// def walk(self, s: Src) -> Iterator[Int32]:  # tpyc: ok
+// def walk(self, s: Src) -> Iterator[int32]:  # tpyc: ok
 std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_walk::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {

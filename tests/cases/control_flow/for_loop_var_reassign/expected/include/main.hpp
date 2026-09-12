@@ -81,7 +81,7 @@ struct Gate {
     Gate(Gate&&) = default;
     Gate& operator=(Gate&&) = default;
 
-    // def __enter__(self) -> Int32:
+    // def __enter__(self) -> int32:
     int32_t __enter__() const;
 
     // def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
@@ -244,7 +244,7 @@ inline ::tpy::BigInt Worker::static_() {
 // def __init__(self) -> None:
 inline Gate::Gate() : exits(::tpy::BigInt(0)) {}
 
-// def __enter__(self) -> Int32:
+// def __enter__(self) -> int32:
 inline int32_t Gate::__enter__() const {
     // return 10
     return 10;

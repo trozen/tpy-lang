@@ -184,7 +184,7 @@ def record_inherits_dynamic(concrete_type: TpyType, protocol: NominalType,
     wrapping is needed.
 
     Match is by short name; type_args are ignored. Cross-instantiation
-    mismatches (e.g. assigning `Container[Int32]` into `Container[str]`)
+    mismatches (e.g. assigning `Container[int32]` into `Container[str]`)
     are already rejected by sema before this helper runs.
 
     The ``is_dynamic`` filter is applied at the IMPLEMENTED-protocol level

@@ -1,8 +1,8 @@
 # del d[key] panics on missing key
-from tpy import Int32
+from tpy import int32
 
 def main() -> None:
-    d = {"a": Int32(1)}
+    d = {"a": int32(1)}
     del d["missing"]
 
 main()

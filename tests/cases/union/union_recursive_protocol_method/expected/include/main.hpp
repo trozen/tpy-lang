@@ -28,7 +28,7 @@ void main();
 struct Counter {
 
 
-    // def take(self, e: Expr) -> Int32:
+    // def take(self, e: Expr) -> int32:
     int32_t take(const Expr& e) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
@@ -39,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 }
 
 
-// def take(self, e: Expr) -> Int32:
+// def take(self, e: Expr) -> int32:
 inline int32_t Counter::take(const Expr& e) const {
     // return depth(e)
     return depth(e);
@@ -61,7 +61,7 @@ struct Expr {
     }
 };
 
-// def run(s: Sink, e: Expr) -> Int32:
+// def run(s: Sink, e: Expr) -> int32:
 template<Sink T_s>
 int32_t run(T_s& s, Expr& e) {
     // return s.take(e)

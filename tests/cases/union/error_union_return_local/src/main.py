@@ -1,5 +1,5 @@
 # Error: returning locally constructed union value (dangling pointer variant)
-from tpy import Int32
+from tpy import int32
 
 class Dog:
     name: str

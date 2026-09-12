@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 
 class Stack[T]:
     items: list[T]
@@ -17,7 +17,7 @@ class Stack[T]:
 
 
 def main() -> None:
-    stack: Stack[Int32] = Stack[Int32]()
+    stack: Stack[int32] = Stack[int32]()
     print(stack.is_empty())  # True
 
     stack.push(10)

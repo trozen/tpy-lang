@@ -1,8 +1,8 @@
 # round() panics when rounding causes fixed-width integer overflow
-from tpy import Int32
+from tpy import int32
 
 def main() -> None:
-    x: Int32 = Int32(2147483647)
-    print(round(x, Int32(-1)))
+    x: int32 = int32(2147483647)
+    print(round(x, int32(-1)))
 
 main()

@@ -298,7 +298,7 @@ struct MutexGuard {
     void set(::tpy::own_param_t<T> value) const {
         // _require_locked(self._locked)
         _require_locked(this->_locked);
-        // unsafe_store(self._payload, UInt32(0), value)
+        // unsafe_store(self._payload, uint32(0), value)
         this->_payload[0] = std::move(value);
     }
 
@@ -550,7 +550,7 @@ struct WriteGuard {
     void set(::tpy::own_param_t<T> value) const {
         // _require_locked(self._locked)
         _require_locked(this->_locked);
-        // unsafe_store(self._payload, UInt32(0), value)
+        // unsafe_store(self._payload, uint32(0), value)
         this->_payload[0] = std::move(value);
     }
 

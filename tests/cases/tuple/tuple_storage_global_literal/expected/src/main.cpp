@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 // # The subject: both elements are fresh, so the literal is spelled in storage
 // # form already; the declared tuple type is what puts the slot in pointer repr.
-// g: tuple[Int32, Cell] = (1, Cell(2))  # tpyc: ok
+// g: tuple[int32, Cell] = (1, Cell(2))  # tpyc: ok
 std::tuple<int32_t, Cell> g;
 
 // def main() -> None:
@@ -27,7 +27,7 @@ void __tpy_init() {
 
     // # The subject: both elements are fresh, so the literal is spelled in storage
     // # form already; the declared tuple type is what puts the slot in pointer repr.
-    // g: tuple[Int32, Cell] = (1, Cell(2))  # tpyc: ok
+    // g: tuple[int32, Cell] = (1, Cell(2))  # tpyc: ok
     g = ::tpy::tuple_to_storage<std::tuple<int32_t, Cell>>(std::tuple<int32_t, Cell>{1, Cell(2)});
     // main()
     main();

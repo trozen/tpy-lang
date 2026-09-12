@@ -18,10 +18,10 @@ void main();
 // @nocopy
 // class Acc:
 struct Acc {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Acc() = default;
     explicit Acc(int32_t v);
     // non-copyable (@nocopy)
@@ -30,7 +30,7 @@ struct Acc {
     Acc(Acc&&) = default;
     Acc& operator=(Acc&&) = default;
 
-    // def __add__(self, other: 'Acc') -> Int32:
+    // def __add__(self, other: 'Acc') -> int32:
     int32_t __add__(const Acc& other) const;
 
     // def __eq__(self, other: 'Acc') -> bool:
@@ -52,10 +52,10 @@ inline std::ostream& operator<<(std::ostream& os, const Acc& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Acc::Acc(int32_t v) : v(v) {}
 
-// def __add__(self, other: 'Acc') -> Int32:
+// def __add__(self, other: 'Acc') -> int32:
 inline int32_t Acc::__add__(const Acc& other) const {
     // return self.v + other.v
     return (::tpy::add_check<int32_t>(this->v, other.v));

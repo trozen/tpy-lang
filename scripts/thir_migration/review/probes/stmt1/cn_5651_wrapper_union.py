@@ -1,5 +1,5 @@
-from tpy import Int32
-type Tree = Int32 | list[Tree]
+from tpy import int32
+type Tree = int32 | list[Tree]
 def f(u: Tree) -> None:
     if isinstance(u, list):
         u[0] = 5

@@ -3,20 +3,20 @@
 # storage, so it is readonly too. The happy-path positions live in
 # match/match_capture_mutation_credited; the compiler stops at the first
 # error, so this case takes the one representative position.
-from tpy import Int32, readonly
+from tpy import int32, readonly
 
 
 class Cat:
-    hunger: Int32
+    hunger: int32
 
-    def __init__(self, hunger: Int32) -> None:
+    def __init__(self, hunger: int32) -> None:
         self.hunger = hunger
 
 
 class Dog:
-    bones: Int32
+    bones: int32
 
-    def __init__(self, bones: Int32) -> None:
+    def __init__(self, bones: int32) -> None:
         self.bones = bones
 
 

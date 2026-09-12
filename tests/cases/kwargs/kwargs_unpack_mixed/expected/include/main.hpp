@@ -16,7 +16,7 @@ void main();
 
 // class Options(TypedDict):
 struct Options {
-    // port: Int32
+    // port: int32
     int32_t port;
     // debug: bool
     bool debug;

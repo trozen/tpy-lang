@@ -6,12 +6,12 @@
 # is preserved -- a `q != p.n` test below would catch a regression
 # where the macro overwrote a user-defined op.
 from functools import total_ordering
-from tpy import Int32
+from tpy import int32
 
 @total_ordering
 class Score:
-    val: Int32
-    def __init__(self, v: Int32) -> None:
+    val: int32
+    def __init__(self, v: int32) -> None:
         self.val = v
     def __eq__(self, other: "Score") -> bool:
         return self.val == other.val
@@ -22,10 +22,10 @@ class Score:
         # User's __ge__ should win; the macro should NOT re-synthesize.
         return self.val >= other.val
 
-a = Score(Int32(2))
-b = Score(Int32(5))
+a = Score(int32(2))
+b = Score(int32(5))
 print(a < b)
 print(a <= b)   # synthesized
 print(a > b)    # synthesized
 print(a >= b)   # user's
-print(a == Score(Int32(2)))
+print(a == Score(int32(2)))

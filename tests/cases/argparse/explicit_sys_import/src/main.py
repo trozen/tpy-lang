@@ -6,11 +6,11 @@
 # ``sys.argv[1:]`` (in the bare ``parse_args()`` rewrite) resolve
 # to the same module.
 import sys
-from tpy import Int32
+from tpy import int32
 from argparse import ArgumentParser
 
 
-def main() -> Int32:
+def main() -> int32:
     if len(sys.argv) > 0:
         # exercises the user's own sys.argv read
         pass

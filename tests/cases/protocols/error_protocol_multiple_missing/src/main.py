@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 from typing import Protocol
 
 class Printable(Protocol):
@@ -7,17 +7,17 @@ class Printable(Protocol):
 
 
 class Measurable(Protocol):
-    def size(self) -> Int32:
+    def size(self) -> int32:
         ...
 
 
 # Missing size() method from Measurable
 class BadBox(Printable, Measurable):  # tpyc: error(/missing method.*size/)
-    width: Int32
+    width: int32
 
-    def __init__(self, width: Int32) -> None:
+    def __init__(self, width: int32) -> None:
         self.width = width
 
     def __str__(self) -> str:
         return "BadBox"
-    # Missing: def size(self) -> Int32
+    # Missing: def size(self) -> int32

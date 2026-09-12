@@ -17,10 +17,10 @@ void main();
 
 // class Box:
 struct Box {
-    // val: Int32
+    // val: int32
     int32_t val;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Box() = default;
     explicit Box(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
@@ -35,14 +35,14 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 struct Holder {
     // box: Box
     Box box;
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, b: Box, n: Int32) -> None:
+    // def __init__(self, b: Box, n: int32) -> None:
     Holder() = default;
     explicit Holder(const Box& b, int32_t n);
 
-    // def get_pair(self) -> tuple[Box, Int32]:
+    // def get_pair(self) -> tuple[Box, int32]:
     std::tuple<Box*, int32_t> get_pair();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
@@ -53,13 +53,13 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Box::Box(int32_t v) : val(v) {}
 
-// def __init__(self, b: Box, n: Int32) -> None:
+// def __init__(self, b: Box, n: int32) -> None:
 inline Holder::Holder(const Box& b, int32_t n) : box(b), n(n) {}
 
-// def get_pair(self) -> tuple[Box, Int32]:
+// def get_pair(self) -> tuple[Box, int32]:
 inline std::tuple<Box*, int32_t> Holder::get_pair() {
     // return (self.box, self.n)
     return std::tuple<Box*, int32_t>{&(this->box), this->n};

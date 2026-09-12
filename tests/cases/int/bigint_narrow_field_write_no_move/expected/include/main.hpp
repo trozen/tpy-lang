@@ -15,9 +15,9 @@ void main();
 
 // class Split:
 struct Split {
-    // hi: Int32
+    // hi: int32
     int32_t hi;
-    // lo: Int32
+    // lo: int32
     int32_t lo;
 
     // def __init__(self, total: int, extra: int) -> None:

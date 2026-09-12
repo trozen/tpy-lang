@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def make() -> Own[list[Int32]]:
+// def make() -> Own[list[int32]]:
 std::vector<int32_t> make() {
     // print("making")
     std::cout << "making" << "\n";

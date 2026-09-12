@@ -6,11 +6,11 @@ namespace tpyapp::main {
 
 // def test_int32_to_int64_append() -> None:
 void test_int32_to_int64_append() {
-    // xs = [Int32(1), Int32(2)]  # tpyc: type(list[Int64])
+    // xs = [int32(1), int32(2)]  # tpyc: type(list[int64])
     std::vector<int64_t> xs = {1, 2};
-    // xs.append(Int64(3))
+    // xs.append(int64(3))
     xs.push_back(3);
-    // v: Int64 = xs[0]
+    // v: int64 = xs[0]
     int64_t v = ::tpy::__getitem__(xs, 0);
     // print(v)
     std::cout << v << "\n";
@@ -20,11 +20,11 @@ void test_int32_to_int64_append() {
 
 // def test_literal_to_int64_append() -> None:
 void test_literal_to_int64_append() {
-    // xs = [1, 2]  # tpyc: type(list[Int64])
+    // xs = [1, 2]  # tpyc: type(list[int64])
     std::vector<int64_t> xs = {1, 2};
-    // xs.append(Int64(3))
+    // xs.append(int64(3))
     xs.push_back(3);
-    // v: Int64 = xs[0]
+    // v: int64 = xs[0]
     int64_t v = ::tpy::__getitem__(xs, 0);
     // print(v)
     std::cout << v << "\n";
@@ -44,11 +44,11 @@ void test_literal_to_float_append() {
 
 // def test_int32_to_int64_insert() -> None:
 void test_int32_to_int64_insert() {
-    // xs = [Int32(1), Int32(2)]  # tpyc: type(list[Int64])
+    // xs = [int32(1), int32(2)]  # tpyc: type(list[int64])
     std::vector<int64_t> xs = {1, 2};
-    // xs.insert(0, Int64(99))
+    // xs.insert(0, int64(99))
     ::tpy::list_insert(xs, 0, 99);
-    // v: Int64 = xs[0]
+    // v: int64 = xs[0]
     int64_t v = ::tpy::__getitem__(xs, 0);
     // print(v)
     std::cout << v << "\n";
@@ -56,9 +56,9 @@ void test_int32_to_int64_insert() {
 
 // def test_same_type_no_widen() -> None:
 void test_same_type_no_widen() {
-    // xs = [Int32(1), Int32(2)]  # tpyc: type(list[Int32])
+    // xs = [int32(1), int32(2)]  # tpyc: type(list[int32])
     std::vector<int32_t> xs = {1, 2};
-    // xs.append(Int32(3))
+    // xs.append(int32(3))
     xs.push_back(3);
     // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
@@ -66,11 +66,11 @@ void test_same_type_no_widen() {
 
 // def test_multiple_widens() -> None:
 void test_multiple_widens() {
-    // xs = [Int32(1)]  # tpyc: type(list[Int64])
+    // xs = [int32(1)]  # tpyc: type(list[int64])
     std::vector<int64_t> xs = {1};
-    // xs.append(Int32(2))
+    // xs.append(int32(2))
     xs.push_back(2);
-    // xs.append(Int64(3))
+    // xs.append(int64(3))
     xs.push_back(3);
     // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";

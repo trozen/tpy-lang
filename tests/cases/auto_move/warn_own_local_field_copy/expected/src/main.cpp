@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def test_non_last_use() -> None:
 void test_non_last_use() {
-    // x = Item(Int32(1))
+    // x = Item(int32(1))
     Item x = Item(1);
     // h = Holder()
     Holder h = Holder();
@@ -18,7 +18,7 @@ void test_non_last_use() {
 
 // def test_last_use() -> None:
 void test_last_use() {
-    // x = Item(Int32(2))
+    // x = Item(int32(2))
     Item x = Item(2);
     // h = Holder()
     Holder h = Holder();
@@ -28,7 +28,7 @@ void test_last_use() {
 
 // def test_container_non_last_use() -> None:
 void test_container_non_last_use() {
-    // x = Item(Int32(3))
+    // x = Item(int32(3))
     Item x = Item(3);
     // items: list[Item] = []
     std::vector<Item> items = std::vector<Item>{};
@@ -40,7 +40,7 @@ void test_container_non_last_use() {
 
 // def test_container_last_use() -> None:
 void test_container_last_use() {
-    // x = Item(Int32(4))
+    // x = Item(int32(4))
     Item x = Item(4);
     // items: list[Item] = []
     std::vector<Item> items = std::vector<Item>{};

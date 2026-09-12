@@ -1,1 +1,1 @@
-main.py:14: error: Type mismatch in variable 'pi': expected Ptr[Int32], got Int32 | None
+main.py:14: error: Type mismatch in variable 'pi': expected Ptr[int32], got int32 | None

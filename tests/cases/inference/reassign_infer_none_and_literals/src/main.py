@@ -1,10 +1,10 @@
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
@@ -25,7 +25,7 @@ n = 123
 print(n)
 
 z = 0
-z = Int32(666)
+z = int32(666)
 print(z)
 
 f = 0

@@ -1,20 +1,20 @@
-from tpy import Int32, Ptr, readonly
+from tpy import int32, Ptr, readonly
 
 # Test Ptr[readonly[T]] type for read-only pointers
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32) -> None:
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 
-def read_point(p: Ptr[readonly[Point]]) -> Int32:
+def read_point(p: Ptr[readonly[Point]]) -> int32:
     """Read from a const pointer - should work."""
     return p.x + p.y
 
-def modify_via_ptr(p: Ptr[Point], new_x: Int32) -> None:
+def modify_via_ptr(p: Ptr[Point], new_x: int32) -> None:
     """Modify via mutable pointer."""
     p.x = new_x
 
@@ -37,7 +37,7 @@ def test_ptr_to_const_ptr() -> None:
     cp: Ptr[readonly[Point]] = mp
 
     # Read through const pointer
-    total: Int32 = read_point(cp)
+    total: int32 = read_point(cp)
     print(total)
 
 def test_const_ptr_preserves_value() -> None:

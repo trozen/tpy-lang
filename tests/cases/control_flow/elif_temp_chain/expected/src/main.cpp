@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def take(items: list[Int32]) -> Int32:
+// def take(items: list[int32]) -> int32:
 int32_t take(std::vector<int32_t>& items) {
     // items.append(1)
     items.push_back(1);
@@ -12,7 +12,7 @@ int32_t take(std::vector<int32_t>& items) {
     return ::tpy::__len__(items);
 }
 
-// def test(x: Int32) -> Int32:
+// def test(x: int32) -> int32:
 int32_t test(int32_t x) {
     // if x < 0:
     if ((x < 0)) {

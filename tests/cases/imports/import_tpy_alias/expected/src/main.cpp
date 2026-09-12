@@ -3,9 +3,9 @@
 
 namespace tpyapp::main {
 
-// x = t.Int32(42)
+// x = t.int32(42)
 int32_t x{};
-// y = t.Int32(123)
+// y = t.int32(123)
 int32_t y{};
 
 void __tpy_init() {
@@ -13,9 +13,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // x = t.Int32(42)
+    // x = t.int32(42)
     x = 42;
-    // y = t.Int32(123)
+    // y = t.int32(123)
     y = 123;
     // print(x)
     std::cout << x << "\n";

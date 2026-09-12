@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def read_via_weak(w: Weak[Cell]) -> Int32:
+// def read_via_weak(w: Weak[Cell]) -> int32:
 int32_t read_via_weak(const ::tpystd::tplib::rc::Weak<Cell>& w) {
     // upgraded = w.upgrade()
     std::optional<::tpystd::tplib::rc::Rc<Cell>> upgraded = w.upgrade();
     // if upgraded is None:
     if ((!upgraded.has_value())) {
-        // return Int32(-1)
+        // return int32(-1)
         return -1;
     }
     // return upgraded.get().val
@@ -19,7 +19,7 @@ int32_t read_via_weak(const ::tpystd::tplib::rc::Weak<Cell>& w) {
 
 // def main() -> None:
 void main() {
-    // rc = Rc.new(Cell(Int32(7)))
+    // rc = Rc.new(Cell(int32(7)))
     ::tpystd::tplib::rc::Rc<Cell> rc = Rc<Cell>::new_<Cell>(Cell(7));
     // w = rc.downgrade()
     ::tpystd::tplib::rc::Weak<Cell> w = rc.downgrade();

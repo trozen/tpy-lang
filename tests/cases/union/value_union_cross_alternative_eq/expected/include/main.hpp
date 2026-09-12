@@ -22,8 +22,8 @@ struct Zone;
 struct Tagged;
 struct Marked;
 
-extern ::tpy::Union<int32_t, double> A;
-extern ::tpy::Union<int32_t, double> B;
+extern ::tpy::Union<double, int32_t> A;
+extern ::tpy::Union<double, int32_t> B;
 extern bool module_eq;
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -31,19 +31,19 @@ struct __gen_gen;
 struct __coro_in_async;
 struct __coro_amain;
 
-bool free_fn(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t, double>& b);
-__gen_gen gen(::tpy::Union<int32_t, double> a, ::tpy::Union<int32_t, double> b);
-__coro_in_async in_async(::tpy::Union<int32_t, double> a, ::tpy::Union<int32_t, double> b);
-bool in_with(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t, double>& b);
-bool in_closure(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t, double>& b);
-bool in_try(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t, double>& b);
-std::expected<bool, Boom> in_error_return(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t, double>& b);
-bool in_match(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t, double>& b);
-bool u_i32_f64(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t, double>& b);
+bool free_fn(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b);
+__gen_gen gen(::tpy::Union<double, int32_t> a, ::tpy::Union<double, int32_t> b);
+__coro_in_async in_async(::tpy::Union<double, int32_t> a, ::tpy::Union<double, int32_t> b);
+bool in_with(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b);
+bool in_closure(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b);
+bool in_try(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b);
+std::expected<bool, Boom> in_error_return(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b);
+bool in_match(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b);
+bool u_i32_f64(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b);
 bool t_i32_f64(int32_t a, double b);
 bool u_i32_i64(const ::tpy::Union<int32_t, int64_t>& a, const ::tpy::Union<int32_t, int64_t>& b);
 bool t_i32_i64(int32_t a, int64_t b);
-bool u_bool_i32(const ::tpy::Union<int32_t, bool>& a, const ::tpy::Union<int32_t, bool>& b);
+bool u_bool_i32(const ::tpy::Union<bool, int32_t>& a, const ::tpy::Union<bool, int32_t>& b);
 bool t_bool_i32(bool a, int32_t b);
 bool u_u8_i32(const ::tpy::Union<int32_t, uint8_t>& a, const ::tpy::Union<int32_t, uint8_t>& b);
 bool t_u8_i32(uint8_t a, int32_t b);
@@ -51,31 +51,31 @@ bool u_u32_i32(const ::tpy::Union<int32_t, uint32_t>& a, const ::tpy::Union<int3
 bool t_u32_i32(uint32_t a, int32_t b);
 bool u_int_f64(const ::tpy::Union<double, ::tpy::BigInt>& a, const ::tpy::Union<double, ::tpy::BigInt>& b);
 bool t_int_f64(const ::tpy::BigInt& a, double b);
-bool u_ne(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t, double>& b);
-bool u_readonly(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t, double>& b);
-bool list_eq(const std::vector<::tpy::Union<int32_t, double>>& xs, const std::vector<::tpy::Union<int32_t, double>>& ys);
-void append_float(std::vector<::tpy::Union<int32_t, double>>& xs);
-bool list_of_tuple_eq(const std::vector<std::tuple<::tpy::Union<int32_t, double>, int32_t>>& xs, const std::vector<std::tuple<::tpy::Union<int32_t, double>, int32_t>>& ys);
-bool dict_eq(const ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, double>>& ds, const ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, double>>& es);
-bool array_eq(const std::array<::tpy::Union<int32_t, double>, 2>& a, const std::array<::tpy::Union<int32_t, double>, 2>& b);
-bool tree_eq(const Tree<::tpy::Union<int32_t, double>>& a, const Tree<::tpy::Union<int32_t, double>>& b);
+bool u_ne(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b);
+bool u_readonly(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b);
+bool list_eq(const std::vector<::tpy::Union<double, int32_t>>& xs, const std::vector<::tpy::Union<double, int32_t>>& ys);
+void append_float(std::vector<::tpy::Union<double, int32_t>>& xs);
+bool list_of_tuple_eq(const std::vector<std::tuple<::tpy::Union<double, int32_t>, int32_t>>& xs, const std::vector<std::tuple<::tpy::Union<double, int32_t>, int32_t>>& ys);
+bool dict_eq(const ::tpy::ordered_map<std::string, ::tpy::Union<double, int32_t>>& ds, const ::tpy::ordered_map<std::string, ::tpy::Union<double, int32_t>>& es);
+bool array_eq(const std::array<::tpy::Union<double, int32_t>, 2>& a, const std::array<::tpy::Union<double, int32_t>, 2>& b);
+bool tree_eq(const Tree<::tpy::Union<double, int32_t>>& a, const Tree<::tpy::Union<double, int32_t>>& b);
 bool v_list_eq(const std::vector<V>& xs, const std::vector<V>& ys);
 void drop_last_v(std::vector<V>& xs);
 bool shape_list_eq(const std::vector<::tpy::Union<Circle, Square>>& xs, const std::vector<::tpy::Union<Circle, Square>>& ys);
 bool shape_dict_eq(const ::tpy::ordered_map<std::string, ::tpy::Union<Circle, Square>>& a, const ::tpy::ordered_map<std::string, ::tpy::Union<Circle, Square>>& b);
 void clear_shapes(std::vector<::tpy::Union<Circle, Square>>& xs);
 bool shape_tree_eq(const std::vector<ShapeTree>& xs, const std::vector<ShapeTree>& ys);
-bool u_lt(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t, double>& b);
-bool u_le(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t, double>& b);
-bool u_gt(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t, double>& b);
-bool u_ge(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t, double>& b);
+bool u_lt(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b);
+bool u_le(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b);
+bool u_gt(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b);
+bool u_ge(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b);
 bool t_le(double a, double b);
 bool t_ge(double a, double b);
 bool dunder_ne(const ::tpy::Union<Marked, Tagged>& a, const ::tpy::Union<Marked, Tagged>& b);
 std::string value_record_lt(const ::tpy::Union<Fixed, Zone>& a, const ::tpy::Union<Fixed, Zone>& b);
 std::string str_int_cmp(const ::tpy::Union<int32_t, std::string>& a, const ::tpy::Union<int32_t, std::string>& b, int32_t which);
 bool str_int_eq(const ::tpy::Union<int32_t, std::string>& a, const ::tpy::Union<int32_t, std::string>& b);
-__coro_amain amain(::tpy::Union<int32_t, double> x, ::tpy::Union<int32_t, double> y);
+__coro_amain amain(::tpy::Union<double, int32_t> x, ::tpy::Union<double, int32_t> y);
 void main();
 
 template<typename T>
@@ -134,12 +134,12 @@ struct Holder {
     // flag: bool
     bool flag;
 
-    // def __init__(self, a: Int32 | Float64, b: Int32 | Float64):
+    // def __init__(self, a: int32 | float64, b: int32 | float64):
     Holder() = default;
-    explicit Holder(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t, double>& b);
+    explicit Holder(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b);
 
-    // def method(self, a: Int32 | Float64, b: Int32 | Float64) -> bool:  # method
-    bool method(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t, double>& b) const;
+    // def method(self, a: int32 | float64, b: int32 | float64) -> bool:  # method
+    bool method(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -154,10 +154,10 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 // # (BUGS.md#container-compare-record-without-eq).
 // class Circle:
 struct Circle {
-    // r: Int32
+    // r: int32
     int32_t r;
 
-    // def __init__(self, r: Int32) -> None:
+    // def __init__(self, r: int32) -> None:
     Circle() = default;
     explicit Circle(int32_t r);
 
@@ -177,10 +177,10 @@ inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
 
 // class Square:
 struct Square {
-    // side: Int32
+    // side: int32
     int32_t side;
 
-    // def __init__(self, side: Int32) -> None:
+    // def __init__(self, side: int32) -> None:
     Square() = default;
     explicit Square(int32_t side);
 
@@ -208,7 +208,7 @@ inline std::ostream& operator<<(std::ostream& os, const Square& obj) {
 // @dataclass(frozen=True)
 // class Fixed(ValueType):
 struct Fixed {
-    // off: Int32
+    // off: int32
     int32_t off;
 
     Fixed() = default;
@@ -250,7 +250,7 @@ namespace tpyapp::main {
 // @dataclass(frozen=True)
 // class Zone(ValueType):
 struct Zone {
-    // zid: Int32
+    // zid: int32
     int32_t zid;
 
     Zone() = default;
@@ -296,10 +296,10 @@ namespace tpyapp::main {
 // # languages (see `union/reference_union_storage_eq`).
 // class Tagged(ValueType):
 struct Tagged {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Tagged() = default;
     explicit Tagged(int32_t n);
 
@@ -332,10 +332,10 @@ namespace tpyapp::main {
 
 // class Marked(ValueType):
 struct Marked {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Marked() = default;
     explicit Marked(int32_t n);
 
@@ -363,15 +363,15 @@ namespace tpyapp::main {
 struct __coro_in_async {
     int32_t __state;
     bool __cancel_pending;
-    ::tpy::Union<int32_t, double> a;
-    ::tpy::Union<int32_t, double> b;
+    ::tpy::Union<double, int32_t> a;
+    ::tpy::Union<double, int32_t> b;
 
     enum : int32_t {
         S_INITIAL = 0,
         S_DONE = 1,
     };
 
-    __coro_in_async(::tpy::Union<int32_t, double> a_, ::tpy::Union<int32_t, double> b_)
+    __coro_in_async(::tpy::Union<double, int32_t> a_, ::tpy::Union<double, int32_t> b_)
         : __state(S_INITIAL), __cancel_pending(false), a(std::move(a_)), b(std::move(b_)) {}
 
     ::tpystd::tpy::Poll<bool> __poll__(::tpystd::coro::Waker waker);
@@ -386,8 +386,8 @@ struct __coro_in_async {
 struct __coro_amain {
     int32_t __state;
     bool __cancel_pending;
-    ::tpy::Union<int32_t, double> x;
-    ::tpy::Union<int32_t, double> y;
+    ::tpy::Union<double, int32_t> x;
+    ::tpy::Union<double, int32_t> y;
     bool __await_lift_0;
     std::optional<__coro_in_async> __sub_0;
 
@@ -397,7 +397,7 @@ struct __coro_amain {
         S_DONE = 2,
     };
 
-    __coro_amain(::tpy::Union<int32_t, double> x_, ::tpy::Union<int32_t, double> y_)
+    __coro_amain(::tpy::Union<double, int32_t> x_, ::tpy::Union<double, int32_t> y_)
         : __state(S_INITIAL), __cancel_pending(false), x(std::move(x_)), y(std::move(y_)) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
@@ -411,8 +411,8 @@ struct __coro_amain {
 // Generator: gen
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, bool> {
     int32_t __state;
-    ::tpy::Union<int32_t, double> a;
-    ::tpy::Union<int32_t, double> b;
+    ::tpy::Union<double, int32_t> a;
+    ::tpy::Union<double, int32_t> b;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -420,7 +420,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, bool> {
         S_DONE = 2,
     };
 
-    __gen_gen(::tpy::Union<int32_t, double> a_, ::tpy::Union<int32_t, double> b_)
+    __gen_gen(::tpy::Union<double, int32_t> a_, ::tpy::Union<double, int32_t> b_)
         : __state(S_INITIAL), a(std::move(a_)), b(std::move(b_)) {}
 
     std::expected<bool, ::tpy::StopIteration> __next__();
@@ -443,16 +443,16 @@ inline void Guard::__exit__(std::monostate exc_type, const ::tpy::BaseException*
     // pass
 }
 
-// def __init__(self, a: Int32 | Float64, b: Int32 | Float64):
-inline Holder::Holder(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t, double>& b) : flag((a == b)) {}
+// def __init__(self, a: int32 | float64, b: int32 | float64):
+inline Holder::Holder(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b) : flag((a == b)) {}
 
-// def method(self, a: Int32 | Float64, b: Int32 | Float64) -> bool:  # method
-inline bool Holder::method(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t, double>& b) const {
+// def method(self, a: int32 | float64, b: int32 | float64) -> bool:  # method
+inline bool Holder::method(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b) const {
     // return a == b  # tpyc: ok
     return (a == b);
 }
 
-// def __init__(self, r: Int32) -> None:
+// def __init__(self, r: int32) -> None:
 inline Circle::Circle(int32_t r) : r(r) {}
 
 // def __eq__(self, other: "Circle") -> bool:
@@ -469,7 +469,7 @@ inline bool Circle::__eq__(const Circle& other) const {
     return (this->r == other.r);
 }
 
-// def __init__(self, side: Int32) -> None:
+// def __init__(self, side: int32) -> None:
 inline Square::Square(int32_t side) : side(side) {}
 
 // def __eq__(self, other: "Square") -> bool:
@@ -513,7 +513,7 @@ inline uint64_t Zone::__hash__() const {
     return h;
 }
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Tagged::Tagged(int32_t n) : n(n) {}
 
 // def __eq__(self, other: "Tagged") -> bool:
@@ -538,7 +538,7 @@ inline bool Tagged::__ne__(Tagged other) const {
     return (this->n == other.n);
 }
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Marked::Marked(int32_t n) : n(n) {}
 
 // def __eq__(self, other: "Marked") -> bool:

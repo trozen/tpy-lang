@@ -49,10 +49,10 @@ void main();
 
 // class Cell:
 struct Cell {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Cell() = default;
     explicit Cell(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cell";
@@ -114,14 +114,14 @@ inline std::ostream& operator<<(std::ostream& os, const VHolder<T>& obj) {
 // # the bounded twin: a concrete value payload, silent for the same reason.
 // class IntHolder:
 struct IntHolder {
-    // val: Int32
+    // val: int32
     int32_t val;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     IntHolder() = default;
     explicit IntHolder(int32_t v);
 
-    // def borrow(self) -> Int32:
+    // def borrow(self) -> int32:
     int32_t borrow() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.IntHolder";
 };
@@ -132,13 +132,13 @@ inline std::ostream& operator<<(std::ostream& os, const IntHolder& obj) {
 }
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Cell::Cell(int32_t n) : n(n) {}
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline IntHolder::IntHolder(int32_t v) : val(v) {}
 
-// def borrow(self) -> Int32:
+// def borrow(self) -> int32:
 inline int32_t IntHolder::borrow() const {
     // return self.val
     return this->val;
@@ -193,7 +193,7 @@ void apply_generic(const std::vector<T>& xs, __F0&& f, std::vector<K>& out) {
         out.push_back(f(x));
     }
 }
-// def apply_twin(xs: list[Int32], f: Fn[[Int32], Cell], out: list[Cell]) -> None:
+// def apply_twin(xs: list[int32], f: Fn[[int32], Cell], out: list[Cell]) -> None:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<Cell>;
@@ -218,7 +218,7 @@ template<typename T, typename K, typename __F0>
     // return f(x)  # tpyc: ok
     return f(x);
 }
-// def ret_twin(x: Int32, f: Fn[[Int32], Cell]) -> Own[Cell]:
+// def ret_twin(x: int32, f: Fn[[int32], Cell]) -> Own[Cell]:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<Cell>;

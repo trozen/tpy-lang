@@ -15,10 +15,10 @@ void main();
 
 // class Bag:
 struct Bag {
-    // items: list[Int32]
+    // items: list[int32]
     std::vector<int32_t> items;
 
-    // def __init__(self, src: Iterable[Own[Int32]]) -> None:
+    // def __init__(self, src: Iterable[Own[int32]]) -> None:
     Bag() = default;
     template<::tpystd::typing::Iterable<int32_t> T_src>
     explicit Bag(T_src&& src) : items(::tpy::construct<std::vector<int32_t>>(src)) {}

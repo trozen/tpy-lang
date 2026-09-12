@@ -1,5 +1,5 @@
 # Nested types exported for cross-module use
-from tpy import Int32
+from tpy import int32
 from enum import Enum, auto
 
 class Container:
@@ -8,8 +8,8 @@ class Container:
         B = auto()
 
     class Inner:
-        val: Int32
-        def __init__(self, val: Int32) -> None:
+        val: int32
+        def __init__(self, val: int32) -> None:
             self.val = val
 
     kind: Kind

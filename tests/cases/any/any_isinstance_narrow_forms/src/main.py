@@ -1,7 +1,7 @@
 # `isinstance` narrowing of an `Any` value in its three condition forms: a
 # chain, a tuple of types, and a NEGATED test.
 from typing import Any
-from tpy import Int32
+from tpy import int32
 
 
 def dispatch(v: Any) -> None:

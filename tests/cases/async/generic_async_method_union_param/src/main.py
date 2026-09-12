@@ -3,18 +3,18 @@
 # non-generic sibling. The concurrently scheduled bump() mutates `a` while
 # show() is suspended, observing that the frame borrows the arg, not a copy.
 import asyncio
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class A:
-    x: Int32
+    x: int32
 
     def __init__(self) -> None:
         self.x = 1
 
 
 class B:
-    y: Int32
+    y: int32
 
     def __init__(self) -> None:
         self.y = 2
@@ -26,7 +26,7 @@ class Holder[T]:
     def __init__(self, v: Own[T]) -> None:
         self.v = v
 
-    async def show(self, u: A | B) -> Int32:
+    async def show(self, u: A | B) -> int32:
         await asyncio.sleep(0.001)
         if isinstance(u, A):
             return u.x
@@ -34,12 +34,12 @@ class Holder[T]:
 
 
 class PlainHolder:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
-    async def show(self, u: A | B) -> Int32:
+    async def show(self, u: A | B) -> int32:
         await asyncio.sleep(0.001)
         if isinstance(u, A):
             return u.x
@@ -51,7 +51,7 @@ async def bump(a: A) -> None:
 
 
 async def main_coro() -> None:
-    h = Holder(Int32(5))
+    h = Holder(int32(5))
     a = A()
     t = asyncio.create_task(bump(a))
     print(await h.show(a))

@@ -5,14 +5,14 @@
 # so the position rejects. The borrowed-PARAM sibling is a bare member and
 # compiles (see nested_def/lambda_in_gen_method).
 from typing import Iterator
-from tpy import Fn, Int32
+from tpy import Fn, int32
 
 
-def apply(f: Fn[[Int32], Int32], v: Int32) -> Int32:
+def apply(f: Fn[[int32], int32], v: int32) -> int32:
     return f(v)
 
 
-def gen() -> Iterator[Int32]:  # tpyc: error(/expr\.lambda/)
+def gen() -> Iterator[int32]:  # tpyc: error(/expr\.lambda/)
     ys = [1, 2]
     yield apply(lambda i: ys[i], 0)
     yield apply(lambda i: ys[i], 1)

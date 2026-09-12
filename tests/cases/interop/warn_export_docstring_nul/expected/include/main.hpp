@@ -41,18 +41,18 @@ void boom();
 // @export
 // class Holder:  # tpyc: warning(/@export class 'Holder': the docstring will not be visible/)
 struct Holder {
-    // v: Int64
+    // v: int64
     int64_t v;
 
-    // def __init__(self, v: Int64):
+    // def __init__(self, v: int64):
     Holder() = default;
     explicit Holder(int64_t v);
 
-    // def meth(self) -> Int64:  # tpyc: warning(/method 'meth': the docstring will not be visible/)
+    // def meth(self) -> int64:  # tpyc: warning(/method 'meth': the docstring will not be visible/)
     int64_t meth() const;
 
     // @property
-    // def prop(self) -> Int64:  # tpyc: warning(/property 'prop': the docstring will not be visible/)
+    // def prop(self) -> int64:  # tpyc: warning(/property 'prop': the docstring will not be visible/)
     int64_t prop() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
@@ -79,17 +79,17 @@ inline std::ostream& operator<<(std::ostream& os, const BadDoc& obj) {
 }
 
 
-// def __init__(self, v: Int64):
+// def __init__(self, v: int64):
 inline Holder::Holder(int64_t v) : v(v) {}
 
-// def meth(self) -> Int64:  # tpyc: warning(/method 'meth': the docstring will not be visible/)
+// def meth(self) -> int64:  # tpyc: warning(/method 'meth': the docstring will not be visible/)
 inline int64_t Holder::meth() const {
     // return self.v
     return this->v;
 }
 
 // @property
-// def prop(self) -> Int64:  # tpyc: warning(/property 'prop': the docstring will not be visible/)
+// def prop(self) -> int64:  # tpyc: warning(/property 'prop': the docstring will not be visible/)
 inline int64_t Holder::prop() const {
     // return self.v
     return this->v;

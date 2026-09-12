@@ -1,13 +1,13 @@
 # Test Callable | None as parameter type with narrowing
 from typing import Callable
-from tpy import Int32
+from tpy import int32
 
-def maybe_apply(f: Callable[[Int32], Int32] | None, x: Int32) -> Int32:
+def maybe_apply(f: Callable[[int32], int32] | None, x: int32) -> int32:
     if f is not None:
         return f(x)
     return x
 
-def make_doubler() -> Callable[[Int32], Int32]:
+def make_doubler() -> Callable[[int32], int32]:
     return lambda x: x * 2
 
 def main() -> None:

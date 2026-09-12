@@ -4,10 +4,10 @@
 namespace tpyapp::main {
 
 
-// def outer(flag: Int32) -> Int32:
+// def outer(flag: int32) -> int32:
 int32_t outer(int32_t flag) {
     std::optional<Point> __slot_6;
-    // def inner(k: Int32) -> Int32:
+    // def inner(k: int32) -> int32:
     auto inner = [](int32_t k) -> int32_t {
         std::optional<Point> __slot_2;
         // p = Point(k)
@@ -21,7 +21,7 @@ int32_t outer(int32_t flag) {
         // return p.x
         return p->x;
     };
-    // def inner_alias(k: Int32) -> Int32:
+    // def inner_alias(k: int32) -> int32:
     auto inner_alias = [](int32_t k) -> int32_t {
         std::optional<Point> __slot_4;
         // p = Point(k)

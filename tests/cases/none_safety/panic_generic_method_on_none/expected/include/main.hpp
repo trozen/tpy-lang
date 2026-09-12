@@ -16,10 +16,10 @@ void main();
 
 // class Bag:
 struct Bag {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Bag() = default;
     explicit Bag(int32_t n);
 
@@ -38,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 }
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Bag::Bag(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

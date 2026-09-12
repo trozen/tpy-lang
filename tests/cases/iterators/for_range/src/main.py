@@ -1,11 +1,11 @@
-from tpy import Int32
+from tpy import int32
 
-def print_range(start: Int32, end: Int32) -> None:
+def print_range(start: int32, end: int32) -> None:
     for i in range(start, end):
         print(i)
 
-def sum_range(n: Int32) -> Int32:
-    total: Int32 = 0
+def sum_range(n: int32) -> int32:
+    total: int32 = 0
     for i in range(n):
         total += i
     return total

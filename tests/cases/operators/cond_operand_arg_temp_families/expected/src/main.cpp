@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def sized(tag: str, xs: list[Int32]) -> bool:
+// def sized(tag: str, xs: list[int32]) -> bool:
 bool sized(std::string_view tag, const std::vector<int32_t>& xs) {
     // print(tag, len(xs))
     std::cout << tag << " " << ::tpy::__len__(xs) << "\n";
@@ -20,7 +20,7 @@ bool shaped(std::string_view tag, ::tpystd::tplib::box::Box<Shape>& b) {
     return true;
 }
 
-// def show(tag: str, t: Value) -> Int32:
+// def show(tag: str, t: Value) -> int32:
 int32_t show(std::string_view tag, const Value& t) {
     // match t:
     auto& __match_subject_1 = t;
@@ -67,7 +67,7 @@ int32_t show(std::string_view tag, const Value& t) {
     ::std::unreachable();
 }
 
-// def leaf_count(tag: str, t: Tree[Int32]) -> Int32:
+// def leaf_count(tag: str, t: Tree[int32]) -> int32:
 int32_t leaf_count(std::string_view tag, const Tree<int32_t>& t) {
     // match t:
     auto& __match_subject_1 = t;
@@ -102,11 +102,11 @@ int32_t leaf_count(std::string_view tag, const Tree<int32_t>& t) {
     ::std::unreachable();
 }
 
-// def make_leaf() -> Own[Tree[Int32]]:
+// def make_leaf() -> Own[Tree[int32]]:
 Tree<int32_t> make_leaf() {
     // print("rucall build")
     std::cout << "rucall build" << "\n";
-    // return Int32(7)
+    // return int32(7)
     return 7;
 }
 
@@ -118,7 +118,7 @@ bool held(std::string_view tag, const Outer& o) {
     return true;
 }
 
-// def comprehension(src: list[Int32], flag: bool) -> bool:
+// def comprehension(src: list[int32], flag: bool) -> bool:
 bool comprehension(std::vector<int32_t>& src, bool flag) {
     // # `or` RHS, comprehension into a container slot: the pop runs first, so
     // # the comprehension must see the SHORTENED list.
@@ -173,35 +173,35 @@ bool optptr_container_literal(Sink& s, bool flag) {
     return (flag || (__tmp_4.emplace(std::vector<int32_t>{1, 2, 3}), s.take("optptr", &((*__tmp_4)))));
 }
 
-// def recursive_union_literal(flag: bool) -> Int32:
+// def recursive_union_literal(flag: bool) -> int32:
 int32_t recursive_union_literal(bool flag) {
     // # `or` RHS, a list literal at a recursive-union wrapper slot.
-    // return Int32(0) if flag else show("rulit", [1, 2, 3])
+    // return int32(0) if flag else show("rulit", [1, 2, 3])
     std::optional<Value> __tmp_5;
     return ((flag) ? (0) : (__tmp_5.emplace(std::vector<Value>{1, 2, 3}), show("rulit", (*__tmp_5))));
 }
 
-// def ru_wrapper_literal(flag: bool) -> Int32:
+// def ru_wrapper_literal(flag: bool) -> int32:
 int32_t ru_wrapper_literal(bool flag) {
     // # Ternary arm, a scalar literal at the same wrapper slot.
-    // return Int32(0) if flag else show("ruscalar", 9)
+    // return int32(0) if flag else show("ruscalar", 9)
     std::optional<Value> __tmp_6;
     return ((flag) ? (0) : (__tmp_6.emplace(9), show("ruscalar", (*__tmp_6))));
 }
 
-// def ru_wrapper_ctor(flag: bool) -> Int32:
+// def ru_wrapper_ctor(flag: bool) -> int32:
 int32_t ru_wrapper_ctor(bool flag) {
     // # Ternary arm, a member-record ctor rvalue at the wrapper slot.
-    // return Int32(0) if flag else show("ructor", Neg(3))
+    // return int32(0) if flag else show("ructor", Neg(3))
     std::optional<Value> __tmp_7;
     return ((flag) ? (0) : (__tmp_7.emplace(Neg(3)), show("ructor", (*__tmp_7))));
 }
 
-// def ru_wrapper_call(flag: bool) -> Int32:
+// def ru_wrapper_call(flag: bool) -> int32:
 int32_t ru_wrapper_call(bool flag) {
-    // # Ternary arm, an `Own[Tree[Int32]]`-returning call at the wrapper slot;
+    // # Ternary arm, an `Own[Tree[int32]]`-returning call at the wrapper slot;
     // # the build print says whether the skipped arm ran it.
-    // return Int32(0) if flag else leaf_count("rucall", make_leaf())
+    // return int32(0) if flag else leaf_count("rucall", make_leaf())
     std::optional<Tree<int32_t>> __tmp_8;
     return ((flag) ? (0) : (__tmp_8.emplace(make_leaf()), leaf_count("rucall", (*__tmp_8))));
 }

@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // @error_return(StopIteration)
-// def first_negative(items: list[Int32]) -> Int32:
+// def first_negative(items: list[int32]) -> int32:
 std::expected<int32_t, StopIteration> first_negative(const std::vector<int32_t>& items) {
     // for i in range(len(items)):
     int32_t __stop_0 = ::tpy::__len__(items);

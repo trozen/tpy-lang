@@ -4,7 +4,7 @@
 # record's structural conformance. Covers both the same-name (T/T) and
 # distinct-name (T/U) shapes -- the fix isn't about TypeParamRef identity,
 # it's about the structural-inference path stripping Ref on the arg side.
-from tpy import Int32
+from tpy import int32
 from tpy import Own
 from tpy.coro import Awaitable, Poll, Waker, poll_once, poll_pending
 
@@ -27,9 +27,9 @@ def use_renamed[U](t: MyTask[U]) -> Own[Poll[U]]:
 
 
 def main() -> None:
-    a = MyTask[Int32]()
+    a = MyTask[int32]()
     print(use_shadowed(a).is_pending())
-    b = MyTask[Int32]()
+    b = MyTask[int32]()
     print(use_renamed(b).is_pending())
 
 

@@ -1,11 +1,11 @@
 from typing import Protocol
-from tpy import Int32, Own
+from tpy import int32, Own
 
 # A record that will be referenced by a prereq protocol
 class Result:
-    value: Int32
+    value: int32
 
-    def __init__(self, value: Int32) -> None:
+    def __init__(self, value: int32) -> None:
         self.value = value
 
 # Prereq protocol that references Result in its signature
@@ -20,7 +20,7 @@ class Message:
         self.text = text
 
     def to_result(self) -> Own[Result]:
-        return Result(Int32(42))
+        return Result(int32(42))
 
 # Record with prereq protocol as bound, referenced by a bound protocol
 class Wrapper[T: Convertible]:

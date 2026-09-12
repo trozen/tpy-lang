@@ -17,7 +17,7 @@ void take_list(const std::vector<::tpy::BigInt>* lst) {
     }
 }
 
-// def take_dict(d: dict[str, Int32] | None) -> None:
+// def take_dict(d: dict[str, int32] | None) -> None:
 void take_dict(const ::tpy::ordered_map<std::string, int32_t>* d) {
     // if d is not None:
     if ((d != nullptr)) {
@@ -30,7 +30,7 @@ void take_dict(const ::tpy::ordered_map<std::string, int32_t>* d) {
     }
 }
 
-// def take_set(s: set[Int32] | None) -> None:
+// def take_set(s: set[int32] | None) -> None:
 void take_set(const ::tpy::ordered_set<int32_t>* s) {
     // if s is not None:
     if ((s != nullptr)) {
@@ -48,10 +48,10 @@ void local_init() {
     // lst: list[int] | None = [1, 2, 3]
     std::vector<::tpy::BigInt> __slot_1 = std::vector<::tpy::BigInt>{1, 2, 3};
     std::vector<::tpy::BigInt>* lst = &__slot_1;
-    // d: dict[str, Int32] | None = {"a": 7}
+    // d: dict[str, int32] | None = {"a": 7}
     ::tpy::ordered_map<std::string, int32_t> __slot_2 = ::tpy::ordered_map<std::string, int32_t>({{"a", 7}});
     ::tpy::ordered_map<std::string, int32_t>* d = &__slot_2;
-    // s: set[Int32] | None = {1}
+    // s: set[int32] | None = {1}
     ::tpy::ordered_set<int32_t> __slot_3 = ::tpy::ordered_set<int32_t>({1});
     ::tpy::ordered_set<int32_t>* s = &__slot_3;
     // if lst is not None and d is not None and s is not None:

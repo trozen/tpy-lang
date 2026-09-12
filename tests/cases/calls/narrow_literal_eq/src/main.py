@@ -1,7 +1,7 @@
 # Equality narrowing on Literal types: == / != narrows LiteralType params,
 # enabling dispatch to more specific overload stubs after narrowing
 from typing import Literal, overload
-from tpy import Int32
+from tpy import int32
 
 
 @overload
@@ -38,9 +38,9 @@ def bucket(x: Literal[1, 2]) -> str: ...
 def bucket(x: Literal[3, 4]) -> str: ...
 
 @overload
-def bucket(x: Int32) -> str: ...
+def bucket(x: int32) -> str: ...
 
-def bucket(x: Int32) -> str:
+def bucket(x: int32) -> str:
     if x <= 2:
         return "low"
     return "high"
@@ -54,7 +54,7 @@ def dispatch_int(x: Literal[1, 2, 3, 4]) -> None:
         # x: Literal[3], matches second stub
         print(bucket(x))
     else:
-        # x: Literal[2, 4] -- falls through to Int32 fallback
+        # x: Literal[2, 4] -- falls through to int32 fallback
         print(bucket(x))
 
 

@@ -9,8 +9,8 @@ std::vector<int32_t>* nums{};
 // # Inference from list[str]
 // words = ["hello", "world"]
 std::vector<std::string>* words{};
-// # Inference from list[Int32]
-// vals: list[Int32] = [Int32(1), Int32(2), Int32(3)]
+// # Inference from list[int32]
+// vals: list[int32] = [int32(1), int32(2), int32(3)]
 std::vector<int32_t>* vals{};
 
 void __tpy_init() {
@@ -34,8 +34,8 @@ void __tpy_init() {
     std::cout << first<std::string>((*words)) << "\n";
     // print(last(words))
     std::cout << last<std::string>((*words)) << "\n";
-    // # Inference from list[Int32]
-    // vals: list[Int32] = [Int32(1), Int32(2), Int32(3)]
+    // # Inference from list[int32]
+    // vals: list[int32] = [int32(1), int32(2), int32(3)]
     static std::vector<int32_t> __global_slot_3 = {1, 2, 3};
     vals = &__global_slot_3;
     // print(first(vals))

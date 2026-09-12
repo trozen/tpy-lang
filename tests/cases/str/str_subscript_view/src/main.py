@@ -1,9 +1,9 @@
 # String subscript access on lvalue containers infers string_view;
 # source-mutation tracking falls back to std::string if source is mutated.
-from tpy import Int32
+from tpy import int32
 
 def test_tuple() -> None:
-    t = (Int32(10), "hello", True)
+    t = (int32(10), "hello", True)
     b = t[1]  # tpyc: type(StrView)
     print(b)
 

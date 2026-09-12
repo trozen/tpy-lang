@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 def main() -> None:
     xs = [1, 2, 3]
     if xs[0]:

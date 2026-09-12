@@ -2,15 +2,15 @@
 # operator, and the raw-operator leg admits bare NAME operands only, so the
 # macro's literal right-hand side falls outside it.
 from rawbinmod import to_literal_add
-from tpy import Int32
+from tpy import int32
 
 
-def sentinel(a: Int32, b: Int32) -> Int32:
+def sentinel(a: int32, b: int32) -> int32:
     return 0
 
 
 @to_literal_add
-def combine(a: Int32, b: Int32) -> Int32:
+def combine(a: int32, b: int32) -> int32:
     # The macro rewrites this call into `a + 1`.
     return sentinel(a, b)  # tpyc: error(/stmt\.return:binop\.shape\.\+/)
 

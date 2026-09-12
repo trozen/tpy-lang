@@ -1,1 +1,1 @@
-main.py:4: error: cannot raise expression of type 'Int32'; it must inherit from Exception
+main.py:4: error: cannot raise expression of type 'int32'; it must inherit from Exception

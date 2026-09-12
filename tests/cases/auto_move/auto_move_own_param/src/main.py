@@ -1,18 +1,18 @@
 # Auto-move for Own[T] parameter forwarding: Own param passed to
 # another Own param is auto-moved at last use.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 
-def consume(p: Own[Point]) -> Int32:
+def consume(p: Own[Point]) -> int32:
     return p.x + p.y
 
 
-def forward(p: Own[Point]) -> Int32:
+def forward(p: Own[Point]) -> int32:
     # p is an Own param; forwarding to another Own param at last use
     return consume(p)
 

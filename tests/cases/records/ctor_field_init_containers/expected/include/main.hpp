@@ -16,10 +16,10 @@ void main();
 
 // class Point:
 struct Point {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32):
+    // def __init__(self, v: int32):
     Point() = default;
     explicit Point(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
@@ -32,34 +32,34 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 // class Holder:
 struct Holder {
-    // items: list[Int32]
+    // items: list[int32]
     std::vector<int32_t> items;
     // names: list[str]
     std::vector<std::string> names;
-    // counts: dict[str, Int32]
+    // counts: dict[str, int32]
     ::tpy::ordered_map<std::string, int32_t> counts;
-    // tags: set[Int32]
+    // tags: set[int32]
     ::tpy::ordered_set<int32_t> tags;
-    // arr: Array[Int32, 3]
+    // arr: Array[int32, 3]
     std::array<int32_t, 3> arr;
     // pts: list[Point]
     std::vector<Point> pts;
-    // grid: list[list[Int32]]
+    // grid: list[list[int32]]
     std::vector<std::vector<int32_t>> grid;
-    // empty_l: list[Int32]
+    // empty_l: list[int32]
     std::vector<int32_t> empty_l;
-    // empty_d: dict[Int32, Int32]
+    // empty_d: dict[int32, int32]
     ::tpy::ordered_map<int32_t, int32_t> empty_d;
     // moved: list[Point]
     std::vector<Point> moved;
-    // copied: list[Int32]
+    // copied: list[int32]
     std::vector<int32_t> copied;
     // ones: list[int]
     std::vector<::tpy::BigInt> ones;
     // one_arr: Array[int, 1]
     std::array<::tpy::BigInt, 1> one_arr;
 
-    // def __init__(self, prefix: str, p: Point, q: Own[Point], copied: list[Int32]):
+    // def __init__(self, prefix: str, p: Point, q: Own[Point], copied: list[int32]):
     Holder() = default;
     explicit Holder(std::string_view prefix, const Point& p, Point&& q, const std::vector<int32_t>& copied);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
@@ -71,7 +71,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 }
 
 
-// def __init__(self, v: Int32):
+// def __init__(self, v: int32):
 inline Point::Point(int32_t v) : v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

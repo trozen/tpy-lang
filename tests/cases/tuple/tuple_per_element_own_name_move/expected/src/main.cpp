@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def sink(p: tuple[Own[Box], Int32]) -> Int32:
+// def sink(p: tuple[Own[Box], int32]) -> int32:
 int32_t sink(std::tuple<Box, int32_t>&& p) {
     // return p[0].val + p[1]
     return (::tpy::add_check<int32_t>(std::get<0>(p).val, std::get<1>(p)));
 }
 
-// def pass_by_name(ob: Own[Box]) -> Int32:
+// def pass_by_name(ob: Own[Box]) -> int32:
 int32_t pass_by_name(Box&& ob) {
     // pair = (ob, 0)
     auto pair = std::tuple<Box, int32_t>{std::move(ob), 0};
@@ -18,7 +18,7 @@ int32_t pass_by_name(Box&& ob) {
     return sink(std::move(pair));
 }
 
-// def return_by_name(ob: Own[Box]) -> tuple[Own[Box], Int32]:
+// def return_by_name(ob: Own[Box]) -> tuple[Own[Box], int32]:
 std::tuple<Box, int32_t> return_by_name(Box&& ob) {
     // pair = (ob, 1)
     auto pair = std::tuple<Box, int32_t>{std::move(ob), 1};

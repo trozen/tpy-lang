@@ -1,7 +1,7 @@
 # `Prio(n)` on an IntEnum resolves the from-value template, alongside the
 # ordinary member reads, comparisons and the enum field write.
 from enum import Enum, IntEnum
-from tpy import Int32
+from tpy import int32
 
 
 class Color(Enum):
@@ -28,7 +28,7 @@ def pick(c: Color) -> Color:
     return c
 
 
-def prios(p: Prio, n: Int32) -> bool:
+def prios(p: Prio, n: int32) -> bool:
     ok = p >= Prio.HIGH
     m = Prio(n)  # the from-value template
     if p == m:

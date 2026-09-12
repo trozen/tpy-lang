@@ -2,14 +2,14 @@
 # source into the temp and moves each element out, rather than copying the
 # whole tuple. @nocopy forces the move: a silent copy would be a C++ build
 # error, so a passing run proves the source was moved, not copied.
-from tpy import Own, nocopy, Int32
+from tpy import Own, nocopy, int32
 
 
 @nocopy
 class Counter:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 

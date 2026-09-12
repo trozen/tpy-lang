@@ -1,2 +1,2 @@
-main.py:20: warning: copies list[Int32] into container; use copy() to make this explicit
+main.py:20: warning: copies list[int32] into container; use copy() to make this explicit
 main.py:20: error: in function 'main': this construct is not yet supported by C++ code generation (stmt.assign:setitem.container_value_shape)

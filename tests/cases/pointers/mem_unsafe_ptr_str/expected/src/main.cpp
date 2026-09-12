@@ -8,11 +8,11 @@ namespace tpyapp::main {
 void test_str_ptr() {
     // s: str = "hello"
     std::string_view s = "hello";
-    // cp: Ptr[readonly[Char]] = unsafe_ptr(s)
+    // cp: Ptr[readonly[char]] = unsafe_ptr(s)
     const char* cp = s.data();
-    // print(unsafe_load(cp, UInt32(0)))
+    // print(unsafe_load(cp, uint32(0)))
     std::cout << cp[0] << "\n";
-    // print(unsafe_load(cp, UInt32(4)))
+    // print(unsafe_load(cp, uint32(4)))
     std::cout << cp[4] << "\n";
 }
 

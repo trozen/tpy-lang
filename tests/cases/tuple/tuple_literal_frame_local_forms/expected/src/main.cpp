@@ -10,20 +10,20 @@ A make() {
     return A(7);
 }
 
-// def make_pair() -> Own[tuple[A, Int32]]:
+// def make_pair() -> Own[tuple[A, int32]]:
 std::tuple<A, int32_t> make_pair() {
     // return (A(7), 3)
     return std::tuple<A, int32_t>{A(7), 3};
 }
 
 // # per-element ownership in the return type, not `Own[tuple[...]]`
-// def own_elem_pair() -> tuple[Own[A], Int32]:
+// def own_elem_pair() -> tuple[Own[A], int32]:
 std::tuple<A, int32_t> own_elem_pair() {
     // return (A(7), 3)
     return std::tuple<A, int32_t>{A(7), 3};
 }
 
-// def fresh() -> Iterator[Int32]:
+// def fresh() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_fresh::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -50,12 +50,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_fresh::__next__() {
 }
 
 
-// def fresh() -> Iterator[Int32]:
+// def fresh() -> Iterator[int32]:
 __gen_fresh fresh() {
     return __gen_fresh();
 }
 
-// def own_call() -> Iterator[Int32]:
+// def own_call() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_own_call::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -82,12 +82,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_own_call::__next__() {
 }
 
 
-// def own_call() -> Iterator[Int32]:
+// def own_call() -> Iterator[int32]:
 __gen_own_call own_call() {
     return __gen_own_call();
 }
 
-// def lvalue(a: A) -> Iterator[Int32]:
+// def lvalue(a: A) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_lvalue::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -114,12 +114,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_lvalue::__next__() {
 }
 
 
-// def lvalue(a: A) -> Iterator[Int32]:
+// def lvalue(a: A) -> Iterator[int32]:
 __gen_lvalue lvalue(A& a) {
     return __gen_lvalue(a);
 }
 
-// def mixed_fresh_first(a: A) -> Iterator[Int32]:
+// def mixed_fresh_first(a: A) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_mixed_fresh_first::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -146,12 +146,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_mixed_fresh_first::__next__()
 }
 
 
-// def mixed_fresh_first(a: A) -> Iterator[Int32]:
+// def mixed_fresh_first(a: A) -> Iterator[int32]:
 __gen_mixed_fresh_first mixed_fresh_first(A& a) {
     return __gen_mixed_fresh_first(a);
 }
 
-// def mixed_lvalue_first(a: A) -> Iterator[Int32]:
+// def mixed_lvalue_first(a: A) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_mixed_lvalue_first::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -178,12 +178,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_mixed_lvalue_first::__next__(
 }
 
 
-// def mixed_lvalue_first(a: A) -> Iterator[Int32]:
+// def mixed_lvalue_first(a: A) -> Iterator[int32]:
 __gen_mixed_lvalue_first mixed_lvalue_first(A& a) {
     return __gen_mixed_lvalue_first(a);
 }
 
-// def moved_last_use() -> Iterator[Int32]:
+// def moved_last_use() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_moved_last_use::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -210,12 +210,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_moved_last_use::__next__() {
 }
 
 
-// def moved_last_use() -> Iterator[Int32]:
+// def moved_last_use() -> Iterator[int32]:
 __gen_moved_last_use moved_last_use() {
     return __gen_moved_last_use();
 }
 
-// def loop_reassigned() -> Iterator[Int32]:
+// def loop_reassigned() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_loop_reassigned::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -255,12 +255,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_loop_reassigned::__next__() {
 }
 
 
-// def loop_reassigned() -> Iterator[Int32]:
+// def loop_reassigned() -> Iterator[int32]:
 __gen_loop_reassigned loop_reassigned() {
     return __gen_loop_reassigned();
 }
 
-// def literal_then_call(c: bool) -> Iterator[Int32]:
+// def literal_then_call(c: bool) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_literal_then_call::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -294,12 +294,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_literal_then_call::__next__()
 }
 
 
-// def literal_then_call(c: bool) -> Iterator[Int32]:
+// def literal_then_call(c: bool) -> Iterator[int32]:
 __gen_literal_then_call literal_then_call(bool c) {
     return __gen_literal_then_call(c);
 }
 
-// def call_then_literal(c: bool) -> Iterator[Int32]:
+// def call_then_literal(c: bool) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_call_then_literal::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -333,12 +333,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_call_then_literal::__next__()
 }
 
 
-// def call_then_literal(c: bool) -> Iterator[Int32]:
+// def call_then_literal(c: bool) -> Iterator[int32]:
 __gen_call_then_literal call_then_literal(bool c) {
     return __gen_call_then_literal(c);
 }
 
-// def call_reassigned() -> Iterator[Int32]:
+// def call_reassigned() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_call_reassigned::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -367,12 +367,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_call_reassigned::__next__() {
 }
 
 
-// def call_reassigned() -> Iterator[Int32]:
+// def call_reassigned() -> Iterator[int32]:
 __gen_call_reassigned call_reassigned() {
     return __gen_call_reassigned();
 }
 
-// def own_elem_call() -> Iterator[Int32]:
+// def own_elem_call() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_own_elem_call::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -399,12 +399,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_own_elem_call::__next__() {
 }
 
 
-// def own_elem_call() -> Iterator[Int32]:
+// def own_elem_call() -> Iterator[int32]:
 __gen_own_elem_call own_elem_call() {
     return __gen_own_elem_call();
 }
 
-// def try_body() -> Iterator[Int32]:
+// def try_body() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_try_body::__next__() {
     try {
     while (true) switch (__state) {
@@ -468,12 +468,12 @@ void __gen_try_body::__finally_0() {
     std::cout << "try_body finally" << "\n";
 }
 
-// def try_body() -> Iterator[Int32]:
+// def try_body() -> Iterator[int32]:
 __gen_try_body try_body() {
     return __gen_try_body();
 }
 
-// async def coro(a: A) -> Int32:
+// async def coro(a: A) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -502,7 +502,7 @@ __gen_try_body try_body() {
 }
 
 
-// async def coro(a: A) -> Int32:
+// async def coro(a: A) -> int32:
 __coro_coro coro(A& a) {
     return __coro_coro(a);
 }
@@ -733,7 +733,7 @@ void main() {
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(async_section()));
 }
 
-// def g(self) -> Iterator[Int32]:
+// def g(self) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_H_g::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {

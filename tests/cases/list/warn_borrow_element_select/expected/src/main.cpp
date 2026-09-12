@@ -57,7 +57,7 @@ void alias_arms(std::vector<Rec>& xs, std::vector<Rec>& ys, bool c) {
     std::cout << ::tpy::__len__(picked) << "\n";
 }
 
-// def value_elements(ns: list[Int32], c: bool) -> None:
+// def value_elements(ns: list[int32], c: bool) -> None:
 void value_elements(std::vector<int32_t>& ns, bool c) {
     // v = ns[0] if c else ns[1]
     int32_t v = ((c) ? (::tpy::__getitem__(ns, 0)) : (::tpy::__getitem__(ns, 1)));

@@ -22,9 +22,9 @@ void main();
 struct Bag {
     // items: list[int] | None
     std::optional<std::vector<::tpy::BigInt>> items;
-    // by_key: dict[str, Int32] | None
+    // by_key: dict[str, int32] | None
     std::optional<::tpy::ordered_map<std::string, int32_t>> by_key;
-    // elems: set[Int32] | None
+    // elems: set[int32] | None
     std::optional<::tpy::ordered_set<int32_t>> elems;
     // data: bytes | None
     std::optional<::tpy::Bytes> data;
@@ -34,8 +34,8 @@ struct Bag {
     // def __init__(
     // self,
     // items: list[int] | None,
-    // by_key: dict[str, Int32] | None,
-    // elems: set[Int32] | None,
+    // by_key: dict[str, int32] | None,
+    // elems: set[int32] | None,
     // data: bytes | None,
     // buf: bytearray | None,
     // ) -> None:
@@ -56,8 +56,8 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 // def __init__(
 // self,
 // items: list[int] | None,
-// by_key: dict[str, Int32] | None,
-// elems: set[Int32] | None,
+// by_key: dict[str, int32] | None,
+// elems: set[int32] | None,
 // data: bytes | None,
 // buf: bytearray | None,
 // ) -> None:

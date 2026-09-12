@@ -13,16 +13,16 @@ std::string_view get_r() {
 
 
 // @overload
-// def pick(v: Literal["r", "w"]) -> Int32: ...
+// def pick(v: Literal["r", "w"]) -> int32: ...
 int32_t pick__lit_r__w(std::string_view v) {
-    // return Int32(99)
+    // return int32(99)
     return 99;
 }
 
 // @overload
-// def pick(v: str) -> Int32: ...
+// def pick(v: str) -> int32: ...
 int32_t pick(std::string_view v) {
-    // return Int32(99)
+    // return int32(99)
     return 99;
 }
 

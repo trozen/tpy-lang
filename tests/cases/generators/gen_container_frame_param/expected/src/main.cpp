@@ -32,7 +32,7 @@ __gen_twice_buf twice_buf(::tpy::ByteArray& b) {
     return __gen_twice_buf(b);
 }
 
-// def twice_arr(a: Array[Int32, 2]) -> Iterator[Array[Int32, 2]]:  # tpyc: ok
+// def twice_arr(a: Array[int32, 2]) -> Iterator[Array[int32, 2]]:  # tpyc: ok
 std::expected<::tpy::val_or_ref<std::array<int32_t, 2>>, ::tpy::StopIteration> __gen_twice_arr::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -55,12 +55,12 @@ std::expected<::tpy::val_or_ref<std::array<int32_t, 2>>, ::tpy::StopIteration> _
 }
 
 
-// def twice_arr(a: Array[Int32, 2]) -> Iterator[Array[Int32, 2]]:  # tpyc: ok
+// def twice_arr(a: Array[int32, 2]) -> Iterator[Array[int32, 2]]:  # tpyc: ok
 __gen_twice_arr twice_arr(std::array<int32_t, 2>& a) {
     return __gen_twice_arr(a);
 }
 
-// def twice_list(xs: list[Int32]) -> Iterator[list[Int32]]:  # tpyc: ok
+// def twice_list(xs: list[int32]) -> Iterator[list[int32]]:  # tpyc: ok
 std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_twice_list::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -83,7 +83,7 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
 }
 
 
-// def twice_list(xs: list[Int32]) -> Iterator[list[Int32]]:  # tpyc: ok
+// def twice_list(xs: list[int32]) -> Iterator[list[int32]]:  # tpyc: ok
 __gen_twice_list twice_list(std::vector<int32_t>& xs) {
     return __gen_twice_list(xs);
 }
@@ -108,7 +108,7 @@ void main() {
     }
     // print(len(b))
     std::cout << ::tpy::__len__(b) << "\n";
-    // a = Array[Int32, 2]()
+    // a = Array[int32, 2]()
     std::array<int32_t, 2> a = std::array<int32_t, 2>();
     // for ga in twice_arr(a):
     {

@@ -1,7 +1,7 @@
 # Literal[int] in @overload parameter annotations: parsing, sema validation,
 # and codegen for integer literal dispatch (compilation + execution)
 from typing import Literal, overload
-from tpy import Int32
+from tpy import int32
 
 
 @overload
@@ -14,9 +14,9 @@ def classify(x: Literal[3, 4]) -> str: ...
 def classify(x: Literal[-1, -2]) -> str: ...
 
 @overload
-def classify(x: Int32) -> str: ...
+def classify(x: int32) -> str: ...
 
-def classify(x: Int32) -> str:
+def classify(x: int32) -> str:
     if x == 1:
         return "one"
     elif x == 2:
@@ -38,12 +38,12 @@ def classify(x: Int32) -> str:
 # pinned by tests/cases/calls/error_overload_literal_no_match.
 
 @overload
-def only_lit(x: Literal[1]) -> Int32: ...
+def only_lit(x: Literal[1]) -> int32: ...
 
 @overload
 def only_lit(x: Literal[2]) -> str: ...
 
-def only_lit(x: Int32) -> Int32 | str:
+def only_lit(x: int32) -> int32 | str:
     if x == 1:
         return 42
     return "two"
@@ -60,8 +60,8 @@ def main() -> None:
     print(classify(-1))
     print(classify(-2))
 
-    # Variable falls through to Int32 fallback
-    x: Int32 = 5
+    # Variable falls through to int32 fallback
+    x: int32 = 5
     print(classify(x))
 
     # No fallback stub: each literal still resolves to its own stub.

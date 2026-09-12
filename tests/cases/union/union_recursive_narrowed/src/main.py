@@ -1,16 +1,16 @@
 # Recursive union: isinstance early-return narrows the variable for
 # code after the if-block (iteration, len on the list member).
 # Also covers elif chains with more than two alternatives.
-from tpy import Int32
+from tpy import int32
 
 
-type Tree = Int32 | list[Tree]
+type Tree = int32 | list[Tree]
 
 
-def depth(t: Tree) -> Int32:
-    if isinstance(t, Int32):
+def depth(t: Tree) -> int32:
+    if isinstance(t, int32):
         return 0
-    m: Int32 = 0
+    m: int32 = 0
     for child in t:
         d = depth(child)
         if d > m:
@@ -18,38 +18,38 @@ def depth(t: Tree) -> Int32:
     return m + 1
 
 
-def count(t: Tree) -> Int32:
-    if isinstance(t, Int32):
+def count(t: Tree) -> int32:
+    if isinstance(t, int32):
         return 1
-    total: Int32 = 0
+    total: int32 = 0
     for child in t:
         total = total + count(child)
     return total
 
 
-def leaf_sum(t: Tree) -> Int32:
-    if isinstance(t, Int32):
+def leaf_sum(t: Tree) -> int32:
+    if isinstance(t, int32):
         return t
-    s: Int32 = 0
+    s: int32 = 0
     for child in t:
         s = s + leaf_sum(child)
     return s
 
 
-def child_count(t: Tree) -> Int32:
-    if isinstance(t, Int32):
+def child_count(t: Tree) -> int32:
+    if isinstance(t, int32):
         return 0
     return len(t)
 
 
 # isinstance guard inside an else block
-def depth_nested(t: Tree, offset: Int32) -> Int32:
+def depth_nested(t: Tree, offset: int32) -> int32:
     if offset < 0:
         return 0
     else:
-        if isinstance(t, Int32):
+        if isinstance(t, int32):
             return offset
-        m: Int32 = 0
+        m: int32 = 0
         for child in t:
             d = depth_nested(child, offset)
             if d > m:
@@ -58,11 +58,11 @@ def depth_nested(t: Tree, offset: Int32) -> Int32:
 
 
 # Three-member recursive union with elif chain
-type Expr = Int32 | str | list[Expr]
+type Expr = int32 | str | list[Expr]
 
 
 def eval_expr(e: Expr) -> str:
-    if isinstance(e, Int32):
+    if isinstance(e, int32):
         return str(e)
     elif isinstance(e, str):
         return e

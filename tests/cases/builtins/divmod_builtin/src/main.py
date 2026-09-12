@@ -1,14 +1,14 @@
-# Test divmod() builtin for Int32, BigInt, and float
-from tpy import Int32
+# Test divmod() builtin for int32, BigInt, and float
+from tpy import int32
 
 def main() -> None:
-    # Int32 divmod
-    q1, r1 = divmod(Int32(17), Int32(5))
+    # int32 divmod
+    q1, r1 = divmod(int32(17), int32(5))
     print(q1)
     print(r1)
 
-    # Int32 divmod with negative (Python floor semantics)
-    q2, r2 = divmod(Int32(-17), Int32(5))
+    # int32 divmod with negative (Python floor semantics)
+    q2, r2 = divmod(int32(-17), int32(5))
     print(q2)
     print(r2)
 

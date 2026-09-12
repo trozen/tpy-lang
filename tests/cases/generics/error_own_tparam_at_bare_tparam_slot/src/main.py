@@ -1,7 +1,7 @@
 # An `Own[T]` param forwarded to a bare `T` method slot: the source is a move,
 # not the bare forward the same-T row licenses, so the call rejects. The bare
 # same-T forward is pinned by tests/cases/generics/tparam_method_arg_forward.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Inner[T]:
@@ -25,7 +25,7 @@ class Outer[T]:
 
 
 def main() -> None:
-    o = Outer[Int32](1)
+    o = Outer[int32](1)
     o.put_own(9)
     print(o._in.v)
 

@@ -3,7 +3,7 @@
 
 namespace tpyapp::main {
 
-// b = Box(Int32(123))
+// b = Box(int32(123))
 Box* b{};
 // x = None
 std::optional<int32_t> x;
@@ -13,7 +13,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // b = Box(Int32(123))
+    // b = Box(int32(123))
     static Box __global_slot_1 = Box(123);
     b = &__global_slot_1;
     // x = None

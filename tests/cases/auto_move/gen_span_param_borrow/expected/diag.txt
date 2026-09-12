@@ -1,1 +1,1 @@
-main.py:21: warning: copies list[Int32] into owned storage; use copy() to make this explicit
+main.py:21: warning: copies list[int32] into owned storage; use copy() to make this explicit

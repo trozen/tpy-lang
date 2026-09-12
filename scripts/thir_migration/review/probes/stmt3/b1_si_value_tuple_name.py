@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 def make() -> tuple[str, str]:
     return ('a', 'b')
 def main() -> None:

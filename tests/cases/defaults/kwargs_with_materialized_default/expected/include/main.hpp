@@ -18,10 +18,10 @@ void main();
 
 // class Fixed(ValueType):
 struct Fixed {
-    // off: Int64
+    // off: int64
     int64_t off;
 
-    // def __init__(self, off: Int64) -> None:
+    // def __init__(self, off: int64) -> None:
     Fixed() = default;
     explicit Fixed(int64_t off);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Fixed";
@@ -52,7 +52,7 @@ inline std::ostream& operator<<(std::ostream& os, const Options& obj) {
 }
 
 
-// def __init__(self, off: Int64) -> None:
+// def __init__(self, off: int64) -> None:
 inline Fixed::Fixed(int64_t off) : off(off) {}
 void __tpy_init();
 } // namespace tpyapp::main

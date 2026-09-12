@@ -1,12 +1,12 @@
 # __copy__ on a type with __del__: each copy owns its own resource, no double-free
 from __future__ import annotations
-from tpy import Int32, Own, copy
+from tpy import int32, Own, copy
 
 
 class Resource:
-    id: Int32
+    id: int32
 
-    def __init__(self, id: Int32):
+    def __init__(self, id: int32):
         self.id = id
         print("alloc", id)
 

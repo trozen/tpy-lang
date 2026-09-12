@@ -8,7 +8,7 @@ namespace tpyapp::main {
 void main() {
     // c = InfiniteCounter()
     InfiniteCounter c = InfiniteCounter();
-    // count: Int32 = 0
+    // count: int32 = 0
     int32_t count = 0;
     // for x in c:
     auto& __src_0 = c;

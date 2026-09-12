@@ -16,17 +16,17 @@ void main();
 
 // class Dur(ValueType):
 struct Dur {
-    // nanos: Int64
+    // nanos: int64
     int64_t nanos;
 
-    // def __init__(self, ns: Int64) -> None:
+    // def __init__(self, ns: int64) -> None:
     Dur() = default;
     explicit Dur(int64_t ns);
 
     // def __rmul__(self, f: float) -> float:
     double __rmul__(double f) const;
 
-    // def __radd__(self, n: Int64) -> Int64:
+    // def __radd__(self, n: int64) -> int64:
     int64_t __radd__(int64_t n) const;
 
     friend double operator*(double f, const Dur& rhs) {
@@ -52,14 +52,14 @@ namespace tpyapp::main {
 
 // class Flags:
 struct Flags {
-    // bits: Int32
+    // bits: int32
     int32_t bits;
 
-    // def __init__(self, bits: Int32) -> None:
+    // def __init__(self, bits: int32) -> None:
     Flags() = default;
     explicit Flags(int32_t bits);
 
-    // def __ror__(self, other: Int32) -> Own[Flags]:
+    // def __ror__(self, other: int32) -> Own[Flags]:
     Flags __ror__(int32_t other) const;
 
     friend Flags operator|(int32_t other, const Flags& rhs) {
@@ -74,7 +74,7 @@ inline std::ostream& operator<<(std::ostream& os, const Flags& obj) {
 }
 
 
-// def __init__(self, ns: Int64) -> None:
+// def __init__(self, ns: int64) -> None:
 inline Dur::Dur(int64_t ns) : nanos(ns) {}
 
 // def __rmul__(self, f: float) -> float:
@@ -83,16 +83,16 @@ inline double Dur::__rmul__(double f) const {
     return ((f) * static_cast<double>(this->nanos));
 }
 
-// def __radd__(self, n: Int64) -> Int64:
+// def __radd__(self, n: int64) -> int64:
 inline int64_t Dur::__radd__(int64_t n) const {
     // return n + self.nanos
     return (::tpy::add_check<int64_t>(n, this->nanos));
 }
 
-// def __init__(self, bits: Int32) -> None:
+// def __init__(self, bits: int32) -> None:
 inline Flags::Flags(int32_t bits) : bits(bits) {}
 
-// def __ror__(self, other: Int32) -> Own[Flags]:
+// def __ror__(self, other: int32) -> Own[Flags]:
 inline Flags Flags::__ror__(int32_t other) const {
     // return Flags(other | self.bits)
     return Flags((static_cast<int32_t>(other | this->bits)));

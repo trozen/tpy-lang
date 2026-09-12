@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def total(p: tuple[Int32 | None, Int32]) -> Int32:
+// def total(p: tuple[int32 | None, int32]) -> int32:
 int32_t total(const std::tuple<std::optional<int32_t>, int32_t>& p) {
     // a, b = p
     const auto& __tup_1 = p;

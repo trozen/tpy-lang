@@ -15,35 +15,35 @@ void main();
 
 // class Window:
 struct Window {
-    // _data: list[Int32]
+    // _data: list[int32]
     std::vector<int32_t> _data;
 
     // def __init__(self) -> None:
     Window();
 
     // @overload
-    // def __getitem__(self, index: basic_slice) -> Span[readonly[Int32]]: ...  # tpyc: ok
+    // def __getitem__(self, index: basic_slice) -> Span[readonly[int32]]: ...  # tpyc: ok
     std::span<const int32_t> __getitem__(::tpy::BasicSlice index) const {
         // # Basic: return contiguous subspan
         // s_start = index.start
         std::optional<int32_t> s_start = index.start;
         // s_stop = index.stop
         std::optional<int32_t> s_stop = index.stop;
-        // start: Int32 = s_start if s_start is not None else 0
+        // start: int32 = s_start if s_start is not None else 0
         int32_t start = (((s_start.has_value())) ? ((*s_start)) : (0));
-        // stop: Int32 = s_stop if s_stop is not None else len(self._data)
+        // stop: int32 = s_stop if s_stop is not None else len(self._data)
         int32_t stop = (((s_stop.has_value())) ? ((*s_stop)) : (::tpy::__len__(this->_data)));
         // return self._data[start:stop]
         return ::tpy::list_slice(this->_data, ::tpy::BasicSlice{start, stop});
     }
 
     // @overload
-    // def __getitem__(self, index: slice) -> Span[readonly[Int32]]: ...  # tpyc: ok
+    // def __getitem__(self, index: slice) -> Span[readonly[int32]]: ...  # tpyc: ok
     std::span<const int32_t> __getitem__(::tpy::Slice index) const {
         // # Stepped: access .step to prove we received a slice, not basic_slice
         // s_step = index.step
         std::optional<int32_t> s_step = index.step;
-        // step: Int32 = s_step if s_step is not None else 1
+        // step: int32 = s_step if s_step is not None else 1
         int32_t step = (((s_step.has_value())) ? ((*s_step)) : (1));
         // print(step)
         std::cout << step << "\n";

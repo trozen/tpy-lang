@@ -1,9 +1,9 @@
-from tpy import Int32
+from tpy import int32
 class Box:
-    n: Int32
-    def __init__(self, n: Int32) -> None:
+    n: int32
+    def __init__(self, n: int32) -> None:
         self.n = n
-def f(pairs: list[tuple[Int32, Box]]) -> Int32:
+def f(pairs: list[tuple[int32, Box]]) -> int32:
     a, b = pairs[0]
     return a + b.n
 def main() -> None:

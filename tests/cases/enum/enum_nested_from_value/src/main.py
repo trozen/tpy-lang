@@ -1,6 +1,6 @@
 # Nested enum value lookup: Outer.Kind(v) resolves through EnumUtil from_value.
 from enum import Enum
-from tpy import Int32
+from tpy import int32
 
 
 class Message:
@@ -9,7 +9,7 @@ class Message:
         IMAGE = 2
 
 
-def lookup(n: Int32) -> Message.Kind:
+def lookup(n: int32) -> Message.Kind:
     k = Message.Kind(n)
     return k
 

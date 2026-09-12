@@ -28,10 +28,10 @@ void main();
 // @nocopy
 // class Item:
 struct Item {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Item() = default;
     explicit Item(int32_t v);
     // non-copyable (@nocopy)
@@ -52,10 +52,10 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
 struct Producer {
     // tx: Sender[Item]
     ::tpystd::tplib::channel::Sender<Item> tx;
-    // base: Int32
+    // base: int32
     int32_t base;
 
-    // def __init__(self, tx: Own[Sender[Item]], base: Int32) -> None:
+    // def __init__(self, tx: Own[Sender[Item]], base: int32) -> None:
     explicit Producer(::tpystd::tplib::channel::Sender<Item>&& tx, int32_t base);
     // non-copyable (@nocopy)
     Producer(const Producer&) = delete;
@@ -74,10 +74,10 @@ inline std::ostream& operator<<(std::ostream& os, const Producer& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Item::Item(int32_t v) : v(v) {}
 
-// def __init__(self, tx: Own[Sender[Item]], base: Int32) -> None:
+// def __init__(self, tx: Own[Sender[Item]], base: int32) -> None:
 inline Producer::Producer(::tpystd::tplib::channel::Sender<Item>&& tx, int32_t base) : tx(std::move(tx)), base(base) {}
 
 // def run(self) -> None:

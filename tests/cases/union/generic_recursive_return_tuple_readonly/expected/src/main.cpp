@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def leaf_count(t: readonly[Tree[Int32]]) -> Int32:
+// def leaf_count(t: readonly[Tree[int32]]) -> int32:
 int32_t leaf_count(const Tree<int32_t>& t) {
     // match t:
     auto& __match_subject_1 = t;
@@ -37,7 +37,7 @@ int32_t leaf_count(const Tree<int32_t>& t) {
     ::std::unreachable();
 }
 
-// def f() -> tuple[Own[Tree[Int32]], Int32]:
+// def f() -> tuple[Own[Tree[int32]], int32]:
 std::tuple<Tree<int32_t>, int32_t> f() {
     // return ([1, 2], 0)
     return std::tuple<Tree<int32_t>, int32_t>{std::vector<Tree<int32_t>>{1, 2}, 0};

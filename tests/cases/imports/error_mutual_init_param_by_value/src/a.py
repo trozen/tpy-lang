@@ -1,11 +1,11 @@
 from b import B
-from tpy import Int32
+from tpy import int32
 
-def helper() -> Int32:
+def helper() -> int32:
     return 42
 
 class A:
-    val: Int32
+    val: int32
     # Constructor takes a cycle-peer value-type by value but stores
     # only a primitive. There is no field of type B, so the field
     # walk wouldn't fire -- the constructor body itself emits inline

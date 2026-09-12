@@ -6,13 +6,13 @@ namespace tpyapp::main {
 
 // def two_pairs() -> tuple[tuple[Own[Handle], Own[Handle]], tuple[Own[Handle], Own[Handle]]]:
 std::tuple<std::tuple<Handle, Handle>, std::tuple<Handle, Handle>> two_pairs() {
-    // a = Handle(Int32(1))
+    // a = Handle(int32(1))
     Handle a = Handle(1);
-    // b = Handle(Int32(2))
+    // b = Handle(int32(2))
     Handle b = Handle(2);
-    // c = Handle(Int32(3))
+    // c = Handle(int32(3))
     Handle c = Handle(3);
-    // d = Handle(Int32(4))
+    // d = Handle(int32(4))
     Handle d = Handle(4);
     // return ((a, b), (c, d))
     return std::tuple<std::tuple<Handle, Handle>, std::tuple<Handle, Handle>>{std::tuple<Handle, Handle>{std::move(a), std::move(b)}, std::tuple<Handle, Handle>{std::move(c), std::move(d)}};

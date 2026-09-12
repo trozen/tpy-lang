@@ -1,1 +1,1 @@
-Generic function subscripting (make_empty[Int32]()) not supported until Python 3.15 (PEP 718)
+Generic function subscripting (make_empty[int32]()) not supported until Python 3.15 (PEP 718)

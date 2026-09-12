@@ -1,13 +1,13 @@
 # Three-deep forwarding chain: top -> mid -> leaf, where only leaf mutates.
 # Propagation must reach every level via the vararg edges so the entire chain
 # keeps its slot mutable; the chain converges in the Phase 2 fixpoint.
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    val: Int32
+    val: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 

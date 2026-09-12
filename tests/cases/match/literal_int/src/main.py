@@ -1,7 +1,7 @@
 # match/case on int subject with literal patterns
-from tpy import Int32
+from tpy import int32
 
-def classify(n: Int32) -> str:
+def classify(n: int32) -> str:
     match n:
         case 0:
             return "zero"

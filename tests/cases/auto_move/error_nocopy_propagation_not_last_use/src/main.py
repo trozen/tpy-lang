@@ -1,12 +1,12 @@
 # Passing implicitly-nocopy type to Own[T] not at last use gives error
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 
 
 @nocopy
 class Handle:
-    fd: Int32
+    fd: int32
 
-    def __init__(self, fd: Int32):
+    def __init__(self, fd: int32):
         self.fd = fd
 
 
@@ -17,7 +17,7 @@ class Container:
         self.handle = handle
 
 
-def consume(c: Own[Container]) -> Int32:
+def consume(c: Own[Container]) -> int32:
     return c.handle.fd
 
 

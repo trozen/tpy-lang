@@ -1,5 +1,5 @@
 # Test explicit String type (tpy.String -> std::string)
-from tpy import Int32, String
+from tpy import int32, String
 
 def test_string_basic() -> None:
     s: String = String("hello")
@@ -7,7 +7,7 @@ def test_string_basic() -> None:
     print(len(s))  # 5
 
 def test_string_from_int() -> None:
-    s: String = String(Int32(42))
+    s: String = String(int32(42))
     print(s)  # 42
 
 def test_string_from_bool() -> None:

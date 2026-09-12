@@ -17,10 +17,10 @@ void test_nocopy_ordering();
 // @nocopy
 // class Rank:
 struct Rank {
-    // val: Int32
+    // val: int32
     int32_t val;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Rank() = default;
     explicit Rank(int32_t v);
     // non-copyable (@nocopy)
@@ -72,7 +72,7 @@ inline std::ostream& operator<<(std::ostream& os, const Rank& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Rank::Rank(int32_t v) : val(v) {}
 
 // def __eq__(self, other: Rank) -> bool:

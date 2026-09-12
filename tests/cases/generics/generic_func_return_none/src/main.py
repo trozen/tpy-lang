@@ -1,11 +1,11 @@
 # Regression: `def f[T] -> T` compiles when T = None (void in C++).
-from tpy import Int32, Own
+from tpy import int32, Own
 from tpy.coro import Awaitable, Poll, Waker, poll_once, poll_ready, poll_ready_none
 
 
 class Int32One:
-    def __poll__(self, w: Waker) -> Own[Poll[Int32]]:
-        return poll_ready(Int32(1))
+    def __poll__(self, w: Waker) -> Own[Poll[int32]]:
+        return poll_ready(int32(1))
 
 
 class Nothing:

@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 class Rec:
-    n: Int32
-    def __init__(self, n: Int32) -> None:
+    n: int32
+    def __init__(self, n: int32) -> None:
         self.n = n
 def main() -> None:
     c = True

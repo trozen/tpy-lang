@@ -1,1 +1,1 @@
-main.py:10: error: parameter 's': type 'str' is not representable in the C ABI; use Ptr[readonly[UInt8]] and convert with tpy.unsafe.unsafe_str_from_cstr() / unsafe_cstr()
+main.py:10: error: parameter 's': type 'str' is not representable in the C ABI; use Ptr[readonly[uint8]] and convert with tpy.unsafe.unsafe_str_from_cstr() / unsafe_cstr()

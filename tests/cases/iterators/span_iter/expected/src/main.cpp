@@ -6,10 +6,10 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // a: Array[Int32, 3] = [10, 20, 30]
+    // a: Array[int32, 3] = [10, 20, 30]
     std::array<int32_t, 3> a = {10, 20, 30};
     // # iter() on mutable Span
-    // s: Span[Int32] = a
+    // s: Span[int32] = a
     std::span<int32_t> s = ::tpy::as_mut_span(a);
     // it = iter(s)
     auto it = ::tpy::__iter__(s);
@@ -24,7 +24,7 @@ void main() {
         std::cout << x << "\n";
     }
     // # iter() on Span[readonly[T]]
-    // ro: Span[readonly[Int32]] = a
+    // ro: Span[readonly[int32]] = a
     std::span<const int32_t> ro = ::tpy::as_span(a);
     // it2 = iter(ro)
     auto it2 = ::tpy::__iter__(ro);

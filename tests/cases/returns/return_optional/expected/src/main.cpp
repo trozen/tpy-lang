@@ -8,7 +8,7 @@ std::vector<Point>* points{};
 // result = find(points, 2)
 Point* result{};
 
-// def find(points: list[Point], target: Int32) -> Point | None:
+// def find(points: list[Point], target: int32) -> Point | None:
 Point* find(std::vector<Point>& points, int32_t target) {
     // for p in points:
     auto& __obj_0 = points;

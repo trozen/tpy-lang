@@ -1,6 +1,6 @@
 # Reference-type class (has list[str] field) so it's auto-inferred as a
 # reference type. Construction is via the public class name, not a factory.
-from tpy import Int32
+from tpy import int32
 
 
 class Buffer:
@@ -12,8 +12,8 @@ class Buffer:
     def add(self, s: str) -> None:
         self._items.append(str(s))
 
-    def size(self) -> Int32:
-        return Int32(len(self._items))
+    def size(self) -> int32:
+        return int32(len(self._items))
 
     def dump(self) -> str:
         return "".join(self._items)

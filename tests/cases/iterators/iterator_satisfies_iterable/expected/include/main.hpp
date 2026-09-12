@@ -17,16 +17,16 @@ void main();
 
 // class Counter:
 struct Counter {
-    // i: Int32
+    // i: int32
     int32_t i;
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Counter() = default;
     explicit Counter(int32_t n);
 
-    // def __next__(self) -> Int32:
+    // def __next__(self) -> int32:
     std::expected<int32_t, ::tpy::StopIteration> __next__();
 
     // def __iter__(self) -> Counter:
@@ -40,10 +40,10 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 }
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Counter::Counter(int32_t n) : i(0), n(n) {}
 
-// def __next__(self) -> Int32:
+// def __next__(self) -> int32:
 inline std::expected<int32_t, ::tpy::StopIteration> Counter::__next__() {
     // if self.i >= self.n:
     if ((this->i >= this->n)) {
@@ -63,10 +63,10 @@ inline Counter& Counter::__iter__() {
     // return self
     return (*this);
 }
-// def sum_iterable(items: Iterable[Int32]) -> Int32:
+// def sum_iterable(items: Iterable[int32]) -> int32:
 template<::tpystd::typing::Iterable<int32_t> T_items>
 int32_t sum_iterable(T_items& items) {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for x in items:
     auto& __src_0 = items;

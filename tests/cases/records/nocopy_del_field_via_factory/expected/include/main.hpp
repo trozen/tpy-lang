@@ -18,11 +18,11 @@ void main();
 // @nocopy
 // class Resource:
 struct Resource {
-    // id: Int32
+    // id: int32
     int32_t id;
     bool __tpy_owned_ = true;
 
-    // def __init__(self, id: Int32) -> None:
+    // def __init__(self, id: int32) -> None:
     explicit Resource(int32_t id);
     // non-copyable (@nocopy)
     Resource(const Resource&) = delete;
@@ -34,7 +34,7 @@ struct Resource {
     ~Resource();
 
     // @staticmethod
-    // def make(seed: Int32) -> Own[Resource]:
+    // def make(seed: int32) -> Own[Resource]:
     static Resource make(int32_t seed);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Resource";
 };
@@ -48,10 +48,10 @@ inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
 struct Holder {
     // _r: Resource
     Resource _r;
-    // tag: Int32
+    // tag: int32
     int32_t tag;
 
-    // def __init__(self, seed: Int32, tag: Int32) -> None:
+    // def __init__(self, seed: int32, tag: int32) -> None:
     explicit Holder(int32_t seed, int32_t tag);
     // non-copyable (field '_r')
     Holder(const Holder&) = delete;
@@ -67,7 +67,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 }
 
 
-// def __init__(self, id: Int32) -> None:
+// def __init__(self, id: int32) -> None:
 inline Resource::Resource(int32_t id) : id(id) {}
 
 inline Resource::Resource(Resource&& other) noexcept : id(std::move(other.id)) {
@@ -89,15 +89,15 @@ inline Resource::~Resource() {
 }
 
 // @staticmethod
-// def make(seed: Int32) -> Own[Resource]:
+// def make(seed: int32) -> Own[Resource]:
 inline Resource Resource::make(int32_t seed) {
-    // base = seed + Int32(100)
+    // base = seed + int32(100)
     int32_t base = (::tpy::add_check<int32_t>(seed, 100));
     // return Resource(base)
     return Resource(base);
 }
 
-// def __init__(self, seed: Int32, tag: Int32) -> None:
+// def __init__(self, seed: int32, tag: int32) -> None:
 inline Holder::Holder(int32_t seed, int32_t tag) : _r(Resource::make(seed)), tag(tag) {}
 void __tpy_init();
 } // namespace tpyapp::main

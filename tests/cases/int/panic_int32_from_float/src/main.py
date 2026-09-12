@@ -1,4 +1,4 @@
-from tpy import Int32
-# Float value exceeds Int32 range
-x: Int32 = Int32(3000000000.0)
+from tpy import int32
+# Float value exceeds int32 range
+x: int32 = int32(3000000000.0)
 print(x)

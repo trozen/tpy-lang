@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def gen_n_times(p: P | None, n: Int32) -> Iterator[Int32]:
+// def gen_n_times(p: P | None, n: int32) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_n_times::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -47,7 +47,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_n_times::__next__() {
 }
 
 
-// def gen_n_times(p: P | None, n: Int32) -> Iterator[Int32]:
+// def gen_n_times(p: P | None, n: int32) -> Iterator[int32]:
 __gen_gen_n_times gen_n_times(P* p, int32_t n) {
     return __gen_gen_n_times(p, n);
 }

@@ -17,10 +17,10 @@ void main();
 
 // class Holder:
 struct Holder {
-    // n: Int64
+    // n: int64
     int64_t n;
 
-    // def __init__(self, n: Int64 = STEP, *, tag: Int64) -> None:
+    // def __init__(self, n: int64 = STEP, *, tag: int64) -> None:
     Holder() = default;
     explicit Holder(int64_t n, int64_t tag);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
@@ -32,7 +32,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 }
 
 
-// def __init__(self, n: Int64 = STEP, *, tag: Int64) -> None:
+// def __init__(self, n: int64 = STEP, *, tag: int64) -> None:
 inline Holder::Holder(int64_t n, int64_t tag) : n((::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(n, 10)), tag))) {}
 void __tpy_init();
 } // namespace tpyapp::main

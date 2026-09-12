@@ -35,16 +35,16 @@ struct Tree {
 
 // class Holder:
 struct Holder {
-    // t: Tree[Int32]
+    // t: Tree[int32]
     Tree<int32_t> t;
 
-    // def __init__(self, t: Own[Tree[Int32]]) -> None:
+    // def __init__(self, t: Own[Tree[int32]]) -> None:
     explicit Holder(Tree<int32_t>&& t);
 
-    // def get(self) -> Tree[Int32]:
+    // def get(self) -> Tree[int32]:
     Tree<int32_t>& get();
 
-    // def matches(self, other: Tree[Int32]) -> bool:
+    // def matches(self, other: Tree[int32]) -> bool:
     bool matches(const Tree<int32_t>& other) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
@@ -55,16 +55,16 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 }
 
 
-// def __init__(self, t: Own[Tree[Int32]]) -> None:
+// def __init__(self, t: Own[Tree[int32]]) -> None:
 inline Holder::Holder(Tree<int32_t>&& t) : t(std::move(t)) {}
 
-// def get(self) -> Tree[Int32]:
+// def get(self) -> Tree[int32]:
 inline Tree<int32_t>& Holder::get() {
     // return self.t
     return this->t;
 }
 
-// def matches(self, other: Tree[Int32]) -> bool:
+// def matches(self, other: Tree[int32]) -> bool:
 inline bool Holder::matches(const Tree<int32_t>& other) const {
     // return leaf_count(self.t) == leaf_count(other)
     return (leaf_count(this->t) == leaf_count(other));

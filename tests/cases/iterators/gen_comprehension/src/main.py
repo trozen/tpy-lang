@@ -3,36 +3,36 @@
 # The Own[Node] case collects into list[Node] by moving each owned element
 # (the consuming-for-append move, applied to comprehension element sinks).
 from typing import Iterator, Iterable
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Node:
-    v: Int32
-    def __init__(self, v: Int32) -> None:
+    v: int32
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 
 class Counter:
-    base: Int32
-    def __init__(self, base: Int32) -> None:
+    base: int32
+    def __init__(self, base: int32) -> None:
         self.base = base
-    def around(self) -> Iterator[Int32]:
+    def around(self) -> Iterator[int32]:
         yield self.base - 1
         yield self.base
         yield self.base + 1
 
 
-def two_then(n: Int32) -> Iterator[Int32]:
+def two_then(n: int32) -> Iterator[int32]:
     yield 0
-    i: Int32 = 1
+    i: int32 = 1
     while i <= n:
         yield i
         i += 1
 
 
 # Iterating an Iterable[T] param forces the frame and makes the struct templated.
-def head[T](it: Iterable[T], n: Int32) -> Iterator[T]:
-    c: Int32 = 0
+def head[T](it: Iterable[T], n: int32) -> Iterator[T]:
+    c: int32 = 0
     for x in it:
         if c >= n:
             break
@@ -41,24 +41,24 @@ def head[T](it: Iterable[T], n: Int32) -> Iterator[T]:
 
 
 # Inverse guard: simple generators (peephole path) must keep working.
-def simple(n: Int32) -> Iterator[Int32]:
-    i: Int32 = 0
+def simple(n: int32) -> Iterator[int32]:
+    i: int32 = 0
     while i < n:
         yield i
         i += 1
 
 
-def pairs(n: Int32) -> Iterator[tuple[Int32, Int32]]:
+def pairs(n: int32) -> Iterator[tuple[int32, int32]]:
     yield (0, 0)
-    i: Int32 = 1
+    i: int32 = 1
     while i < n:
         yield (i, i * i)
         i += 1
 
 
-def make_nodes(n: Int32) -> Iterator[Own[Node]]:
+def make_nodes(n: int32) -> Iterator[Own[Node]]:
     yield Node(0)
-    i: Int32 = 1
+    i: int32 = 1
     while i < n:
         yield Node(i)
         i += 1
@@ -67,7 +67,7 @@ def make_nodes(n: Int32) -> Iterator[Own[Node]]:
 def main() -> None:
     print([x for x in two_then(3)])               # [0, 1, 2, 3]
     print([x for x in two_then(4) if x % 2 == 0])  # [0, 2, 4]
-    nums: list[Int32] = [10, 20, 30, 40]
+    nums: list[int32] = [10, 20, 30, 40]
     print([x for x in head(nums, 2)])             # [10, 20]
     s = {x for x in two_then(2)}
     print(len(s))                                 # 3

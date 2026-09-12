@@ -1,36 +1,36 @@
-# Char str-like behavior: concat, repeat, len, ord(str), Char(str).
-from tpy import Char
+# char str-like behavior: concat, repeat, len, ord(str), char(str).
+from tpy import char
 
 
 def main():
-    c: Char = "A"
+    c: char = "A"
 
-    # str + Char
+    # str + char
     print("hello" + c)
 
-    # Char + str
+    # char + str
     print(c + "hello")
 
-    # Char + Char
+    # char + char
     print(c + c)
 
-    # Char * int / int * Char
+    # char * int / int * char
     print(c * 3)
     print(3 * c)
 
-    # len(Char) -- always 1
+    # len(char) -- always 1
     print(len(c))
 
     # ord(str) -- single char string
     s = "B"
     print(ord(s))
 
-    # ord(Char) still works
+    # ord(char) still works
     print(ord(c))
 
-    # Char(str) constructor
+    # char(str) constructor
     s2 = "Z"
-    z = Char(s2)
+    z = char(s2)
     print(z)
 
 

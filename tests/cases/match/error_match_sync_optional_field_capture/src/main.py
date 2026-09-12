@@ -1,20 +1,20 @@
 # A keyword capture of an `Optional` field in a SYNC body: only the frame
 # flavour registers a pointer member for the captured name.
 from typing import Optional
-from tpy import Int32
+from tpy import int32
 
 
 class Inner:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
 class Box:
     maybe: Optional[Inner]
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.maybe = Inner(n)
 
 

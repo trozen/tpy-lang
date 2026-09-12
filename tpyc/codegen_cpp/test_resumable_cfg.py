@@ -34,8 +34,8 @@ class TestYieldDispatch:
     def test_top_level_yields_produce_yield_payloads(self):
         cfg = _build(
             "from typing import Iterator\n"
-            "from tpy import Int32\n"
-            "def g() -> Iterator[Int32]:\n"
+            "from tpy import int32\n"
+            "def g() -> Iterator[int32]:\n"
             "    yield 1\n"
             "    yield 2\n"
         )
@@ -54,8 +54,8 @@ class TestYieldDispatch:
         # predicate -- not left as a single leaf statement.
         cfg = _build(
             "from typing import Iterator\n"
-            "from tpy import Int32\n"
-            "def g(n: Int32) -> Iterator[Int32]:\n"
+            "from tpy import int32\n"
+            "def g(n: int32) -> Iterator[int32]:\n"
             "    i = 0\n"
             "    while i < n:\n"
             "        yield i\n"
@@ -72,8 +72,8 @@ class TestSuspensionPredicate:
     def test_detects_nested_yield(self):
         body = _gen_body(
             "from typing import Iterator\n"
-            "from tpy import Int32\n"
-            "def g(n: Int32) -> Iterator[Int32]:\n"
+            "from tpy import int32\n"
+            "def g(n: int32) -> Iterator[int32]:\n"
             "    while n > 0:\n"
             "        yield n\n"
         )
@@ -82,8 +82,8 @@ class TestSuspensionPredicate:
 
     def test_plain_loop_without_yield_is_not_a_suspension(self):
         body = _gen_body(
-            "from tpy import Int32\n"
-            "def f(n: Int32) -> Int32:\n"
+            "from tpy import int32\n"
+            "def f(n: int32) -> int32:\n"
             "    total = 0\n"
             "    while n > 0:\n"
             "        total += n\n"
@@ -104,8 +104,8 @@ class TestLoopElseSupported:
     def test_yield_in_while_else_builds(self):
         cfg = _build(
             "from typing import Iterator\n"
-            "from tpy import Int32\n"
-            "def g(n: Int32) -> Iterator[Int32]:\n"
+            "from tpy import int32\n"
+            "def g(n: int32) -> Iterator[int32]:\n"
             "    while n > 0:\n"
             "        yield n\n"
             "        n -= 1\n"
@@ -120,8 +120,8 @@ class TestLoopElseSupported:
         # pre-scan); supply one so the builder reaches the else handling.
         body = _gen_body(
             "from typing import Iterator\n"
-            "from tpy import Int32\n"
-            "def g(xs: list[Int32]) -> Iterator[Int32]:\n"
+            "from tpy import int32\n"
+            "def g(xs: list[int32]) -> Iterator[int32]:\n"
             "    for x in xs:\n"
             "        yield x\n"
             "    else:\n"
@@ -140,8 +140,8 @@ class TestMatchDecomposition:
     def test_yield_in_match_decomposes(self):
         cfg = _build(
             "from typing import Iterator\n"
-            "from tpy import Int32\n"
-            "def g() -> Iterator[Int32]:\n"
+            "from tpy import int32\n"
+            "def g() -> Iterator[int32]:\n"
             "    yield 1\n"
             "    sel = 2\n"
             "    match sel:\n"
@@ -166,8 +166,8 @@ class TestMatchDecomposition:
         # CFG builds cleanly.
         cfg = _build(
             "from typing import Iterator\n"
-            "from tpy import Int32\n"
-            "def g(sel: Int32) -> Iterator[Int32]:\n"
+            "from tpy import int32\n"
+            "def g(sel: int32) -> Iterator[int32]:\n"
             "    yield 1\n"
             "    match sel:\n"
             "        case 2:\n"

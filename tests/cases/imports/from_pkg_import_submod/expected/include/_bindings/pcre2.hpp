@@ -15,10 +15,10 @@ int32_t compile_pattern(std::string_view s);
 
 // class Code:
 struct Code {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Code() = default;
     explicit Code(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "_bindings.pcre2.Code";
@@ -30,7 +30,7 @@ inline std::ostream& operator<<(std::ostream& os, const Code& obj) {
 }
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Code::Code(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::_bindings::pcre2

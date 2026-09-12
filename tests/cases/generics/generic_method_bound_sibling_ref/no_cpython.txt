@@ -1,4 +1,4 @@
-Explicit type args on a generic-method call (r.pick[Int32, IntBox](...)) are
+Explicit type args on a generic-method call (r.pick[int32, IntBox](...)) are
 required here, but CPython cannot subscript a bound method at runtime ('method'
 object is not subscriptable). Comp-phase-only regression guard for the
 methods.py bound-validation caller with sibling-referencing bounds.

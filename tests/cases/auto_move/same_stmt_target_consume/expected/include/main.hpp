@@ -16,7 +16,7 @@ void main();
 
 // class Blob:
 struct Blob {
-    // items: list[Int32]
+    // items: list[int32]
     std::vector<int32_t> items;
 
     // def __init__(self):
@@ -37,7 +37,7 @@ struct K {
     // def __init__(self):
     K();
 
-    // def take(self, b: Own[Blob]) -> Int32:
+    // def take(self, b: Own[Blob]) -> int32:
     int32_t take(Blob&& b);
     static constexpr std::string_view __tpy_class_name__ = "__main__.K";
 };
@@ -54,7 +54,7 @@ inline Blob::Blob() : items(std::vector<int32_t>{10, 20, 30}) {}
 // def __init__(self):
 inline K::K() : stored(std::vector<Blob>{}) {}
 
-// def take(self, b: Own[Blob]) -> Int32:
+// def take(self, b: Own[Blob]) -> int32:
 inline int32_t K::take(Blob&& b) {
     // self.stored.append(b)
     this->stored.push_back(std::move(b));

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def describe(e: Either[Int32]) -> str:
+// def describe(e: Either[int32]) -> str:
 std::string describe(::tpy::Union<const ::tpyapp::lib::A*, const ::tpyapp::lib::B*> e) {
     // if isinstance(e, A):
     if (std::holds_alternative<const ::tpyapp::lib::A*>(e)) {
@@ -19,10 +19,10 @@ std::string describe(::tpy::Union<const ::tpyapp::lib::A*, const ::tpyapp::lib::
 
 // def main() -> None:
 void main() {
-    // print(describe(A(Int32(1))))
+    // print(describe(A(int32(1))))
     ::tpyapp::lib::A __tmp_1 = ::tpyapp::lib::A(1);
     std::cout << describe(::tpy::Union<const ::tpyapp::lib::A*, const ::tpyapp::lib::B*>{&__tmp_1}) << "\n";
-    // print(describe(B(Int32(2))))
+    // print(describe(B(int32(2))))
     ::tpyapp::lib::B __tmp_2 = ::tpyapp::lib::B(2);
     std::cout << describe(::tpy::Union<const ::tpyapp::lib::A*, const ::tpyapp::lib::B*>{&__tmp_2}) << "\n";
 }

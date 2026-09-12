@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def body_renarrow(flag: bool, x: Int32 | None) -> Int32:
+// def body_renarrow(flag: bool, x: int32 | None) -> int32:
 int32_t body_renarrow(bool flag, std::optional<int32_t> x) {
     // while flag:
     while (flag) {

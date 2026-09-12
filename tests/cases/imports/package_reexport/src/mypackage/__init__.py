@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 from .utils import add
 
-VERSION: Int32 = Int32(42)
+VERSION: int32 = int32(42)

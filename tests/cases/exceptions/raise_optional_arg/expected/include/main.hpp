@@ -15,10 +15,10 @@ void main();
 
 // class MyErr(Exception):
 struct MyErr : ::tpy::Exception {
-    // e: Int32 | None
+    // e: int32 | None
     std::optional<int32_t> e;
 
-    // def __init__(self, e: Int32 | None) -> None:
+    // def __init__(self, e: int32 | None) -> None:
     MyErr() = default;
     explicit MyErr(std::optional<int32_t> e);
 
@@ -34,7 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const MyErr& obj) {
 }
 
 
-// def __init__(self, e: Int32 | None) -> None:
+// def __init__(self, e: int32 | None) -> None:
 inline MyErr::MyErr(std::optional<int32_t> e) : ::tpy::Exception("boom"), e(e) {}
 void __tpy_init();
 } // namespace tpyapp::main

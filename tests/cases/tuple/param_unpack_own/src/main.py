@@ -1,25 +1,25 @@
 # An owned-element tuple param takes ownership, so the callee can unpack/move
 # its elements out (and forward/return them); @nocopy + mutate-after force a
 # move, so a silent copy would be a C++ build error.
-from tpy import Own, nocopy, Int32
+from tpy import Own, nocopy, int32
 
 
 @nocopy
 class A:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
-def consume(p: tuple[Own[A], Own[A]]) -> Int32:
+def consume(p: tuple[Own[A], Own[A]]) -> int32:
     a, b = p
     a.n += 10
     b.n += 20
     return a.n + b.n
 
 
-def forward(p: tuple[Own[A], Own[A]]) -> Int32:
+def forward(p: tuple[Own[A], Own[A]]) -> int32:
     return consume(p)
 
 

@@ -1,8 +1,8 @@
 from typing import Iterator
-from tpy import Int32
-def pair(n: Int32) -> tuple[Int32, Int32]:
+from tpy import int32
+def pair(n: int32) -> tuple[int32, int32]:
     return (n, n + 1)
-def g(n: Int32) -> Iterator[Int32]:
+def g(n: int32) -> Iterator[int32]:
     try:
         yield n
     finally:

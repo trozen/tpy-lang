@@ -1,6 +1,6 @@
 # IntEnum unary minus: -p negates the underlying value (result is int, not Prio).
 from enum import IntEnum
-from tpy import Int32
+from tpy import int32
 
 
 class Prio(IntEnum):
@@ -8,7 +8,7 @@ class Prio(IntEnum):
     HIGH = 5
 
 
-def neg(p: Prio) -> Int32:
+def neg(p: Prio) -> int32:
     m = -p
     return m
 

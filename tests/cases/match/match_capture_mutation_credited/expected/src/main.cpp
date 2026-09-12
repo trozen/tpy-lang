@@ -167,7 +167,7 @@ void reseated_callee(Bag& h, Bag& g) {
 
 // # SUBSCRIPT-rooted subject: the loan is rooted at the container, so the write
 // # through the capture keeps the container param mutable
-// def subscript_subject(xs: list[Counter], i: Int32) -> None:
+// def subscript_subject(xs: list[Counter], i: int32) -> None:
 void subscript_subject(std::vector<Counter>& xs, int32_t i) {
     // match xs[i]:
     Counter* e;
@@ -215,7 +215,7 @@ void poly_subject(Pet& p) {
     }
 }
 
-// def gen_body(a: Counter | Cat) -> Iterator[Int32]:
+// def gen_body(a: Counter | Cat) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_body::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -253,12 +253,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_body::__next__() {
 }
 
 
-// def gen_body(a: Counter | Cat) -> Iterator[Int32]:
+// def gen_body(a: Counter | Cat) -> Iterator[int32]:
 __gen_gen_body gen_body(::tpy::Union<Cat*, Counter*> a) {
     return __gen_gen_body(a);
 }
 
-// async def async_body(a: Counter | Cat) -> Int32:
+// async def async_body(a: Counter | Cat) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_async_body::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
@@ -301,14 +301,14 @@ __gen_gen_body gen_body(::tpy::Union<Cat*, Counter*> a) {
 }
 
 
-// async def async_body(a: Counter | Cat) -> Int32:
+// async def async_body(a: Counter | Cat) -> int32:
 __coro_async_body async_body(::tpy::Union<Cat*, Counter*> a) {
     return __coro_async_body(a);
 }
 
 // # inverse: an arm that only READS keeps the param's non-mutating verdict --
 // # the snapshot pins the `const std::variant<...>` this section must keep
-// def read_only(a: Counter | Cat) -> Int32:
+// def read_only(a: Counter | Cat) -> int32:
 int32_t read_only(::tpy::Union<const Cat*, const Counter*> a) {
     // match a:
     auto& __match_subject_1 = a;
@@ -341,7 +341,7 @@ Counter clone_of(const Counter& c) {
 
 // # inverse: an RVALUE subject owns a temporary, so the write reaches no caller
 // # storage -- `c` must stay a non-mutating (const) param
-// def rvalue_subject(c: Counter) -> Int32:
+// def rvalue_subject(c: Counter) -> int32:
 int32_t rvalue_subject(const Counter& c) {
     // match clone_of(c):
     auto __match_subject_1 = clone_of(c);
@@ -360,7 +360,7 @@ int32_t rvalue_subject(const Counter& c) {
 
 // # inverse: a free-copy scalar capture is a durable COPY, so rebinding and
 // # writing it leaves the subject alone
-// def scalar_capture(n: Int32) -> Int32:
+// def scalar_capture(n: int32) -> int32:
 int32_t scalar_capture(int32_t n) {
     // match n:
     int32_t v;
@@ -383,7 +383,7 @@ int32_t scalar_capture(int32_t n) {
 
 // # LOCAL subject rather than a param: the local is already mutable, so the
 // # section pins that the capture write still lands on it
-// def local_subject() -> Int32:
+// def local_subject() -> int32:
 int32_t local_subject() {
     // loc = Counter(0)
     Counter loc = Counter(0);

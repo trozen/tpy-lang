@@ -1,14 +1,14 @@
 # Inherited generic accessors through a subclass of an instantiation
-# (class Sub(Holder[Int32, Rec])): @property getter/setter and __getitem__
+# (class Sub(Holder[int32, Rec])): @property getter/setter and __getitem__
 # signatures must substitute K/V level-by-level (like fields/methods do), and
 # reads must alias (mutation through the result is visible in the holder).
-from tpy import Int32
+from tpy import int32
 
 
 class Rec:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32):
+    def __init__(self, x: int32):
         self.x = x
 
 
@@ -32,19 +32,19 @@ class Holder[K, V]:
     def val(self) -> V:
         return self._v
 
-    def find(self, want: Int32) -> V | None:
+    def find(self, want: int32) -> V | None:
         if want > 0:
             return self._v
         return None
 
 
-class Sub(Holder[Int32, Rec]):
+class Sub(Holder[int32, Rec]):
     pass
 
 
 def main() -> None:
     h = Sub(5, Rec(7))
-    print(h.key)          # inherited getter, K substituted to Int32
+    print(h.key)          # inherited getter, K substituted to int32
     h.key = 6             # inherited setter, value param substituted
     print(h.key)
     h.val.x = 8           # aliasing: mutate through the inherited V getter

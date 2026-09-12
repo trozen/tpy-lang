@@ -10,7 +10,7 @@ Box copy(Box&& b) {
     return b;
 }
 
-// def consume(b: Own[Box]) -> Int32:
+// def consume(b: Own[Box]) -> int32:
 int32_t consume(Box&& b) {
     // return b.value
     return b.value;

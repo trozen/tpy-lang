@@ -11,7 +11,7 @@ void __tpy_init() {
     initialized = true;
 
     // from ._version import version as _version, version_info as _version_info
-    // # Int32 components rather than `int` (BigInt): version numbers are small
+    // # int32 components rather than `int` (BigInt): version numbers are small
     // # and BigInt would waste heap allocations on every access.
 }
 

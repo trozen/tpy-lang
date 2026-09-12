@@ -1,28 +1,28 @@
 # 8a.4: const T& / const Base& for non-mutated protocol-typed params.
 # A protocol param is non-mutated when all called methods are @readonly
 # (or the param isn't used at all). The generated C++ uses const T_x& / const Base&.
-from tpy import Int32, dynamic, readonly
+from tpy import int32, dynamic, readonly
 from typing import Protocol
 
 
 class Measurable(Protocol):
     @readonly
-    def measure(self) -> Int32: ...
+    def measure(self) -> int32: ...
 
 
 class Resizable(Protocol):
     @readonly
-    def measure(self) -> Int32: ...
-    def resize(self, v: Int32) -> None: ...
+    def measure(self) -> int32: ...
+    def resize(self, v: int32) -> None: ...
 
 
 # Non-mutated static protocol param -> const T_p&
-def get_measure(p: Measurable) -> Int32:
+def get_measure(p: Measurable) -> int32:
     return p.measure()
 
 
 # Mutated static protocol param -> T_p& (resize modifies p)
-def double_resize(p: Resizable) -> Int32:
+def double_resize(p: Resizable) -> int32:
     p.resize(p.measure() * 2)
     return p.measure()
 
@@ -35,19 +35,19 @@ def copy_measure(src: Resizable, dst: Resizable) -> None:
 @dynamic
 class Shape(Protocol):
     @readonly
-    def area(self) -> Int32: ...
+    def area(self) -> int32: ...
 
 
 class Rect:
-    _w: Int32
-    _h: Int32
+    _w: int32
+    _h: int32
 
-    def __init__(self, w: Int32, h: Int32) -> None:
+    def __init__(self, w: int32, h: int32) -> None:
         self._w = w
         self._h = h
 
     @readonly
-    def area(self) -> Int32:
+    def area(self) -> int32:
         return self._w * self._h
 
 
@@ -57,16 +57,16 @@ def print_area(s: Shape) -> None:
 
 
 class Box:
-    _side: Int32
+    _side: int32
 
-    def __init__(self, side: Int32) -> None:
+    def __init__(self, side: int32) -> None:
         self._side = side
 
     @readonly
-    def measure(self) -> Int32:
+    def measure(self) -> int32:
         return self._side
 
-    def resize(self, v: Int32) -> None:
+    def resize(self, v: int32) -> None:
         self._side = v
 
 

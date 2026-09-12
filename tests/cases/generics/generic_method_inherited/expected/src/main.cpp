@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // c = Child[Int32](Int32(5))
+    // c = Child[int32](int32(5))
     Child<int32_t> c = Child<int32_t>(5);
     // print(c.transform(42))
     std::cout << c.transform<int32_t>(42) << "\n";

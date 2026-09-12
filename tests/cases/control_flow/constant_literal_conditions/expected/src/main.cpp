@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def checked(n: Int32) -> Int32:
+// def checked(n: int32) -> int32:
 int32_t checked(int32_t n) {
     // assert True  # folds away entirely
     // return n
@@ -17,7 +17,7 @@ void boom() {
     ::tpy::raise_assertion_error();
 }
 
-// def dead(n: Int32) -> Int32:
+// def dead(n: int32) -> int32:
 int32_t dead(int32_t n) {
     // if False:  # the constant-false branch
     if (false) {
@@ -28,7 +28,7 @@ int32_t dead(int32_t n) {
     return n;
 }
 
-// def spin(n: Int32) -> Int32:
+// def spin(n: int32) -> int32:
 int32_t spin(int32_t n) {
     // while False:  # the constant-false loop head
     while (false) {

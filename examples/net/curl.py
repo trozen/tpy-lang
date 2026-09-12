@@ -24,7 +24,7 @@ target.
 """
 import sys
 from argparse import ArgumentParser
-from tpy import Int32
+from tpy import int32
 import tplib.requests as requests
 from tplib.requests import RequestException, Timeout, SSLError, ConnectionError
 
@@ -43,7 +43,7 @@ def _split_user(raw: str) -> tuple[str, str]:
     return (raw[:idx], raw[idx + 1:])
 
 
-def main() -> Int32:
+def main() -> int32:
     parser = ArgumentParser(description="Fetch a URL over HTTP (curl-like).")
     parser.add_argument("url", help="the URL to request")
     parser.add_argument("-X", "--request", default="",

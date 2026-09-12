@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def use_rect(r: Ptr[Rect]) -> Int32:
+// def use_rect(r: Ptr[Rect]) -> int32:
 int32_t use_rect(::SDL_Rect* r) {
     // return r.w * r.h
     return (::tpy::mul_check<int32_t>(::tpy::deref_check(r).w, ::tpy::deref_check(r).h));
@@ -12,7 +12,7 @@ int32_t use_rect(::SDL_Rect* r) {
 
 // def main() -> None:
 void main() {
-    // r: Rect = Rect(Int32(0), Int32(0), Int32(800), Int32(600))
+    // r: Rect = Rect(int32(0), int32(0), int32(800), int32(600))
     ::SDL_Rect r = ::SDL_Rect{0, 0, 800, 600};
     // print(r.w)
     std::cout << r.w << "\n";

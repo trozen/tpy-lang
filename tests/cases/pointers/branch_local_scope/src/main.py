@@ -2,13 +2,13 @@
 # of an if/else, used only within their branch, must not share pointer-local slots.
 # Before the fix, then-branch slot info leaked into the else-branch context, causing
 # the else-branch to generate a dereference of an out-of-scope pointer.
-from tpy import Int32
+from tpy import int32
 
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32):
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32):
         self.x = x
         self.y = y
 
@@ -23,7 +23,7 @@ def branch_rvalue_independent(cond: bool) -> None:
         print(p.x, p.y)
 
 
-def branch_rvalue_three_way(flag: Int32) -> None:
+def branch_rvalue_three_way(flag: int32) -> None:
     # Three-way: each elif/else branch has its own independent local
     if flag == 0:
         p = Point(10, 20)

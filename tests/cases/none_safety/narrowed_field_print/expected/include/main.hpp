@@ -17,7 +17,7 @@ void main();
 
 // class Config:
 struct Config {
-    // port: Optional[Int32]
+    // port: Optional[int32]
     std::optional<int32_t> port;
     // name: Optional[str]
     std::optional<std::string> name;
@@ -26,7 +26,7 @@ struct Config {
     // ratio: Optional[float]
     std::optional<double> ratio;
 
-    // def __init__(self, port: Optional[Int32], name: Optional[str],
+    // def __init__(self, port: Optional[int32], name: Optional[str],
     // flag: Optional[bool], ratio: Optional[float]) -> None:
     Config() = default;
     explicit Config(std::optional<int32_t> port, std::optional<std::string_view> name, std::optional<bool> flag, std::optional<double> ratio);
@@ -39,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
 }
 
 
-// def __init__(self, port: Optional[Int32], name: Optional[str],
+// def __init__(self, port: Optional[int32], name: Optional[str],
 // flag: Optional[bool], ratio: Optional[float]) -> None:
 inline Config::Config(std::optional<int32_t> port, std::optional<std::string_view> name, std::optional<bool> flag, std::optional<double> ratio) : port(port), name(name ? std::make_optional(std::string(*name)) : std::nullopt), flag(flag), ratio(ratio) {}
 void __tpy_init();

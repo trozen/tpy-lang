@@ -1,1 +1,1 @@
-main.py:6: error: Type mismatch in list comprehension element: expected Int32, got str
+main.py:6: error: Type mismatch in list comprehension element: expected int32, got str

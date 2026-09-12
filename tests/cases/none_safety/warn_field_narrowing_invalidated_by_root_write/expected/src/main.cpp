@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def use_after_rebind(a: Box, b: Box) -> Int32:
+// def use_after_rebind(a: Box, b: Box) -> int32:
 int32_t use_after_rebind(Box& a, Box& b) {
     // local = a
     Box* local = &(a);

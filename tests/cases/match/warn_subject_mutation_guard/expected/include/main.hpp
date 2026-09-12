@@ -17,10 +17,10 @@ void main();
 
 // class Tag:
 struct Tag {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Tag() = default;
     explicit Tag(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Tag";
@@ -35,10 +35,10 @@ inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
 struct Item {
     // tag: Tag
     Tag tag;
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, n: Int32, v: Int32) -> None:
+    // def __init__(self, n: int32, v: int32) -> None:
     Item() = default;
     explicit Item(int32_t n, int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Item";
@@ -50,10 +50,10 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
 }
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Tag::Tag(int32_t n) : n(n) {}
 
-// def __init__(self, n: Int32, v: Int32) -> None:
+// def __init__(self, n: int32, v: int32) -> None:
 inline Item::Item(int32_t n, int32_t v) : tag(Tag(n)), v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

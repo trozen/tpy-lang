@@ -1,6 +1,6 @@
-from tpy import Int32
-def f(k: Int32) -> Int32:
-    x: Int32 | float = k
+from tpy import int32
+def f(k: int32) -> int32:
+    x: int32 | float = k
     v = x
     return v
 def main() -> None:

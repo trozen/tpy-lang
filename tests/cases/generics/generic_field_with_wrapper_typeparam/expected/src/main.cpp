@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // w = W[Int32](42)
+    // w = W[int32](42)
     W<int32_t> w = W<int32_t>(42);
     // print(w.tag)
     std::cout << w.tag << "\n";

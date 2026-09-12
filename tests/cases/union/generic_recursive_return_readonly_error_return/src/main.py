@@ -3,7 +3,7 @@
 # the std::expected payload is val_or_ref<const Tree<T>>. The accessor returns
 # a const reference to existing wrapper data (self.t); a fresh value would need
 # Own. The result is consumed read-only so the const payload is exercised.
-from tpy import Int32, readonly, Own, error_return, ReturnException
+from tpy import int32, readonly, Own, error_return, ReturnException
 
 
 class E(Exception, ReturnException):
@@ -13,7 +13,7 @@ class E(Exception, ReturnException):
 type Tree[T] = T | list[Tree[T]]
 
 
-def leaf_count(t: readonly[Tree[Int32]]) -> Int32:
+def leaf_count(t: readonly[Tree[int32]]) -> int32:
     match t:
         case list() as branches:
             n = 0
@@ -25,13 +25,13 @@ def leaf_count(t: readonly[Tree[Int32]]) -> Int32:
 
 
 class Holder:
-    t: Tree[Int32]
+    t: Tree[int32]
 
-    def __init__(self, t: Own[Tree[Int32]]) -> None:
+    def __init__(self, t: Own[Tree[int32]]) -> None:
         self.t = t
 
     @error_return(E)
-    def view(self) -> readonly[Tree[Int32]]:
+    def view(self) -> readonly[Tree[int32]]:
         return self.t
 
 

@@ -4,15 +4,15 @@
 # resolution is what makes this reachable; before, the later arm silently called
 # the module function. The diagnostic names callability rather than the
 # shadowing, which is tracked in BUGS.md.
-from tpy import Int32
+from tpy import int32
 
 
-def helper() -> Int32:
+def helper() -> int32:
     return 42
 
 
 class Cat:
-    def __init__(self, lives: Int32):
+    def __init__(self, lives: int32):
         self.lives = lives
 
 
@@ -20,7 +20,7 @@ class Dog:
     pass
 
 
-def pick(v: Cat | Dog) -> Int32:
+def pick(v: Cat | Dog) -> int32:
     match v:
         case Cat(lives=helper):
             return helper

@@ -1,6 +1,6 @@
 # all()/any()/sum() over a bare container name route through THIR: the native
 # builtin binds the container directly (C++ template), no adapter/span wrap.
-from tpy import Int32
+from tpy import int32
 
 
 def check_all(xs: list[bool]) -> bool:
@@ -11,7 +11,7 @@ def check_any(xs: list[bool]) -> bool:
     return any(xs)
 
 
-def total(xs: list[Int32]) -> Int32:
+def total(xs: list[int32]) -> int32:
     return sum(xs)
 
 
@@ -20,7 +20,7 @@ def main() -> None:
     print(all(bs))
     print(any(bs))
 
-    ns: list[Int32] = [1, 2, 3]
+    ns: list[int32] = [1, 2, 3]
     print(total(ns))
     print(check_all(bs))
     print(check_any(bs))

@@ -36,7 +36,7 @@ __coro_main_coro main_coro() {
     return __coro_main_coro();
 }
 
-// async def double_base(self) -> Int32:
+// async def double_base(self) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_Math_double_base::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
@@ -52,7 +52,7 @@ __coro_main_coro main_coro() {
 }
 
 
-// async def quad_base(self) -> Int32:
+// async def quad_base(self) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_Math_quad_base::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {

@@ -2,13 +2,13 @@
 # copy them -- mutating through a target is observed at the source (CPython
 # parity). Covers lvalue subscript elements, a mixed lvalue+rvalue unpack,
 # and a `_` discard target.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Counter:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 

@@ -1,12 +1,12 @@
 # Unannotated list literal with mixed types should error.
 # Union types are not auto-inferred from heterogeneous literals.
-from tpy import Int32
+from tpy import int32
 
 class Rect:
-    w: Int32
+    w: int32
 
 class Circle:
-    r: Int32
+    r: int32
 
 def main():
     l = [Rect(), Circle()]  # tpyc: error(/mixed types/)

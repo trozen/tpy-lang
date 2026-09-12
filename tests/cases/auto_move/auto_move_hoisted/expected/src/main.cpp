@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def consume(p: Own[Point]) -> Int32:
+// def consume(p: Own[Point]) -> int32:
 int32_t consume(Point&& p) {
     // return p.x
     return p.x;
 }
 
-// def test(cond: bool) -> Int32:
+// def test(cond: bool) -> int32:
 int32_t test(bool cond) {
     std::optional<Point> __slot_1;
     // if cond:

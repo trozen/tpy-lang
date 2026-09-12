@@ -21,7 +21,7 @@ void read_via_param(Point* p) {
 
 // def main() -> None:
 void main() {
-    // pt: Point = Point(Int32(10), Int32(20))
+    // pt: Point = Point(int32(10), int32(20))
     Point pt = Point(10, 20);
     // # Local Ptr from lvalue: provably non-null, skip null check
     // p: Ptr[Point] = pt
@@ -58,7 +58,7 @@ void main() {
     // print(p.x)  # tpyc: nullable(p)
     std::cout << ::tpy::deref_check(p).x << "\n";
     // # Re-establish provenance
-    // pt2: Point = Point(Int32(30), Int32(40))
+    // pt2: Point = Point(int32(30), int32(40))
     Point pt2 = Point(30, 40);
     // p = take_ptr(pt2)
     p = &pt2;

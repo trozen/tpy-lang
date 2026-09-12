@@ -1,23 +1,23 @@
 # The tuple-unpack for-head shapes: dict items, a list of tuples, and a
 # discarded second target.
-from tpy import Int32
+from tpy import int32
 
 
-def sum_items(d: dict[Int32, Int32]) -> Int32:
+def sum_items(d: dict[int32, int32]) -> int32:
     s = 0
     for k, v in d.items():
         s = s + k + v
     return s
 
 
-def sum_pairs(ps: list[tuple[Int32, Int32]]) -> Int32:
+def sum_pairs(ps: list[tuple[int32, int32]]) -> int32:
     s = 0
     for a, b in ps:
         s = s + a * b
     return s
 
 
-def discard_snd(ps: list[tuple[Int32, Int32]]) -> Int32:
+def discard_snd(ps: list[tuple[int32, int32]]) -> int32:
     s = 0
     for a, _ in ps:  # the second target is discarded
         s = s + a

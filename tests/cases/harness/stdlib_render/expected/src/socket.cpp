@@ -4,13 +4,13 @@
 namespace tpystd::socket {
 
 
-// def _strerror(err: Int32) -> str:
+// def _strerror(err: int32) -> str:
 std::string _strerror(int32_t err) {
     // return unsafe_str_from_cstr(posix_socket.strerror(err))
     return std::string(reinterpret_cast<const char*>(::strerror(err)));
 }
 
-// def _maybe_raise_connection_error(err: Int32, strerr: str) -> None:
+// def _maybe_raise_connection_error(err: int32, strerr: str) -> None:
 void _maybe_raise_connection_error(int32_t err, std::string_view strerr) {
     // if err == _EPIPE:
     if ((err == ::tpy_const_epipe)) {
@@ -64,11 +64,11 @@ void _raise_resolve_error() {
 // # ---------- Address helpers ----------
 // def gethostbyname(hostname: str) -> str:
 std::string gethostbyname(std::string_view hostname) {
-    // host_ptr: Ptr[readonly[UInt8]] = unsafe_cast(unsafe_ptr(hostname))
+    // host_ptr: Ptr[readonly[uint8]] = unsafe_cast(unsafe_ptr(hostname))
     const uint8_t* host_ptr = reinterpret_cast<const uint8_t*>(hostname.data());
-    // out = UninitArrayStorage[UInt8, 4]()
+    // out = UninitArrayStorage[uint8, 4]()
     ::tpy::UninitArrayStorage<uint8_t, 4> out = ::tpy::UninitArrayStorage<uint8_t, 4>();
-    // rc = posix_socket.tpy_resolve_ipv4(host_ptr, UInt64(len(hostname)), out.ptr())
+    // rc = posix_socket.tpy_resolve_ipv4(host_ptr, uint64(len(hostname)), out.ptr())
     int32_t rc = ::tpy_resolve_ipv4(host_ptr, ::tpy::int_cast_check<uint64_t>(::tpy::__len__(hostname)), out.ptr());
     // if rc != 0:
     if ((rc != 0)) {
@@ -79,10 +79,10 @@ std::string gethostbyname(std::string_view hostname) {
     return _ipv4_to_str(out.ptr());
 }
 
-// def _ipv4_to_str(addr_bytes: Ptr[UInt8]) -> str:
+// def _ipv4_to_str(addr_bytes: Ptr[uint8]) -> str:
 std::string _ipv4_to_str(uint8_t* addr_bytes) {
     // # INET_ADDRSTRLEN = 16 ("255.255.255.255\0").
-    // buf = UninitArrayStorage[UInt8, 16]()
+    // buf = UninitArrayStorage[uint8, 16]()
     ::tpy::UninitArrayStorage<uint8_t, 16> buf = ::tpy::UninitArrayStorage<uint8_t, 16>();
     // if posix_socket.inet_ntop(AF_INET, addr_bytes, buf.ptr(), 16) is None:
     if ((::inet_ntop(AF_INET, addr_bytes, buf.ptr(), 16) == nullptr)) {
@@ -93,25 +93,25 @@ std::string _ipv4_to_str(uint8_t* addr_bytes) {
     return std::string(reinterpret_cast<const char*>(reinterpret_cast<const uint8_t*>(buf.ptr())));
 }
 
-// def _build_sockaddr_in(host: str, port: Int32) -> Own[SockaddrIn]:
+// def _build_sockaddr_in(host: str, port: int32) -> Own[SockaddrIn]:
 ::sockaddr_in _build_sockaddr_in(std::string_view host, int32_t port) {
-    // port_no = posix_socket.htons(UInt16.trunc(port))
+    // port_no = posix_socket.htons(uint16.trunc(port))
     uint16_t port_no = ::htons(static_cast<uint16_t>(port));
     // if len(hostname := host) == 0:
     std::string hostname;
     if ((::tpy::__len__((hostname = host)) == 0)) {
-        // return SockaddrIn(UInt16.trunc(AF_INET), port_no, 0)
+        // return SockaddrIn(uint16.trunc(AF_INET), port_no, 0)
         return ::sockaddr_in{static_cast<uint16_t>(AF_INET), port_no, 0};
     }
-    // addr_bytes = UninitArrayStorage[UInt8, 4]()
+    // addr_bytes = UninitArrayStorage[uint8, 4]()
     ::tpy::UninitArrayStorage<uint8_t, 4> addr_bytes = ::tpy::UninitArrayStorage<uint8_t, 4>();
-    // host_ptr: Ptr[readonly[UInt8]] = unsafe_cast(unsafe_ptr(hostname))
+    // host_ptr: Ptr[readonly[uint8]] = unsafe_cast(unsafe_ptr(hostname))
     const uint8_t* host_ptr = reinterpret_cast<const uint8_t*>(hostname.data());
     // rc = posix_socket.inet_pton(AF_INET, host_ptr, addr_bytes.ptr())
     int32_t rc = ::inet_pton(AF_INET, host_ptr, addr_bytes.ptr());
     // if rc != 1:
     if ((rc != 1)) {
-        // rc2 = posix_socket.tpy_resolve_ipv4(host_ptr, UInt64(len(hostname)),
+        // rc2 = posix_socket.tpy_resolve_ipv4(host_ptr, uint64(len(hostname)),
         // addr_bytes.ptr())
         int32_t rc2 = ::tpy_resolve_ipv4(host_ptr, ::tpy::int_cast_check<uint64_t>(::tpy::__len__(hostname)), addr_bytes.ptr());
         // if rc2 != 0:
@@ -120,36 +120,36 @@ std::string _ipv4_to_str(uint8_t* addr_bytes) {
             _raise_resolve_error();
         }
     }
-    // addr_u32_ptr: Ptr[UInt32] = unsafe_cast(addr_bytes.ptr())
+    // addr_u32_ptr: Ptr[uint32] = unsafe_cast(addr_bytes.ptr())
     uint32_t* addr_u32_ptr = reinterpret_cast<uint32_t*>(addr_bytes.ptr());
-    // return SockaddrIn(UInt16.trunc(AF_INET), port_no,
+    // return SockaddrIn(uint16.trunc(AF_INET), port_no,
     // unsafe_load(addr_u32_ptr, 0))
     return ::sockaddr_in{static_cast<uint16_t>(AF_INET), port_no, addr_u32_ptr[0]};
 }
 
 // # ---------- Module-level factories ----------
-// def socketpair(family: Int32 = AF_UNIX, type_: Int32 = SOCK_STREAM,
-// proto: Int32 = Int32(0)) -> tuple[Own[socket], Own[socket]]:
+// def socketpair(family: int32 = AF_UNIX, type_: int32 = SOCK_STREAM,
+// proto: int32 = int32(0)) -> tuple[Own[socket], Own[socket]]:
 std::tuple<socket, socket> socketpair(int32_t family, int32_t type_, int32_t proto) {
-    // sv = UninitArrayStorage[Int32, 2]()
+    // sv = UninitArrayStorage[int32, 2]()
     ::tpy::UninitArrayStorage<int32_t, 2> sv = ::tpy::UninitArrayStorage<int32_t, 2>();
-    // if posix_socket.socketpair(family, type_, proto, sv.ptr()) < Int32(0):
+    // if posix_socket.socketpair(family, type_, proto, sv.ptr()) < int32(0):
     if ((::socketpair(family, type_, proto, sv.ptr()) < 0)) {
         // _raise_errno()
         _raise_errno();
     }
-    // a = socket(Int32(0), Int32(0), Int32(0), fileno=unsafe_load(sv.ptr(), 0))
+    // a = socket(int32(0), int32(0), int32(0), fileno=unsafe_load(sv.ptr(), 0))
     socket a = socket(0, 0, 0, sv.ptr()[0]);
-    // b = socket(Int32(0), Int32(0), Int32(0), fileno=unsafe_load(sv.ptr(), 1))
+    // b = socket(int32(0), int32(0), int32(0), fileno=unsafe_load(sv.ptr(), 1))
     socket b = socket(0, 0, 0, sv.ptr()[1]);
     // return (a, b)
     return std::tuple<socket, socket>{std::move(a), std::move(b)};
 }
 
-// def create_connection(address: tuple[str, Int32],
+// def create_connection(address: tuple[str, int32],
 // timeout: float | None = None) -> Own[socket]:
 socket create_connection(const std::tuple<std::string, int32_t>& address, std::optional<double> timeout) {
-    // s = socket(AF_INET, SOCK_STREAM, Int32(0))
+    // s = socket(AF_INET, SOCK_STREAM, int32(0))
     socket s = socket(AF_INET, SOCK_STREAM, 0);
     // if timeout is not None:
     if ((timeout.has_value())) {
@@ -162,15 +162,15 @@ socket create_connection(const std::tuple<std::string, int32_t>& address, std::o
     return s;
 }
 
-// def create_server(address: tuple[str, Int32],
-// backlog: Int32 = Int32(128),
+// def create_server(address: tuple[str, int32],
+// backlog: int32 = int32(128),
 // reuse_addr: bool = True) -> Own[socket]:
 socket create_server(const std::tuple<std::string, int32_t>& address, int32_t backlog, bool reuse_addr) {
-    // s = socket(AF_INET, SOCK_STREAM, Int32(0))
+    // s = socket(AF_INET, SOCK_STREAM, int32(0))
     socket s = socket(AF_INET, SOCK_STREAM, 0);
     // if reuse_addr:
     if (reuse_addr) {
-        // s.setsockopt_int(SOL_SOCKET, SO_REUSEADDR, Int32(1))
+        // s.setsockopt_int(SOL_SOCKET, SO_REUSEADDR, int32(1))
         s.setsockopt_int(::tpy_const_sol_socket, ::tpy_const_so_reuseaddr, 1);
     }
     // s.bind(address)
@@ -212,12 +212,12 @@ void socket::settimeout(std::optional<double> value) {
     if ((!value.has_value())) {
         // self._timeout = -1.0
         this->_timeout = -(1.0);
-        // if posix_socket.tpy_set_nonblocking(self.fd, Int32(0)) < Int32(0):
+        // if posix_socket.tpy_set_nonblocking(self.fd, int32(0)) < int32(0):
         if ((::tpy_set_nonblocking(this->fd, 0) < 0)) {
             // _raise_errno()
             _raise_errno();
         }
-        // if posix_socket.tpy_set_timeout(self.fd, 0.0) < Int32(0):
+        // if posix_socket.tpy_set_timeout(self.fd, 0.0) < int32(0):
         if ((::tpy_set_timeout(this->fd, 0.0) < 0)) {
             // _raise_errno()
             _raise_errno();
@@ -247,12 +247,12 @@ void socket::settimeout(std::optional<double> value) {
     if (((*value) == 0.0)) {
         // self._timeout = 0.0
         this->_timeout = 0.0;
-        // if posix_socket.tpy_set_nonblocking(self.fd, Int32(1)) < Int32(0):
+        // if posix_socket.tpy_set_nonblocking(self.fd, int32(1)) < int32(0):
         if ((::tpy_set_nonblocking(this->fd, 1) < 0)) {
             // _raise_errno()
             _raise_errno();
         }
-        // if posix_socket.tpy_set_timeout(self.fd, 0.0) < Int32(0):
+        // if posix_socket.tpy_set_timeout(self.fd, 0.0) < int32(0):
         if ((::tpy_set_timeout(this->fd, 0.0) < 0)) {
             // _raise_errno()
             _raise_errno();
@@ -264,19 +264,19 @@ void socket::settimeout(std::optional<double> value) {
     this->_timeout = (*value);
     // # Timeout mode stays blocking at the OS level (SO_*TIMEO enforce the
     // # window); getblocking() therefore reports True, as in CPython.
-    // if posix_socket.tpy_set_nonblocking(self.fd, Int32(0)) < Int32(0):
+    // if posix_socket.tpy_set_nonblocking(self.fd, int32(0)) < int32(0):
     if ((::tpy_set_nonblocking(this->fd, 0) < 0)) {
         // _raise_errno()
         _raise_errno();
     }
-    // if posix_socket.tpy_set_timeout(self.fd, value) < Int32(0):
+    // if posix_socket.tpy_set_timeout(self.fd, value) < int32(0):
     if ((::tpy_set_timeout(this->fd, (*value)) < 0)) {
         // _raise_errno()
         _raise_errno();
     }
 }
 
-// def connect(self, address: tuple[str, Int32]) -> None:
+// def connect(self, address: tuple[str, int32]) -> None:
 void socket::connect(const std::tuple<std::string, int32_t>& address) const {
     // host, port = address
     const auto& __tup_1 = address;
@@ -292,17 +292,17 @@ void socket::connect(const std::tuple<std::string, int32_t>& address) const {
         // rc = posix_socket.tpy_connect_timeout(self.fd, take_ptr(addr),
         // _SOCKADDR_IN_LEN, self._timeout)
         int32_t rc = ::tpy_connect_timeout(this->fd, &addr, _SOCKADDR_IN_LEN, this->_timeout);
-        // if rc == Int32(-2):
+        // if rc == int32(-2):
         if ((rc == -2)) {
             // raise TimeoutError("timed out")
             throw ::tpy::TimeoutError("timed out");
         }
-        // if rc != Int32(0):
+        // if rc != int32(0):
         if ((rc != 0)) {
             // self._raise_io()
             this->_raise_io();
         }
-    // elif posix_socket.connect(self.fd, take_ptr(addr), _SOCKADDR_IN_LEN) < Int32(0):
+    // elif posix_socket.connect(self.fd, take_ptr(addr), _SOCKADDR_IN_LEN) < int32(0):
     } else if ((::connect(this->fd, &addr, _SOCKADDR_IN_LEN) < 0)) {
         // self._raise_io()
         this->_raise_io();
@@ -316,15 +316,15 @@ void socket::connect(const std::tuple<std::string, int32_t>& address) const {
 // # Peer resolution (`_ipv4_to_str` -> `inet_ntop`) can raise while `new_fd`
 // # is still naked (not yet owned by a `socket`), so close it on failure to
 // # avoid leaking the accepted descriptor.
-// def _accept_fd(self) -> tuple[Int32, tuple[str, Int32]]:
+// def _accept_fd(self) -> tuple[int32, tuple[str, int32]]:
 std::tuple<int32_t, std::tuple<std::string, int32_t>> socket::_accept_fd() const {
     // addr = SockaddrIn(0, 0, 0)
     ::sockaddr_in addr = ::sockaddr_in{0, 0, 0};
-    // addrlen: UInt32 = _SOCKADDR_IN_LEN
+    // addrlen: uint32 = _SOCKADDR_IN_LEN
     uint32_t addrlen = _SOCKADDR_IN_LEN;
     // new_fd = posix_socket.accept(self.fd, take_ptr(addr), take_ptr(addrlen))
     int32_t new_fd = ::accept(this->fd, &addr, &addrlen);
-    // if new_fd < Int32(0):
+    // if new_fd < int32(0):
     if ((new_fd < 0)) {
         // _raise_errno()
         _raise_errno();
@@ -334,7 +334,7 @@ std::tuple<int32_t, std::tuple<std::string, int32_t>> socket::_accept_fd() const
     {
         try {
             // peer = (_ipv4_to_str(unsafe_cast(take_ptr(addr.sin_addr))),
-            // Int32.trunc(posix_socket.ntohs(addr.sin_port)))
+            // int32.trunc(posix_socket.ntohs(addr.sin_port)))
             peer = std::tuple<std::string, int32_t>{_ipv4_to_str(reinterpret_cast<uint8_t*>(&addr.sin_addr)), static_cast<int32_t>(::ntohs(addr.sin_port))};
         } catch (const ::tpy::OSError&) {
             // posix_socket.close(new_fd)
@@ -349,59 +349,59 @@ std::tuple<int32_t, std::tuple<std::string, int32_t>> socket::_accept_fd() const
 
 // def sendall(self, data: bytes) -> None:
 void socket::sendall(::tpy::BytesView data) const {
-    // total: UInt64 = UInt64(len(data))
+    // total: uint64 = uint64(len(data))
     uint64_t total = ::tpy::int_cast_check<uint64_t>(::tpy::__len__(data));
-    // sent: UInt64 = 0
+    // sent: uint64 = 0
     uint64_t sent = 0;
-    // data_ptr: Ptr[readonly[UInt8]] = unsafe_ptr(data)
+    // data_ptr: Ptr[readonly[uint8]] = unsafe_ptr(data)
     const uint8_t* data_ptr = data.data();
     // while sent < total:
     while ((sent < total)) {
         // chunk = posix_socket.send(self.fd,
-        // unsafe_ptr_add(data_ptr, Int64.trunc(sent)),
-        // total - sent, Int32(0))
+        // unsafe_ptr_add(data_ptr, int64.trunc(sent)),
+        // total - sent, int32(0))
         int64_t chunk = ::send(this->fd, (data_ptr + static_cast<int64_t>(sent)), (::tpy::sub_check<uint64_t>(total, sent)), 0);
-        // if chunk < Int64(0):
+        // if chunk < int64(0):
         if ((chunk < 0)) {
             // self._raise_io()
             this->_raise_io();
         }
-        // if chunk == Int64(0):
+        // if chunk == int64(0):
         if ((chunk == 0)) {
             // # A zero-byte send means the peer went away; CPython's next
             // # send() would fail with EPIPE, so surface the same class.
             // raise BrokenPipeError(_EPIPE, _strerror(_EPIPE))
             throw ::tpy::BrokenPipeError(::tpy_const_epipe, _strerror(::tpy_const_epipe));
         }
-        // sent = sent + UInt64(chunk)
+        // sent = sent + uint64(chunk)
         sent = (::tpy::add_check<uint64_t>(sent, ::tpy::int_cast_check<uint64_t>(chunk)));
     }
 }
 
-// def recv(self, bufsize: Int32) -> bytes:
+// def recv(self, bufsize: int32) -> bytes:
 ::tpy::Bytes socket::recv(int32_t bufsize) const {
-    // if bufsize < Int32(0):
+    // if bufsize < int32(0):
     if ((bufsize < 0)) {
         // # Matches CPython's sock.recv(n): negative size is an error, not
         // # a zero-length read. The asyncio sock_recv path relies on this.
         // raise ValueError("negative buffersize in recv")
         throw ::tpy::ValueError("negative buffersize in recv");
     }
-    // if bufsize == Int32(0):
+    // if bufsize == int32(0):
     if ((bufsize == 0)) {
         // return bytes()
         return ::tpy::Bytes();
     }
-    // buf = UninitHeapStorage[UInt8](UInt32.trunc(bufsize))
+    // buf = UninitHeapStorage[uint8](uint32.trunc(bufsize))
     ::tpy::UninitHeapStorage<uint8_t> buf = ::tpy::UninitHeapStorage<uint8_t>(static_cast<uint32_t>(bufsize));
-    // n = posix_socket.recv(self.fd, buf.ptr(), UInt64(bufsize), Int32(0))
+    // n = posix_socket.recv(self.fd, buf.ptr(), uint64(bufsize), int32(0))
     int64_t n = ::recv(this->fd, buf.ptr(), ::tpy::int_cast_check<uint64_t>(bufsize), 0);
-    // if n < Int64(0):
+    // if n < int64(0):
     if ((n < 0)) {
         // self._raise_io()
         this->_raise_io();
     }
-    // return unsafe_bytes_from_buf(buf.ptr(), UInt64(n))
+    // return unsafe_bytes_from_buf(buf.ptr(), uint64(n))
     return ::tpy::bytes_from_buf(buf.ptr(), ::tpy::int_cast_check<uint64_t>(n));
 }
 void __tpy_init() {

@@ -23,9 +23,9 @@ void list_scalar(const std::vector<Cell>& cells) {
     std::cout << ::tpy::__len__(xs) << "\n";
 }
 
-// def list_tuple_member(src: list[tuple[Int32, Cell]]) -> None:
+// def list_tuple_member(src: list[tuple[int32, Cell]]) -> None:
 void list_tuple_member(const std::vector<std::tuple<int32_t, Cell>>& src) {
-    // xs: list[tuple[Int32, Cell]] = [t for t in src]  # tpyc: warning(/copies Cell into owned storage/)
+    // xs: list[tuple[int32, Cell]] = [t for t in src]  # tpyc: warning(/copies Cell into owned storage/)
     std::vector<std::tuple<int32_t, Cell>> xs = ({
         std::vector<std::tuple<int32_t, Cell>> __result;
         auto& __obj_0 = src;
@@ -44,7 +44,7 @@ void list_tuple_member(const std::vector<std::tuple<int32_t, Cell>>& src) {
 
 // def dict_value(cells: list[Cell]) -> None:
 void dict_value(const std::vector<Cell>& cells) {
-    // d: dict[Int32, Cell] = {c.v: c for c in cells}  # tpyc: warning(/copies Cell into owned storage/)
+    // d: dict[int32, Cell] = {c.v: c for c in cells}  # tpyc: warning(/copies Cell into owned storage/)
     ::tpy::ordered_map<int32_t, Cell> d = ({
         ::tpy::ordered_map<int32_t, Cell> __result;
         auto& __obj_0 = cells;
@@ -60,7 +60,7 @@ void dict_value(const std::vector<Cell>& cells) {
     std::cout << ::tpy::__len__(d) << "\n";
 }
 
-// def exempt_fresh(n: Int32) -> None:
+// def exempt_fresh(n: int32) -> None:
 void exempt_fresh(int32_t n) {
     // xs: list[Cell] = [Cell(i) for i in range(n)]  # tpyc: ok
     std::vector<Cell> xs = ({
@@ -95,9 +95,9 @@ void exempt_copy(const std::vector<Cell>& cells) {
     std::cout << ::tpy::__len__(xs) << "\n";
 }
 
-// def exempt_value(n: Int32) -> None:
+// def exempt_value(n: int32) -> None:
 void exempt_value(int32_t n) {
-    // xs: list[Int32] = [i for i in range(n)]  # tpyc: ok
+    // xs: list[int32] = [i for i in range(n)]  # tpyc: ok
     std::vector<int32_t> xs = ({
         std::vector<int32_t> __result;
         const int32_t __stop_0 = n;

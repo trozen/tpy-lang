@@ -19,10 +19,10 @@ concept Convertible = requires(T& t) {
 // # A record that will be referenced by a prereq protocol
 // class Result:
 struct Result {
-    // value: Int32
+    // value: int32
     int32_t value;
 
-    // def __init__(self, value: Int32) -> None:
+    // def __init__(self, value: int32) -> None:
     Result() = default;
     explicit Result(int32_t value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Result";
@@ -135,7 +135,7 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
 }
 
 
-// def __init__(self, value: Int32) -> None:
+// def __init__(self, value: int32) -> None:
 inline Result::Result(int32_t value) : value(value) {}
 
 // def __init__(self, text: str) -> None:
@@ -143,7 +143,7 @@ inline Message::Message(std::string_view text) : text(text) {}
 
 // def to_result(self) -> Own[Result]:
 inline Result Message::to_result() const {
-    // return Result(Int32(42))
+    // return Result(int32(42))
     return Result(42);
 }
 

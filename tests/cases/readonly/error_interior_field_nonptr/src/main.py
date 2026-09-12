@@ -1,13 +1,13 @@
 # Error: unsafe_interior_mutable[...] is a field-only escape hatch supported only on
 # Ptr[T] (refcount-style hidden bookkeeping), not on a value field.
-from tpy import Int32, nocopy, unsafe_interior_mutable
+from tpy import int32, nocopy, unsafe_interior_mutable
 
 
 @nocopy
 class Bad:
-    x: unsafe_interior_mutable[Int32]  # tpyc: error(/only supported on a Ptr/)
+    x: unsafe_interior_mutable[int32]  # tpyc: error(/only supported on a Ptr/)
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 

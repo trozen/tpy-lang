@@ -4,19 +4,19 @@
 namespace tpyapp::main {
 
 
-// def mk_list() -> Own[list[Int32]]:
+// def mk_list() -> Own[list[int32]]:
 std::vector<int32_t> mk_list() {
     // return [1, 2]
     return {1, 2};
 }
 
-// def mk_dict() -> Own[dict[str, Int32]]:
+// def mk_dict() -> Own[dict[str, int32]]:
 ::tpy::ordered_map<std::string, int32_t> mk_dict() {
     // return {"a": 1, "b": 2, "c": 3}
     return ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}, {"c", 3}});
 }
 
-// def mk_set() -> Own[set[Int32]]:
+// def mk_set() -> Own[set[int32]]:
 ::tpy::ordered_set<int32_t> mk_set() {
     // return {1, 2, 3, 4}
     return ::tpy::ordered_set<int32_t>({1, 2, 3, 4});
@@ -28,20 +28,20 @@ std::vector<int32_t> mk_list() {
     return ::tpy::ByteArray(::tpy::bytes_literal("abcde", 5));
 }
 
-// def mk_array() -> Own[Array[Int32, 6]]:
+// def mk_array() -> Own[Array[int32, 6]]:
 std::array<int32_t, 6> mk_array() {
     // return [0, 0, 0, 0, 0, 0]
     return {0, 0, 0, 0, 0, 0};
 }
 
-// def mk_boxes() -> Own[list[Box[Int32]]]:
+// def mk_boxes() -> Own[list[Box[int32]]]:
 std::vector<::tpystd::tplib::box::Box<int32_t>> mk_boxes() {
     // return [Box(1), Box(2), Box(3)]
     return ::tpy::make_vector<::tpystd::tplib::box::Box<int32_t>>(::tpystd::tplib::box::Box<int32_t>(1), ::tpystd::tplib::box::Box<int32_t>(2), ::tpystd::tplib::box::Box<int32_t>(3));
 }
 
 // # Each `opt_*` is the subject: the return slot the axis opened.
-// def opt_list(flag: bool) -> Own[list[Int32]] | None:
+// def opt_list(flag: bool) -> Own[list[int32]] | None:
 std::optional<std::vector<int32_t>> opt_list(bool flag) {
     // if flag:
     if (flag) {
@@ -52,7 +52,7 @@ std::optional<std::vector<int32_t>> opt_list(bool flag) {
     return std::nullopt;
 }
 
-// def opt_dict(flag: bool) -> Own[dict[str, Int32]] | None:
+// def opt_dict(flag: bool) -> Own[dict[str, int32]] | None:
 std::optional<::tpy::ordered_map<std::string, int32_t>> opt_dict(bool flag) {
     // if flag:
     if (flag) {
@@ -63,7 +63,7 @@ std::optional<::tpy::ordered_map<std::string, int32_t>> opt_dict(bool flag) {
     return std::nullopt;
 }
 
-// def opt_set(flag: bool) -> Own[set[Int32]] | None:
+// def opt_set(flag: bool) -> Own[set[int32]] | None:
 std::optional<::tpy::ordered_set<int32_t>> opt_set(bool flag) {
     // if flag:
     if (flag) {
@@ -85,7 +85,7 @@ std::optional<::tpy::ByteArray> opt_bytes(bool flag) {
     return std::nullopt;
 }
 
-// def opt_array(flag: bool) -> Own[Array[Int32, 6]] | None:
+// def opt_array(flag: bool) -> Own[Array[int32, 6]] | None:
 std::optional<std::array<int32_t, 6>> opt_array(bool flag) {
     // if flag:
     if (flag) {
@@ -96,7 +96,7 @@ std::optional<std::array<int32_t, 6>> opt_array(bool flag) {
     return std::nullopt;
 }
 
-// def opt_boxes(flag: bool) -> Own[list[Box[Int32]]] | None:
+// def opt_boxes(flag: bool) -> Own[list[Box[int32]]] | None:
 std::optional<std::vector<::tpystd::tplib::box::Box<int32_t>>> opt_boxes(bool flag) {
     // if flag:
     if (flag) {
@@ -107,7 +107,7 @@ std::optional<std::vector<::tpystd::tplib::box::Box<int32_t>>> opt_boxes(bool fl
     return std::nullopt;
 }
 
-// def size(flag: bool) -> Int32:
+// def size(flag: bool) -> int32:
 int32_t size(bool flag) {
     // # The narrowed binding derefs the `std::optional<T>` slot.
     // total = 0

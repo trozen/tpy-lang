@@ -2,13 +2,13 @@
 # lift the subject to a pointer, which over a temporary would dangle.
 from typing import Optional
 
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Box:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 

@@ -1,10 +1,10 @@
-from tpy import Int32, copy
+from tpy import int32, copy
 
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32):
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32):
         self.x = x
         self.y = y
 

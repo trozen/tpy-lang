@@ -111,7 +111,7 @@ TypeArg = Union[TypeTypeArg, IntTypeArg]
 class NamedType:
     """A type referenced by name, with optional generic args.
 
-    Mirrors the design's `NamedType("Int32")` shape. Wrapper types
+    Mirrors the design's `NamedType("int32")` shape. Wrapper types
     (Optional, Readonly, Own, Union, Callable, Literal) land as
     separate IR nodes in their respective milestones.
     """
@@ -126,7 +126,7 @@ class PointerType:
     """`Ptr[T]` -- a pointer to a pointee type.
 
     Used to model Pascal's `var` (by-reference) parameters: the
-    translator emits `PointerType(NamedType("Int32"))` for a `var x:
+    translator emits `PointerType(NamedType("int32"))` for a `var x:
     integer` parameter, wraps caller args in `take_ptr(...)`, and
     rewrites in-body uses to `deref(...)` reads and `unsafe_store(...)`
     writes. Records and other non-value types pass through TPy's own
@@ -218,7 +218,7 @@ class Call:
 
     `type_args` carries explicit type arguments at the call site --
     Pascal needs them for generic-type constructor calls like
-    `Array[Int32, 8]()`. `kwargs` is a tuple of `(name, value)` pairs
+    `Array[int32, 8]()`. `kwargs` is a tuple of `(name, value)` pairs
     -- needed for calls like Python's `print(x, end="")`. `star_args`
     / `double_star` from the design doc are not used yet; they land
     with later milestones.

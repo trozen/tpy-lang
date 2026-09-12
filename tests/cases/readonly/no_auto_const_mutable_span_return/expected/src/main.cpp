@@ -10,7 +10,7 @@ void main() {
     Buffer b = Buffer();
     // s = b.items()
     std::span<int32_t> s = b.items();
-    // s[Int32(0)] = Int32(99)
+    // s[int32(0)] = int32(99)
     ::tpy::__setitem__(s, 0, 99);
     // print(b._items[0])
     std::cout << ::tpy::__getitem__(b._items, 0) << "\n";

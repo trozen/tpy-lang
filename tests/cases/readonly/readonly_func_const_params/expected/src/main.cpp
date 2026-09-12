@@ -5,16 +5,16 @@ namespace tpyapp::main {
 
 
 // @readonly
-// def read_box(b: Box, offset: Int32) -> Int32:
+// def read_box(b: Box, offset: int32) -> int32:
 int32_t read_box(const Box& b, int32_t offset) {
     // return b.value + offset
     return (::tpy::add_check<int32_t>(b.value, offset));
 }
 
 // @readonly
-// def sum_list(items: list[Int32]) -> Int32:
+// def sum_list(items: list[int32]) -> int32:
 int32_t sum_list(const std::vector<int32_t>& items) {
-    // total = Int32(0)
+    // total = int32(0)
     int32_t total = 0;
     // for x in items:
     auto& __obj_0 = items;
@@ -31,11 +31,11 @@ int32_t sum_list(const std::vector<int32_t>& items) {
 
 // def main() -> None:
 void main() {
-    // b = Box(Int32(10))
+    // b = Box(int32(10))
     Box b = Box(10);
-    // print(read_box(b, Int32(5)))
+    // print(read_box(b, int32(5)))
     std::cout << read_box(b, 5) << "\n";
-    // nums: list[Int32] = [1, 2, 3]
+    // nums: list[int32] = [1, 2, 3]
     std::vector<int32_t> nums = {1, 2, 3};
     // print(sum_list(nums))
     std::cout << sum_list(nums) << "\n";

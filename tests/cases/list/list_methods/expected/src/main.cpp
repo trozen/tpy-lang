@@ -5,9 +5,9 @@ namespace tpyapp::main {
 
 
 // # Test all list methods: pop(), insert(), remove(), clear(), extend()
-// def print_list(nums: list[Int32]) -> None:
+// def print_list(nums: list[int32]) -> None:
 void print_list(const std::vector<int32_t>& nums) {
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < len(nums):
     while ((i < ::tpy::__len__(nums))) {
@@ -22,17 +22,17 @@ void print_list(const std::vector<int32_t>& nums) {
 
 // def test_pop() -> None:
 void test_pop() {
-    // nums: list[Int32] = [10, 20, 30, 40]
+    // nums: list[int32] = [10, 20, 30, 40]
     std::vector<int32_t> nums = {10, 20, 30, 40};
     // # Pop last element
-    // last: Int32 = nums.pop()
+    // last: int32 = nums.pop()
     int32_t last = ::tpy::pop_back(nums);
     // print(last)
     std::cout << last << "\n";
     // print(len(nums))
     std::cout << ::tpy::__len__(nums) << "\n";
     // # Pop again
-    // second_last: Int32 = nums.pop()
+    // second_last: int32 = nums.pop()
     int32_t second_last = ::tpy::pop_back(nums);
     // print(second_last)
     std::cout << second_last << "\n";
@@ -44,7 +44,7 @@ void test_pop() {
 
 // def test_insert() -> None:
 void test_insert() {
-    // nums: list[Int32] = [10, 30, 40]
+    // nums: list[int32] = [10, 30, 40]
     std::vector<int32_t> nums = {10, 30, 40};
     // # Insert at beginning
     // nums.insert(0, 5)
@@ -65,7 +65,7 @@ void test_insert() {
 
 // def test_remove() -> None:
 void test_remove() {
-    // nums: list[Int32] = [10, 20, 30, 20, 40]
+    // nums: list[int32] = [10, 20, 30, 20, 40]
     std::vector<int32_t> nums = {10, 20, 30, 20, 40};
     // # Remove first occurrence of 20
     // nums.remove(20)
@@ -86,7 +86,7 @@ void test_remove() {
 
 // def test_clear() -> None:
 void test_clear() {
-    // nums: list[Int32] = [1, 2, 3, 4, 5]
+    // nums: list[int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> nums = {1, 2, 3, 4, 5};
     // print(len(nums))
     std::cout << ::tpy::__len__(nums) << "\n";
@@ -105,7 +105,7 @@ void test_clear() {
 
 // def test_extend() -> None:
 void test_extend() {
-    // nums: list[Int32] = [1, 2, 3]
+    // nums: list[int32] = [1, 2, 3]
     std::vector<int32_t> nums = {1, 2, 3};
     // # Extend with array literal
     // nums.extend([4, 5, 6])
@@ -113,21 +113,21 @@ void test_extend() {
     // print_list(nums)
     print_list(nums);
     // # Extend with another list
-    // more: list[Int32] = [7, 8]
+    // more: list[int32] = [7, 8]
     std::vector<int32_t> more = {7, 8};
     // nums.extend(more)
     ::tpy::list_extend(nums, ::tpy::own_iter(std::move(more)));
     // print_list(nums)
     print_list(nums);
     // # Extend with Array variable
-    // arr: Array[Int32, 2] = [9, 10]
+    // arr: Array[int32, 2] = [9, 10]
     std::array<int32_t, 2> arr = {9, 10};
     // nums.extend(arr)
     ::tpy::list_extend(nums, arr);
     // print_list(nums)
     print_list(nums);
     // # Extend with another list
-    // extra: list[Int32] = [11, 12]
+    // extra: list[int32] = [11, 12]
     std::vector<int32_t> extra = {11, 12};
     // nums.extend(extra)
     ::tpy::list_extend(nums, ::tpy::own_iter(std::move(extra)));
@@ -137,7 +137,7 @@ void test_extend() {
 
 // def test_combined_operations() -> None:
 void test_combined_operations() {
-    // nums: list[Int32] = [5]
+    // nums: list[int32] = [5]
     std::vector<int32_t> nums = {5};
     // nums.append(10)
     nums.push_back(10);
@@ -151,7 +151,7 @@ void test_combined_operations() {
     ::tpy::list_remove(nums, 10);
     // print_list(nums)
     print_list(nums);
-    // popped: Int32 = nums.pop()
+    // popped: int32 = nums.pop()
     int32_t popped = ::tpy::pop_back(nums);
     // print(popped)
     std::cout << popped << "\n";

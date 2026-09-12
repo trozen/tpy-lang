@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def use(flags: UInt32 = CASELESS) -> Int32:
+// def use(flags: uint32 = CASELESS) -> int32:
 int32_t use(uint32_t flags) {
-    // return Int32(flags)
+    // return int32(flags)
     return ::tpy::int_cast_check<int32_t>(flags);
 }
 

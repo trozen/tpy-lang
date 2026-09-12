@@ -4,12 +4,12 @@
 namespace tpyapp::main {
 
 
-// def sum_last_use() -> Int32:
+// def sum_last_use() -> int32:
 int32_t sum_last_use() {
-    // items: list[Int32] = [10, 20, 30]
+    // items: list[int32] = [10, 20, 30]
     std::vector<int32_t> items = {10, 20, 30};
     // # items at last use but x is read-only -- borrows
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for x in items:
     auto& __obj_0 = items;
@@ -24,11 +24,11 @@ int32_t sum_last_use() {
     return total;
 }
 
-// def sum_not_last_use() -> Int32:
+// def sum_not_last_use() -> int32:
 int32_t sum_not_last_use() {
-    // items: list[Int32] = [1, 2, 3]
+    // items: list[int32] = [1, 2, 3]
     std::vector<int32_t> items = {1, 2, 3};
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // # items is NOT at last use -- borrows
     // for x in items:

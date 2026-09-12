@@ -72,7 +72,7 @@ struct Labels {
         return false;
     }
 
-    // def tag_len(self, tag: str) -> Int32:
+    // def tag_len(self, tag: str) -> int32:
     int32_t tag_len(std::string_view tag) const {
         // # INVERSE: a non-element str param -- still a std::string_view.
         // return len(tag)

@@ -1,17 +1,17 @@
 # The deref+move container return over a reassigned local whose FIRST binding
 # is a container-returning CALL: the two-slot rebind machinery, the same one a
 # container LITERAL first binding takes.
-from tpy import Own, Int32, copy, nocopy
+from tpy import Own, int32, copy, nocopy
 
 
-def gen(n: Int32) -> Own[list[Int32]]:
-    out: list[Int32] = []
+def gen(n: int32) -> Own[list[int32]]:
+    out: list[int32] = []
     for i in range(n):
         out.append(i)
     return out
 
 
-def longest(n: Int32) -> Own[list[Int32]]:
+def longest(n: int32) -> Own[list[int32]]:
     best = gen(0)  # tpyc: ok
     for i in range(n):
         cur = gen(i)

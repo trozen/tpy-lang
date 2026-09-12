@@ -21,23 +21,23 @@ with `sdl=off` never import this module and stay SDL2-link-free.
 """
 
 from tpy.extern import native
-from tpy import Int32
+from tpy import int32
 
 from graph import _ctx as _graph_ctx
 
 
 @native("tpy::pascal::sdl_open_window")
-def _sdl_open_window(width: Int32, height: Int32) -> None: ...
+def _sdl_open_window(width: int32, height: int32) -> None: ...
 
 
 @native("tpy::pascal::sdl_present")
-def _sdl_present(width: Int32, height: Int32,
-                 pixels: list[Int32]) -> None: ...
+def _sdl_present(width: int32, height: int32,
+                 pixels: list[int32]) -> None: ...
 
 
 @native("tpy::pascal::sdl_show_blocking")
-def _sdl_show_blocking(width: Int32, height: Int32,
-                       pixels: list[Int32]) -> None: ...
+def _sdl_show_blocking(width: int32, height: int32,
+                       pixels: list[int32]) -> None: ...
 
 
 @native("tpy::pascal::sdl_close_window")

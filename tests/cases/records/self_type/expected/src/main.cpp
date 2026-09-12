@@ -6,29 +6,29 @@ namespace tpyapp::main {
 
 // def test_builder() -> None:
 void test_builder() {
-    // b = Builder("start", Int32(0))
+    // b = Builder("start", int32(0))
     Builder b = Builder("start", 0);
     // # Method chaining via Self return type
-    // b.set_name("hello").set_value(Int32(42))
+    // b.set_name("hello").set_value(int32(42))
     b.set_name("hello").set_value(42);
     // print(b.name)
     std::cout << b.name << "\n";
     // print(b.value)
     std::cout << b.value << "\n";
     // # Self in parameter type
-    // b2 = Builder("other", Int32(10))
+    // b2 = Builder("other", int32(10))
     Builder b2 = Builder("other", 10);
     // print(b.with_offset(b2))
     std::cout << b.with_offset(b2) << "\n";
     // # Optional[Self] return
-    // result = b.find_match(Int32(42))
+    // result = b.find_match(int32(42))
     Builder* result = b.find_match(42);
     // if result is not None:
     if ((result != nullptr)) {
         // print(result.name)
         std::cout << result->name << "\n";
     }
-    // result2 = b.find_match(Int32(99))
+    // result2 = b.find_match(int32(99))
     Builder* result2 = b.find_match(99);
     // if result2 is None:
     if ((result2 == nullptr)) {
@@ -39,10 +39,10 @@ void test_builder() {
 
 // def test_generic() -> None:
 void test_generic() {
-    // s = Stack[Int32]("my_stack")
+    // s = Stack[int32]("my_stack")
     Stack<int32_t> s = Stack<int32_t>("my_stack");
     // # Method chaining on generic class
-    // s.push(Int32(10)).push(Int32(20)).push(Int32(30))
+    // s.push(int32(10)).push(int32(20)).push(int32(30))
     s.push(10).push(20).push(30);
     // print(len(s.items))
     std::cout << ::tpy::__len__(s.items) << "\n";

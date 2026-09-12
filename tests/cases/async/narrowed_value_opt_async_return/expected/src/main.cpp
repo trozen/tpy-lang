@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def pick(p: Int32 | None) -> Int32:
+// async def pick(p: int32 | None) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_pick::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -36,12 +36,12 @@ namespace tpyapp::main {
 }
 
 
-// async def pick(p: Int32 | None) -> Int32:
+// async def pick(p: int32 | None) -> int32:
 __coro_pick pick(std::optional<int32_t> p) {
     return __coro_pick(p);
 }
 
-// async def pick_whole(p: Int32 | None) -> Int32 | None:
+// async def pick_whole(p: int32 | None) -> int32 | None:
 ::tpystd::tpy::Poll<std::optional<int32_t>> __coro_pick_whole::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -73,7 +73,7 @@ __coro_pick pick(std::optional<int32_t> p) {
 }
 
 
-// async def pick_whole(p: Int32 | None) -> Int32 | None:
+// async def pick_whole(p: int32 | None) -> int32 | None:
 __coro_pick_whole pick_whole(std::optional<int32_t> p) {
     return __coro_pick_whole(p);
 }

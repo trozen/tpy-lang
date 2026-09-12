@@ -6,21 +6,21 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // a = Int64((1 << 60) + (1 << 7))
+    // a = int64((1 << 60) + (1 << 7))
     int64_t a = ::tpy::add_check<int64_t>(::tpy::lshift_check<int64_t>(1, 60), ::tpy::lshift_check<int64_t>(1, 7));
-    // b = Int64(3)
+    // b = int64(3)
     int64_t b = 3;
     // print(a / b)              # 3.843071682022824e+17
     std::cout << ::tpy::print_float((::tpy::truediv(a, b))) << "\n";
-    // c = UInt64((1 << 63) + 1)
+    // c = uint64((1 << 63) + 1)
     uint64_t c = ::tpy::add_check<uint64_t>(::tpy::lshift_check<uint64_t>(1, 63), 1);
-    // d = UInt64(1)
+    // d = uint64(1)
     uint64_t d = 1;
     // print(c / d)              # 9.223372036854776e+18
     std::cout << ::tpy::print_float((::tpy::truediv(c, d))) << "\n";
-    // small = Int64(100)
+    // small = int64(100)
     int64_t small = 100;
-    // seven = Int64(7)
+    // seven = int64(7)
     int64_t seven = 7;
     // print(small / seven)      # fast path, unchanged
     std::cout << ::tpy::print_float((::tpy::truediv(small, seven))) << "\n";

@@ -1,1 +1,1 @@
-main.py:11: error: Type mismatch in argument 'name': expected str, got Int32
+main.py:11: error: Type mismatch in argument 'name': expected str, got int32

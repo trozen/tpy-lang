@@ -2,7 +2,7 @@
 # `Literal`-overloaded function dispatches to the Literal specialization
 # without an intermediate local.
 from typing import Literal, overload
-from tpy import Int32
+from tpy import int32
 
 
 def get_r() -> Literal["r"]:
@@ -10,11 +10,11 @@ def get_r() -> Literal["r"]:
 
 
 @overload
-def pick(v: Literal["r", "w"]) -> Int32: ...
+def pick(v: Literal["r", "w"]) -> int32: ...
 @overload
-def pick(v: str) -> Int32: ...
-def pick(v: str) -> Int32:
-    return Int32(99)
+def pick(v: str) -> int32: ...
+def pick(v: str) -> int32:
+    return int32(99)
 
 
 def main() -> None:

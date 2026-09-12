@@ -15,16 +15,16 @@ void main();
 
 // class SparseCounter:
 struct SparseCounter {
-    // data: dict[int, Int32]
+    // data: dict[int, int32]
     ::tpy::ordered_map<::tpy::BigInt, int32_t> data;
 
     // def __init__(self):
     SparseCounter();
 
-    // def __getitem__(self, key: int) -> Int32:
+    // def __getitem__(self, key: int) -> int32:
     int32_t __getitem__(const ::tpy::BigInt& key) const;
 
-    // def __setitem__(self, key: int, value: Int32) -> None:
+    // def __setitem__(self, key: int, value: int32) -> None:
     void __setitem__(const ::tpy::BigInt& key, int32_t value);
 
     int32_t operator[](const ::tpy::BigInt& key) const {
@@ -42,13 +42,13 @@ inline std::ostream& operator<<(std::ostream& os, const SparseCounter& obj) {
 // def __init__(self):
 inline SparseCounter::SparseCounter() : data(::tpy::ordered_map<::tpy::BigInt, int32_t>()) {}
 
-// def __getitem__(self, key: int) -> Int32:
+// def __getitem__(self, key: int) -> int32:
 inline int32_t SparseCounter::__getitem__(const ::tpy::BigInt& key) const {
     // return self.data.get(key, 0)
     return ::tpy::dict_get_default(this->data, key, 0);
 }
 
-// def __setitem__(self, key: int, value: Int32) -> None:
+// def __setitem__(self, key: int, value: int32) -> None:
 inline void SparseCounter::__setitem__(const ::tpy::BigInt& key, int32_t value) {
     // self.data[key] = value
     ::tpy::__setitem__(this->data, key, value);

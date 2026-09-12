@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def make() -> tuple[Int32, Int32]:
+// def make() -> tuple[int32, int32]:
 std::tuple<int32_t, int32_t> make() {
     // return (1, 2)
     return std::tuple<int32_t, int32_t>{1, 2};

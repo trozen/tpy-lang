@@ -78,7 +78,7 @@ std::string show_tagged(const Tagged& t) {
         auto& v = std::get<std::string>(__match_subject_1.value);
         // return "string: " + v
         return (::tpy::str_concat("string: ", v));
-    // case Tagged(tag="n", value=Int32() as n):
+    // case Tagged(tag="n", value=int32() as n):
     } else if (__match_subject_1.tag == "n" && std::holds_alternative<int32_t>(__match_subject_1.value)) {
         auto n = std::get<int32_t>(__match_subject_1.value);
         // return "number: " + str(n)
@@ -114,7 +114,7 @@ void main() {
     // t1 = Tagged("s", "hello")
     ::tpy::Union<int32_t, std::string> __tmp_3 = "hello";
     Tagged t1 = Tagged("s", __tmp_3);
-    // t2 = Tagged("n", Int32(42))
+    // t2 = Tagged("n", int32(42))
     ::tpy::Union<int32_t, std::string> __tmp_4 = 42;
     Tagged t2 = Tagged("n", __tmp_4);
     // t3 = Tagged("x", "other")

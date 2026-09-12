@@ -16,12 +16,12 @@ void main();
 
 // class Item:
 struct Item {
-    // key: Int32
+    // key: int32
     int32_t key;
-    // tag: Int32
+    // tag: int32
     int32_t tag;
 
-    // def __init__(self, key: Int32, tag: Int32) -> None:
+    // def __init__(self, key: int32, tag: int32) -> None:
     Item() = default;
     explicit Item(int32_t key, int32_t tag);
 
@@ -40,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
 }
 
 
-// def __init__(self, key: Int32, tag: Int32) -> None:
+// def __init__(self, key: int32, tag: int32) -> None:
 inline Item::Item(int32_t key, int32_t tag) : key(key), tag(tag) {}
 
 // def __lt__(self, other: 'Item') -> bool:

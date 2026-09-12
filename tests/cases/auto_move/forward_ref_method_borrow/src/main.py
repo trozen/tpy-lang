@@ -1,17 +1,17 @@
 # Method forward reference: run() is analyzed before first(), so the bind
 # registers a conservative borrow and the consume copies (with warning).
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class P:
-    vals: list[Int32]
+    vals: list[int32]
 
     def __init__(self):
         self.vals = [5]
 
 
 class Picker:
-    def run(self) -> Int32:
+    def run(self) -> int32:
         xs = [P()]
         n = self.first(xs)
         r = drop(xs)  # tpyc: warning(/copies/)
@@ -21,7 +21,7 @@ class Picker:
         return xs[0]
 
 
-def drop(xs: Own[list[P]]) -> Int32:
+def drop(xs: Own[list[P]]) -> int32:
     store: list[list[P]] = []
     store.append(xs)
     return len(store)

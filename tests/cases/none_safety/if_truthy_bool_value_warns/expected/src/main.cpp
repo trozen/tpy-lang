@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def pick(x: bool | None) -> Int32:
+// def pick(x: bool | None) -> int32:
 int32_t pick(std::optional<bool> x) {
     // if x:  # tpyc: warning(/Truthiness check on optional value/)  # tpyc: warning(/variable 'x'/)
     if (::tpy::is_truthy(x)) {

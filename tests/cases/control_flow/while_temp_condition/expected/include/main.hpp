@@ -11,7 +11,7 @@ struct Pack;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t take_vu(const ::tpy::Union<int32_t, double>& v);
+int32_t take_vu(const ::tpy::Union<double, int32_t>& v);
 ::tpy::BigInt eat(std::vector<::tpy::BigInt>& xs);
 ::tpy::BigInt head(const std::vector<::tpy::BigInt>& xs);
 int32_t countdown(int32_t total);
@@ -26,10 +26,10 @@ void main();
 
 // class Pack:
 struct Pack {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32):
+    // def __init__(self, n: int32):
     Pack() = default;
     explicit Pack(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pack";
@@ -41,7 +41,7 @@ inline std::ostream& operator<<(std::ostream& os, const Pack& obj) {
 }
 
 
-// def __init__(self, n: Int32):
+// def __init__(self, n: int32):
 inline Pack::Pack(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

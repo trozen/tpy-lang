@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def add(a: tp.Int32, b: tp.Int32) -> tp.Int32:
+// def add(a: tp.int32, b: tp.int32) -> tp.int32:
 int32_t add(int32_t a, int32_t b) {
     // return a + b
     return (::tpy::add_check<int32_t>(a, b));
@@ -12,9 +12,9 @@ int32_t add(int32_t a, int32_t b) {
 
 // def main():
 void main() {
-    // x: tp.Int32 = tp.Int32(5)
+    // x: tp.int32 = tp.int32(5)
     int32_t x = 5;
-    // y: tp.Int32 = tp.Int32(7)
+    // y: tp.int32 = tp.int32(7)
     int32_t y = 7;
     // print(add(x, y))
     std::cout << add(x, y) << "\n";

@@ -410,7 +410,7 @@ std::string relpath(std::string_view p, std::string_view start) {
     return ::tpy::str_join("/", rel);
 }
 
-// def _is_var_char(c: Char) -> bool:
+// def _is_var_char(c: char) -> bool:
 bool _is_var_char(char c) {
     // return (c >= "a" and c <= "z") or (c >= "A" and c <= "Z") or (
     // c >= "0" and c <= "9") or c == "_"

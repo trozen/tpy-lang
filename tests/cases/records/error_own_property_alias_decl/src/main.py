@@ -1,17 +1,17 @@
 # An Own-returning getter bound to a local: the alias would bind a reference to
 # the by-value result, so the declaration rejects.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Snap:
-    _items: list[Int32]
+    _items: list[int32]
 
     def __init__(self) -> None:
         self._items = [1]
 
     @property
-    def snapshot(self) -> Own[list[Int32]]:
-        out: list[Int32] = []
+    def snapshot(self) -> Own[list[int32]]:
+        out: list[int32] = []
         for x in self._items:
             out.append(x)
         return out

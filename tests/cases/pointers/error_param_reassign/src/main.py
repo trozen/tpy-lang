@@ -1,12 +1,12 @@
 # Rebinding a reference-typed parameter is rejected -- the caller's object is
 # borrowed, not owned. Reassigning a value-typed parameter, which IS allowed,
 # is pinned by tests/cases/control_flow/param_reassign.
-from tpy import Int32
+from tpy import int32
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32):
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32):
         self.x = x
         self.y = y
 

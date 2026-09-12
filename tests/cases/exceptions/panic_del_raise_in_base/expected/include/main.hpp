@@ -16,11 +16,11 @@ void main();
 
 // class Base:
 struct Base {
-    // _b: Int32
+    // _b: int32
     int32_t _b;
     bool __tpy_owned_ = true;
 
-    // def __init__(self, b: Int32):
+    // def __init__(self, b: int32):
     explicit Base(int32_t b);
     Base(const Base&) = delete;
     Base& operator=(const Base&) = delete;
@@ -39,10 +39,10 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
 
 // class Child(Base):
 struct Child : Base {
-    // _c: Int32
+    // _c: int32
     int32_t _c;
 
-    // def __init__(self, b: Int32, c: Int32):
+    // def __init__(self, b: int32, c: int32):
     explicit Child(int32_t b, int32_t c);
     Child(const Child&) = delete;
     Child& operator=(const Child&) = delete;
@@ -60,7 +60,7 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 }
 
 
-// def __init__(self, b: Int32):
+// def __init__(self, b: int32):
 inline Base::Base(int32_t b) : _b(b) {}
 
 inline Base::Base(Base&& other) noexcept : _b(std::move(other._b)) {
@@ -89,7 +89,7 @@ inline Base::~Base() {
     }
 }
 
-// def __init__(self, b: Int32, c: Int32):
+// def __init__(self, b: int32, c: int32):
 inline Child::Child(int32_t b, int32_t c) : Base(b), _c(c) {}
 
 inline Child::Child(Child&& other) noexcept : Base(std::move(other)), _c(std::move(other._c)) {

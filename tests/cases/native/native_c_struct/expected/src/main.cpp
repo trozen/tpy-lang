@@ -8,7 +8,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // p = Point(Int32(10), Int32(20))
+    // p = Point(int32(10), int32(20))
     ::Point p = ::Point{10, 20};
     // print(p.x)
     std::cout << p.x << "\n";
@@ -18,7 +18,7 @@ void main() {
     std::cout << point_sum(&p) << "\n";
     // print(p.manhattan())
     std::cout << p.manhattan() << "\n";
-    // r = MyRect(Int32(0), Int32(0), Int32(800), Int32(600))
+    // r = MyRect(int32(0), int32(0), int32(800), int32(600))
     ::Rect r = ::Rect{0, 0, 800, 600};
     // print(r.w)
     std::cout << r.w << "\n";

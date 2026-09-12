@@ -1,16 +1,16 @@
 from typing import Sized
-from tpy import Int32
+from tpy import int32
 
 class MyContainer:
-    size: Int32
+    size: int32
 
-    def __init__(self, size: Int32) -> None:
+    def __init__(self, size: int32) -> None:
         self.size = size
 
-    def __len__(self) -> Int32:
+    def __len__(self) -> int32:
         return self.size
 
-def count(items: Sized) -> Int32:
+def count(items: Sized) -> int32:
     return len(items)
 
 def main() -> None:

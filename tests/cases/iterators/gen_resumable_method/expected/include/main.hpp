@@ -18,10 +18,10 @@ void main();
 
 // class Source:
 struct Source {
-    // base: Int32
+    // base: int32
     int32_t base;
 
-    // def __init__(self, base: Int32) -> None:
+    // def __init__(self, base: int32) -> None:
     Source() = default;
     explicit Source(int32_t base);
 
@@ -112,7 +112,7 @@ inline __gen_Source_doubled Source::doubled() const {
 }
 
 
-// def __init__(self, base: Int32) -> None:
+// def __init__(self, base: int32) -> None:
 inline Source::Source(int32_t base) : base(base) {}
 void __tpy_init();
 } // namespace tpyapp::main

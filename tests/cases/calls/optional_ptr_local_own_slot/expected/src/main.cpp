@@ -48,14 +48,14 @@ void take_own_opt(std::optional<Pic>&& p, std::vector<std::optional<Pic>>& sink)
 // # through; writing through the narrowed param is its own gap
 // # (BUGS.md#opt-own-param-forward-into-own-opt-slot), and the by-value slot
 // # drops the payload at return (BUGS.md#opt-own-by-value-param-early-del).
-// def take_opt_own(p: Own[Pic] | None) -> Int32:
+// def take_opt_own(p: Own[Pic] | None) -> int32:
 int32_t take_opt_own(std::optional<Pic> p) {
     // return 0 if p is None else p.n
     return (((!p.has_value())) ? (0) : ((*p).n));
 }
 
 // # The doom shape: declared None, reassigned inside a try, appended per iteration.
-// def append_try_reassigned(d: dict[bytes, Int32]) -> None:
+// def append_try_reassigned(d: dict[bytes, int32]) -> None:
 void append_try_reassigned(const ::tpy::ordered_map<::tpy::Bytes, int32_t>& d) {
     std::optional<Pic> __slot_1;
     // patches: list[Pic | None] = []

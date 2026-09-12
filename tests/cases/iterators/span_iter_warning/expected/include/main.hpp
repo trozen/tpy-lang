@@ -16,16 +16,16 @@ void main();
 
 // class MyIter:
 struct MyIter {
-    // _val: Int32
+    // _val: int32
     int32_t _val;
 
-    // def __init__(self, val: Int32) -> None:
+    // def __init__(self, val: int32) -> None:
     MyIter() = default;
     explicit MyIter(int32_t val);
 
     auto& __iter__() { return *this; }
 
-    // def __next__(self) -> Int32:
+    // def __next__(self) -> int32:
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     static constexpr std::string_view __tpy_class_name__ = "__main__.MyIter";
 };
@@ -37,18 +37,18 @@ inline std::ostream& operator<<(std::ostream& os, const MyIter& obj) {
 
 // class Dual:  # tpyc: ok
 struct Dual {
-    // _data: list[Int32]
+    // _data: list[int32]
     std::vector<int32_t> _data;
 
     // def __init__(self) -> None:
     Dual();
 
     // @auto_readonly
-    // def __span__(self) -> Span[auto_readonly[Int32]]:
+    // def __span__(self) -> Span[auto_readonly[int32]]:
     std::span<int32_t> __span__();
 
     // @auto_readonly
-    // def __span__(self) -> Span[auto_readonly[Int32]]:
+    // def __span__(self) -> Span[auto_readonly[int32]]:
     std::span<const int32_t> __span__() const;
 
     // def __iter__(self) -> Own[MyIter]:
@@ -62,10 +62,10 @@ inline std::ostream& operator<<(std::ostream& os, const Dual& obj) {
 }
 
 
-// def __init__(self, val: Int32) -> None:
+// def __init__(self, val: int32) -> None:
 inline MyIter::MyIter(int32_t val) : _val(val) {}
 
-// def __next__(self) -> Int32:
+// def __next__(self) -> int32:
 inline std::expected<int32_t, ::tpy::StopIteration> MyIter::__next__() {
     // if self._val > 0:
     if ((this->_val > 0)) {
@@ -84,14 +84,14 @@ inline std::expected<int32_t, ::tpy::StopIteration> MyIter::__next__() {
 inline Dual::Dual() : _data(std::vector<int32_t>{1, 2, 3}) {}
 
 // @auto_readonly
-// def __span__(self) -> Span[auto_readonly[Int32]]:
+// def __span__(self) -> Span[auto_readonly[int32]]:
 inline std::span<int32_t> Dual::__span__() {
     // return self._data
     return ::tpy::as_mut_span(this->_data);
 }
 
 // @auto_readonly
-// def __span__(self) -> Span[auto_readonly[Int32]]:
+// def __span__(self) -> Span[auto_readonly[int32]]:
 inline std::span<const int32_t> Dual::__span__() const {
     // return self._data
     return ::tpy::as_span(this->_data);
@@ -99,7 +99,7 @@ inline std::span<const int32_t> Dual::__span__() const {
 
 // def __iter__(self) -> Own[MyIter]:
 inline MyIter Dual::__iter__() const {
-    // return MyIter(Int32(3))
+    // return MyIter(int32(3))
     return MyIter(3);
 }
 void __tpy_init();

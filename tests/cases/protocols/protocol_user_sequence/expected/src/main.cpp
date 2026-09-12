@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // nums: list[Int32] = [10, 20, 30, 40]
+    // nums: list[int32] = [10, 20, 30, 40]
     std::vector<int32_t> nums = {10, 20, 30, 40};
     // wrapper: IntWrapper = IntWrapper(nums)
     IntWrapper wrapper = IntWrapper(nums);
@@ -15,7 +15,7 @@ void main() {
     std::cout << wrapper[0] << "\n";
     // print(wrapper[-1])     # 40
     std::cout << wrapper[-1] << "\n";
-    // # User record conforms to Sequence[Int32]
+    // # User record conforms to Sequence[int32]
     // print(sum_seq(wrapper))  # 100
     std::cout << sum_seq(wrapper) << "\n";
     // print(first(wrapper))    # 10

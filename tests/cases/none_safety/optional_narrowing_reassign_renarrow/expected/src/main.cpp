@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def test_reassign_renarrows(x: Int32 | None) -> Int32:
+// def test_reassign_renarrows(x: int32 | None) -> int32:
 int32_t test_reassign_renarrows(std::optional<int32_t> x) {
     // x = 10
     x = 10;
@@ -12,7 +12,7 @@ int32_t test_reassign_renarrows(std::optional<int32_t> x) {
     return (::tpy::add_check<int32_t>((*x), 1));
 }
 
-// def test_truthiness_short_circuit(a: Int32 | None, b: Int32 | None) -> Int32:
+// def test_truthiness_short_circuit(a: int32 | None, b: int32 | None) -> int32:
 int32_t test_truthiness_short_circuit(std::optional<int32_t> a, std::optional<int32_t> b) {
     // if a and b:
     if ((::tpy::is_truthy(a) && ::tpy::is_truthy(b))) {
@@ -23,7 +23,7 @@ int32_t test_truthiness_short_circuit(std::optional<int32_t> a, std::optional<in
     return 0;
 }
 
-// def test_is_not_none_short_circuit(a: Int32 | None, b: Int32 | None) -> Int32:
+// def test_is_not_none_short_circuit(a: int32 | None, b: int32 | None) -> int32:
 int32_t test_is_not_none_short_circuit(std::optional<int32_t> a, std::optional<int32_t> b) {
     // if a is not None and b is not None:
     if (((a.has_value()) && (b.has_value()))) {

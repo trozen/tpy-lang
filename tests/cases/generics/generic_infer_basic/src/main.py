@@ -1,5 +1,5 @@
 """Test basic type inference for user-defined generic classes."""
-from tpy import Int32
+from tpy import int32
 
 
 class Box[T]:
@@ -13,7 +13,7 @@ class Box[T]:
 box = Box(42)
 print(box.value)
 
-# Inference from Int32 -> Box[Int32]
-x: Int32 = 10
+# Inference from int32 -> Box[int32]
+x: int32 = 10
 box32 = Box(x)
 print(box32.value)

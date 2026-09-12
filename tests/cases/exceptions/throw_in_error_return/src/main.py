@@ -1,6 +1,6 @@
 # Throw-tier exception inside an @error_return function
 # The error_return handles the expected failure; throw handles the unexpected
-from tpy import Int32, error_return, ReturnException
+from tpy import int32, error_return, ReturnException
 
 class NotFound(Exception, ReturnException):
     pass
@@ -12,7 +12,7 @@ class BadKey(Exception):
     key: str
 
 @error_return(NotFound)
-def lookup(key: str) -> Int32:
+def lookup(key: str) -> int32:
     if key == "":
         raise BadKey(key)
     if key == "x":

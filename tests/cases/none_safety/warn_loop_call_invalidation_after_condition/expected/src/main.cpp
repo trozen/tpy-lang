@@ -10,7 +10,7 @@ void opaque(Box& b) {
     b.value = b.value;
 }
 
-// def use_after_call(b: Box) -> Int32:
+// def use_after_call(b: Box) -> int32:
 int32_t use_after_call(Box& b) {
     // while b.value is not None:
     while ((b.value.has_value())) {

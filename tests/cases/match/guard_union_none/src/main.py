@@ -1,17 +1,17 @@
 # Union-with-None subject: a guard on one arm routes the whole match through
 # the guarded union path, which must still support `case None:`.
-from tpy import Int32
+from tpy import int32
 
 
 class A:
-    a: Int32
+    a: int32
 
     def __init__(self) -> None:
         self.a = 1
 
 
 class B:
-    b: Int32
+    b: int32
 
     def __init__(self) -> None:
         self.b = 2

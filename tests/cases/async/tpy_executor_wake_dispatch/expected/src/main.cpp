@@ -56,7 +56,7 @@ void test_timer_drives_to_completion() {
     // # table, re-poll the slot, and the slot completes after N polls.
     // e = Executor()
     ::tpystd::asyncio::_executor::Executor e = ::tpystd::asyncio::_executor::Executor();
-    // sid = e.spawn(_make_any_task_for_test(CountdownThenReady(UInt32(3))))
+    // sid = e.spawn(_make_any_task_for_test(CountdownThenReady(uint32(3))))
     int32_t sid = e.spawn(::tpystd::asyncio::_executor::_make_any_task_for_test<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(CountdownThenReady(3))));
     // # First drain handles the initial poll (decrements to 2).
     // e.drain_runnable()

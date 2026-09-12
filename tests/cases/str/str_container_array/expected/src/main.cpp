@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def show_span(s: Span[Int32]) -> None:
+// def show_span(s: Span[int32]) -> None:
 void show_span(std::span<int32_t> s) {
     // print(str(s))
     std::cout << ::tpy::list_to_str(s) << "\n";
@@ -14,7 +14,7 @@ void show_span(std::span<int32_t> s) {
 
 // def main() -> None:
 void main() {
-    // a: Array[Int32, 3] = [10, 20, 30]
+    // a: Array[int32, 3] = [10, 20, 30]
     std::array<int32_t, 3> a = {10, 20, 30};
     // print(str(a))
     std::cout << ::tpy::list_to_str(a) << "\n";

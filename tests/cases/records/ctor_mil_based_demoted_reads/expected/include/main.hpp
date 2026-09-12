@@ -17,7 +17,7 @@ void main();
 
 // class Base:
 struct Base {
-    // tag: Int32
+    // tag: int32
     int32_t tag;
 
     // def __init__(self) -> None:
@@ -32,9 +32,9 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
 
 // class Inherited(Base):
 struct Inherited : Base {
-    // b: Int32
+    // b: int32
     int32_t b;
-    // a: Int32
+    // a: int32
     int32_t a;
 
     // def __init__(self) -> None:
@@ -49,11 +49,11 @@ inline std::ostream& operator<<(std::ostream& os, const Inherited& obj) {
 
 // class Defaulted(Base):
 struct Defaulted : Base {
-    // b: Int32
+    // b: int32
     int32_t b;
-    // a: Int32
+    // a: int32
     int32_t a;
-    // d: Int32 = Int32(7)
+    // d: int32 = int32(7)
     int32_t d = 7;
 
     // def __init__(self) -> None:
@@ -72,7 +72,7 @@ inline Base::Base() : tag(1) {}
 
 // def __init__(self) -> None:
 inline Inherited::Inherited() : Base(), a(5) {
-    // self.tag = Int32(3)  # an inherited field: written in the body
+    // self.tag = int32(3)  # an inherited field: written in the body
     this->tag = 3;
     // # The subject: reading that inherited field demotes this init.
     // self.b = self.a + self.tag  # tpyc: ok

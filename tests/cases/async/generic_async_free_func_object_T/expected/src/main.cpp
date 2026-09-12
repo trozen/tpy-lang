@@ -8,9 +8,9 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // c = Counter(Int32(10))
+        // c = Counter(int32(10))
         c.emplace(Counter(10));
-        // _ = await increment(c)  # tpyc: type(Int32)
+        // _ = await increment(c)  # tpyc: type(int32)
         __sub_0.emplace((*c));
         __state = S_RESUME_0;
         continue;

@@ -2,20 +2,20 @@
 # name, not a ctor call) is not itself a fresh-ctor local, so boxing it is still
 # rejected (locks the isinstance-TpyCall check).
 from typing import Protocol
-from tpy import dynamic, Int32
+from tpy import dynamic, int32
 from tplib import Box
 
 
 @dynamic
 class Conn(Protocol):
-    def port(self) -> Int32: ...
+    def port(self) -> int32: ...
 
 
 class HttpConn(Conn):
-    _port: Int32
-    def __init__(self, p: Int32) -> None:
+    _port: int32
+    def __init__(self, p: int32) -> None:
         self._port = p
-    def port(self) -> Int32:
+    def port(self) -> int32:
         return self._port
 
 

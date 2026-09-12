@@ -4,12 +4,12 @@
 # of the builtin. Every shape is spelled for a `bytearray` and for a `list`,
 # because bytearray rides this family rather than one of its own -- if it had
 # its own, the two columns could disagree.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Buf:
     data: bytearray
-    nums: list[Int32]
+    nums: list[int32]
 
     def __init__(self, data: Own[bytearray]) -> None:
         self.data = data
@@ -20,19 +20,19 @@ class Buf:
         return self.data
 
     @property
-    def rows(self) -> list[Int32]:
+    def rows(self) -> list[int32]:
         return self.nums
 
 
 class Tagged(bytearray):
-    tag: Int32
+    tag: int32
 
     def __init__(self) -> None:
         self.tag = 7
 
 
-class TaggedList(list[Int32]):
-    tag: Int32
+class TaggedList(list[int32]):
+    tag: int32
 
     def __init__(self) -> None:
         self.tag = 8

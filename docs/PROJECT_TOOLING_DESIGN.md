@@ -489,7 +489,7 @@ generated_by = "tpx 0.3.1"
 
 [tpy]
 compiler = "turbopython==0.8.4"; resolved = "0.8.4"
-runtime_hash = "sha256:..."; default_int = "Int64"
+runtime_hash = "sha256:..."; default_int = "int64"
 
 [python]
 pylock = "pylock.toml"; pylock_hash = "sha256:..."   # correlate, don't duplicate
@@ -590,8 +590,8 @@ accrete as ad-hoc one-off flags. Initial set:
 
 | Knob | Choices | Scope |
 |---|---|---|
-| `default-int` | Int32 / Int64 / BigInt | per-module (already in `options.json`); cross-call mixing needs care |
-| `default-float` | Float64 / Float32 | per-module (sibling of `default-int`) |
+| `default-int` | int32 / int64 / BigInt | per-module (already in `options.json`); cross-call mixing needs care |
+| `default-float` | float64 / float32 | per-module (sibling of `default-int`) |
 | panic mode | abort (`std::exit`) / throw (catchable) | whole-program-ish; `.so` extension builds want throw (see `CPYTHON_INTEROP.md`) |
 | `str` character width | 1 (Latin-1) / 2 / 4 / PEP-393 (default 4) | **whole-artifact** -- it is the `str` ABI; mixing widths across a boundary is a corruption hazard. Resolved design: `STRING_WIDTH_DESIGN.md` |
 | integer overflow checks | on (panic) / off (wrap) | per-module / per-function |

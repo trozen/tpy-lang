@@ -4,19 +4,19 @@
 namespace tpyapp::main {
 
 
-// def width() -> Int32:
+// def width() -> int32:
 int32_t width() {
     // return 3
     return 3;
 }
 
-// def zero() -> Int32:
+// def zero() -> int32:
 int32_t zero() {
     // return 0
     return 0;
 }
 
-// def scalar_shapes(h: Holder, xs: list[Int32], c: Char) -> Int32:
+// def scalar_shapes(h: Holder, xs: list[int32], c: char) -> int32:
 int32_t scalar_shapes(Holder& h, const std::vector<int32_t>& xs, char c) {
     // seen = 0
     int32_t seen = 0;
@@ -65,7 +65,7 @@ int32_t scalar_shapes(Holder& h, const std::vector<int32_t>& xs, char c) {
         // seen += 256
         seen = ::tpy::add_check<int32_t>(seen, 256);
     }
-    // if c:  # Char local
+    // if c:  # char local
     if (c) {
         // seen += 512
         seen = ::tpy::add_check<int32_t>(seen, 512);
@@ -75,7 +75,7 @@ int32_t scalar_shapes(Holder& h, const std::vector<int32_t>& xs, char c) {
 }
 
 // def moded_shapes(h: Holder, names: list[str],
-// rows: list[list[Int32]]) -> Int32:
+// rows: list[list[int32]]) -> int32:
 int32_t moded_shapes(const Holder& h, const std::vector<std::string>& names, const std::vector<std::vector<int32_t>>& rows) {
     // seen = 0
     int32_t seen = 0;
@@ -108,7 +108,7 @@ int32_t moded_shapes(const Holder& h, const std::vector<std::string>& names, con
     return seen;
 }
 
-// def operand_positions(xs: list[Int32], n: Int32) -> Int32:
+// def operand_positions(xs: list[int32], n: int32) -> int32:
 int32_t operand_positions(const std::vector<int32_t>& xs, int32_t n) {
     // seen = 0
     int32_t seen = 0;
@@ -138,7 +138,7 @@ int32_t operand_positions(const std::vector<int32_t>& xs, int32_t n) {
     return seen;
 }
 
-// def guard_shapes(h: Holder, xs: list[Int32], names: list[str]) -> Int32:
+// def guard_shapes(h: Holder, xs: list[int32], names: list[str]) -> int32:
 int32_t guard_shapes(Holder& h, const std::vector<int32_t>& xs, const std::vector<std::string>& names) {
     // # A match guard is a boolean context too, so the same shapes hold there.
     // match h.n:
@@ -197,7 +197,7 @@ int32_t guard_shapes(Holder& h, const std::vector<int32_t>& xs, const std::vecto
     return 0;
 }
 
-// def drain(xs: list[Int32]) -> Int32:
+// def drain(xs: list[int32]) -> int32:
 int32_t drain(std::vector<int32_t>& xs) {
     // popped = 0
     int32_t popped = 0;
@@ -233,15 +233,15 @@ void main() {
     std::vector<int32_t> xs = {1, 0};
     // names = ["", "a"]
     std::vector<std::string> names = {"", "a"};
-    // rows: list[list[Int32]] = []
+    // rows: list[list[int32]] = []
     std::vector<std::vector<int32_t>> rows = std::vector<std::vector<int32_t>>{};
     // rows.append([1])
     rows.push_back({1});
-    // blank: list[Int32] = []
+    // blank: list[int32] = []
     std::vector<int32_t> blank = std::vector<int32_t>{};
     // rows.append(blank)
     rows.push_back(std::move(blank));
-    // print("scalar", scalar_shapes(h, xs, Char("x")))
+    // print("scalar", scalar_shapes(h, xs, char("x")))
     std::cout << "scalar" << " " << scalar_shapes(h, xs, ::tpy::char_from_str("x")) << "\n";
     // print("moded", moded_shapes(h, names, rows))
     std::cout << "moded" << " " << moded_shapes(h, names, rows) << "\n";

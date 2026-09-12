@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def read_list(lst: list[Int32] | None) -> None:
+// def read_list(lst: list[int32] | None) -> None:
 void read_list(const std::vector<int32_t>* lst) {
     // if lst is None:
     if ((lst == nullptr)) {
@@ -19,7 +19,7 @@ void read_list(const std::vector<int32_t>* lst) {
     std::cout << ::tpy::__getitem__((*lst), i) << "\n";
 }
 
-// def aug_assign(lst: list[Int32] | None) -> None:
+// def aug_assign(lst: list[int32] | None) -> None:
 void aug_assign(std::vector<int32_t>* lst) {
     // if lst is None:
     if ((lst == nullptr)) {
@@ -32,7 +32,7 @@ void aug_assign(std::vector<int32_t>* lst) {
     std::cout << ::tpy::__getitem__((*lst), 0) << " " << ::tpy::__getitem__((*lst), 1) << " " << ::tpy::__getitem__((*lst), 2) << "\n";
 }
 
-// def read_dict(d: dict[Int32, Int32] | None) -> None:
+// def read_dict(d: dict[int32, int32] | None) -> None:
 void read_dict(const ::tpy::ordered_map<int32_t, int32_t>* d) {
     // if d is None:
     if ((d == nullptr)) {
@@ -53,7 +53,7 @@ void read_dict(const ::tpy::ordered_map<int32_t, int32_t>* d) {
     std::cout << ::tpy::__len__((*d)) << "\n";
 }
 
-// def read_dict_readonly(d: readonly[dict[Int32, Int32]] | None) -> None:
+// def read_dict_readonly(d: readonly[dict[int32, int32]] | None) -> None:
 void read_dict_readonly(const ::tpy::ordered_map<int32_t, int32_t>* d) {
     // if d is None:
     if ((d == nullptr)) {
@@ -76,7 +76,7 @@ void read_bytearray(const ::tpy::ByteArray* b) {
     std::cout << static_cast<int>(::tpy::bytes_getitem((*b), -1)) << "\n";
 }
 
-// def read_nested(rows: list[list[Int32]] | None) -> None:
+// def read_nested(rows: list[list[int32]] | None) -> None:
 void read_nested(const std::vector<std::vector<int32_t>>* rows) {
     // if rows is None:
     if ((rows == nullptr)) {

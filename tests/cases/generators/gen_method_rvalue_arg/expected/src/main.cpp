@@ -39,9 +39,9 @@ void main() {
     std::cout << total << "\n";
     // # The frame borrows the caller's list, no copy: a mutation between
     // # pulls is visible to the generator.
-    // data: list[Int32] = [5, 6]
+    // data: list[int32] = [5, 6]
     std::vector<int32_t> data = {5, 6};
-    // got: list[Int32] = []
+    // got: list[int32] = []
     std::vector<int32_t> got = std::vector<int32_t>{};
     // for v in lim.echo(data):
     {
@@ -61,7 +61,7 @@ void main() {
     std::cout << ::tpy::__getitem__(got, 0) << " " << ::tpy::__getitem__(got, 1) << "\n";
 }
 
-// def first(self, items: list[Int32], cap: Int32) -> Iterator[Int32]:
+// def first(self, items: list[int32], cap: int32) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_first::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -103,7 +103,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_first::__next__() {
 }
 
 
-// def ro_pair(self, xs: readonly[list[Int32]]) -> Iterator[Int32]:
+// def ro_pair(self, xs: readonly[list[int32]]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_ro_pair::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -137,7 +137,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_ro_pair::__next__() {
 }
 
 
-// def rec_val(self, r: readonly[Rec]) -> Iterator[Int32]:
+// def rec_val(self, r: readonly[Rec]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_rec_val::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -160,7 +160,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_rec_val::__next__() {
 }
 
 
-// def dvals(self, d: readonly[dict[str, Int32]]) -> Iterator[Int32]:
+// def dvals(self, d: readonly[dict[str, int32]]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_dvals::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -194,7 +194,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_dvals::__next__() {
 }
 
 
-// def echo(self, xs: list[Int32]) -> Iterator[Int32]:
+// def echo(self, xs: list[int32]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_echo::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def maybe_count(n: Int32) -> Iterator[Int32]:
+// def maybe_count(n: int32) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_maybe_count::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -14,7 +14,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_maybe_count::__next__() {
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
-        // i: Int32 = 0
+        // i: int32 = 0
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -41,7 +41,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_maybe_count::__next__() {
 }
 
 
-// def maybe_count(n: Int32) -> Iterator[Int32]:
+// def maybe_count(n: int32) -> Iterator[int32]:
 __gen_maybe_count maybe_count(int32_t n) {
     return __gen_maybe_count(n);
 }

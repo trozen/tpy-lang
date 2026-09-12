@@ -374,7 +374,7 @@ class AsyncCoroCodegen:
         Generic params (`T` as TypeParamRef) use the
         `param_val_or_ref_t<T>` / `val_or_ref_t<T>` trait so each
         instantiation picks the right value-vs-reference shape -- a
-        value-typed T (e.g. Int32) stores by value (so literal /
+        value-typed T (e.g. int32) stores by value (so literal /
         rvalue call-site args don't dangle), while an object-typed T
         stores by reference (matching Python semantics and the
         non-template ref path).

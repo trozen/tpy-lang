@@ -4,10 +4,10 @@
 namespace tpyapp::main {
 
 // # Array subscript assignment
-// arr: Array[Int32, 3] = [1, 2, 3]
+// arr: Array[int32, 3] = [1, 2, 3]
 std::array<int32_t, 3>* arr{};
 // # list subscript assignment
-// items: list[Int32] = [10, 20]
+// items: list[int32] = [10, 20]
 std::vector<int32_t>* items{};
 
 void __tpy_init() {
@@ -16,7 +16,7 @@ void __tpy_init() {
     initialized = true;
 
     // # Array subscript assignment
-    // arr: Array[Int32, 3] = [1, 2, 3]
+    // arr: Array[int32, 3] = [1, 2, 3]
     static std::array<int32_t, 3> __global_slot_1 = {1, 2, 3};
     arr = &__global_slot_1;
     // arr[0] = 100
@@ -32,7 +32,7 @@ void __tpy_init() {
     // print(arr[2])
     std::cout << ::tpy::__getitem__((*arr), 2) << "\n";
     // # list subscript assignment
-    // items: list[Int32] = [10, 20]
+    // items: list[int32] = [10, 20]
     static std::vector<int32_t> __global_slot_2 = {10, 20};
     items = &__global_slot_2;
     // items[0] = 99

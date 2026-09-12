@@ -16,13 +16,13 @@ inline constexpr std::string_view __name__ = "b";
 
 // class BType:
 struct BType {
-    // tag: Int32
+    // tag: int32
     int32_t tag;
 
     // def __init__(self) -> None:
     BType();
 
-    // def use_a(self, a: AType) -> Int32:
+    // def use_a(self, a: AType) -> int32:
     int32_t use_a(const ::tpyapp::a::AType& a) const;
     static constexpr std::string_view __tpy_class_name__ = "b.BType";
 };

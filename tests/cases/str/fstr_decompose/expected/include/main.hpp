@@ -27,7 +27,7 @@ struct Module {
     explicit Module(std::string_view name);
 
     // # Auto-discover via _logger field
-    // def log_auto(self, tag: str, n: Int32) -> None:
+    // def log_auto(self, tag: str, n: int32) -> None:
     void log_auto(std::string_view tag, int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Module";
 };
@@ -66,7 +66,7 @@ inline std::ostream& operator<<(std::ostream& os, const Service& obj) {
 inline Module::Module(std::string_view name) : _logger(::mylog::LogHandle(name)) {}
 
 // # Auto-discover via _logger field
-// def log_auto(self, tag: str, n: Int32) -> None:
+// def log_auto(self, tag: str, n: int32) -> None:
 inline void Module::log_auto(std::string_view tag, int32_t n) {
     // log(f"tag={tag} n={n}")
     ::mylog::log_dispatch(this->_logger, "tag={} n={}", ::tpy::tuple_value_to_borrow<std::tuple<::mylog::DeferredStr*, int32_t>>(std::tuple<::mylog::DeferredStr, int32_t>{::mylog::defer_str(tag), n}));

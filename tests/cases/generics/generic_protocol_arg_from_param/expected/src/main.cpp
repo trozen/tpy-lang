@@ -6,11 +6,11 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // a = MyTask[Int32]()
+    // a = MyTask[int32]()
     MyTask<int32_t> a = MyTask<int32_t>();
     // print(use_shadowed(a).is_pending())
     std::cout << ::tpy::print_bool(use_shadowed<int32_t>(a).is_pending()) << "\n";
-    // b = MyTask[Int32]()
+    // b = MyTask[int32]()
     MyTask<int32_t> b = MyTask<int32_t>();
     // print(use_renamed(b).is_pending())
     std::cout << ::tpy::print_bool(use_renamed<int32_t>(b).is_pending()) << "\n";

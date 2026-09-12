@@ -7,12 +7,12 @@ namespace tpyapp::main {
 std::vector<Point>* pts{};
 
 // # Value type first declared in both branches
-// def value_type_branches(cond: bool) -> Int32:
+// def value_type_branches(cond: bool) -> int32:
 int32_t value_type_branches(bool cond) {
     // if cond:
     int32_t x;
     if (cond) {
-        // x: Int32 = 10
+        // x: int32 = 10
         x = 10;
     // else:
     } else {
@@ -24,12 +24,12 @@ int32_t value_type_branches(bool cond) {
 }
 
 // # One branch declares, other terminates
-// def else_returns(cond: bool) -> Int32:
+// def else_returns(cond: bool) -> int32:
 int32_t else_returns(bool cond) {
     // if cond:
     int32_t x;
     if (cond) {
-        // x: Int32 = 42
+        // x: int32 = 42
         x = 42;
     // else:
     } else {
@@ -41,15 +41,15 @@ int32_t else_returns(bool cond) {
 }
 
 // # Multiple variables first declared in same if
-// def multi_var(cond: bool) -> Int32:
+// def multi_var(cond: bool) -> int32:
 int32_t multi_var(bool cond) {
     // if cond:
     int32_t a;
     int32_t b;
     if (cond) {
-        // a: Int32 = 1
+        // a: int32 = 1
         a = 1;
-        // b: Int32 = 2
+        // b: int32 = 2
         b = 2;
     // else:
     } else {
@@ -86,7 +86,7 @@ void reassign_after(bool cond) {
     // if cond:
     int32_t x;
     if (cond) {
-        // x: Int32 = 10
+        // x: int32 = 10
         x = 10;
     // else:
     } else {
@@ -100,7 +100,7 @@ void reassign_after(bool cond) {
 }
 
 // # Nested if — inner if has branch declarations
-// def nested_if(a: bool, b: bool) -> Int32:
+// def nested_if(a: bool, b: bool) -> int32:
 int32_t nested_if(bool a, bool b) {
     // if a:
     int32_t y;
@@ -108,14 +108,14 @@ int32_t nested_if(bool a, bool b) {
         // if b:
         int32_t x;
         if (b) {
-            // x: Int32 = 1
+            // x: int32 = 1
             x = 1;
         // else:
         } else {
             // x = 2
             x = 2;
         }
-        // y: Int32 = x + 10
+        // y: int32 = x + 10
         y = (::tpy::add_check<int32_t>(x, 10));
     // else:
     } else {

@@ -1,7 +1,7 @@
 # A try/except/finally whose finally always raises/returns must still run it
 # when the try body falls through -- eliding that copy needs the try body AND
 # every handler to terminate on their own.
-from tpy import Int32
+from tpy import int32
 
 
 def raise_from_finally() -> None:
@@ -15,7 +15,7 @@ def raise_from_finally() -> None:
         raise RuntimeError("from finally")
 
 
-def return_from_finally() -> Int32:
+def return_from_finally() -> int32:
     """The finally's return is the function's only exit on this path."""
     try:
         print("try body ran")
@@ -37,7 +37,7 @@ def handler_falls_through() -> None:
         raise RuntimeError("from finally")
 
 
-def finally_return_wins() -> Int32:
+def finally_return_wins() -> int32:
     """Handler returns, then the finally's return overrides it (Python)."""
     try:
         raise ValueError("boom")
@@ -79,7 +79,7 @@ def deep_terminating_finally(c: bool) -> None:
             raise RuntimeError("from else-branch")
 
 
-def all_paths_terminate() -> Int32:
+def all_paths_terminate() -> int32:
     """Control: try and handler both terminate, so no fall-through exists.
 
     The finally is reached only via the return sites and the exception path;

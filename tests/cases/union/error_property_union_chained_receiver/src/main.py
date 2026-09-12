@@ -1,20 +1,20 @@
 # A union-returning property reached through a CHAINED receiver: the source
 # gate admits bare-name receivers only, because the decl arm's const verdict
 # reads it, so `h.canvas.shape` is rejected.
-from tpy import Int32
+from tpy import int32
 
 
 class Circle:
-    radius: Int32
+    radius: int32
 
-    def __init__(self, radius: Int32) -> None:
+    def __init__(self, radius: int32) -> None:
         self.radius = radius
 
 
 class Square:
-    side: Int32
+    side: int32
 
-    def __init__(self, side: Int32) -> None:
+    def __init__(self, side: int32) -> None:
         self.side = side
 
 

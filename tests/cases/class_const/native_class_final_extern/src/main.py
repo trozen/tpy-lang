@@ -3,13 +3,13 @@
 # tpy: include("native_types.hpp")
 from tpy.extern import native
 from typing import Final
-from tpy import Int32
+from tpy import int32
 
 
 @native
 class BuildOpts:
     FLAG: Final[bool]
-    MAX_RETRIES: Final[Int32]
+    MAX_RETRIES: Final[int32]
     RELEASE_TAG: Final[str]
 
 

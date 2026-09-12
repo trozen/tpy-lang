@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def process_dict(d: dict[str, Int32 | str]) -> None:
+// def process_dict(d: dict[str, int32 | str]) -> None:
 void process_dict(const ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>& d) {
     // v = d["a"]
     ::tpy::Union<int32_t, std::string> v = ::tpy::__getitem__(d, "a");
@@ -16,7 +16,7 @@ void process_dict(const ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, st
     }
 }
 
-// def process_list(items: list[Int32 | str]) -> None:
+// def process_list(items: list[int32 | str]) -> None:
 void process_list(const std::vector<::tpy::Union<int32_t, std::string>>& items) {
     // for item in items:
     auto& __obj_0 = items;
@@ -33,7 +33,7 @@ void process_list(const std::vector<::tpy::Union<int32_t, std::string>>& items) 
     }
 }
 
-// def consume_dict(d: Own[dict[str, Int32 | str]]) -> None:
+// def consume_dict(d: Own[dict[str, int32 | str]]) -> None:
 void consume_dict(::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>&& d) {
     // v = d["a"]
     ::tpy::Union<int32_t, std::string> v = ::tpy::__getitem__(d, "a");
@@ -45,7 +45,7 @@ void consume_dict(::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::str
     }
 }
 
-// def consume_list(items: Own[list[Int32 | str]]) -> None:
+// def consume_list(items: Own[list[int32 | str]]) -> None:
 void consume_list(std::vector<::tpy::Union<int32_t, std::string>>&& items) {
     // v = items[0]
     ::tpy::Union<int32_t, std::string> v = ::tpy::__getitem__(items, 0);
@@ -57,13 +57,13 @@ void consume_list(std::vector<::tpy::Union<int32_t, std::string>>&& items) {
     }
 }
 
-// def make_dict() -> Own[dict[str, Int32 | str]]:
+// def make_dict() -> Own[dict[str, int32 | str]]:
 ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>> make_dict() {
     // return {"a": 1, "b": "hello"}
     return ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>({{"a", 1}, {"b", "hello"}});
 }
 
-// def make_list() -> Own[list[Int32 | str]]:
+// def make_list() -> Own[list[int32 | str]]:
 std::vector<::tpy::Union<int32_t, std::string>> make_list() {
     // return [1, "hello", 2]
     return {1, "hello", 2};
@@ -123,7 +123,7 @@ void main() {
         }
     }
     // # Pass union dict as argument (by reference)
-    // d3: dict[str, Int32 | str] = {"a": 1, "b": "world"}
+    // d3: dict[str, int32 | str] = {"a": 1, "b": "world"}
     ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>> d3 = ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>({{"a", 1}, {"b", "world"}});
     // process_dict(d3)
     process_dict(d3);
@@ -132,7 +132,7 @@ void main() {
     ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>> __tmp_1 = ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>({{"a", "direct"}});
     process_dict(__tmp_1);
     // # Pass union list as argument (variable)
-    // items: list[Int32 | str] = ["hello", 1, "world"]
+    // items: list[int32 | str] = ["hello", 1, "world"]
     std::vector<::tpy::Union<int32_t, std::string>> items = {"hello", 1, "world"};
     // process_list(items)
     process_list(items);
@@ -185,7 +185,7 @@ void main() {
         std::cout << ::tpy::__str__(__v3) << "\n";
     }
     // # List of lists|str
-    // mixed: list[list[Int32] | str] = [[10, 20], "hi"]
+    // mixed: list[list[int32] | str] = [[10, 20], "hi"]
     std::vector<::tpy::Union<std::vector<int32_t>, std::string>> mixed = {std::vector<int32_t>{10, 20}, "hi"};
     // v4 = mixed[1]
     ::tpy::Union<std::vector<int32_t>*, std::string*> v4 = ::tpy::to_ptr_variant(::tpy::__getitem__(mixed, 1));
@@ -196,7 +196,7 @@ void main() {
         std::cout << ::tpy::__str__(__v4) << "\n";
     }
     // # Constructor from list of tuples with union values
-    // d7 = dict[str, Int32 | str]([("x", "hello"), ("y", 1)])
+    // d7 = dict[str, int32 | str]([("x", "hello"), ("y", 1)])
     ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>> d7 = ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>({std::tuple<std::string, ::tpy::Union<int32_t, std::string>>{"x", "hello"}, std::tuple<std::string, ::tpy::Union<int32_t, std::string>>{"y", 1}});
     // v5 = d7["x"]
     ::tpy::Union<int32_t, std::string> v5 = ::tpy::__getitem__(d7, "x");
@@ -207,7 +207,7 @@ void main() {
         std::cout << ::tpy::__str__(__v5) << "\n";
     }
     // # Constructor from dict literal with union values
-    // d8 = dict[str, Int32 | str]({"p": "hi", "q": 99})
+    // d8 = dict[str, int32 | str]({"p": "hi", "q": 99})
     ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>> d8 = ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>(::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>({{"p", "hi"}, {"q", 99}}));
     // v6 = d8["p"]
     ::tpy::Union<int32_t, std::string> v6 = ::tpy::__getitem__(d8, "p");
@@ -218,7 +218,7 @@ void main() {
         std::cout << ::tpy::__str__(__v6) << "\n";
     }
     // # Constructor from list of tuples with optional values
-    // d9 = dict[str, Int32 | None]([("a", 42), ("b", None)])
+    // d9 = dict[str, int32 | None]([("a", 42), ("b", None)])
     ::tpy::ordered_map<std::string, std::optional<int32_t>> d9 = ::tpy::ordered_map<std::string, std::optional<int32_t>>({std::tuple<std::string, std::optional<int32_t>>{"a", 42}, std::tuple<std::string, std::optional<int32_t>>{"b", std::nullopt}});
     // print(d9)
     std::cout << ::tpy::DictPrinter(d9) << "\n";
@@ -227,7 +227,7 @@ void main() {
     std::cout << ::tpy::DictPrinter(d) << "\n";
     // print(lst)
     std::cout << ::tpy::ListPrinter(lst) << "\n";
-    // d6: dict[str, Int32 | None] = {"x": 42, "y": None}
+    // d6: dict[str, int32 | None] = {"x": 42, "y": None}
     ::tpy::ordered_map<std::string, std::optional<int32_t>> d6 = ::tpy::ordered_map<std::string, std::optional<int32_t>>({{"x", 42}, {"y", std::nullopt}});
     // print(d6)
     std::cout << ::tpy::DictPrinter(d6) << "\n";

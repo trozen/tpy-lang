@@ -10,7 +10,7 @@ void main() {
     K k = K();
     // b = Blob()
     Blob b = Blob();
-    // d: dict[Int32, Int32] = {3: 1}
+    // d: dict[int32, int32] = {3: 1}
     ::tpy::ordered_map<int32_t, int32_t> d = ::tpy::ordered_map<int32_t, int32_t>({{3, 1}});
     // d[len(b.items)] += k.take(b)  # tpyc: warning(/copies/)
     Blob __tmp_1 = b;

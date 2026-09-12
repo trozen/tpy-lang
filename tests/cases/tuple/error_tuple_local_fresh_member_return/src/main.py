@@ -1,17 +1,17 @@
 # Same hazard at a return boundary: a tuple local owning a fresh Box would
 # dangle when returned by borrow form. Rejected (the C++ build would otherwise
 # fail with a tuple ctor mismatch), pointing at Own[Box].
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    val: Int32
-    def __init__(self, v: Int32) -> None:
+    val: int32
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 
-def make() -> tuple[Int32, Box]:
-    t = (Int32(1), Box(Int32(7)))
+def make() -> tuple[int32, Box]:
+    t = (int32(1), Box(int32(7)))
     return t  # tpyc: error(/owns a freshly constructed value/)
 
 

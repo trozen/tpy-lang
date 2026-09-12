@@ -2,13 +2,13 @@
 # The handler's `except ... as view` is a binding of its own, not a rebind that
 # kills the read above it, so the manager must still outlive its block --
 # `__del__` poisons the payload, making an early drop visible as -999.
-from tpy import Int32
+from tpy import int32
 
 
 class Reg:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
     def __enter__(self) -> "Reg":
@@ -21,7 +21,7 @@ class Reg:
         self.n = -999
 
 
-def probe(flag: bool) -> Int32:
+def probe(flag: bool) -> int32:
     with Reg(11) as view:
         pass
     if flag:

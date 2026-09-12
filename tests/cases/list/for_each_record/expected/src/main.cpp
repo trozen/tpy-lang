@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def total(ps: list[P]) -> Int32:
+// def total(ps: list[P]) -> int32:
 int32_t total(const std::vector<P>& ps) {
     // s = 0
     int32_t s = 0;
@@ -34,7 +34,7 @@ void bump_all(std::vector<P>& ps) {
     }
 }
 
-// def count_total(cs: list[Counter]) -> Int32:
+// def count_total(cs: list[Counter]) -> int32:
 int32_t count_total(const std::vector<Counter>& cs) {
     // s = 0
     int32_t s = 0;

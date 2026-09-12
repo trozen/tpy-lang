@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 def f(s: str) -> str:
     n = 1
     n += 10000000000000000000000

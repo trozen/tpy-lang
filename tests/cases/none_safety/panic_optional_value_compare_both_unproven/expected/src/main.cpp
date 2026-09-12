@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def gt_pair(a: Int32 | None, b: Int32 | None) -> bool:
+// def gt_pair(a: int32 | None, b: int32 | None) -> bool:
 bool gt_pair(std::optional<int32_t> a, std::optional<int32_t> b) {
     // return a > b  # tpyc: warning(/Potential None access/)
     return (::tpy::deref_optional_check(a) > ::tpy::deref_optional_check(b));

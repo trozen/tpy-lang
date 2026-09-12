@@ -1,1 +1,1 @@
-main.py:24: error: Type mismatch in *args (unpacked element): expected Box, got Int32
+main.py:24: error: Type mismatch in *args (unpacked element): expected Box, got int32

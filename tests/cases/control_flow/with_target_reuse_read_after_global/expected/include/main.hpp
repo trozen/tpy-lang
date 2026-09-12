@@ -13,11 +13,11 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // class Reg:
 struct Reg {
-    // n: Int32
+    // n: int32
     int32_t n;
     bool __tpy_owned_ = true;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     explicit Reg(int32_t n);
     Reg(const Reg&) = delete;
     Reg& operator=(const Reg&) = delete;
@@ -41,7 +41,7 @@ inline std::ostream& operator<<(std::ostream& os, const Reg& obj) {
 }
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Reg::Reg(int32_t n) : n(n) {}
 
 inline Reg::Reg(Reg&& other) noexcept : n(std::move(other.n)) {

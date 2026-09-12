@@ -2,9 +2,9 @@
 # extern statics belong on module-level via native_global.
 from tpy.extern import native
 from typing import ClassVar
-from tpy import Int32
+from tpy import int32
 
 
 @native
 class BuildOpts:
-    counter: ClassVar[Int32] = 0  # tpyc: error(/ClassVar on @native classes is not supported/)
+    counter: ClassVar[int32] = 0  # tpyc: error(/ClassVar on @native classes is not supported/)

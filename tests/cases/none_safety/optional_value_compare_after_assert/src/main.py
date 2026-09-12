@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 
 
-def is_large(x: Int32 | None) -> Int32:
+def is_large(x: int32 | None) -> int32:
     assert x is not None
     if x > 10:  # tpyc: ok
         return 1

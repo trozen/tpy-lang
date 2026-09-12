@@ -2,10 +2,10 @@
 # coro frame by value (Phase D: params widening of the generator ->
 # resumable-frame migration).
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
-def scaled(n: Int32) -> Iterator[Int32]:
+def scaled(n: int32) -> Iterator[int32]:
     yield n
     yield n * 2
     yield n * 3

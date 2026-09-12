@@ -7,11 +7,11 @@
 # no-over-trigger inverse; the write is observed by the readers). read_call
 # pins the routable method-call-on-const-rooted-receiver arm (no Optional, so
 # it lowers through THIR and is byte-diffed on both codegen paths).
-from tpy import Int32, auto_readonly, readonly
+from tpy import int32, auto_readonly, readonly
 
 
 class Cell:
-    v: Int32
+    v: int32
 
     def __init__(self):
         self.v = 7
@@ -25,13 +25,13 @@ class Store:
         self._cell = Cell()
         self._present = True
 
-    def __getitem__(self, k: Int32) -> Cell | None:
+    def __getitem__(self, k: int32) -> Cell | None:
         if self._present:
             return self._cell
         return None
 
     @auto_readonly
-    def get(self, k: Int32) -> auto_readonly[Cell | None]:
+    def get(self, k: int32) -> auto_readonly[Cell | None]:
         if self._present:
             return self._cell
         return None
@@ -47,14 +47,14 @@ class Outer:
     def __init__(self):
         self.store = Store()
 
-    def read_sub(self) -> Int32:
+    def read_sub(self) -> int32:
         # Inferred readonly; subscript resolves the const twin at C++ level.
         p = self.store[5]
         if p is not None:
             return p.v
         return -1
 
-    def read_named(self) -> Int32:
+    def read_named(self) -> int32:
         # NOT inferred readonly: binding a NAMED accessor result keeps the
         # receiver mutable (READONLY_DESIGN.md limitation), so the mutable
         # twin + non-const bind stay -- pins the asymmetry with read_sub.
@@ -71,7 +71,7 @@ class Outer:
             p.v = p.v + 1
 
 
-def read_param(s: readonly[Store]) -> Int32:
+def read_param(s: readonly[Store]) -> int32:
     # The pre-existing healthy path: declared-readonly receiver.
     p = s[5]
     if p is not None:
@@ -79,7 +79,7 @@ def read_param(s: readonly[Store]) -> Int32:
     return -1
 
 
-def read_call(o: readonly[Outer]) -> Int32:
+def read_call(o: readonly[Outer]) -> int32:
     # A method call on a const-rooted receiver (`s` aliases a field off the
     # readonly param) returning a bare reference type binds `const Cell&`.
     # This body has no Optional, so it routes through THIR -- exercising the

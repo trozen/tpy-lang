@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // a = C[Int32]()
+    // a = C[int32]()
     C<int32_t> a = C<int32_t>();
     // b = C[float]()
     C<double> b = C<double>();

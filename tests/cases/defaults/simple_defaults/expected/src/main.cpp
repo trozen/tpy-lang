@@ -10,7 +10,7 @@ void greet(std::string_view name, std::string_view greeting) {
     std::cout << std::format("{}, {}!", greeting, name) << "\n";
 }
 
-// def add(a: Int32, b: Int32 = Int32(0)) -> Int32:
+// def add(a: int32, b: int32 = int32(0)) -> int32:
 int32_t add(int32_t a, int32_t b) {
     // return a + b
     return (::tpy::add_check<int32_t>(a, b));
@@ -41,9 +41,9 @@ void main() {
     greet("World");
     // greet("World", "Hi")
     greet("World", "Hi");
-    // print(add(Int32(5)))
+    // print(add(int32(5)))
     std::cout << add(5) << "\n";
-    // print(add(Int32(5), Int32(3)))
+    // print(add(int32(5), int32(3)))
     std::cout << add(5, 3) << "\n";
     // print(scale(2.5))
     std::cout << ::tpy::print_float(scale(2.5)) << "\n";

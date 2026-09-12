@@ -6,14 +6,14 @@ namespace tpyapp::main {
 
 // # Stands in for a C sink such as `void tpy_log(const uint8_t *msg)`.
 // @export(binding="C")
-// def tpy_log(msg: Ptr[readonly[UInt8]]) -> None:
+// def tpy_log(msg: Ptr[readonly[uint8]]) -> None:
 extern "C" void tpy_log(const uint8_t* msg) {
     // print(unsafe_str_from_cstr(msg))
     std::cout << std::string(reinterpret_cast<const char*>(msg)) << "\n";
 }
 
 // @export(binding="C")
-// def greet(name: Ptr[readonly[UInt8]]) -> Int32:
+// def greet(name: Ptr[readonly[uint8]]) -> int32:
 extern "C" int32_t greet(const uint8_t* name) {
     // # Inbound: decode the C string into an owned TPy str. The comparison is
     // # the subject -- it must compare contents, not the incoming pointer.
@@ -48,7 +48,7 @@ void __tpy_init() {
     initialized = true;
 
     // # Moving a string across an extern "C" boundary: `str` has no C spelling, so the
-    // # signature carries Ptr[readonly[UInt8]] and the body converts by hand. Both
+    // # signature carries Ptr[readonly[uint8]] and the body converts by hand. Both
     // # directions are exercised end to end.
     // from tpy.extern import export
     // from tpy.unsafe import unsafe_cstr, unsafe_str_from_cstr

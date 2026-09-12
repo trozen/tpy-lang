@@ -1,6 +1,6 @@
 # field(default_factory=...) with generic user type
 from dataclasses import dataclass, field
-from tpy import Int32
+from tpy import int32
 
 class Pair[T]:
     first: T
@@ -14,7 +14,7 @@ class Pair[T]:
 @dataclass
 class Wrapper:
     name: str
-    pair: Pair[Int32] = field(default_factory=Pair)
+    pair: Pair[int32] = field(default_factory=Pair)
 
 def main() -> None:
     w = Wrapper("test")

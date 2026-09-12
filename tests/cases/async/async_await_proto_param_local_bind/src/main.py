@@ -4,17 +4,17 @@
 # element type must resolve before the frame field is rendered.
 import asyncio
 from typing import Iterable
-from tpy import Int32
+from tpy import int32
 
 
-async def consume(it: Iterable[Int32]) -> None:
+async def consume(it: Iterable[int32]) -> None:
     for x in it:
         await asyncio.sleep(0)
         print(x)
 
 
 async def main_coro() -> None:
-    data: list[Int32] = [1, 2, 3]
+    data: list[int32] = [1, 2, 3]
     await consume(data)
 
 

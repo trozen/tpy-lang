@@ -32,10 +32,10 @@ void main();
 
 // class Inner:
 struct Inner {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32):
+    // def __init__(self, v: int32):
     Inner() = default;
     explicit Inner(int32_t v);
 
@@ -55,7 +55,7 @@ struct Cell {
     // inner: Inner
     Inner inner;
 
-    // def __init__(self, v: Int32):
+    // def __init__(self, v: int32):
     Cell() = default;
     explicit Cell(int32_t v);
 
@@ -68,11 +68,11 @@ struct Cell {
     const Inner& get() const;
 
     // @auto_readonly
-    // def peek(self) -> Int32:   # value return: copy, never roots mutation to receiver
+    // def peek(self) -> int32:   # value return: copy, never roots mutation to receiver
     int32_t peek();
 
     // @auto_readonly
-    // def peek(self) -> Int32:   # value return: copy, never roots mutation to receiver
+    // def peek(self) -> int32:   # value return: copy, never roots mutation to receiver
     int32_t peek() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cell";
 };
@@ -89,7 +89,7 @@ struct Outer {
     // items: list[Inner]
     std::vector<Inner> items;
 
-    // def __init__(self, v: Int32):
+    // def __init__(self, v: int32):
     explicit Outer(int32_t v);
     // non-copyable (field 'b')
     Outer(const Outer&) = delete;
@@ -105,7 +105,7 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
 }
 
 
-// def __init__(self, v: Int32):
+// def __init__(self, v: int32):
 inline Inner::Inner(int32_t v) : v(v) {}
 
 // def bump(self):
@@ -114,7 +114,7 @@ inline void Inner::bump() {
     this->v = ::tpy::add_check<int32_t>(this->v, 1);
 }
 
-// def __init__(self, v: Int32):
+// def __init__(self, v: int32):
 inline Cell::Cell(int32_t v) : inner(Inner(v)) {}
 
 // @auto_readonly
@@ -132,20 +132,20 @@ inline const Inner& Cell::get() const {
 }
 
 // @auto_readonly
-// def peek(self) -> Int32:   # value return: copy, never roots mutation to receiver
+// def peek(self) -> int32:   # value return: copy, never roots mutation to receiver
 inline int32_t Cell::peek() {
     // return self.inner.v
     return this->inner.v;
 }
 
 // @auto_readonly
-// def peek(self) -> Int32:   # value return: copy, never roots mutation to receiver
+// def peek(self) -> int32:   # value return: copy, never roots mutation to receiver
 inline int32_t Cell::peek() const {
     // return self.inner.v
     return this->inner.v;
 }
 
-// def __init__(self, v: Int32):
+// def __init__(self, v: int32):
 inline Outer::Outer(int32_t v) : b(::tpystd::tplib::box::Box<Inner>(Inner(v))), items(std::vector<Inner>{Inner(v)}) {}
 void __tpy_init();
 } // namespace tpyapp::main

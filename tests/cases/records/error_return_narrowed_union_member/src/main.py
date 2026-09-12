@@ -1,20 +1,20 @@
 # A borrow-return whose source is an isinstance-NARROWED union member: the read
 # renames to the extraction alias, which is not the bare name the return arm
 # admits, so returning the narrowed name is rejected.
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
 class Inner:
-    value: Int32
+    value: int32
 
-    def __init__(self, value: Int32) -> None:
+    def __init__(self, value: int32) -> None:
         self.value = value
 
 

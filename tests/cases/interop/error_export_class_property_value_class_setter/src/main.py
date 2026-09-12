@@ -4,13 +4,13 @@
 # runs before a user record's ValueType flag is known -- so the borrowed
 # argument payload cannot feed it. Steer to a plain method.
 # tpy: ext_module
-from tpy import Int64, ValueType
+from tpy import int64, ValueType
 from tpy.extern import export
 
 
 @export
 class Point(ValueType):
-    def __init__(self, x: Int64):
+    def __init__(self, x: int64):
         self.x = x
 
 

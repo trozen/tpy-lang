@@ -1,1 +1,1 @@
-main.py:10: error: Type mismatch in argument 'f': expected Fn[[Int32], Int32], got Callable[[str], Int32]
+main.py:10: error: Type mismatch in argument 'f': expected Fn[[int32], int32], got Callable[[str], int32]

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def leaf_count(t: readonly[Tree[Int32]]) -> Int32:
+// def leaf_count(t: readonly[Tree[int32]]) -> int32:
 int32_t leaf_count(const Tree<int32_t>& t) {
     // match t:
     auto& __match_subject_1 = t;

@@ -1,1 +1,1 @@
-main.py:5: error: Dict has mixed value types: value 2 is str, but earlier values are Int32
+main.py:5: error: Dict has mixed value types: value 2 is str, but earlier values are int32

@@ -52,9 +52,9 @@ void main() {
     ::tpy::BigInt tbig = ::tpy::BigInt::from_str("18446744073709551616");
     // print(tmin, tbig)
     std::cout << tmin << " " << tbig << "\n";
-    // # Inverse: a fixed-width Int64 list stays a plain integer brace-init (no
+    // # Inverse: a fixed-width int64 list stays a plain integer brace-init (no
     // # BigInt wrap), which the fix must not disturb.
-    // fixed: list[Int64] = [1234567890123456789, 5]
+    // fixed: list[int64] = [1234567890123456789, 5]
     std::vector<int64_t> fixed = {static_cast<int64_t>(1234567890123456789), 5};
     // print(fixed[0], fixed[1])
     std::cout << ::tpy::__getitem__(fixed, 0) << " " << ::tpy::__getitem__(fixed, 1) << "\n";

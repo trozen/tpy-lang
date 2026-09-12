@@ -1,15 +1,15 @@
 # User-defined types as @model fields via __json_encode__/__json_decode__.
 from __future__ import annotations
 from typing import Optional
-from tpy import Int32, Own, error_return
+from tpy import int32, Own, error_return
 from tplib.json import JsonReader, JsonWriter, JsonError
 from tplib.json.model import model
 
 class Seconds:
     """User type with custom JSON serialization (encodes as integer)."""
-    _value: Int32
+    _value: int32
 
-    def __init__(self, value: Int32) -> None:
+    def __init__(self, value: int32) -> None:
         self._value = value
 
     def __eq__(self, other: Seconds) -> bool:
@@ -22,7 +22,7 @@ class Seconds:
     @error_return(JsonError)
     def __json_decode__(reader: JsonReader) -> Own[Seconds]:
         raw = reader.read_int()
-        return Seconds(Int32(raw))
+        return Seconds(int32(raw))
 
 @model
 class Event:

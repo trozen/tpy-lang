@@ -28,7 +28,7 @@ void main() {
     std::cout << ::tpy::print_bool(d.contains(2)) << "\n";
     // print(d.biggest())
     std::cout << d.biggest() << "\n";
-    // w = WideBag[Int32]()
+    // w = WideBag[int32]()
     WideBag<int32_t> w = WideBag<int32_t>();
     // w.add(11)
     w.add(11);

@@ -5,25 +5,25 @@
 # Using @nocopy is deliberate: a silent copy at the yield boundary would be
 # a compile error, not a parity-blind pass.
 from typing import Iterator
-from tpy import nocopy, Own, Int32
+from tpy import nocopy, Own, int32
 
 
 @nocopy
 class Tok:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 
-def toks_while(n: Int32) -> Iterator[Own[Tok]]:
-    i: Int32 = 0
+def toks_while(n: int32) -> Iterator[Own[Tok]]:
+    i: int32 = 0
     while i < n:
         yield Tok(i * 2)
         i += 1
 
 
-def toks_for(n: Int32) -> Iterator[Own[Tok]]:
+def toks_for(n: int32) -> Iterator[Own[Tok]]:
     for i in range(n):
         yield Tok(i * 2)
 

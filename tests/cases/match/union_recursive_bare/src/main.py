@@ -1,19 +1,19 @@
 # match over a recursive union alias with BARE class-pattern arms (no field
 # sub-patterns): the wrapper subject dispatches on its .value variant index.
-from tpy import Int32
+from tpy import int32
 
 
 class Leaf:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 
 type Tree = Leaf | list[Tree]
 
 
-def head(t: Tree) -> Int32:
+def head(t: Tree) -> int32:
     match t:
         case Leaf():
             return t.v

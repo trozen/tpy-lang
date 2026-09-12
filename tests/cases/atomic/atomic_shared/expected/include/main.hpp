@@ -20,10 +20,10 @@ void main();
 
 // class Counter:
 struct Counter {
-    // n: Atomic[UInt32]
+    // n: Atomic[uint32]
     ::tpystd::tpy::atomic::Atomic<uint32_t> n;
 
-    // def __init__(self, start: UInt32) -> None:
+    // def __init__(self, start: uint32) -> None:
     Counter() = default;
     explicit Counter(uint32_t start);
     // non-copyable (field 'n')
@@ -40,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 }
 
 
-// def __init__(self, start: UInt32) -> None:
+// def __init__(self, start: uint32) -> None:
 inline Counter::Counter(uint32_t start) : n(::tpystd::tpy::atomic::Atomic<uint32_t>(start)) {}
 void __tpy_init();
 } // namespace tpyapp::main

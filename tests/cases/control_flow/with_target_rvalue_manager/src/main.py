@@ -5,11 +5,11 @@
 # observes the mutation made through the target, pinning the aliasing as well.
 from typing import Iterator
 
-from tpy import Int32
+from tpy import int32
 
 
 class Counter:
-    def __init__(self, start: Int32):
+    def __init__(self, start: int32):
         self.n = start
 
     def __enter__(self) -> "Counter":
@@ -19,7 +19,7 @@ class Counter:
         print("exit sees", self.n)
 
 
-def steps(limit: Int32) -> Iterator[Int32]:
+def steps(limit: int32) -> Iterator[int32]:
     with Counter(limit) as guard:
         guard.n += 1
     yield 1

@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def sink(v: str | None) -> Int32:
+// def sink(v: str | None) -> int32:
 int32_t sink(std::optional<std::string_view> v) {
     // return 1 if v is not None else 0
     return (((v.has_value())) ? (1) : (0));
 }
 
-// def use(rows: list[tuple[bytes | None, str | None]]) -> Int32:
+// def use(rows: list[tuple[bytes | None, str | None]]) -> int32:
 int32_t use(const std::vector<std::tuple<std::optional<::tpy::Bytes>, std::optional<std::string>>>& rows) {
     // n = 0
     int32_t n = 0;

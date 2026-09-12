@@ -20,7 +20,7 @@ template<typename T_items = std::nullptr_t>
 int32_t check_not(const T_items* items = nullptr);
 void main();
 
-// def count_if_sized(items: Sized | None = None) -> Int32:
+// def count_if_sized(items: Sized | None = None) -> int32:
 template<typename T_items>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sized<T_items>)
 int32_t count_if_sized(const T_items* items) {
@@ -32,13 +32,13 @@ int32_t count_if_sized(const T_items* items) {
     // return -1
     return -1;
 }
-// def sum_span(items: Spannable[Int32] | None = None) -> Int32:
+// def sum_span(items: Spannable[int32] | None = None) -> int32:
 template<typename T_items>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::tpy::Spannable<T_items, int32_t>)
 int32_t sum_span(const T_items* items) {
     // if isinstance(items, Spannable):
     if constexpr (!std::same_as<T_items, std::nullptr_t>) {
-        // total: Int32 = 0
+        // total: int32 = 0
         int32_t total = 0;
         // for x in items:
         auto& __obj_0 = (*items);
@@ -55,7 +55,7 @@ int32_t sum_span(const T_items* items) {
     // return -1
     return -1;
 }
-// def check_not(items: Sized | None = None) -> Int32:
+// def check_not(items: Sized | None = None) -> int32:
 template<typename T_items>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sized<T_items>)
 int32_t check_not(const T_items* items) {

@@ -4,40 +4,40 @@
 namespace tpyapp::main {
 
 
-// def make_optional_list() -> Own[list[Int32 | None]]:
+// def make_optional_list() -> Own[list[int32 | None]]:
 std::vector<std::optional<int32_t>> make_optional_list() {
-    // return [Int32(1), None, Int32(3)]
+    // return [int32(1), None, int32(3)]
     return {1, std::nullopt, 3};
 }
 
 // def main():
 void main() {
     // # Homogeneous literal, wider annotation (Optional)
-    // a: list[Int32 | None] = [Int32(1), Int32(2)]
+    // a: list[int32 | None] = [int32(1), int32(2)]
     std::vector<std::optional<int32_t>> a = {1, 2};
     // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
     // # None-only literal
-    // b: list[Int32 | None] = [None]
+    // b: list[int32 | None] = [None]
     std::vector<std::optional<int32_t>> b = {std::nullopt};
     // print(len(b))
     std::cout << ::tpy::__len__(b) << "\n";
-    // # Mixed literal: Int32 and None
-    // c: list[Int32 | None] = [Int32(1), None, Int32(3)]
+    // # Mixed literal: int32 and None
+    // c: list[int32 | None] = [int32(1), None, int32(3)]
     std::vector<std::optional<int32_t>> c = {1, std::nullopt, 3};
     // print(len(c))
     std::cout << ::tpy::__len__(c) << "\n";
     // # Empty literal with union element type
-    // d: list[Int32 | None] = []
+    // d: list[int32 | None] = []
     std::vector<std::optional<int32_t>> d = std::vector<std::optional<int32_t>>{};
-    // d.append(Int32(42))
+    // d.append(int32(42))
     d.push_back(42);
     // d.append(None)
     d.push_back(std::nullopt);
     // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";
     // # Return type context with union element type
-    // e: list[Int32 | None] = make_optional_list()
+    // e: list[int32 | None] = make_optional_list()
     std::vector<std::optional<int32_t>> e = make_optional_list();
     // print(len(e))
     std::cout << ::tpy::__len__(e) << "\n";
@@ -47,12 +47,12 @@ void main() {
     // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
     // # Int literals in union annotation
-    // f: list[Int32 | None] = [1, None, 3]
+    // f: list[int32 | None] = [1, None, 3]
     std::vector<std::optional<int32_t>> f = {1, std::nullopt, 3};
     // print(len(f))
     std::cout << ::tpy::__len__(f) << "\n";
     // # Int literals in wider numeric type
-    // g: list[Int64] = [1, 2, 3]
+    // g: list[int64] = [1, 2, 3]
     std::vector<int64_t> g = {1, 2, 3};
     // print(len(g))
     std::cout << ::tpy::__len__(g) << "\n";

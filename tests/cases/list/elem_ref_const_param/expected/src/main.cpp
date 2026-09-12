@@ -4,30 +4,30 @@
 namespace tpyapp::main {
 
 
-// def mutate_point(p: Point, val: Int32) -> None:
+// def mutate_point(p: Point, val: int32) -> None:
 void mutate_point(Point& p, int32_t val) {
     // p.x = val
     p.x = val;
 }
 
-// def read_only_point(p: Point) -> Int32:
+// def read_only_point(p: Point) -> int32:
 int32_t read_only_point(const Point& p) {
     // return p.x
     return p.x;
 }
 
 // # --- Functions that only read through element ref: const T& ---
-// def read_elem_ref(items: list[Point]) -> Int32:
+// def read_elem_ref(items: list[Point]) -> int32:
 int32_t read_elem_ref(const std::vector<Point>& items) {
-    // v = items[Int32(0)]
+    // v = items[int32(0)]
     const Point& v = ::tpy::__getitem__(items, 0);
     // return v.x
     return v.x;
 }
 
-// def read_via_alias(items: list[Point]) -> Int32:
+// def read_via_alias(items: list[Point]) -> int32:
 int32_t read_via_alias(const std::vector<Point>& items) {
-    // v = items[Int32(0)]
+    // v = items[int32(0)]
     const Point& v = ::tpy::__getitem__(items, 0);
     // w = v
     const Point& w = v;
@@ -35,9 +35,9 @@ int32_t read_via_alias(const std::vector<Point>& items) {
     return w.x;
 }
 
-// def read_via_deep_alias(items: list[Point]) -> Int32:
+// def read_via_deep_alias(items: list[Point]) -> int32:
 int32_t read_via_deep_alias(const std::vector<Point>& items) {
-    // v = items[Int32(0)]
+    // v = items[int32(0)]
     const Point& v = ::tpy::__getitem__(items, 0);
     // w = v
     const Point& w = v;
@@ -47,34 +47,34 @@ int32_t read_via_deep_alias(const std::vector<Point>& items) {
     return x.x;
 }
 
-// def read_via_read_only_call(items: list[Point]) -> Int32:
+// def read_via_read_only_call(items: list[Point]) -> int32:
 int32_t read_via_read_only_call(const std::vector<Point>& items) {
-    // v = items[Int32(0)]
+    // v = items[int32(0)]
     const Point& v = ::tpy::__getitem__(items, 0);
     // return read_only_point(v)
     return read_only_point(v);
 }
 
 // # --- Functions that write through element ref: T& ---
-// def write_elem_ref(items: list[Point], val: Int32) -> None:
+// def write_elem_ref(items: list[Point], val: int32) -> None:
 void write_elem_ref(std::vector<Point>& items, int32_t val) {
-    // v = items[Int32(0)]
+    // v = items[int32(0)]
     Point& v = ::tpy::__getitem__(items, 0);
     // v.x = val
     v.x = val;
 }
 
-// def write_via_mutating_call(items: list[Point], val: Int32) -> None:
+// def write_via_mutating_call(items: list[Point], val: int32) -> None:
 void write_via_mutating_call(std::vector<Point>& items, int32_t val) {
-    // v = items[Int32(0)]
+    // v = items[int32(0)]
     Point& v = ::tpy::__getitem__(items, 0);
     // mutate_point(v, val)
     mutate_point(v, val);
 }
 
-// def write_via_alias(items: list[Point], val: Int32) -> None:
+// def write_via_alias(items: list[Point], val: int32) -> None:
 void write_via_alias(std::vector<Point>& items, int32_t val) {
-    // v = items[Int32(0)]
+    // v = items[int32(0)]
     Point& v = ::tpy::__getitem__(items, 0);
     // w = v
     Point& w = v;
@@ -83,25 +83,25 @@ void write_via_alias(std::vector<Point>& items, int32_t val) {
 }
 
 // # --- Subscript write through element ref (nested list) ---
-// def read_nested(matrix: list[list[Int32]]) -> Int32:
+// def read_nested(matrix: list[list[int32]]) -> int32:
 int32_t read_nested(const std::vector<std::vector<int32_t>>& matrix) {
-    // row = matrix[Int32(0)]
+    // row = matrix[int32(0)]
     const std::vector<int32_t>& row = ::tpy::__getitem__(matrix, 0);
-    // return row[Int32(0)]
+    // return row[int32(0)]
     return ::tpy::__getitem__(row, 0);
 }
 
-// def write_nested(matrix: list[list[Int32]], val: Int32) -> None:
+// def write_nested(matrix: list[list[int32]], val: int32) -> None:
 void write_nested(std::vector<std::vector<int32_t>>& matrix, int32_t val) {
-    // row = matrix[Int32(0)]
+    // row = matrix[int32(0)]
     std::vector<int32_t>& row = ::tpy::__getitem__(matrix, 0);
-    // row[Int32(0)] = val
+    // row[int32(0)] = val
     ::tpy::__setitem__(row, 0, val);
 }
 
 // def main() -> None:
 void main() {
-    // pts: list[Point] = [Point(Int32(10), Int32(20)), Point(Int32(30), Int32(40))]
+    // pts: list[Point] = [Point(int32(10), int32(20)), Point(int32(30), int32(40))]
     std::vector<Point> pts = {Point(10, 20), Point(30, 40)};
     // print(read_elem_ref(pts))
     std::cout << read_elem_ref(pts) << "\n";
@@ -111,25 +111,25 @@ void main() {
     std::cout << read_via_deep_alias(pts) << "\n";
     // print(read_via_read_only_call(pts))
     std::cout << read_via_read_only_call(pts) << "\n";
-    // write_elem_ref(pts, Int32(99))
+    // write_elem_ref(pts, int32(99))
     write_elem_ref(pts, 99);
-    // print(pts[Int32(0)].x)
+    // print(pts[int32(0)].x)
     std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
-    // write_via_mutating_call(pts, Int32(77))
+    // write_via_mutating_call(pts, int32(77))
     write_via_mutating_call(pts, 77);
-    // print(pts[Int32(0)].x)
+    // print(pts[int32(0)].x)
     std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
-    // write_via_alias(pts, Int32(55))
+    // write_via_alias(pts, int32(55))
     write_via_alias(pts, 55);
-    // print(pts[Int32(0)].x)
+    // print(pts[int32(0)].x)
     std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
-    // matrix: list[list[Int32]] = [[Int32(1), Int32(2)], [Int32(3), Int32(4)]]
+    // matrix: list[list[int32]] = [[int32(1), int32(2)], [int32(3), int32(4)]]
     std::vector<std::vector<int32_t>> matrix = {{1, 2}, {3, 4}};
     // print(read_nested(matrix))
     std::cout << read_nested(matrix) << "\n";
-    // write_nested(matrix, Int32(9))
+    // write_nested(matrix, int32(9))
     write_nested(matrix, 9);
-    // print(matrix[Int32(0)][Int32(0)])
+    // print(matrix[int32(0)][int32(0)])
     std::cout << ::tpy::__getitem__(::tpy::__getitem__(matrix, 0), 0) << "\n";
 }
 

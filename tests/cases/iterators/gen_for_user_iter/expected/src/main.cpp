@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def doubled_range(r: NumberRange) -> Iterator[Int32]:
+// def doubled_range(r: NumberRange) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_doubled_range::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -38,7 +38,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_doubled_range::__next__() {
 }
 
 
-// def doubled_range(r: NumberRange) -> Iterator[Int32]:
+// def doubled_range(r: NumberRange) -> Iterator[int32]:
 __gen_doubled_range doubled_range(NumberRange& r) {
     return __gen_doubled_range(r);
 }

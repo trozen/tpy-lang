@@ -1,4 +1,4 @@
 main.py:18: warning: Own[Iterable[T]] param 'items' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:29: warning: Own[Iterable[Int32]] param 'items' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:41: warning: Own[Iterable[Int32]] param 'items' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:76: warning: copies list[Int32] into owned storage; use copy() to make this explicit
+main.py:29: warning: Own[Iterable[int32]] param 'items' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:41: warning: Own[Iterable[int32]] param 'items' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:76: warning: copies list[int32] into owned storage; use copy() to make this explicit

@@ -1,8 +1,8 @@
 from typing import Iterator
-from tpy import Int32
-def make_pair(i: Int32) -> tuple[Int32, Int32]:
+from tpy import int32
+def make_pair(i: int32) -> tuple[int32, int32]:
     return (i, i * 2)
-def g() -> Iterator[Int32]:
+def g() -> Iterator[int32]:
     yield -1
     i = 1
     t = make_pair(0)

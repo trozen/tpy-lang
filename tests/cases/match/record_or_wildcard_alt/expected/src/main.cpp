@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def f(p: Point) -> Int32:
+// def f(p: Point) -> int32:
 int32_t f(Point& p) {
     // match p:  # tpyc: warning(/non\-exhaustive\ match\ on\ 'Point';\ no\ unconditional/)
     auto& __match_subject_1 = p;

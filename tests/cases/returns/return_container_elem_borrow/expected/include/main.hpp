@@ -16,14 +16,14 @@ void main();
 
 // class Flat:
 struct Flat {
-    // data: list[list[Int32]]
+    // data: list[list[int32]]
     std::vector<std::vector<int32_t>> data;
 
-    // def __init__(self, data: Own[list[list[Int32]]]) -> None:
+    // def __init__(self, data: Own[list[list[int32]]]) -> None:
     Flat() = default;
     explicit Flat(std::vector<std::vector<int32_t>>&& data);
 
-    // def get_data(self, k: Int32) -> list[Int32]:
+    // def get_data(self, k: int32) -> list[int32]:
     std::vector<int32_t>& get_data(int32_t k);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Flat";
 };
@@ -34,10 +34,10 @@ inline std::ostream& operator<<(std::ostream& os, const Flat& obj) {
 }
 
 
-// def __init__(self, data: Own[list[list[Int32]]]) -> None:
+// def __init__(self, data: Own[list[list[int32]]]) -> None:
 inline Flat::Flat(std::vector<std::vector<int32_t>>&& data) : data(std::move(data)) {}
 
-// def get_data(self, k: Int32) -> list[Int32]:
+// def get_data(self, k: int32) -> list[int32]:
 inline std::vector<int32_t>& Flat::get_data(int32_t k) {
     // return self.data[k % len(self.data)]  # tpyc: ok
     return ::tpy::__getitem__(this->data, (::tpy::mod_check<int32_t>(k, ::tpy::__len__(this->data))));

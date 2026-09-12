@@ -8,7 +8,7 @@ namespace tpyapp::main {
 void test_list_view() {
     // items: list[bytes] = [b"alice", b"bob"]
     std::vector<::tpy::Bytes> items = {::tpy::bytes_literal_owned("alice", 5), ::tpy::bytes_literal_owned("bob", 3)};
-    // x = items[Int32(0)]  # tpyc: type(BytesView)
+    // x = items[int32(0)]  # tpyc: type(BytesView)
     ::tpy::BytesView x = ::tpy::__getitem__(items, 0);
     // print(x)
     std::cout << ::tpy::BytesPrinter(x) << "\n";
@@ -18,7 +18,7 @@ void test_list_view() {
 void test_list_mutation_fallback() {
     // items: list[bytes] = [b"alice", b"bob"]
     std::vector<::tpy::Bytes> items = {::tpy::bytes_literal_owned("alice", 5), ::tpy::bytes_literal_owned("bob", 3)};
-    // x = items[Int32(0)]  # tpyc: type(bytes)
+    // x = items[int32(0)]  # tpyc: type(bytes)
     ::tpy::Bytes x = ::tpy::__getitem__(items, 0);
     // items.append(b"carol")
     items.push_back(::tpy::bytes_literal_owned("carol", 5));
@@ -32,7 +32,7 @@ void test_list_reassign_fallback() {
     // items: list[bytes] = [b"alice", b"bob"]
     std::vector<::tpy::Bytes> __slot_1 = {::tpy::bytes_literal_owned("alice", 5), ::tpy::bytes_literal_owned("bob", 3)};
     std::vector<::tpy::Bytes>* items = &__slot_1;
-    // x = items[Int32(0)]  # tpyc: type(bytes)
+    // x = items[int32(0)]  # tpyc: type(bytes)
     ::tpy::Bytes x = ::tpy::__getitem__((*items), 0);
     // items = [b"dave"]
     items = &*(__slot_2 = {::tpy::bytes_literal_owned("dave", 4)});
@@ -44,9 +44,9 @@ void test_list_reassign_fallback() {
 void test_list_subscript_write_fallback() {
     // items: list[bytes] = [b"alice", b"bob"]
     std::vector<::tpy::Bytes> items = {::tpy::bytes_literal_owned("alice", 5), ::tpy::bytes_literal_owned("bob", 3)};
-    // x = items[Int32(0)]  # tpyc: type(bytes)
+    // x = items[int32(0)]  # tpyc: type(bytes)
     ::tpy::Bytes x = ::tpy::__getitem__(items, 0);
-    // items[Int32(0)] = b"eve"
+    // items[int32(0)] = b"eve"
     ::tpy::__setitem__(items, 0, ::tpy::bytes_literal_owned("eve", 3));
     // print(x)
     std::cout << ::tpy::BytesPrinter(x) << "\n";

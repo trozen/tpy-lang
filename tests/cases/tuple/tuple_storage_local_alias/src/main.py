@@ -1,24 +1,24 @@
 # A tuple local bound from an lvalue storage source (list element, field)
 # ALIASES the source like CPython: mutation through the local reaches the
 # stored element; reads through both views agree.
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    val: Int32
-    def __init__(self, v: Int32) -> None:
+    val: int32
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 
 def from_list() -> None:
-    items: list[tuple[Int32, Box]] = [(1, Box(5))]
+    items: list[tuple[int32, Box]] = [(1, Box(5))]
     t = items[0]
     t[1].val = 99
     print(items[0][1].val)
 
 
 class Holder:
-    pair: tuple[Int32, Box]
+    pair: tuple[int32, Box]
     def __init__(self, b: Box) -> None:
         self.pair = (1, b)
 
@@ -31,7 +31,7 @@ def from_field() -> None:
 
 
 def chain_alias() -> None:
-    items: list[tuple[Int32, Box]] = [(1, Box(3))]
+    items: list[tuple[int32, Box]] = [(1, Box(3))]
     t = items[0]
     u = t
     u[1].val = 11

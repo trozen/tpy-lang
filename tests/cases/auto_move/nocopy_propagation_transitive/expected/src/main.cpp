@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def consume(o: Own[Outer]) -> Int32:
+// def consume(o: Own[Outer]) -> int32:
 int32_t consume(Outer&& o) {
     // return o.w.res.id
     return o.w.res.id;

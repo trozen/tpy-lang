@@ -1,4 +1,4 @@
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 from typing import Self
 @nocopy
 class Holder:

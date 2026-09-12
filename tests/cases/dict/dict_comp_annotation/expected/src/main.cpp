@@ -6,8 +6,8 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // # Int32 -> int (BigInt) widening via annotation
-    // items: list[Int32] = [1, 2, 3]
+    // # int32 -> int (BigInt) widening via annotation
+    // items: list[int32] = [1, 2, 3]
     std::vector<int32_t> items = {1, 2, 3};
     // widened: dict[int, int] = {x: x * x for x in items}
     ::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt> widened = ({
@@ -30,8 +30,8 @@ void main() {
         // print(k, widened[k])
         std::cout << k << " " << ::tpy::__getitem__(widened, k) << "\n";
     }
-    // # Int32 -> Int64 widening via annotation
-    // wide64: dict[Int32, Int64] = {x: x * 2 for x in range(3)}
+    // # int32 -> int64 widening via annotation
+    // wide64: dict[int32, int64] = {x: x * 2 for x in range(3)}
     ::tpy::ordered_map<int32_t, int64_t> wide64 = ({
         ::tpy::ordered_map<int32_t, int64_t> __result;
         const int32_t __stop_2 = 3;

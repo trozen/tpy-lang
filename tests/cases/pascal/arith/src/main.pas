@@ -1,5 +1,5 @@
 { M2: integer var decls, arithmetic with operator precedence,
-  assignment, and writeln of an Int32 expression.
+  assignment, and writeln of an int32 expression.
   Expected output: 49 = 10 + 20*2 - 1. }
 program Arith;
 var

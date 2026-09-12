@@ -6,10 +6,10 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // xs: list[Int32] = [1, 2, 3]
+    // xs: list[int32] = [1, 2, 3]
     std::vector<int32_t> xs = {1, 2, 3};
     // # 3-arg via kwarg: func is at index 1 by name.
-    // print(reduce(xs, init=Int32(0), func=lambda a, b: a + b))
+    // print(reduce(xs, init=int32(0), func=lambda a, b: a + b))
     std::cout << reduce<int32_t, int32_t>(xs, [](int32_t a, int32_t b) -> int32_t { return (::tpy::add_check<int32_t>(a, b)); }, 0) << "\n";
     // # 2-arg via kwarg.
     // print(reduce(xs, func=lambda a, b: a + b))

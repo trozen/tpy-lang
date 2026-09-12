@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def bump_scalars(s: Span[Int32]) -> Iterator[Int32]:  # tpyc: ok
+// def bump_scalars(s: Span[int32]) -> Iterator[int32]:  # tpyc: ok
 std::expected<int32_t, ::tpy::StopIteration> __gen_bump_scalars::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -31,12 +31,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_bump_scalars::__next__() {
 }
 
 
-// def bump_scalars(s: Span[Int32]) -> Iterator[Int32]:  # tpyc: ok
+// def bump_scalars(s: Span[int32]) -> Iterator[int32]:  # tpyc: ok
 __gen_bump_scalars bump_scalars(std::span<int32_t> s) {
     return __gen_bump_scalars(s);
 }
 
-// def bump_records(s: Span[P]) -> Iterator[Int32]:  # tpyc: ok
+// def bump_records(s: Span[P]) -> Iterator[int32]:  # tpyc: ok
 std::expected<int32_t, ::tpy::StopIteration> __gen_bump_records::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -61,12 +61,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_bump_records::__next__() {
 }
 
 
-// def bump_records(s: Span[P]) -> Iterator[Int32]:  # tpyc: ok
+// def bump_records(s: Span[P]) -> Iterator[int32]:  # tpyc: ok
 __gen_bump_records bump_records(std::span<P> s) {
     return __gen_bump_records(s);
 }
 
-// def read_ro_elems(s: Span[readonly[Int32]]) -> Iterator[Int32]:  # tpyc: ok
+// def read_ro_elems(s: Span[readonly[int32]]) -> Iterator[int32]:  # tpyc: ok
 std::expected<int32_t, ::tpy::StopIteration> __gen_read_ro_elems::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -89,12 +89,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_read_ro_elems::__next__() {
 }
 
 
-// def read_ro_elems(s: Span[readonly[Int32]]) -> Iterator[Int32]:  # tpyc: ok
+// def read_ro_elems(s: Span[readonly[int32]]) -> Iterator[int32]:  # tpyc: ok
 __gen_read_ro_elems read_ro_elems(std::span<const int32_t> s) {
     return __gen_read_ro_elems(s);
 }
 
-// def read_ro_span(s: readonly[Span[Int32]]) -> Iterator[Int32]:  # tpyc: ok
+// def read_ro_span(s: readonly[Span[int32]]) -> Iterator[int32]:  # tpyc: ok
 std::expected<int32_t, ::tpy::StopIteration> __gen_read_ro_span::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -117,12 +117,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_read_ro_span::__next__() {
 }
 
 
-// def read_ro_span(s: readonly[Span[Int32]]) -> Iterator[Int32]:  # tpyc: ok
+// def read_ro_span(s: readonly[Span[int32]]) -> Iterator[int32]:  # tpyc: ok
 __gen_read_ro_span read_ro_span(std::span<int32_t> s) {
     return __gen_read_ro_span(s);
 }
 
-// def read_pair(s: Span[readonly[Int32]]) -> Iterator[Int32]:  # tpyc: ok
+// def read_pair(s: Span[readonly[int32]]) -> Iterator[int32]:  # tpyc: ok
 std::expected<int32_t, ::tpy::StopIteration> __gen_read_pair::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -145,19 +145,19 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_read_pair::__next__() {
 }
 
 
-// def read_pair(s: Span[readonly[Int32]]) -> Iterator[Int32]:  # tpyc: ok
+// def read_pair(s: Span[readonly[int32]]) -> Iterator[int32]:  # tpyc: ok
 __gen_read_pair read_pair(std::span<const int32_t> s) {
     return __gen_read_pair(s);
 }
 
-// def make_str(n: Int32) -> str:
+// def make_str(n: int32) -> str:
 std::string make_str(int32_t n) {
     // # An OWNED str whose buffer dies at the end of the calling statement.
     // return "abcdefghij" * n
     return (::tpy::str_repeat("abcdefghij", n));
 }
 
-// def make_bytes(n: Int32) -> bytes:
+// def make_bytes(n: int32) -> bytes:
 ::tpy::Bytes make_bytes(int32_t n) {
     // return b"0123456789" * n
     return (::tpy::bytes_repeat(::tpy::bytes_literal_owned("0123456789", 10), n));
@@ -191,7 +191,7 @@ __gen_head_tail head_tail(std::string_view t) {
     return __gen_head_tail(t);
 }
 
-// def byte_ends(b: BytesView) -> Iterator[Int32]:  # tpyc: ok
+// def byte_ends(b: BytesView) -> Iterator[int32]:  # tpyc: ok
 std::expected<int32_t, ::tpy::StopIteration> __gen_byte_ends::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -214,7 +214,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_byte_ends::__next__() {
 }
 
 
-// def byte_ends(b: BytesView) -> Iterator[Int32]:  # tpyc: ok
+// def byte_ends(b: BytesView) -> Iterator[int32]:  # tpyc: ok
 __gen_byte_ends byte_ends(::tpy::BytesView b) {
     return __gen_byte_ends(b);
 }
@@ -278,7 +278,7 @@ __coro_run_head run_head() {
     return __coro_run_head();
 }
 
-// def view_lens(t: StrView, b: BytesView) -> Iterator[Int32]:  # tpyc: ok
+// def view_lens(t: StrView, b: BytesView) -> Iterator[int32]:  # tpyc: ok
 std::expected<int32_t, ::tpy::StopIteration> __gen_view_lens::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -301,12 +301,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_view_lens::__next__() {
 }
 
 
-// def view_lens(t: StrView, b: BytesView) -> Iterator[Int32]:  # tpyc: ok
+// def view_lens(t: StrView, b: BytesView) -> Iterator[int32]:  # tpyc: ok
 __gen_view_lens view_lens(std::string_view t, ::tpy::BytesView b) {
     return __gen_view_lens(t, b);
 }
 
-// async def bump_async(s: Span[Int32]) -> Int32:  # tpyc: ok
+// async def bump_async(s: Span[int32]) -> int32:  # tpyc: ok
 ::tpystd::tpy::Poll<int32_t> __coro_bump_async::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -335,12 +335,12 @@ __gen_view_lens view_lens(std::string_view t, ::tpy::BytesView b) {
 }
 
 
-// async def bump_async(s: Span[Int32]) -> Int32:  # tpyc: ok
+// async def bump_async(s: Span[int32]) -> int32:  # tpyc: ok
 __coro_bump_async bump_async(std::span<int32_t> s) {
     return __coro_bump_async(s);
 }
 
-// async def run_bump() -> Int32:
+// async def run_bump() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_run_bump::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -364,12 +364,12 @@ __coro_bump_async bump_async(std::span<int32_t> s) {
 }
 
 
-// async def run_bump() -> Int32:
+// async def run_bump() -> int32:
 __coro_run_bump run_bump() {
     return __coro_run_bump();
 }
 
-// def ends(xs: list[Int32]) -> Iterator[Int32]:  # tpyc: ok
+// def ends(xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
 std::expected<int32_t, ::tpy::StopIteration> __gen_ends::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -392,7 +392,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_ends::__next__() {
 }
 
 
-// def ends(xs: list[Int32]) -> Iterator[Int32]:  # tpyc: ok
+// def ends(xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
 __gen_ends ends(std::vector<int32_t>& xs) {
     return __gen_ends(xs);
 }
@@ -437,7 +437,7 @@ __gen_outer_for outer_for() {
     return __gen_outer_for();
 }
 
-// def outer_span() -> Iterator[Int32]:
+// def outer_span() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_outer_span::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -472,12 +472,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_outer_span::__next__() {
 }
 
 
-// def outer_span() -> Iterator[Int32]:
+// def outer_span() -> Iterator[int32]:
 __gen_outer_span outer_span() {
     return __gen_outer_span();
 }
 
-// def outer_comp(src: list[Int32]) -> Iterator[Int32]:
+// def outer_comp(src: list[int32]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_outer_comp::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -523,12 +523,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_outer_comp::__next__() {
 }
 
 
-// def outer_comp(src: list[Int32]) -> Iterator[Int32]:
+// def outer_comp(src: list[int32]) -> Iterator[int32]:
 __gen_outer_comp outer_comp(std::vector<int32_t>& src) {
     return __gen_outer_comp(src);
 }
 
-// def outer_comp_method(src: list[Int32]) -> Iterator[Int32]:
+// def outer_comp_method(src: list[int32]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_outer_comp_method::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -575,12 +575,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_outer_comp_method::__next__()
 }
 
 
-// def outer_comp_method(src: list[Int32]) -> Iterator[Int32]:
+// def outer_comp_method(src: list[int32]) -> Iterator[int32]:
 __gen_outer_comp_method outer_comp_method(std::vector<int32_t>& src) {
     return __gen_outer_comp_method(src);
 }
 
-// def outer_fstring(n: Int32) -> Iterator[str]:
+// def outer_fstring(n: int32) -> Iterator[str]:
 std::expected<std::string, ::tpy::StopIteration> __gen_outer_fstring::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -615,7 +615,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_outer_fstring::__next__()
 }
 
 
-// def outer_fstring(n: Int32) -> Iterator[str]:
+// def outer_fstring(n: int32) -> Iterator[str]:
 __gen_outer_fstring outer_fstring(int32_t n) {
     return __gen_outer_fstring(n);
 }
@@ -711,7 +711,7 @@ __coro_outer_task outer_task() {
     return __coro_outer_task();
 }
 
-// def outer_loop_for(n: Int32) -> Iterator[Int32]:
+// def outer_loop_for(n: int32) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_outer_loop_for::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -752,12 +752,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_outer_loop_for::__next__() {
 }
 
 
-// def outer_loop_for(n: Int32) -> Iterator[Int32]:
+// def outer_loop_for(n: int32) -> Iterator[int32]:
 __gen_outer_loop_for outer_loop_for(int32_t n) {
     return __gen_outer_loop_for(n);
 }
 
-// async def outer_loop_bind(n: Int32) -> str:
+// async def outer_loop_bind(n: int32) -> str:
 ::tpystd::tpy::Poll<std::string> __coro_outer_loop_bind::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -809,12 +809,12 @@ __gen_outer_loop_for outer_loop_for(int32_t n) {
 }
 
 
-// async def outer_loop_bind(n: Int32) -> str:
+// async def outer_loop_bind(n: int32) -> str:
 __coro_outer_loop_bind outer_loop_bind(int32_t n) {
     return __coro_outer_loop_bind(n);
 }
 
-// async def outer_async_recv(src: list[Int32]) -> Int32:
+// async def outer_async_recv(src: list[int32]) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_outer_async_recv::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -865,12 +865,12 @@ __coro_outer_loop_bind outer_loop_bind(int32_t n) {
 }
 
 
-// async def outer_async_recv(src: list[Int32]) -> Int32:
+// async def outer_async_recv(src: list[int32]) -> int32:
 __coro_outer_async_recv outer_async_recv(std::vector<int32_t>& src) {
     return __coro_outer_async_recv(src);
 }
 
-// async def outer_task_recv() -> Int32:
+// async def outer_task_recv() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_outer_task_recv::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -907,7 +907,7 @@ __coro_outer_async_recv outer_async_recv(std::vector<int32_t>& src) {
 }
 
 
-// async def outer_task_recv() -> Int32:
+// async def outer_task_recv() -> int32:
 __coro_outer_task_recv outer_task_recv() {
     return __coro_outer_task_recv();
 }
@@ -1451,7 +1451,7 @@ void main() {
     std::cout << "res-recv-task:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(outer_task_recv())) << "\n";
 }
 
-// def scale(self, s: Span[Int32]) -> Iterator[Int32]:  # tpyc: ok
+// def scale(self, s: Span[int32]) -> Iterator[int32]:  # tpyc: ok
 std::expected<int32_t, ::tpy::StopIteration> __gen_Scaler_scale::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -1501,7 +1501,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Tagger_tag::__next__() {
 }
 
 
-// async def add(self, s: Span[Int32]) -> Int32:  # tpyc: ok
+// async def add(self, s: Span[int32]) -> int32:  # tpyc: ok
 ::tpystd::tpy::Poll<int32_t> __coro_Adder_add::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -1530,7 +1530,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Tagger_tag::__next__() {
 }
 
 
-// def pair(self, xs: list[Int32]) -> Iterator[Int32]:  # tpyc: ok
+// def pair(self, xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
 std::expected<int32_t, ::tpy::StopIteration> __gen_Summer_pair::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -1588,7 +1588,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Outer_run::__next__() {
 }
 
 
-// def run_recv(self, xs: list[Int32]) -> Iterator[Int32]:
+// def run_recv(self, xs: list[int32]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_Outer_run_recv::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {

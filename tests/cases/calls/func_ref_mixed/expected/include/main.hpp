@@ -25,7 +25,7 @@ std::string transform(__F0&& f, int32_t x);
 std::function<int32_t(int32_t)> get_doubler();
 void main();
 
-// def apply_fn(f: Fn[[Int32], Int32], x: Int32) -> Int32:
+// def apply_fn(f: Fn[[int32], int32], x: int32) -> int32:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<int32_t>;
@@ -34,7 +34,7 @@ int32_t apply_fn(__F0&& f, int32_t x) {
     // return f(x)
     return f(x);
 }
-// def transform(f: Fn[[Int32], str], x: Int32) -> str:
+// def transform(f: Fn[[int32], str], x: int32) -> str:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<std::string>;

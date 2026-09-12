@@ -3,13 +3,13 @@
 # the same rule warn_return_record_borrow_method_own pins for a call. The copy
 # is the ACKNOWLEDGED CPython divergence (CPython hands back the caller's Box),
 # so the case prints only what both agree on; `good_return` silences it.
-from tpy import Int32, Own, copy
+from tpy import int32, Own, copy
 
 
 class Box:
-    value: Int32
+    value: int32
 
-    def __init__(self, value: Int32) -> None:
+    def __init__(self, value: int32) -> None:
         self.value = value
 
 

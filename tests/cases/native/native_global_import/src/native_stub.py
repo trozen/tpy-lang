@@ -3,17 +3,17 @@
 # tpy: cpp_namespace("mylib::core")
 # tpy: include("native_types.hpp")
 
-from tpy import Int32
+from tpy import int32
 from tpy.extern import native_global
 
 # C++ global with namespace-qualified rename
-score: Int32 = native_global("engine::score")
+score: int32 = native_global("engine::score")
 
 # C++ global with bare name
-lives: Int32 = native_global()
+lives: int32 = native_global()
 
 # C global with explicit rename
-frame_count: Int32 = native_global("DG_FrameCount", binding="C")
+frame_count: int32 = native_global("DG_FrameCount", binding="C")
 
 # C global with bare name
-tick: Int32 = native_global(binding="C")
+tick: int32 = native_global(binding="C")

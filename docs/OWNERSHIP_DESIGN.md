@@ -55,10 +55,10 @@ After the copy, the persistent storage owns an independent value. The original s
 
 ### 3. Value types copy silently
 
-Built-in value types (`Int32`, `Bool`, `float`, `Char`) and user-defined value types (analogous to frozen dataclasses — small, immutable) copy without warnings. There is no observable difference between copying and sharing for these types.
+Built-in value types (`int32`, `Bool`, `float`, `char`) and user-defined value types (analogous to frozen dataclasses — small, immutable) copy without warnings. There is no observable difference between copying and sharing for these types.
 
 ```python
-a: Int32 = 42
+a: int32 = 42
 b = a                   # copies, no warning — semantically invisible
 ```
 
@@ -100,7 +100,7 @@ def find_max(points: list[Point]) -> Point:
             best = p
     return best
 
-def create_point(x: Int32, y: Int32) -> Own[Point]:
+def create_point(x: int32, y: int32) -> Own[Point]:
     # Returns a new value — copy/move
     return Point(x, y)
 ```
@@ -124,7 +124,7 @@ best.value = 99                 # modifies element in list in-place
 Value semantics through pointer indirection. No lifetime concerns:
 
 ```python
-def process() -> Int32:
+def process() -> int32:
     p = Point(1, 2)
     p.x += 10
     return p.x                  # stack slot freed when function returns
@@ -153,7 +153,7 @@ for i in range(100):
 Return pointer to found element, or `None` if not found. Caller handles creation separately:
 
 ```python
-def find(points: list[Point], val: Int32) -> Point | None:
+def find(points: list[Point], val: int32) -> Point | None:
     for p in points:
         if p.value == val:
             return p            # pointer into caller's list — safe

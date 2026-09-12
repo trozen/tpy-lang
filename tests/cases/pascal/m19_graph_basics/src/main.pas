@@ -1,5 +1,5 @@
 { M19: Graph unit Tier-A primitives. Pure-TPy drawing into a
-  packed-Int32 pixel buffer; tests read pixels back via `GetPixel`
+  packed-int32 pixel buffer; tests read pixels back via `GetPixel`
   so the snapshot is text-only. `CloseGraph` writes `out.ppm` to
   the program's cwd (the gitignored build dir under `__tpyc__/`);
   that file is intentionally NOT part of the snapshot. }

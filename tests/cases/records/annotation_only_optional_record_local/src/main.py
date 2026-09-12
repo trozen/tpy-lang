@@ -1,16 +1,16 @@
 # An annotation-only local of a non-value Optional record type: the slot is
 # declared without an initializer, then assigned and narrowed before use.
-from tpy import Int32
+from tpy import int32
 
 
 class R:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
-def build(x: Int32) -> Int32:
+def build(x: int32) -> int32:
     r: R | None  # declared with no initializer -- a non-value no-init slot
     r = R(x)
     if r is not None:

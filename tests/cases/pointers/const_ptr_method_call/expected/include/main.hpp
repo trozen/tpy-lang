@@ -15,14 +15,14 @@ void main();
 
 // class Counter:
 struct Counter {
-    // x: Int32
+    // x: int32
     int32_t x;
 
-    // def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: int32) -> None:
     Counter() = default;
     explicit Counter(int32_t x);
 
-    // def __len__(self) -> Int32:
+    // def __len__(self) -> int32:
     int32_t __len__() const;
 
     size_t size() const {
@@ -39,10 +39,10 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 }
 
 
-// def __init__(self, x: Int32) -> None:
+// def __init__(self, x: int32) -> None:
 inline Counter::Counter(int32_t x) : x(x) {}
 
-// def __len__(self) -> Int32:
+// def __len__(self) -> int32:
 inline int32_t Counter::__len__() const {
     // return self.x
     return this->x;

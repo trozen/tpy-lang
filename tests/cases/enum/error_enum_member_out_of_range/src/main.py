@@ -1,8 +1,8 @@
-# Error: enum member value exceeds underlying Int8 range
+# Error: enum member value exceeds underlying int8 range
 from enum import Enum
-from tpy import Int8
+from tpy import int8
 
-class Bad(Int8, Enum):
+class Bad(int8, Enum):
     Big = 200  # tpyc: error(/out of range/)
 
 def main() -> None:

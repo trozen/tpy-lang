@@ -19,16 +19,16 @@ void main();
 
 // class Pair:
 struct Pair {
-    // a: Int32
+    // a: int32
     int32_t a;
-    // b: Int32
+    // b: int32
     int32_t b;
 
-    // def __init__(self, a: Int32, b: Int32) -> None:
+    // def __init__(self, a: int32, b: int32) -> None:
     Pair() = default;
     explicit Pair(int32_t a, int32_t b);
 
-    // def __enter__(self) -> tuple[Int32, Int32]:
+    // def __enter__(self) -> tuple[int32, int32]:
     std::tuple<int32_t, int32_t> __enter__() const;
 
     // def __exit__(self, et, ev, tb) -> None:
@@ -60,15 +60,15 @@ inline std::ostream& operator<<(std::ostream& os, const Blob& obj) {
 
 // class Either:
 struct Either {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Either() = default;
     explicit Either(int32_t n);
 
-    // def __enter__(self) -> Int32 | StrView:
-    ::tpy::Union<int32_t, std::string_view> __enter__() const;
+    // def __enter__(self) -> int32 | StrView:
+    ::tpy::Union<std::string_view, int32_t> __enter__() const;
 
     // def __exit__(self, et, ev, tb) -> None:
     void __exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const;
@@ -81,10 +81,10 @@ inline std::ostream& operator<<(std::ostream& os, const Either& obj) {
 }
 
 
-// def __init__(self, a: Int32, b: Int32) -> None:
+// def __init__(self, a: int32, b: int32) -> None:
 inline Pair::Pair(int32_t a, int32_t b) : a(a), b(b) {}
 
-// def __enter__(self) -> tuple[Int32, Int32]:
+// def __enter__(self) -> tuple[int32, int32]:
 inline std::tuple<int32_t, int32_t> Pair::__enter__() const {
     // return (self.a, self.b)
     return std::tuple<int32_t, int32_t>{this->a, this->b};
@@ -108,11 +108,11 @@ inline void Blob::__exit__(std::monostate et, const ::tpy::BaseException* ev, st
     std::cout << "blob exit" << "\n";
 }
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Either::Either(int32_t n) : n(n) {}
 
-// def __enter__(self) -> Int32 | StrView:
-inline ::tpy::Union<int32_t, std::string_view> Either::__enter__() const {
+// def __enter__(self) -> int32 | StrView:
+inline ::tpy::Union<std::string_view, int32_t> Either::__enter__() const {
     // if self.n > 0:
     if ((this->n > 0)) {
         // return self.n

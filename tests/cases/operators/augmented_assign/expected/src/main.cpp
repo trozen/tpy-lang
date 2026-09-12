@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def test_aug_assign():
 void test_aug_assign() {
-    // x: Int32 = 10
+    // x: int32 = 10
     int32_t x = 10;
     // # Addition
     // x += 5

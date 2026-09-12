@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 
 
-def bump_positive(n: Int32) -> Int32:
+def bump_positive(n: int32) -> int32:
     assert n > 0, "n must be positive"
     return n + 1
 

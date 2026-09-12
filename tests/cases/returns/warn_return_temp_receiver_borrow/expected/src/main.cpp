@@ -4,20 +4,20 @@
 namespace tpyapp::main {
 
 
-// def make(n: Int32) -> Own[Point]:
+// def make(n: int32) -> Own[Point]:
 Point make(int32_t n) {
     // # Constructor receiver: `Point(n)` is a temporary, and still a borrow.
     // return Point(n).updated()  # tpyc: warning(/copies Point into owned storage/)
     return Point(n).updated();
 }
 
-// def make_copy(n: Int32) -> Own[Point]:
+// def make_copy(n: int32) -> Own[Point]:
 Point make_copy(int32_t n) {
     // return copy(Point(n).updated())  # tpyc: ok
     return Point(Point(n).updated());
 }
 
-// def owned(n: Int32) -> Own[Point]:
+// def owned(n: int32) -> Own[Point]:
 Point owned(int32_t n) {
     // # Owning FREE-call receiver: `make(n)` hands back a value, and `updated`
     // # still hands back a borrow of it.
@@ -25,7 +25,7 @@ Point owned(int32_t n) {
     return make(n).updated();
 }
 
-// def owned_copy(n: Int32) -> Own[Point]:
+// def owned_copy(n: int32) -> Own[Point]:
 Point owned_copy(int32_t n) {
     // return copy(make(n).updated())  # tpyc: ok
     return Point(make(n).updated());

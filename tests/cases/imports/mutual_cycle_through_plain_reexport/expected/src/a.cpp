@@ -5,9 +5,9 @@
 namespace tpyapp::a {
 
 
-// def aye() -> Int32:
+// def aye() -> int32:
 int32_t aye() {
-    // return Int32(1)
+    // return int32(1)
     return 1;
 }
 

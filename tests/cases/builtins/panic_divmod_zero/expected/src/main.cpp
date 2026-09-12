@@ -6,9 +6,9 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // a: Int32 = Int32(10)
+    // a: int32 = int32(10)
     int32_t a = 10;
-    // b: Int32 = Int32(0)
+    // b: int32 = int32(0)
     int32_t b = 0;
     // q, r = divmod(a, b)
     auto __tup_1 = ::tpy::divmod_fixed<int32_t>(a, b);

@@ -9,16 +9,16 @@ double ratio{};
 bool flag{};
 // title = "start"
 std::string title;
-// slot: Int32 | None = None
+// slot: int32 | None = None
 std::optional<int32_t> slot;
 
-// def lookup(n: Int32) -> Int32 | None:
+// def lookup(n: int32) -> int32 | None:
 std::optional<int32_t> lookup(int32_t n) {
     // return n if n > 0 else None
     return (((n > 0)) ? (std::optional<int32_t>(n)) : (std::optional<int32_t>(std::nullopt)));
 }
 
-// def narrow(n: Int32) -> Int32:
+// def narrow(n: int32) -> int32:
 int32_t narrow(int32_t n) {
     // global slot
     // if (slot := lookup(n)) is not None:  # tpyc: ok
@@ -64,7 +64,7 @@ void __tpy_init() {
     flag = false;
     // title = "start"
     title = "start";
-    // slot: Int32 | None = None
+    // slot: int32 | None = None
     slot = std::nullopt;
     // main()
     main();

@@ -1,12 +1,12 @@
 # A classmethod cannot be a generator (mirrors the @staticmethod rejection).
 from typing import Iterator
 
-from tpy import Int32
+from tpy import int32
 
 
 class P:
     @classmethod
-    def counts(cls) -> Iterator[Int32]:  # tpyc: error(/@classmethod method 'counts' cannot be a generator/)
+    def counts(cls) -> Iterator[int32]:  # tpyc: error(/@classmethod method 'counts' cannot be a generator/)
         yield 1
 
 

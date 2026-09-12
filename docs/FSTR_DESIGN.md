@@ -47,7 +47,7 @@ s = f"hello {name} x={x}"
 **Sema** (`sema/expressions.py`):
 - Analyzes each expression part for type correctness
 - Validates formattability: expression must be a formattable primitive type
-  (`int`, `float`, `bool`, `str`, `Char`, `Enum`), a container type, or
+  (`int`, `float`, `bool`, `str`, `char`, `Enum`), a container type, or
   conform to `Stringable`/`Representable` protocol
 - Validates conversions: `!s` requires `__str__` or `__repr__`, `!r` requires
   `__repr__`
@@ -58,9 +58,9 @@ s = f"hello {name} x={x}"
 - Per-type wrapping for Python-compatible formatting:
   - `bool` without format spec -> `::tpy::bool_to_str()` (prints `True`/`False`)
   - `bool` with format spec -> `static_cast<int>()` (for `{:d}` etc.)
-  - `float`/`Float32` without spec -> `::tpy::float_to_str()` (Python-style)
+  - `float`/`float32` without spec -> `::tpy::float_to_str()` (Python-style)
   - `BigInt` without spec -> `.to_string()`
-  - `Int8`/`UInt8` -> `static_cast<int>()` (avoid char interpretation)
+  - `int8`/`uint8` -> `static_cast<int>()` (avoid char interpretation)
   - `Enum` -> `static_cast<int>()`
   - Containers -> runtime `to_str` helpers
   - User types -> `::tpy::__str__()` or `::tpy::__repr__()`
@@ -177,7 +177,7 @@ just any type with the same short name.
 Explicit logger (via `@inline` pass-through):
 
 ```python
-from tpy import FStr, Int32, inline
+from tpy import FStr, int32, inline
 from log_infra import LogHandle
 from log_macro import log_debug
 
@@ -194,7 +194,7 @@ class Module:
 def main() -> None:
     m = Module("M")
     s = "hello"
-    i: Int32 = 42
+    i: int32 = 42
     m.log(f"s={s} i={i}")
 ```
 
@@ -213,11 +213,11 @@ class Module:
     _logger: LogHandle
 
     # In a method: macro finds self._logger by name
-    def log_auto(self, tag: str, n: Int32) -> None:
+    def log_auto(self, tag: str, n: int32) -> None:
         log(f"tag={tag} n={n}")
 
 # In a free function: macro inspects first param's type for _logger
-def log_from_free(mod: Module, val: Int32) -> None:
+def log_from_free(mod: Module, val: int32) -> None:
     log(f"free={val}")
 ```
 

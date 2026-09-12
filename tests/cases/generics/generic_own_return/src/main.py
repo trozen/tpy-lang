@@ -1,4 +1,4 @@
-from tpy import Int32, Own, copy
+from tpy import int32, Own, copy
 
 
 class Box[T]:
@@ -15,14 +15,14 @@ class Box[T]:
 
 
 def main() -> None:
-    # Test 1: Own[T] with value type (Int32) - same behavior as T
-    box_int: Box[Int32] = Box[Int32](42)
-    val: Int32 = box_int.take()
+    # Test 1: Own[T] with value type (int32) - same behavior as T
+    box_int: Box[int32] = Box[int32](42)
+    val: int32 = box_int.take()
     print(val)
 
     # Test 2: Own[T] with object type returns by value
-    box_list: Box[list[Int32]] = Box[list[Int32]]([1, 2, 3])
-    taken: list[Int32] = box_list.take()
+    box_list: Box[list[int32]] = Box[list[int32]]([1, 2, 3])
+    taken: list[int32] = box_list.take()
     for x in taken:
         print(x)
 

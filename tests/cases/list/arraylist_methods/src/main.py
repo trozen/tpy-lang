@@ -1,10 +1,10 @@
 # Test ArrayList methods: __contains__, __eq__, __repr__, swap, truncate, index,
 # count, remove, reverse, sort
-from tpy import Int32
+from tpy import int32
 from tplib import ArrayList
 
 def test_contains() -> None:
-    a = ArrayList[Int32, 8]()
+    a = ArrayList[int32, 8]()
     a.append(10)
     a.append(20)
     a.append(30)
@@ -12,10 +12,10 @@ def test_contains() -> None:
     print(99 in a)
 
 def test_eq() -> None:
-    a = ArrayList[Int32, 8]()
+    a = ArrayList[int32, 8]()
     a.append(1)
     a.append(2)
-    b = ArrayList[Int32, 8]()
+    b = ArrayList[int32, 8]()
     b.append(1)
     b.append(2)
     print(a == b)
@@ -23,13 +23,13 @@ def test_eq() -> None:
     print(a == b)
 
 def test_repr() -> None:
-    a = ArrayList[Int32, 4]()
+    a = ArrayList[int32, 4]()
     a.append(10)
     a.append(20)
     print(repr(a))
 
 def test_swap() -> None:
-    a = ArrayList[Int32, 4]()
+    a = ArrayList[int32, 4]()
     a.append(1)
     a.append(2)
     a.append(3)
@@ -37,7 +37,7 @@ def test_swap() -> None:
     print(a)
 
 def test_truncate() -> None:
-    a = ArrayList[Int32, 8]()
+    a = ArrayList[int32, 8]()
     a.append(10)
     a.append(20)
     a.append(30)
@@ -47,14 +47,14 @@ def test_truncate() -> None:
     print(len(a))
 
 def test_index() -> None:
-    a = ArrayList[Int32, 4]()
+    a = ArrayList[int32, 4]()
     a.append(10)
     a.append(20)
     a.append(30)
     print(a.index(20))
 
 def test_count() -> None:
-    a = ArrayList[Int32, 8]()
+    a = ArrayList[int32, 8]()
     a.append(1)
     a.append(2)
     a.append(1)
@@ -65,7 +65,7 @@ def test_count() -> None:
     print(a.count(99))
 
 def test_remove() -> None:
-    a = ArrayList[Int32, 8]()
+    a = ArrayList[int32, 8]()
     a.append(10)
     a.append(20)
     a.append(30)
@@ -73,7 +73,7 @@ def test_remove() -> None:
     print(a)
 
 def test_reverse() -> None:
-    a = ArrayList[Int32, 8]()
+    a = ArrayList[int32, 8]()
     a.append(1)
     a.append(2)
     a.append(3)
@@ -83,7 +83,7 @@ def test_reverse() -> None:
 
 def test_sort() -> None:
     # General case
-    a = ArrayList[Int32, 8]()
+    a = ArrayList[int32, 8]()
     a.append(5)
     a.append(3)
     a.append(1)
@@ -92,7 +92,7 @@ def test_sort() -> None:
     a.sort()
     print(a)
     # Duplicates
-    b = ArrayList[Int32, 8]()
+    b = ArrayList[int32, 8]()
     b.append(3)
     b.append(1)
     b.append(3)
@@ -101,16 +101,16 @@ def test_sort() -> None:
     b.sort()
     print(b)
     # Empty
-    c = ArrayList[Int32, 4]()
+    c = ArrayList[int32, 4]()
     c.sort()
     print(c)
     # Single element
-    d = ArrayList[Int32, 4]()
+    d = ArrayList[int32, 4]()
     d.append(42)
     d.sort()
     print(d)
     # Already sorted
-    e = ArrayList[Int32, 4]()
+    e = ArrayList[int32, 4]()
     e.append(1)
     e.append(2)
     e.append(3)

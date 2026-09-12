@@ -23,9 +23,9 @@ void main();
 struct Slot {
     // b: bytearray | None
     std::optional<::tpy::ByteArray> b;
-    // xs: list[Int32] | None
+    // xs: list[int32] | None
     std::optional<std::vector<int32_t>> xs;
-    // boxes: list[Box[Int32]] | None
+    // boxes: list[Box[int32]] | None
     std::optional<std::vector<::tpystd::tplib::box::Box<int32_t>>> boxes;
 
     // def __init__(self) -> None:
@@ -39,16 +39,16 @@ struct Slot {
     // def take(self, v: Own[bytearray]) -> None:
     void take(::tpy::ByteArray&& v);
 
-    // def take_list(self, v: Own[list[Int32]]) -> None:
+    // def take_list(self, v: Own[list[int32]]) -> None:
     void take_list(std::vector<int32_t>&& v);
 
-    // def take_boxes(self, v: Own[list[Box[Int32]]]) -> None:
+    // def take_boxes(self, v: Own[list[Box[int32]]]) -> None:
     void take_boxes(std::vector<::tpystd::tplib::box::Box<int32_t>>&& v);
 
     // def copy_in(self, v: bytearray) -> None:
     void copy_in(const ::tpy::ByteArray& v);
 
-    // def size(self) -> Int32:
+    // def size(self) -> int32:
     int32_t size() const;
 
     // def grow(self) -> None:
@@ -71,13 +71,13 @@ inline void Slot::take(::tpy::ByteArray&& v) {
     this->b = std::move(v);
 }
 
-// def take_list(self, v: Own[list[Int32]]) -> None:
+// def take_list(self, v: Own[list[int32]]) -> None:
 inline void Slot::take_list(std::vector<int32_t>&& v) {
     // self.xs = v  # tpyc: ok
     this->xs = std::move(v);
 }
 
-// def take_boxes(self, v: Own[list[Box[Int32]]]) -> None:
+// def take_boxes(self, v: Own[list[Box[int32]]]) -> None:
 inline void Slot::take_boxes(std::vector<::tpystd::tplib::box::Box<int32_t>>&& v) {
     // self.boxes = v  # tpyc: ok -- a copy here would not compile
     this->boxes = std::move(v);
@@ -89,7 +89,7 @@ inline void Slot::copy_in(const ::tpy::ByteArray& v) {
     this->b = v;
 }
 
-// def size(self) -> Int32:
+// def size(self) -> int32:
 inline int32_t Slot::size() const {
     // if self.b is None:
     if ((!this->b.has_value())) {

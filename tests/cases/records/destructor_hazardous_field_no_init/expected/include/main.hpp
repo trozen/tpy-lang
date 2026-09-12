@@ -18,7 +18,7 @@ void main();
 // # suppresses Hazard()'s default ctor so default-construction is impossible.
 // class Hazard:
 struct Hazard {
-    // _handle: Ptr[Int32]
+    // _handle: Ptr[int32]
     int32_t* _handle;
     bool __tpy_owned_ = true;
 

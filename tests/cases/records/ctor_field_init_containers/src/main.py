@@ -5,32 +5,32 @@
 # The param copy and the record element are INTENTIONAL copies at the
 # field-storage boundary (CPython would alias), so only the field's own
 # containers are observed, never cross-mutation through the ctor arguments.
-from tpy import Array, Int32, Own
+from tpy import Array, int32, Own
 
 
 class Point:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32):
+    def __init__(self, v: int32):
         self.v = v
 
 
 class Holder:
-    items: list[Int32]
+    items: list[int32]
     names: list[str]
-    counts: dict[str, Int32]
-    tags: set[Int32]
-    arr: Array[Int32, 3]
+    counts: dict[str, int32]
+    tags: set[int32]
+    arr: Array[int32, 3]
     pts: list[Point]
-    grid: list[list[Int32]]
-    empty_l: list[Int32]
-    empty_d: dict[Int32, Int32]
+    grid: list[list[int32]]
+    empty_l: list[int32]
+    empty_d: dict[int32, int32]
     moved: list[Point]
-    copied: list[Int32]
+    copied: list[int32]
     ones: list[int]
     one_arr: Array[int, 1]
 
-    def __init__(self, prefix: str, p: Point, q: Own[Point], copied: list[Int32]):
+    def __init__(self, prefix: str, p: Point, q: Own[Point], copied: list[int32]):
         self.items = [1, 2]
         self.names = [prefix, "lit"]
         self.counts = {"k": 1, "j": 2}
@@ -41,7 +41,7 @@ class Holder:
         self.empty_l = []
         self.empty_d = {}
         self.moved = [q]
-        self.copied = copied  # tpyc: warning(/copies list\[Int32\] into field/)
+        self.copied = copied  # tpyc: warning(/copies list\[int32\] into field/)
         self.ones = [1]  # tpyc: ok -- one BigInt element: must not become a size
         self.one_arr = [1]  # tpyc: ok -- the Array sibling of the same shape
 

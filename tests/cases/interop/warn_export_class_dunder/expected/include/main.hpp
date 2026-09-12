@@ -17,11 +17,11 @@ struct C {
     // self.a = a
     int64_t a;
 
-    // def __init__(self, a: Int64):
+    // def __init__(self, a: int64):
     C() = default;
     explicit C(int64_t a);
 
-    // def __call__(self) -> Int64:  # tpyc: warning(/'__call__' is not exposed to CPython/)
+    // def __call__(self) -> int64:  # tpyc: warning(/'__call__' is not exposed to CPython/)
     int64_t __call__() const;
 
     int64_t operator()() const {
@@ -36,10 +36,10 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
 }
 
 
-// def __init__(self, a: Int64):
+// def __init__(self, a: int64):
 inline C::C(int64_t a) : a(a) {}
 
-// def __call__(self) -> Int64:  # tpyc: warning(/'__call__' is not exposed to CPython/)
+// def __call__(self) -> int64:  # tpyc: warning(/'__call__' is not exposed to CPython/)
 inline int64_t C::__call__() const {
     // return self.a
     return this->a;

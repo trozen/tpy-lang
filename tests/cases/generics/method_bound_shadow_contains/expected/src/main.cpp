@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // b: MyBag[Int32] = MyBag()
+    // b: MyBag[int32] = MyBag()
     MyBag<int32_t> b = MyBag<int32_t>();
     // b.add(1)
     b.add(1);
@@ -14,11 +14,11 @@ void main() {
     b.add(2);
     // b.add(3)
     b.add(3);
-    // print(Int32(2) in b)
+    // print(int32(2) in b)
     std::cout << ::tpy::print_bool((b.__contains__(2))) << "\n";
-    // print(Int32(5) in b)
+    // print(int32(5) in b)
     std::cout << ::tpy::print_bool((b.__contains__(5))) << "\n";
-    // print(Int32(5) not in b)
+    // print(int32(5) not in b)
     std::cout << ::tpy::print_bool((!(b.__contains__(5)))) << "\n";
 }
 

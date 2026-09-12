@@ -5,24 +5,24 @@
 # begin/end peephole when the bound is NativeIterable. Without bounds,
 # falls back to the universal `::tpy::__iter__` shape.
 import asyncio
-from tpy import Int32, NativeIterable
+from tpy import int32, NativeIterable
 
 
-class Wrap[T: NativeIterable[Int32]]:
+class Wrap[T: NativeIterable[int32]]:
     items: T
 
     def __init__(self, items: T) -> None:
         self.items = items
 
-    async def total(self) -> Int32:
-        result: Int32 = 0
+    async def total(self) -> int32:
+        result: int32 = 0
         for x in self.items:
             result += x
         return result
 
 
 def main() -> None:
-    xs: list[Int32] = [1, 2, 3, 4, 5]
+    xs: list[int32] = [1, 2, 3, 4, 5]
     w = Wrap(xs)
     print(asyncio.run(w.total()))
 

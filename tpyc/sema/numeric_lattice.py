@@ -35,7 +35,7 @@ def numeric_info(typ: TpyType) -> NumericTypeInfo | None:
     if isinstance(typ, FloatLiteralType):
         return NumericTypeInfo("float_literal", 0)
     if is_fixed_int_type(typ):
-        # Rank scales with bit width: Int8=8, Int16=9, Int32=10, Int64=11
+        # Rank scales with bit width: int8=8, int16=9, int32=10, int64=11
         tr = int_traits_of(typ)
         assert tr is not None, f"fixed int without IntTraits: {typ}"
         return NumericTypeInfo("int", tr.bits // 8 + 6)
@@ -92,7 +92,7 @@ def widen_numeric_types(a: TpyType, b: TpyType) -> TpyType | None:
     """Return the widened type for two concrete numeric types, or None.
 
     Used by reassignment inference when a variable is assigned a different
-    numeric type (e.g. Int32 then Int64 -> Int64, Int32 then float -> float).
+    numeric type (e.g. int32 then int64 -> int64, int32 then float -> float).
 
     Returns None when widening is not applicable (non-numeric, bool mixed
     with numeric, same-width mixed sign).
@@ -119,7 +119,7 @@ def widen_numeric_types(a: TpyType, b: TpyType) -> TpyType | None:
     if is_float_type(a) and is_float_type(b):
         if a == b:
             return None
-        # Float64 wins over Float32
+        # float64 wins over float32
         return a if is_float64_type(a) else b
 
     # Either is float-family -> float-family wins over int
@@ -156,5 +156,5 @@ def widen_numeric_types(a: TpyType, b: TpyType) -> TpyType | None:
     if wider_traits.signed and wider_traits.bits > narrower_traits.bits:
         return wider
 
-    # Same width mixed sign (e.g. Int32 + UInt32) -> refuse
+    # Same width mixed sign (e.g. int32 + uint32) -> refuse
     return None

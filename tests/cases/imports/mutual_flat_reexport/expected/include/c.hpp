@@ -13,10 +13,10 @@ inline constexpr std::string_view __name__ = "c";
 
 // class Cls:
 struct Cls {
-    // val: Int32
+    // val: int32
     int32_t val;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Cls() = default;
     explicit Cls(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "c.Cls";
@@ -28,7 +28,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cls& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Cls::Cls(int32_t v) : val(v) {}
 void __tpy_init();
 } // namespace tpyapp::c

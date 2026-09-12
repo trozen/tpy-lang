@@ -6,7 +6,7 @@ namespace tpystd::tplib::json::writer {
 // _HEX = "0123456789abcdef"
 std::string _HEX;
 
-// def _hex_byte(v: Int32) -> str:
+// def _hex_byte(v: int32) -> str:
 std::string _hex_byte(int32_t v) {
     // return _HEX[v // 16] + _HEX[v % 16]
     return (::tpy::str_concat(::tpy::char_to_str(::tpy::__getitem__(_HEX, (::tpy::div_floor<int32_t>(v, 16)))), ::tpy::char_to_str(::tpy::__getitem__(_HEX, (::tpy::mod_floor<int32_t>(v, 16))))));
@@ -81,9 +81,9 @@ void JsonWriter::write_bool(bool v) {
 
 // def _write_escaped(self, s: str) -> None:
 void JsonWriter::_write_escaped(std::string_view s) {
-    // start: Int32 = 0
+    // start: int32 = 0
     int32_t start = 0;
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // slen = len(s)
     int32_t slen = ::tpy::__len__(s);

@@ -6,7 +6,7 @@ Ensures coercions work correctly when the source is:
 - Field access
 - Nested expressions
 """
-from tpy import Int32, Ptr, readonly
+from tpy import int32, Ptr, readonly
 
 class Counter:
     value: int
@@ -22,10 +22,10 @@ class Counter:
 
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32) -> None:
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 
@@ -33,53 +33,53 @@ class Point:
 class Container:
     pt: Point
 
-    def __init__(self, x: Int32, y: Int32) -> None:
+    def __init__(self, x: int32, y: int32) -> None:
         self.pt = Point(x, y)
 
 
 class Outer:
     inner: Container
 
-    def __init__(self, x: Int32, y: Int32) -> None:
+    def __init__(self, x: int32, y: int32) -> None:
         self.inner = Container(x, y)
 
 
-# --- BigInt expression -> Int32 ---
+# --- BigInt expression -> int32 ---
 
-def return_expr_as_int32(a: int, b: int) -> Int32:
-    return a + b  # Expression result (BigInt) -> Int32
+def return_expr_as_int32(a: int, b: int) -> int32:
+    return a + b  # Expression result (BigInt) -> int32
 
-def take_int32(n: Int32) -> Int32:
+def take_int32(n: int32) -> int32:
     return n * 2
 
 
 def test_bigint_expr_to_int32() -> None:
-    print("BigInt expressions -> Int32:")
+    print("BigInt expressions -> int32:")
 
     a: int = 10
     b: int = 20
 
     # Binary op result in return
-    result: Int32 = return_expr_as_int32(a, b)
+    result: int32 = return_expr_as_int32(a, b)
     print(result)  # 30
 
     # Binary op result in function argument
     print(take_int32(a + b))  # 60
 
     # Binary op result in variable declaration
-    sum_val: Int32 = a + b + 5
+    sum_val: int32 = a + b + 5
     print(sum_val)  # 35
 
     # Binary op result in assignment
     sum_val = a * b
     print(sum_val)  # 200
 
-    # Method call result -> Int32
+    # Method call result -> int32
     c: Counter = Counter(100)
-    val: Int32 = c.get()
+    val: int32 = c.get()
     print(val)  # 100
 
-    # Method call with arg result -> Int32
+    # Method call with arg result -> int32
     val = c.add(50)
     print(val)  # 150
 
@@ -89,7 +89,7 @@ def test_bigint_expr_to_int32() -> None:
 def modify_via_ptr(p: Ptr[Point]) -> None:
     p.x = p.x + 100
 
-def read_via_const_ptr(p: Ptr[readonly[Point]]) -> Int32:
+def read_via_const_ptr(p: Ptr[readonly[Point]]) -> int32:
     return p.x + p.y
 
 
@@ -120,19 +120,19 @@ def test_nested_field_to_ptr() -> None:
 
 
 def test_literal_expr_to_int32() -> None:
-    print("Literal expressions -> Int32:")
+    print("Literal expressions -> int32:")
 
-    # Literal arithmetic assigned to Int32 (should use Int32 ops)
-    x: Int32 = 10 + 20 + 30
+    # Literal arithmetic assigned to int32 (should use int32 ops)
+    x: int32 = 10 + 20 + 30
     print(x)  # 60
 
     # Nested literal expression
-    y: Int32 = (5 + 5) * (2 + 3)
+    y: int32 = (5 + 5) * (2 + 3)
     print(y)  # 50
 
     # Mixed literal and variable
-    aa: Int32 = 100
-    bb: Int32 = aa + 50  # Int32 + literal -> Int32
+    aa: int32 = 100
+    bb: int32 = aa + 50  # int32 + literal -> int32
     print(bb)  # 150
 
 

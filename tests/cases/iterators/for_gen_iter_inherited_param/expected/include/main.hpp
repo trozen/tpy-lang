@@ -17,14 +17,14 @@ void main();
 
 // class BaseSource:
 struct BaseSource {
-    // _n: Int32
+    // _n: int32
     int32_t _n;
 
-    // def __init__(self, n: Int32):
+    // def __init__(self, n: int32):
     BaseSource() = default;
     explicit BaseSource(int32_t n);
 
-    // def __iter__(self) -> Iterator[Int32]:
+    // def __iter__(self) -> Iterator[int32]:
     auto __iter__() {
         return ::tpy::make_generator<int32_t>(
             [this]() mutable -> std::optional<int32_t> {
@@ -48,10 +48,10 @@ inline std::ostream& operator<<(std::ostream& os, const BaseSource& obj) {
 
 // class Source(BaseSource):
 struct Source : BaseSource {
-    // _tag: Int32
+    // _tag: int32
     int32_t _tag;
 
-    // def __init__(self, n: Int32, tag: Int32):
+    // def __init__(self, n: int32, tag: int32):
     Source() = default;
     explicit Source(int32_t n, int32_t tag);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Source";
@@ -63,10 +63,10 @@ inline std::ostream& operator<<(std::ostream& os, const Source& obj) {
 }
 
 
-// def __init__(self, n: Int32):
+// def __init__(self, n: int32):
 inline BaseSource::BaseSource(int32_t n) : _n(n) {}
 
-// def __init__(self, n: Int32, tag: Int32):
+// def __init__(self, n: int32, tag: int32):
 inline Source::Source(int32_t n, int32_t tag) : BaseSource(n), _tag(tag) {}
 void __tpy_init();
 } // namespace tpyapp::main

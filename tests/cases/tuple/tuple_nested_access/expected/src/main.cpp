@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // n = (Int32(10), ("inner", True))
+    // n = (int32(10), ("inner", True))
     std::tuple<int32_t, std::tuple<std::string, bool>> n = std::tuple<int32_t, std::tuple<std::string, bool>>{10, std::tuple<std::string, bool>{"inner", true}};
     // inner = n[1]
     std::tuple<std::string, bool> inner = std::get<1>(n);

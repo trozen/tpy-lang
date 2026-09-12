@@ -1,8 +1,8 @@
 # Error: incompatible annotation type in list comprehension
-from tpy import Int32
+from tpy import int32
 
 def main() -> None:
     items: list[str] = ["a", "b"]
-    bad: list[Int32] = [x for x in items]  # tpyc: error(/Type mismatch.*list comprehension element/)
+    bad: list[int32] = [x for x in items]  # tpyc: error(/Type mismatch.*list comprehension element/)
 
 main()

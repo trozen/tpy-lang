@@ -1,6 +1,6 @@
-from tpy import Int32, basic_slice
+from tpy import int32, basic_slice
 class R:
-    lo: Int32 | None
+    lo: int32 | None
     def __init__(self) -> None:
         self.lo = 1
 def main() -> None:

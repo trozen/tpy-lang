@@ -3,7 +3,7 @@
 
 namespace tpyapp::main {
 
-// counter: Int32 = 0
+// counter: int32 = 0
 int32_t counter{};
 // flag: bool = False
 bool flag{};
@@ -12,7 +12,7 @@ bool flag{};
 void bump() {
     // global counter
     // global flag
-    // counter = counter + Int32(1)
+    // counter = counter + int32(1)
     counter = (::tpy::add_check<int32_t>(counter, 1));
     // flag = True
     flag = true;
@@ -23,7 +23,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // counter: Int32 = 0
+    // counter: int32 = 0
     counter = 0;
     // flag: bool = False
     flag = false;

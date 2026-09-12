@@ -2,7 +2,7 @@
 # tpy: cpp_namespace("tpystd::builtins")
 from .._typing import Self, Iterator, Iterable
 from .._bootstrap._decorators import readonly, pure, Own, auto_readonly, dispatch
-from .._core._types import Int32, NativeIterable
+from .._core._types import int32, NativeIterable
 from .._bootstrap._extern import native, cpp_template, native_preserves_refs, builtin_type, copy_returns_warn
 
 
@@ -12,7 +12,7 @@ class dict_keys[K, V](Iterable[K], NativeIterable[K]):
     @native("tpy::__len__", function=True)
     @pure
     @readonly
-    def __len__(self) -> Int32: ...
+    def __len__(self) -> int32: ...
 
     @native("tpy::__iter__", function=True)
     @pure
@@ -31,7 +31,7 @@ class dict_values[K, V](Iterable[V], NativeIterable[V]):
     @native("tpy::__len__", function=True)
     @pure
     @readonly
-    def __len__(self) -> Int32: ...
+    def __len__(self) -> int32: ...
 
     @native("tpy::__iter__", function=True)
     @pure
@@ -50,7 +50,7 @@ class dict_items[K, V](Iterable[tuple[K, V]], NativeIterable[tuple[K, V]]):
     @native("tpy::__len__", function=True)
     @pure
     @readonly
-    def __len__(self) -> Int32: ...
+    def __len__(self) -> int32: ...
 
     @native("tpy::__iter__", function=True)
     @pure
@@ -84,7 +84,7 @@ class dict[K, V](Iterable[K], NativeIterable[K]):
     @native("tpy::__len__", function=True)
     @pure
     @readonly
-    def __len__(self) -> Int32: ...
+    def __len__(self) -> int32: ...
 
     # Pure-READ methods take readonly[K]: the key is only hashed/compared, never
     # stored, so a readonly key is safe. __setitem__/setdefault store K (mutable).

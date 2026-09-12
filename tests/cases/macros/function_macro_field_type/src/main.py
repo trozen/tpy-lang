@@ -1,12 +1,12 @@
 # A @function_macro resolves a record param's field type via
 # ctx.get_field_type / get_method_return_type and retypes a string-bool local.
-from tpy import Int32
+from tpy import int32
 
 from fieldmod import field_typed_locals
 
 
 class GateBase:
-    tag: Int32
+    tag: int32
 
     def __init__(self) -> None:
         self.tag = 7

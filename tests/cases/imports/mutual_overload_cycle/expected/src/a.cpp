@@ -5,13 +5,13 @@
 namespace tpyapp::a {
 
 
-// def use_g_int(n: Int32) -> Int32:
+// def use_g_int(n: int32) -> int32:
 int32_t use_g_int(int32_t n) {
     // return g(n)
     return ::tpyapp::b::g(n);
 }
 
-// def use_g_str(s: str) -> Int32:
+// def use_g_str(s: str) -> int32:
 int32_t use_g_str(std::string_view s) {
     // return g(s)
     return ::tpyapp::b::g(s);

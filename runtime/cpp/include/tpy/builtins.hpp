@@ -34,7 +34,7 @@ inline std::string input_line() {
     return line;
 }
 
-// -- ord/Char helpers --
+// -- ord/char helpers --
 
 // ord(s: str) -- throws TypeError if len(s) != 1, matching CPython.
 inline int32_t ord_str(std::string_view s) {
@@ -45,10 +45,10 @@ inline int32_t ord_str(std::string_view s) {
     return static_cast<int32_t>(static_cast<unsigned char>(s[0]));
 }
 
-// Char(s: str) -- extract single character, throws TypeError if len(s) != 1.
+// char(s: str) -- extract single character, throws TypeError if len(s) != 1.
 inline char char_from_str(std::string_view s) {
     if (s.size() != 1) {
-        raise_type_error("Char() expected a character, but string of length {} found",
+        raise_type_error("char() expected a character, but string of length {} found",
                          s.size());
     }
     return s[0];

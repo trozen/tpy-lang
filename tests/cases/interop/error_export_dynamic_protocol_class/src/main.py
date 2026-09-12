@@ -3,19 +3,19 @@
 # relies on (Instance<T> casts).
 # tpy: ext_module
 from typing import Protocol
-from tpy import Int64, dynamic
+from tpy import int64, dynamic
 from tpy.extern import export
 
 
 @dynamic
 class Countable(Protocol):
-    def count(self) -> Int64: ...
+    def count(self) -> int64: ...
 
 
 @export
 class Bag(Countable):  # tpyc: error(/implementing @dynamic protocol 'Countable' cannot be exposed/)
-    def __init__(self, n: Int64):
+    def __init__(self, n: int64):
         self.n = n
 
-    def count(self) -> Int64:
+    def count(self) -> int64:
         return self.n

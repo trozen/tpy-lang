@@ -6,13 +6,13 @@
 #   - borrow_call_rebind / none_reassign: the reassignment needs no slot (a
 #     borrow-returning call takes an address; None is a null pointer), so no
 #     dead `std::optional<T>` may appear in the generated C++.
-from tpy import Int32
+from tpy import int32
 
 
 class Counter:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def bump(self) -> None:

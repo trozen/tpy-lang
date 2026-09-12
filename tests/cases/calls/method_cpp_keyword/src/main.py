@@ -2,16 +2,16 @@
 # `new`, ...) must be name-mangled consistently at declaration AND call
 # site. Previously the declaration emitted the raw keyword (invalid C++)
 # while call sites applied the mangling, producing two C++ errors.
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
-    def double(self) -> Int32:
+    def double(self) -> int32:
         return self.n * 2
 
     def delete(self) -> None:

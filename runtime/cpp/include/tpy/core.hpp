@@ -348,8 +348,8 @@ inline void OSError::__raise__() const {
 }
 
 // Fixed-width integer arithmetic overflow. CPython promotes to unbounded
-// BigInt and never overflows; TPy uses fixed-width storage (Int8..Int64,
-// UInt8..UInt64) and panics on overflow by default. Routed through this
+// BigInt and never overflows; TPy uses fixed-width storage (int8..int64,
+// uint8..uint64) and panics on overflow by default. Routed through this
 // helper so the policy can be made switchable later (per build / module /
 // function: none / panic / throw OverflowError) without rewriting the call
 // sites. Currently always panics.
@@ -773,7 +773,7 @@ inline constexpr double fmod(double a, double b) {
     return m;
 }
 
-// Float32 arithmetic helpers
+// float32 arithmetic helpers
 inline constexpr float truediv_f32(float a, float b) {
     if (b == 0.0f) raise_zero_division_error("float division by zero");
     return a / b;

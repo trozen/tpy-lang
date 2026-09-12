@@ -1,4 +1,4 @@
-# Pins the value form of a generic instantiation at Float32 and at an enum: a T
+# Pins the value form of a generic instantiation at float32 and at an enum: a T
 # slot borrows a value, and a generator / coroutine frame COPIES it rather than
 # aliasing the caller's local across a suspension.
 # BytesView cannot appear here -- BUGS.md#generic-slot-view-enum-arg-rejects.
@@ -6,7 +6,7 @@ import asyncio
 from enum import Enum
 from typing import Iterator
 
-from tpy import Float32
+from tpy import float32
 
 
 class Color(Enum):
@@ -52,18 +52,18 @@ class Cell[T]:
 
 
 def free_function() -> None:
-    fs: list[Float32] = [0.5, 1.5]
-    k: Float32 = 1.5
-    # The T param slot at Float32, reached by an lvalue and by an rvalue.
-    print("free_function:", has_item(fs, k), has_item(fs, Float32(2.25)))
+    fs: list[float32] = [0.5, 1.5]
+    k: float32 = 1.5
+    # The T param slot at float32, reached by an lvalue and by an rvalue.
+    print("free_function:", has_item(fs, k), has_item(fs, float32(2.25)))
     print("free_function:", echo(k))  # tpyc: ok
 
 
 def method() -> None:
-    c = Cell(Float32(1.5))
-    hit = c.find(Float32(1.5))
-    miss = c.find(Float32(2.25))
-    # The val_or_ref_t<T> field read at Float32. `find`'s `T | None` renders a
+    c = Cell(float32(1.5))
+    hit = c.find(float32(1.5))
+    miss = c.find(float32(2.25))
+    # The val_or_ref_t<T> field read at float32. `find`'s `T | None` renders a
     # pointer for every T (decided per declaration, not by the trait); it is
     # pinned here as today's render, not as a value-form subject.
     print("method:", c.get(), hit is not None, miss is None)
@@ -76,14 +76,14 @@ def enum_instantiation() -> None:
 
 
 def generator_frame() -> None:
-    v: Float32 = 1.5
+    v: float32 = 1.5
     it = hold(v)
     try:
         first = next(it)
         v = 2.5
         # The resumable frame's val_or_ref_t<T> field held a COPY of the caller's
         # local, so the second yield is still 1.5 -- it aliased `v` before the
-        # runtime called Float32 a value type.
+        # runtime called float32 a value type.
         second = next(it)
         print("generator_frame:", first, second, v)
     except StopIteration:
@@ -91,7 +91,7 @@ def generator_frame() -> None:
 
 
 async def async_frame() -> None:
-    v: Float32 = 1.5
+    v: float32 = 1.5
     c = held(v)
     v = 2.5
     # Same field in a coroutine frame, mutated between the call and the await.

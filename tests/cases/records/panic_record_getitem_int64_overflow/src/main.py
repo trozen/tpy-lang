@@ -1,19 +1,19 @@
-# A BigInt key beyond a user __setitem__'s declared Int64 key width takes
-# the checked narrow and panics (CPython accepts any int; the Int64 param
+# A BigInt key beyond a user __setitem__'s declared int64 key width takes
+# the checked narrow and panics (CPython accepts any int; the int64 param
 # declares the key domain; panic_ cases skip the cpy phase).
-from tpy import Int32, Int64
+from tpy import int32, int64
 
 
 class WidePages:
-    data: dict[Int64, Int32]
+    data: dict[int64, int32]
 
     def __init__(self):
         self.data = {}
 
-    def __getitem__(self, key: Int64) -> Int32:
+    def __getitem__(self, key: int64) -> int32:
         return self.data.get(key, 0)
 
-    def __setitem__(self, key: Int64, value: Int32) -> None:
+    def __setitem__(self, key: int64, value: int32) -> None:
         self.data[key] = value
 
 

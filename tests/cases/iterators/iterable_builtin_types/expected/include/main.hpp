@@ -24,10 +24,10 @@ template<::tpystd::typing::Iterable<::tpy::BigInt> T_items>
 ::tpy::BigInt sum_bigints(T_items& items);
 void main();
 
-// def sum_items(items: Iterable[Int32]) -> Int32:
+// def sum_items(items: Iterable[int32]) -> int32:
 template<::tpystd::typing::Iterable<int32_t> T_items>
 int32_t sum_items(T_items& items) {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for x in items:
     auto& __src_0 = items;
@@ -42,10 +42,10 @@ int32_t sum_items(T_items& items) {
     // return total
     return total;
 }
-// def count_chars(items: Iterable[Char]) -> Int32:
+// def count_chars(items: Iterable[char]) -> int32:
 template<::tpystd::typing::Iterable<char> T_items>
 int32_t count_chars(T_items& items) {
-    // n: Int32 = 0
+    // n: int32 = 0
     int32_t n = 0;
     // for c in items:
     auto& __src_0 = items;
@@ -78,13 +78,13 @@ std::string sum_strs(T_items& items) {
     // return result
     return result;
 }
-// def test_iter_on_protocol(items: Iterable[Int32]) -> None:
+// def test_iter_on_protocol(items: Iterable[int32]) -> None:
 template<::tpystd::typing::Iterable<int32_t> T_items>
 void test_iter_on_protocol(T_items& items) {
     // # __iter__() on a protocol-typed variable
     // it = items.__iter__()
     auto it = ::tpy::__iter__(items);
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for x in it:
     auto& __src_0 = it;

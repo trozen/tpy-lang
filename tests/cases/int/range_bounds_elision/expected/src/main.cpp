@@ -6,9 +6,9 @@ namespace tpyapp::main {
 
 // def test_for_range_len_array() -> None:
 void test_for_range_len_array() {
-    // arr: Array[Int32, 5] = [10, 20, 30, 40, 50]
+    // arr: Array[int32, 5] = [10, 20, 30, 40, 50]
     std::array<int32_t, 5> arr = {10, 20, 30, 40, 50};
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for i in range(len(arr)):
     int32_t __stop_0 = ::tpy::__len__(arr);
@@ -22,9 +22,9 @@ void test_for_range_len_array() {
 
 // def test_for_range_len_list() -> None:
 void test_for_range_len_list() {
-    // lst: list[Int32] = [1, 2, 3]
+    // lst: list[int32] = [1, 2, 3]
     std::vector<int32_t> lst = {1, 2, 3};
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for i in range(len(lst)):
     int32_t __stop_0 = ::tpy::__len__(lst);
@@ -38,9 +38,9 @@ void test_for_range_len_list() {
 
 // def test_no_elision_unknown_index() -> None:
 void test_no_elision_unknown_index() {
-    // arr: Array[Int32, 3] = [1, 2, 3]
+    // arr: Array[int32, 3] = [1, 2, 3]
     std::array<int32_t, 3> arr = {1, 2, 3};
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // print(arr[i])  # tpyc: bounds_checked(arr)
     std::cout << ::tpy::__getitem__(arr, i) << "\n";
@@ -48,9 +48,9 @@ void test_no_elision_unknown_index() {
 
 // def test_no_elision_different_container() -> None:
 void test_no_elision_different_container() {
-    // a: Array[Int32, 3] = [1, 2, 3]
+    // a: Array[int32, 3] = [1, 2, 3]
     std::array<int32_t, 3> a = {1, 2, 3};
-    // b: Array[Int32, 3] = [4, 5, 6]
+    // b: Array[int32, 3] = [4, 5, 6]
     std::array<int32_t, 3> b = {4, 5, 6};
     // for i in range(len(a)):
     int32_t __stop_0 = ::tpy::__len__(a);
@@ -62,9 +62,9 @@ void test_no_elision_different_container() {
 
 // def test_assert_non_negative_only() -> None:
 void test_assert_non_negative_only() {
-    // arr: Array[Int32, 3] = [1, 2, 3]
+    // arr: Array[int32, 3] = [1, 2, 3]
     std::array<int32_t, 3> arr = {1, 2, 3};
-    // i: Int32 = 1
+    // i: int32 = 1
     int32_t i = 1;
     // x = arr[i]  # tpyc: bounds_checked(arr)
     int32_t x = ::tpy::__getitem__(arr, i);
@@ -74,9 +74,9 @@ void test_assert_non_negative_only() {
 
 // def test_for_range_literal() -> None:
 void test_for_range_literal() {
-    // arr: Array[Int32, 5] = [1, 2, 3, 4, 5]
+    // arr: Array[int32, 5] = [1, 2, 3, 4, 5]
     std::array<int32_t, 5> arr = {1, 2, 3, 4, 5};
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
@@ -89,7 +89,7 @@ void test_for_range_literal() {
 
 // def test_write_subscript_elision() -> None:
 void test_write_subscript_elision() {
-    // arr: Array[Int32, 5] = [0, 0, 0, 0, 0]
+    // arr: Array[int32, 5] = [0, 0, 0, 0, 0]
     std::array<int32_t, 5> arr = {0, 0, 0, 0, 0};
     // for i in range(len(arr)):
     int32_t __stop_0 = ::tpy::__len__(arr);
@@ -107,9 +107,9 @@ void test_write_subscript_elision() {
 
 // def test_no_elision_after_method_call() -> None:
 void test_no_elision_after_method_call() {
-    // lst: list[Int32] = [1, 2, 3, 4, 5]
+    // lst: list[int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> lst = {1, 2, 3, 4, 5};
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for i in range(len(lst)):
     int32_t __stop_0 = ::tpy::__len__(lst);
@@ -119,7 +119,7 @@ void test_no_elision_after_method_call() {
     }
     // lst.pop()
     ::tpy::pop_back(lst);
-    // i2: Int32 = 0
+    // i2: int32 = 0
     int32_t i2 = 0;
     // print(lst[i2])  # tpyc: bounds_checked(lst)
     std::cout << ::tpy::__getitem__(lst, i2) << "\n";

@@ -5,11 +5,11 @@
 # is_trusted_call_return_expr alone would miss this shape because
 # neither predicate accepts the whole ternary uniformly.
 
-from tpy import Int32, StrView
+from tpy import int32, StrView
 
 
 class Point:
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 

@@ -3,19 +3,19 @@
 # idiom, which must narrow the binding for the branch body while the write
 # still lands on the module variable.
 
-from tpy import Int32
+from tpy import int32
 
 ratio = 0.0
 flag = False
 title = "start"
-slot: Int32 | None = None
+slot: int32 | None = None
 
 
-def lookup(n: Int32) -> Int32 | None:
+def lookup(n: int32) -> int32 | None:
     return n if n > 0 else None
 
 
-def narrow(n: Int32) -> Int32:
+def narrow(n: int32) -> int32:
     global slot
     if (slot := lookup(n)) is not None:  # tpyc: ok
         return slot

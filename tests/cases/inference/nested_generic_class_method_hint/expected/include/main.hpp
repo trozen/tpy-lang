@@ -68,7 +68,7 @@ struct Container {
     Container() = default;
     explicit Container(::tpy::own_param_t<T> val) : payload(std::move(val)) {}
 
-    // # Method introduces its own type param U; the receiver's T (Int32 below)
+    // # Method introduces its own type param U; the receiver's T (int32 below)
     // # is irrelevant to U's binding. LHS hint Rc[Box[Greeter]] should seed
     // # U=Box[Greeter] and propagate Box[Greeter] as the inner Box(Cat(...))
     // # hint, so Box's record-construction LHS-hint preference flips its

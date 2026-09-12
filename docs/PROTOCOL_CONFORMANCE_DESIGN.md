@@ -19,7 +19,7 @@ in **pure stdlib**, recursing over arbitrary typed shapes. Two concrete goals
 gate on this:
 
 - **Zero-copy typed serialization** -- `json.dumps(data)` where
-  `data: dict[str, Int32]` serializes in place, no `JsonValue` wrapper, no
+  `data: dict[str, int32]` serializes in place, no `JsonValue` wrapper, no
   O(n) deep copy. (See `TODO.md`; the implicit `to_union` deep-copy was
   reverted as a footgun, leaving a clean rejection in its place.) Same shape
   for a future `csv` / `repr`.
@@ -33,14 +33,14 @@ Neither is buildable today. The blocker, reduced to probes:
 
 - A built-in does **not** satisfy a protocol whose required method exists only
   as an intrinsic (a C++ free function), not as a declared stub method:
-  `Int32` fails a `Stringable {__str__}` bound (`Type argument 'Int32' does
+  `int32` fails a `Stringable {__str__}` bound (`Type argument 'int32' does
   not satisfy bound 'Stringable'`) -- because `__str__` for int types lives
   only as `tpy::__str__(int32_t)` in `runtime/cpp/include/tpy/dunder.hpp`, and
-  is NOT declared on `Int32`'s stub (which declares `__add__`, `__int__`, ...
+  is NOT declared on `int32`'s stub (which declares `__add__`, `__int__`, ...
   but not `__str__`). Structural conformance consults the TPy method surface,
   which doesn't see the C++ free function. Same for `str`/`bool`/`float`. (A
   protocol requiring a dunder the built-in DOES declare as a stub method --
-  e.g. `__add__` on `Int32` -- is expected to conform; the gap is specifically
+  e.g. `__add__` on `int32` -- is expected to conform; the gap is specifically
   intrinsic methods that exist only in C++.)
 - There is no **conditional** conformance: no way to state "`list[T]`
   conforms to `P` when `T` conforms to `P`". Conformance is per-concrete
@@ -172,7 +172,7 @@ def _[T: ToJson](self: list[T], w: JsonWriter) -> None:
 
 # A non-conditional impl for a built-in scalar (Goal A, supplying a body):
 @impl(ToJson)
-def _(self: Int32, w: JsonWriter) -> None:
+def _(self: int32, w: JsonWriter) -> None:
     w.write_bigint(self)
 ```
 
@@ -239,7 +239,7 @@ def dumps[T: ToJson](obj: T) -> str:
   free function, the same way other dunders are), or have conformance consult
   the intrinsic/C++ dunder surface. The existing stdlib `Stringable`/`Truthy`/
   `Representable` protocols (`lib/tpy/tpy/_core/_types.py`) are the direct test
-  bed: today `Int32` fails `Stringable` for exactly this reason. Contained and
+  bed: today `int32` fails `Stringable` for exactly this reason. Contained and
   useful well beyond json. Does NOT by itself unblock json/print (those need B).
 - **Goal B (B1 + B2) as the nominal-impl construct**, gated on open decision
   6.1. This is the design-doc-worthy core and the actual unblocker.

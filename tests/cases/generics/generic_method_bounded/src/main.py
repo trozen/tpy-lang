@@ -1,5 +1,5 @@
 # Method-level type parameter with a bound (protocol constraint)
-from tpy import Int32, Comparable
+from tpy import int32, Comparable
 
 class Wrapper[T]:
     val: T
@@ -11,7 +11,7 @@ class Wrapper[T]:
         return a < b
 
 def main() -> None:
-    w = Wrapper[Int32](Int32(5))
+    w = Wrapper[int32](int32(5))
     print(w.is_less(1, 2))
     print(w.is_less(10, 3))
 

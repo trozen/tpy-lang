@@ -54,7 +54,7 @@ void test_format_spec() {
     double val = 3.14159;
     // print(f"{val:.2f}")
     std::cout << std::format("{:.2f}", val) << "\n";
-    // n: Int32 = Int32(255)
+    // n: int32 = int32(255)
     int32_t n = 255;
     // print(f"{n:#x}")
     std::cout << std::format("{:#x}", n) << "\n";

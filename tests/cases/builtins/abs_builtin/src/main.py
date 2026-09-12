@@ -1,11 +1,11 @@
-"""Test abs() builtin function for Int32, BigInt, and float."""
-from tpy import Int32
+"""Test abs() builtin function for int32, BigInt, and float."""
+from tpy import int32
 
-# Test abs with Int32
-x: Int32 = -42
+# Test abs with int32
+x: int32 = -42
 print(abs(x))
-print(abs(Int32(10)))
-print(abs(Int32(0)))
+print(abs(int32(10)))
+print(abs(int32(0)))
 
 # Test abs with BigInt (default int)
 y = -100

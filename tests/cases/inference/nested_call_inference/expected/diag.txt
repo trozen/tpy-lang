@@ -1,4 +1,4 @@
 main.py:11: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
-main.py:13: warning: Own[Box[Int32]] param 'b' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:16: warning: Own[Box[Int32]] param 'a' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:16: warning: Own[Box[Int32]] param 'b' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:13: warning: Own[Box[int32]] param 'b' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:16: warning: Own[Box[int32]] param 'a' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:16: warning: Own[Box[int32]] param 'b' is never consumed (not stored in a field, forwarded to another Own[T], or returned)

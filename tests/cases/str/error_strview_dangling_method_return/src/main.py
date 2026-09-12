@@ -1,9 +1,9 @@
 # StrView return from method call that returns owned str dangles.
-from tpy import Int32, StrView
+from tpy import int32, StrView
 
 class Reader:
     _data: str
-    _pos: Int32
+    _pos: int32
 
     def __init__(self, data: str) -> None:
         self._data = data

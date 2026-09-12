@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def sum_all(*args: Int32) -> Int32:
+// def sum_all(*args: int32) -> int32:
 int32_t sum_all(::tpy::varargs<const int32_t> args) {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for x in args:
     auto& __obj_0 = args;
@@ -23,11 +23,11 @@ int32_t sum_all(::tpy::varargs<const int32_t> args) {
 
 // def main() -> None:
 void main() {
-    // items: list[Int32] = [1, 2, 3]
+    // items: list[int32] = [1, 2, 3]
     std::vector<int32_t> items = {1, 2, 3};
     // print(sum_all(*items))
     std::cout << sum_all(::tpy::varargs<const int32_t>(::tpy::as_span(items))) << "\n";
-    // more: list[Int32] = [10, 20]
+    // more: list[int32] = [10, 20]
     std::vector<int32_t> more = {10, 20};
     // print(sum_all(*more))
     std::cout << sum_all(::tpy::varargs<const int32_t>(::tpy::as_span(more))) << "\n";

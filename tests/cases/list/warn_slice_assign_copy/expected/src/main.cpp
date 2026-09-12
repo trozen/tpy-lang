@@ -6,9 +6,9 @@ namespace tpyapp::main {
 
 // def test_warn_non_last_use() -> None:
 void test_warn_non_last_use() {
-    // a: list[Node] = [Node(Int32(1)), Node(Int32(2)), Node(Int32(3))]
+    // a: list[Node] = [Node(int32(1)), Node(int32(2)), Node(int32(3))]
     std::vector<Node> a = {Node(1), Node(2), Node(3)};
-    // b: list[Node] = [Node(Int32(10)), Node(Int32(20))]
+    // b: list[Node] = [Node(int32(10)), Node(int32(20))]
     std::vector<Node> b = {Node(10), Node(20)};
     // a[1:3] = b  # tpyc: warning(/copies Node elements/)
     ::tpy::list_set_slice(a, ::tpy::BasicSlice{1, 3}, b);
@@ -18,9 +18,9 @@ void test_warn_non_last_use() {
 
 // def test_no_warn_last_use() -> None:
 void test_no_warn_last_use() {
-    // a: list[Node] = [Node(Int32(1)), Node(Int32(2)), Node(Int32(3))]
+    // a: list[Node] = [Node(int32(1)), Node(int32(2)), Node(int32(3))]
     std::vector<Node> a = {Node(1), Node(2), Node(3)};
-    // b: list[Node] = [Node(Int32(10)), Node(Int32(20))]
+    // b: list[Node] = [Node(int32(10)), Node(int32(20))]
     std::vector<Node> b = {Node(10), Node(20)};
     // a[1:3] = b  # tpyc: ok  (last use of b -> auto-move)
     ::tpy::list_set_slice(a, ::tpy::BasicSlice{1, 3}, std::move(b));
@@ -28,17 +28,17 @@ void test_no_warn_last_use() {
 
 // def test_no_warn_literal() -> None:
 void test_no_warn_literal() {
-    // a: list[Node] = [Node(Int32(1)), Node(Int32(2)), Node(Int32(3))]
+    // a: list[Node] = [Node(int32(1)), Node(int32(2)), Node(int32(3))]
     std::vector<Node> a = {Node(1), Node(2), Node(3)};
-    // a[1:3] = [Node(Int32(10)), Node(Int32(20))]  # tpyc: ok  (temporary)
+    // a[1:3] = [Node(int32(10)), Node(int32(20))]  # tpyc: ok  (temporary)
     ::tpy::list_set_slice(a, ::tpy::BasicSlice{1, 3}, std::vector<Node>{Node(10), Node(20)});
 }
 
 // def test_no_warn_explicit_copy() -> None:
 void test_no_warn_explicit_copy() {
-    // a: list[Node] = [Node(Int32(1)), Node(Int32(2)), Node(Int32(3))]
+    // a: list[Node] = [Node(int32(1)), Node(int32(2)), Node(int32(3))]
     std::vector<Node> a = {Node(1), Node(2), Node(3)};
-    // b: list[Node] = [Node(Int32(10)), Node(Int32(20))]
+    // b: list[Node] = [Node(int32(10)), Node(int32(20))]
     std::vector<Node> b = {Node(10), Node(20)};
     // a[1:3] = b.copy()  # tpyc: ok  (explicit copy)
     ::tpy::list_set_slice(a, ::tpy::BasicSlice{1, 3}, ::tpy::list_copy(b));

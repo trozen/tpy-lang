@@ -3,17 +3,17 @@
 # protocol_narrowings in codegen; without a case-boundary save/restore, the
 # narrowing leaks and affects for-loop dispatch in later cases.
 from typing import Iterable
-from tpy import Int32, Spannable, span
+from tpy import int32, Spannable, span
 
 
-def iter_sum(items: Iterable[Int32]) -> Int32:
-    total: Int32 = 0
+def iter_sum(items: Iterable[int32]) -> int32:
+    total: int32 = 0
     for y in items:
         total += y
     return total
 
 
-def process(items: Spannable[Int32] | Iterable[Int32], tag: str) -> Int32:
+def process(items: Spannable[int32] | Iterable[int32], tag: str) -> int32:
     match tag:
         case "span_path":
             # Present so codegen emits the Spannable narrowing; not executed
@@ -21,7 +21,7 @@ def process(items: Spannable[Int32] | Iterable[Int32], tag: str) -> Int32:
             # not match the runtime_checkable Spannable protocol in CPython).
             assert isinstance(items, Spannable)
             s = span(items)
-            total: Int32 = 0
+            total: int32 = 0
             for x in s:
                 total += x
             return total
@@ -37,7 +37,7 @@ def process(items: Spannable[Int32] | Iterable[Int32], tag: str) -> Int32:
 
 
 def main() -> None:
-    nums: list[Int32] = [10, 20, 30]
+    nums: list[int32] = [10, 20, 30]
     print(process(nums, "iter_path"))
     print(process(nums, "other"))
 

@@ -15,13 +15,13 @@ void main();
 
 // class Buffer:
 struct Buffer {
-    // _items: list[Int32]
+    // _items: list[int32]
     std::vector<int32_t> _items;
 
     // def __init__(self) -> None:
     Buffer();
 
-    // def items(self) -> Span[Int32]:
+    // def items(self) -> Span[int32]:
     std::span<int32_t> items();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Buffer";
 };
@@ -35,7 +35,7 @@ inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {
 // def __init__(self) -> None:
 inline Buffer::Buffer() : _items(std::vector<int32_t>{1, 2, 3}) {}
 
-// def items(self) -> Span[Int32]:
+// def items(self) -> Span[int32]:
 inline std::span<int32_t> Buffer::items() {
     // return self._items
     return ::tpy::as_mut_span(this->_items);

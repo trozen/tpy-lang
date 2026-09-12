@@ -1,11 +1,11 @@
 # Tuple unpacking into fresh variables
-from tpy import Int32
+from tpy import int32
 
-def get_pair() -> tuple[Int32, str]:
-    return (Int32(42), "hello")
+def get_pair() -> tuple[int32, str]:
+    return (int32(42), "hello")
 
-def get_triple() -> tuple[bool, Int32, str]:
-    return (True, Int32(7), "world")
+def get_triple() -> tuple[bool, int32, str]:
+    return (True, int32(7), "world")
 
 def main() -> None:
     a, b = get_pair()

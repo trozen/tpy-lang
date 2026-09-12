@@ -18,10 +18,10 @@ void main();
 
 // class Fixed(ValueType):
 struct Fixed {
-    // off: Int64
+    // off: int64
     int64_t off;
 
-    // def __init__(self, off: Int64) -> None:
+    // def __init__(self, off: int64) -> None:
     Fixed() = default;
     explicit Fixed(int64_t off);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Fixed";
@@ -40,10 +40,10 @@ namespace tpyapp::main {
 
 // class Base:
 struct Base {
-    // v: Int64
+    // v: int64
     int64_t v;
 
-    // def __init__(self, a: Int64, tz: "Fixed | None" = None, *, tag: Int64) -> None:
+    // def __init__(self, a: int64, tz: "Fixed | None" = None, *, tag: int64) -> None:
     Base() = default;
     explicit Base(int64_t a, std::optional<Fixed> tz, int64_t tag);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
@@ -57,7 +57,7 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
 // class Sub(Base):
 struct Sub : Base {
 
-    // def __init__(self, a: Int64) -> None:
+    // def __init__(self, a: int64) -> None:
     Sub() = default;
     explicit Sub(int64_t a);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Sub";
@@ -71,7 +71,7 @@ inline std::ostream& operator<<(std::ostream& os, const Sub& obj) {
 // class Passing(Base):
 struct Passing : Base {
 
-    // def __init__(self, a: Int64) -> None:
+    // def __init__(self, a: int64) -> None:
     Passing() = default;
     explicit Passing(int64_t a);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Passing";
@@ -83,16 +83,16 @@ inline std::ostream& operator<<(std::ostream& os, const Passing& obj) {
 }
 
 
-// def __init__(self, off: Int64) -> None:
+// def __init__(self, off: int64) -> None:
 inline Fixed::Fixed(int64_t off) : off(off) {}
 
-// def __init__(self, a: Int64, tz: "Fixed | None" = None, *, tag: Int64) -> None:
+// def __init__(self, a: int64, tz: "Fixed | None" = None, *, tag: int64) -> None:
 inline Base::Base(int64_t a, std::optional<Fixed> tz, int64_t tag) : v((::tpy::add_check<int64_t>((::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(a, 100)), (::tpy::mul_check<int64_t>((((!tz.has_value())) ? (0) : ((*tz).off)), 10)))), tag))) {}
 
-// def __init__(self, a: Int64) -> None:
+// def __init__(self, a: int64) -> None:
 inline Sub::Sub(int64_t a) : Base(a, std::nullopt, 1) {}
 
-// def __init__(self, a: Int64) -> None:
+// def __init__(self, a: int64) -> None:
 inline Passing::Passing(int64_t a) : Base(a, Fixed(5), 2) {}
 void __tpy_init();
 } // namespace tpyapp::main

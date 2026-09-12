@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def test_stepped() -> None:
 void test_stepped() {
-    // items: list[Int32] = [1, 2, 3, 4, 5, 6, 7, 8]
+    // items: list[int32] = [1, 2, 3, 4, 5, 6, 7, 8]
     std::vector<int32_t> items = {1, 2, 3, 4, 5, 6, 7, 8};
     // every_other = items[::2]
     std::vector<int32_t> every_other = ::tpy::list_stepped_slice(items, ::tpy::Slice{std::nullopt, std::nullopt, 2});

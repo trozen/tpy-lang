@@ -3,7 +3,7 @@
 # begin/end) routes through the else branch of `Iterable[T] | NativeIterable[T]`
 # narrowing at runtime under tpyc. The C++ `NativeIterable` concept requires
 # `std::ranges::begin(t)`/`end(t)`, which Counter doesn't have, so
-# `if constexpr (NativeIterable<Counter, Int32>)` evaluates False and the
+# `if constexpr (NativeIterable<Counter, int32>)` evaluates False and the
 # universal __iter__/__next__ branch runs.
 #
 # Skipped under CPython because the CPython `NativeIterable` stub is
@@ -11,18 +11,18 @@
 # `__iter__` passes isinstance structurally, taking the if branch instead.
 # Tracked as a sema/C++/CPython-alignment TODO.
 from typing import Iterable
-from tpy import Int32, NativeIterable, Own
+from tpy import int32, NativeIterable, Own
 
 
 class CounterIter:
-    current: Int32
-    limit: Int32
+    current: int32
+    limit: int32
 
-    def __init__(self, start: Int32, limit: Int32) -> None:
+    def __init__(self, start: int32, limit: int32) -> None:
         self.current = start
         self.limit = limit
 
-    def __next__(self) -> Int32:
+    def __next__(self) -> int32:
         if self.current < self.limit:
             result = self.current
             self.current += 1
@@ -31,10 +31,10 @@ class CounterIter:
 
 
 class Counter:
-    start: Int32
-    limit: Int32
+    start: int32
+    limit: int32
 
-    def __init__(self, start: Int32, limit: Int32) -> None:
+    def __init__(self, start: int32, limit: int32) -> None:
         self.start = start
         self.limit = limit
 
@@ -42,8 +42,8 @@ class Counter:
         return CounterIter(self.start, self.limit)
 
 
-def sum_fast(it: Iterable[Int32] | NativeIterable[Int32]) -> Int32:
-    total: Int32 = 0
+def sum_fast(it: Iterable[int32] | NativeIterable[int32]) -> int32:
+    total: int32 = 0
     if isinstance(it, NativeIterable):
         # NativeIterable branch -- range-for via begin/end.
         for x in it:
@@ -62,7 +62,7 @@ def main() -> None:
     print(sum_fast(c))
 
     # Sanity: a list takes the fast branch (x * 100 each): 1*100 + 2*100 = 300.
-    nums: list[Int32] = [1, 2]
+    nums: list[int32] = [1, 2]
     print(sum_fast(nums))
 
 

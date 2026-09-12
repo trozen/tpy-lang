@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // o = Outer[Int32](1)
+    // o = Outer[int32](1)
     Outer<int32_t> o = Outer<int32_t>(1);
     // o.put(7)
     o.put(7);

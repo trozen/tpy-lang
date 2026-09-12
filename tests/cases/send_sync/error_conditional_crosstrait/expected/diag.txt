@@ -1,2 +1,2 @@
-main.py:16: error: assert_send assertion failed: Shared[list[Int32]] is not Send
-+-- type parameter 'T' = list[Int32] is not Send (the bound also requires Sync, which list[Int32] lacks)
+main.py:16: error: assert_send assertion failed: Shared[list[int32]] is not Send
++-- type parameter 'T' = list[int32] is not Send (the bound also requires Sync, which list[int32] lacks)

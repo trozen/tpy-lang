@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 
 def main() -> None:
-    n: Int32 = 3
+    n: int32 = 3
     match n:
         case x as y:
             print(x, y)

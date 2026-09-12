@@ -22,10 +22,10 @@ std::string describe(::tpy::Union<const ::tpyapp::shapes::Circle*, const ::tpyap
 
 // def main() -> None:
 void main() {
-    // c: Shape = Circle(Int32(10))
+    // c: Shape = Circle(int32(10))
     Shape __slot_1 = ::tpyapp::shapes::Circle(10);
     ::tpy::Union<::tpyapp::shapes::Circle*, ::tpyapp::shapes::Rect*> c = ::tpy::to_ptr_variant(__slot_1);
-    // r: Shape = Rect(Int32(3))
+    // r: Shape = Rect(int32(3))
     Shape __slot_2 = ::tpyapp::shapes::Rect(3);
     ::tpy::Union<::tpyapp::shapes::Circle*, ::tpyapp::shapes::Rect*> r = ::tpy::to_ptr_variant(__slot_2);
     // print(describe(c))

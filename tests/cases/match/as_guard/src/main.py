@@ -1,7 +1,7 @@
 # match/case as-patterns combined with guards
-from tpy import Int32
+from tpy import int32
 
-def literal_as_guard(x: Int32) -> str:
+def literal_as_guard(x: int32) -> str:
     match x:
         case 1 as y if y > 0:
             return "one positive"
@@ -11,7 +11,7 @@ def literal_as_guard(x: Int32) -> str:
             return "other"
     return ""
 
-def wildcard_as_guard(x: Int32) -> str:
+def wildcard_as_guard(x: int32) -> str:
     match x:
         case _ as y if y > 10:
             return "big"
@@ -20,9 +20,9 @@ def wildcard_as_guard(x: Int32) -> str:
     return ""
 
 def main() -> None:
-    print(literal_as_guard(Int32(1)))
-    print(literal_as_guard(Int32(2)))
-    print(wildcard_as_guard(Int32(20)))
-    print(wildcard_as_guard(Int32(5)))
+    print(literal_as_guard(int32(1)))
+    print(literal_as_guard(int32(2)))
+    print(wildcard_as_guard(int32(20)))
+    print(wildcard_as_guard(int32(5)))
 
 main()

@@ -1,18 +1,18 @@
 from typing import overload, Literal
-from tpy import Int32
+from tpy import int32
 class Dog:
     name: str
     def __init__(self, name: str) -> None:
         self.name = name
 class Cat:
-    lives: Int32
-    def __init__(self, lives: Int32) -> None:
+    lives: int32
+    def __init__(self, lives: int32) -> None:
         self.lives = lives
 @overload
-def pick(m: Literal['r'], n: Int32, a: Dog | Cat) -> Int32: ...
+def pick(m: Literal['r'], n: int32, a: Dog | Cat) -> int32: ...
 @overload
-def pick(m: str, n: Int32, a: Dog | Cat) -> Int32: ...
-def pick(m: str, n: Int32, a: Dog | Cat) -> Int32:
+def pick(m: str, n: int32, a: Dog | Cat) -> int32: ...
+def pick(m: str, n: int32, a: Dog | Cat) -> int32:
     if m == 'w':
         return 1
     elif [i for i in range(n)]:

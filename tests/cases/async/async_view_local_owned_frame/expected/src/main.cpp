@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def pair(n: Int32) -> tuple[str, str]:
+// def pair(n: int32) -> tuple[str, str]:
 std::tuple<std::string, std::string> pair(int32_t n) {
     // return ("host-" + str(n), "port-" + str(n))
     return std::tuple<std::string, std::string>{(::tpy::str_concat("host-", ::tpy::fixed_to_str<int32_t>(n))), (::tpy::str_concat("port-", ::tpy::fixed_to_str<int32_t>(n)))};

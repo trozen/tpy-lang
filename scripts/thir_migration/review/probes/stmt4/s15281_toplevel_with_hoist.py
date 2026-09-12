@@ -1,11 +1,11 @@
-from tpy import Int32
+from tpy import int32
 class Res:
-    v: Int32
-    def __init__(self, v: Int32) -> None:
+    v: int32
+    def __init__(self, v: int32) -> None:
         self.v = v
 class RCM:
     r: Res
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.r = Res(n)
     def __enter__(self) -> Res:
         return self.r

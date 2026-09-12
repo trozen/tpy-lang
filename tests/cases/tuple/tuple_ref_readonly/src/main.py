@@ -1,9 +1,9 @@
 # @readonly method returning tuple with reference element
-from tpy import Int32, readonly
+from tpy import int32, readonly
 
 class Container:
-    value: Int32
-    def __init__(self, value: Int32) -> None:
+    value: int32
+    def __init__(self, value: int32) -> None:
         self.value = value
     def __repr__(self) -> str:
         return "Container(value=" + str(self.value) + ")"
@@ -14,11 +14,11 @@ class Wrapper:
         self.inner = inner
 
     @readonly
-    def get_pair(self) -> tuple[Container, Int32]:
+    def get_pair(self) -> tuple[Container, int32]:
         return (self.inner, self.inner.value)
 
 def main() -> None:
-    c = Container(Int32(42))
+    c = Container(int32(42))
     w = Wrapper(c)
     pair = w.get_pair()
     print(pair[0])

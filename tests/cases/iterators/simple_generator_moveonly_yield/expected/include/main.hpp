@@ -16,10 +16,10 @@ void main();
 // @nocopy
 // class Tok:
 struct Tok {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Tok() = default;
     explicit Tok(int32_t v);
     // non-copyable (@nocopy)
@@ -36,10 +36,10 @@ inline std::ostream& operator<<(std::ostream& os, const Tok& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Tok::Tok(int32_t v) : v(v) {}
 inline auto toks_while(int32_t n) {
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     return ::tpy::make_generator<Tok>(
         [n, i]() mutable -> std::optional<Tok> {

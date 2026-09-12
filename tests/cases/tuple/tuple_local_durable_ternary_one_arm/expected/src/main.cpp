@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def gen(p: tuple[Int32, Box], b: Box, cond: bool) -> Iterator[tuple[Int32, Box]]:
+// def gen(p: tuple[int32, Box], b: Box, cond: bool) -> Iterator[tuple[int32, Box]]:
 std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -26,7 +26,7 @@ std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_gen::__next
 }
 
 
-// def gen(p: tuple[Int32, Box], b: Box, cond: bool) -> Iterator[tuple[Int32, Box]]:
+// def gen(p: tuple[int32, Box], b: Box, cond: bool) -> Iterator[tuple[int32, Box]]:
 __gen_gen gen(std::tuple<int32_t, Box*> p, Box& b, bool cond) {
     return __gen_gen(p, b, cond);
 }

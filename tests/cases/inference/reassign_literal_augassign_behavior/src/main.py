@@ -1,9 +1,9 @@
-from tpy import Int32
+from tpy import int32
 
 
 def main() -> None:
     x = 0
-    x += Int32(5)
+    x += int32(5)
     print(x)
 
 

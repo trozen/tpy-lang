@@ -6,24 +6,24 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // r1 = Rc.new(State(Int32(1)))
+    // r1 = Rc.new(State(int32(1)))
     ::tpystd::tplib::rc::Rc<State> r1 = Rc<State>::new_<State>(State(1));
     // r2 = r1.clone()
     ::tpystd::tplib::rc::Rc<State> r2 = r1.clone();
     // print(r1.get().x, r2.get().x)  # 1 1
     std::cout << r1.get().x << " " << r2.get().x << "\n";
-    // r1.get().x = Int32(10)
+    // r1.get().x = int32(10)
     r1.get().x = 10;
     // print(r1.get().x, r2.get().x)  # 10 10 -- shared
     std::cout << r1.get().x << " " << r2.get().x << "\n";
-    // r2.get().x = Int32(20)
+    // r2.get().x = int32(20)
     r2.get().x = 20;
     // print(r1.get().x, r2.get().x)  # 20 20 -- shared
     std::cout << r1.get().x << " " << r2.get().x << "\n";
     // # Three-way share
     // r3 = r2.clone()
     ::tpystd::tplib::rc::Rc<State> r3 = r2.clone();
-    // r3.get().x = Int32(30)
+    // r3.get().x = int32(30)
     r3.get().x = 30;
     // print(r1.get().x, r2.get().x, r3.get().x)  # 30 30 30
     std::cout << r1.get().x << " " << r2.get().x << " " << r3.get().x << "\n";

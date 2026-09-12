@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-# INT32 bounds (loop indices and len() return Int32)
+# INT32 bounds (loop indices and len() return int32)
 _INT32_MAX = 2**31 - 1
 _INT32_MIN = -(2**31)
 

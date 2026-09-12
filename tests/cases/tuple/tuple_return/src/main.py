@@ -1,11 +1,11 @@
 # Function returning a tuple, accessing its elements
-from tpy import Int32
+from tpy import int32
 
-def get_pair() -> tuple[Int32, str]:
-    return (Int32(42), "answer")
+def get_pair() -> tuple[int32, str]:
+    return (int32(42), "answer")
 
-def get_triple() -> tuple[bool, Int32, str]:
-    return (True, Int32(7), "lucky")
+def get_triple() -> tuple[bool, int32, str]:
+    return (True, int32(7), "lucky")
 
 def main() -> None:
     pair = get_pair()

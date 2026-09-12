@@ -1,23 +1,23 @@
 # Pending container/view locals passed to non-variadic METHOD params resolve
 # against the param type (list not Array; empty-[] inference; element widening).
-from tpy import Int32, Int64, Span
+from tpy import int32, int64, Span
 from tplib import Box
 
 
 class Sink:
-    def take(self, xs: list[Int32]) -> None:
+    def take(self, xs: list[int32]) -> None:
         xs.append(99)
 
-    def widen(self, xs: list[Int64]) -> None:
+    def widen(self, xs: list[int64]) -> None:
         xs.append(1000)
 
-    def first(self, xs: Span[Int32]) -> Int32:
+    def first(self, xs: Span[int32]) -> int32:
         return xs[0]
 
-    def add(self, d: dict[str, Int32]) -> None:
+    def add(self, d: dict[str, int32]) -> None:
         d["z"] = 100
 
-    def grow(self, s: set[Int32]) -> None:
+    def grow(self, s: set[int32]) -> None:
         s.add(50)
 
     def greet(self, name: str) -> str:
@@ -35,7 +35,7 @@ def main() -> None:
     sink.take(e)
     print(e)
 
-    span_src = [1, 2, 3]  # tpyc: type(/Array\[Int32, 3\]/)
+    span_src = [1, 2, 3]  # tpyc: type(/Array\[int32, 3\]/)
     print(sink.first(span_src))
 
     w = [4]

@@ -19,10 +19,10 @@ void main();
 
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
 
-    // def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: int32) -> None:
     Point() = default;
     explicit Point(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
@@ -92,7 +92,7 @@ struct __gen_bump : public ::tpy::next_iter_mixin<__gen_bump, int32_t> {
 };
 
 
-// def __init__(self, x: Int32) -> None:
+// def __init__(self, x: int32) -> None:
 inline Point::Point(int32_t x) : x(x) {}
 
 // def __init__(self, items: Own[list[Point]]) -> None:

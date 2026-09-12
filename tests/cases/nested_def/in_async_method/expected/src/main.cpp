@@ -26,7 +26,7 @@ void main() {
     std::cout << c.n << "\n";
 }
 
-// async def bump_twice(self) -> Int32:
+// async def bump_twice(self) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_Counter_bump_twice::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -66,13 +66,13 @@ void __coro_Counter_bump_twice::bump() {
     __self.n = ::tpy::add_check<int32_t>(__self.n, delta);
 }
 
-// def steps(self) -> Iterator[Int32]:
+// def steps(self) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_Counter_steps::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         // step = 100
         step = 100;
-        // def next_offset() -> Int32:
+        // def next_offset() -> int32:
         // def next_offset: frame member
         // yield next_offset()
         __state = S_RESUME_0;

@@ -75,7 +75,7 @@ std::string bucket__lit_3__4(int32_t x) {
 }
 
 // @overload
-// def bucket(x: Int32) -> str: ...
+// def bucket(x: int32) -> str: ...
 std::string bucket(int32_t x) {
     // if x <= 2:
     if ((x <= 2)) {
@@ -101,7 +101,7 @@ void dispatch_int(int32_t x) {
         std::cout << bucket__lit_3__4(x) << "\n";
     // else:
     } else {
-        // # x: Literal[2, 4] -- falls through to Int32 fallback
+        // # x: Literal[2, 4] -- falls through to int32 fallback
         // print(bucket(x))
         std::cout << bucket(x) << "\n";
     }

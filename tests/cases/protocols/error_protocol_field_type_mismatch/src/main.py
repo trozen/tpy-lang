@@ -1,12 +1,12 @@
-from tpy import Int32
+from tpy import int32
 from typing import Protocol
 
 
 class HasValue(Protocol):
-    value: Int32
+    value: int32
 
 
-# Record has 'value' field but wrong type (bool instead of Int32)
+# Record has 'value' field but wrong type (bool instead of int32)
 class WrongType:
     value: bool
 
@@ -14,7 +14,7 @@ class WrongType:
         self.value = v
 
 
-def get_value[T: HasValue](item: T) -> Int32:
+def get_value[T: HasValue](item: T) -> int32:
     return item.value
 
 

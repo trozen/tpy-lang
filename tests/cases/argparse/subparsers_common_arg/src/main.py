@@ -1,11 +1,11 @@
 # Subparsers + a top-level common flag. The common flag stays on
 # the top namespace as `args.verbose`; per-sub fields land on the
 # top namespace as Optional[T].
-from tpy import Int32
+from tpy import int32
 from argparse import ArgumentParser
 
 
-def main() -> Int32:
+def main() -> int32:
     parser = ArgumentParser(prog="prog")
     parser.add_argument("-v", "--verbose", action="store_true")
 

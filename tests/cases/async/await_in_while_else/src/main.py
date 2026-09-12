@@ -1,14 +1,14 @@
 # `await` inside a `while ... else:` clause (Phase D3). The else runs on
 # normal loop exit and is skipped by `break`; both arms are exercised.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
 async def tick(label: str) -> None:
     print(label)
 
 
-async def drive(brk: Int32) -> None:
+async def drive(brk: int32) -> None:
     i = 0
     while i < 3:
         if i == brk:

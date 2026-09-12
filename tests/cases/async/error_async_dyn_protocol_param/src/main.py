@@ -3,24 +3,24 @@
 # suspension. Pins a clean FRONT-END reject, never a C++ build error.
 # BUGS.md#res-param-dyn-protocol-frame
 import asyncio
-from tpy import Int32, dynamic
+from tpy import int32, dynamic
 from typing import Protocol
 
 
 @dynamic
 class Src(Protocol):
-    def get(self) -> Int32: ...
+    def get(self) -> int32: ...
 
     def bump(self) -> None: ...
 
 
 class Impl:
-    n: Int32
+    n: int32
 
     def __init__(self) -> None:
         self.n = 7
 
-    def get(self) -> Int32:
+    def get(self) -> int32:
         return self.n
 
     def bump(self) -> None:

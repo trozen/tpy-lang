@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 class R:
-    n: Int32
-    def __init__(self, n: Int32) -> None:
+    n: int32
+    def __init__(self, n: int32) -> None:
         self.n = n
 class Base(Exception):
     r: R
@@ -10,7 +10,7 @@ class Base(Exception):
         self.r = r
 class Derived(Base):
     pass
-def f(n: Int32) -> Int32:
+def f(n: int32) -> int32:
     if n > 0:
         raise Derived(R(n))
     return n

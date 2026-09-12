@@ -79,10 +79,10 @@ void main();
 // class Plain:
 struct Plain {
     // # Neither __bool__ nor __len__ -- Python's default object truthiness.
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Plain() = default;
     explicit Plain(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Plain";
@@ -95,14 +95,14 @@ inline std::ostream& operator<<(std::ostream& os, const Plain& obj) {
 
 // class Bag:
 struct Bag {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Bag() = default;
     explicit Bag(int32_t n);
 
-    // def __len__(self) -> Int32:
+    // def __len__(self) -> int32:
     int32_t __len__() const;
 
     size_t size() const {
@@ -355,13 +355,13 @@ struct __gen_and_branch : public ::tpy::next_iter_mixin<__gen_and_branch, int32_
 };
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Plain::Plain(int32_t n) : n(n) {}
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Bag::Bag(int32_t n) : n(n) {}
 
-// def __len__(self) -> Int32:
+// def __len__(self) -> int32:
 inline int32_t Bag::__len__() const {
     // return self.n
     return this->n;

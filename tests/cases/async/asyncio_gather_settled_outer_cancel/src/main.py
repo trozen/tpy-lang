@@ -6,18 +6,18 @@
 # behavior is for an *independently-cancelled sub-task* -- see
 # asyncio_gather_settled_subtask_cancel.)
 import asyncio
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
-async def slow() -> Int32:
+async def slow() -> int32:
     # 1s never elapses -- the outer cancel lands at ~1ms; the wide margin
     # keeps the cancel-before-completion race deterministic under load.
     await asyncio.sleep(1.0)
-    return Int32(0)
+    return int32(0)
 
 
-async def gather_helper() -> Own[list[asyncio.Settled[Int32]]]:
-    tasks: list[asyncio.Task[Int32]] = []
+async def gather_helper() -> Own[list[asyncio.Settled[int32]]]:
+    tasks: list[asyncio.Task[int32]] = []
     tasks.append(asyncio.create_task(slow()))
     tasks.append(asyncio.create_task(slow()))
     return await asyncio.gather_list_settled(tasks)

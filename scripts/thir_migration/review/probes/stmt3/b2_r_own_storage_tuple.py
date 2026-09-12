@@ -1,7 +1,7 @@
-from tpy import Int32, Own, Ptr, StrView
+from tpy import int32, Own, Ptr, StrView
 class Box:
-    n: Int32
-    def __init__(self, n: Int32) -> None:
+    n: int32
+    def __init__(self, n: int32) -> None:
         self.n = n
 def a(f: bool) -> Own[tuple[str, Box]]:
     t = ('x', Box(1))

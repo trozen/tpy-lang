@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def read_container(c: Container[Int32]) -> None:
+// def read_container(c: Container[int32]) -> None:
 void read_container(const Container<int32_t>& c) {
     // print(c.value)
     std::cout << c.value << "\n";
@@ -12,10 +12,10 @@ void read_container(const Container<int32_t>& c) {
 
 // def main() -> None:
 void main() {
-    // ic: IntContainer = IntContainer(Int32(42))
+    // ic: IntContainer = IntContainer(int32(42))
     IntContainer ic = IntContainer(42);
     // # Value upcast to generic parent
-    // c: Container[Int32] = ic  # tpyc: warning(/upcast narrows 'IntContainer' to 'Container\[Int32\]'/)
+    // c: Container[int32] = ic  # tpyc: warning(/upcast narrows 'IntContainer' to 'Container\[int32\]'/)
     Container<int32_t>& c = ic;
     // print(c.value)
     std::cout << c.value << "\n";

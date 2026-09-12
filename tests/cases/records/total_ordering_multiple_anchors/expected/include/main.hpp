@@ -17,10 +17,10 @@ inline constexpr std::string_view __name__ = "__main__";
 // @total_ordering
 // class Score:
 struct Score {
-    // val: Int32
+    // val: int32
     int32_t val;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Score() = default;
     explicit Score(int32_t v);
 
@@ -65,7 +65,7 @@ inline std::ostream& operator<<(std::ostream& os, const Score& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Score::Score(int32_t v) : val(v) {}
 
 // def __eq__(self, other: "Score") -> bool:

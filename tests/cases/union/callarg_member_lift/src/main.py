@@ -1,26 +1,26 @@
 # Member-typed record names / None into pointer-variant union arg slots lift
 # inline; callees mutate through the lift and callers observe it (aliasing).
-from tpy import Int32
+from tpy import int32
 
 
 class A:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
 class B:
-    y: Int32
+    y: int32
 
-    def __init__(self, y: Int32) -> None:
+    def __init__(self, y: int32) -> None:
         self.y = y
 
 
 class Counter:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def bump_via_union(self) -> None:
@@ -31,7 +31,7 @@ class Pair:
     a1: A
     a2: A
 
-    def __init__(self, m: Int32, n: Int32) -> None:
+    def __init__(self, m: int32, n: int32) -> None:
         self.a1 = A(m)
         self.a2 = A(n)
 
@@ -54,7 +54,7 @@ def bump_counter(u: Counter | A) -> None:
         u.n = u.n + 100
 
 
-def describe(u: A | B | None) -> Int32:
+def describe(u: A | B | None) -> int32:
     if u is None:
         return -1
     if isinstance(u, A):
@@ -62,7 +62,7 @@ def describe(u: A | B | None) -> Int32:
     return u.y
 
 
-def via_param(a: A) -> Int32:
+def via_param(a: A) -> int32:
     bump(a)
     return a.x
 

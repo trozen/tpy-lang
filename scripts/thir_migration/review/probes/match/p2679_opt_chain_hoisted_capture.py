@@ -1,14 +1,14 @@
-from tpy import Int32
+from tpy import int32
 from typing import Optional
 
 class Box:
-    val: Int32
-    def __init__(self, val: Int32) -> None:
+    val: int32
+    def __init__(self, val: int32) -> None:
         self.val = val
 
 class Inner:
-    v: Int32
-    def __init__(self, v: Int32) -> None:
+    v: int32
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 class Outer:
@@ -17,8 +17,8 @@ class Outer:
         self.inner = inner
 
 class Cat:
-    lives: Int32
-    def __init__(self, lives: Int32) -> None:
+    lives: int32
+    def __init__(self, lives: int32) -> None:
         self.lives = lives
 
 class Dog:
@@ -26,7 +26,7 @@ class Dog:
     def __init__(self, name: str) -> None:
         self.name = name
 
-def f(o: Optional[Cat]) -> Int32:
+def f(o: Optional[Cat]) -> int32:
     match o:
         case Cat(lives=1) as bb:
             pass

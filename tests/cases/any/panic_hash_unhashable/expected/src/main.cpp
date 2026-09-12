@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // x: Any = [Int32(1), Int32(2), Int32(3)]
+    // x: Any = [int32(1), int32(2), int32(3)]
     ::tpy::Any x = ::tpy::make_any(std::vector<int32_t>{1, 2, 3});
     // print(hash(x))
     std::cout << ::tpy::__hash__(x) << "\n";

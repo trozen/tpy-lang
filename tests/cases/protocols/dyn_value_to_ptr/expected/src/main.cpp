@@ -4,14 +4,14 @@
 namespace tpyapp::main {
 
 
-// def make_waker(h: Awaker, task_id: Int32) -> None:
+// def make_waker(h: Awaker, task_id: int32) -> None:
 void make_waker(Awaker& h, int32_t task_id) {
     // # Identity at a callee site: forwards a protocol value through Ptr[P].
     // _consume(h, task_id)
     _consume(&h, task_id);
 }
 
-// def _consume(p: Ptr[Awaker], task_id: Int32) -> None:
+// def _consume(p: Ptr[Awaker], task_id: int32) -> None:
 void _consume(Awaker* p, int32_t task_id) {
     // p.mark(task_id)
     ::tpy::deref_check(p).mark(task_id);

@@ -2,12 +2,12 @@
 # Tuple literals at the list-literal site are lifted via tuple_to_storage
 # during list initialization. Subscript reads in pointer-form param context
 # go through tuple_to_pointer.
-from tpy import Int32
+from tpy import int32
 
 
 class T:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 

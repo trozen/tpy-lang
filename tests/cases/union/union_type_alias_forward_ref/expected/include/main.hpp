@@ -17,10 +17,10 @@ void main();
 
 // class Circle:
 struct Circle {
-    // radius: Int32
+    // radius: int32
     int32_t radius;
 
-    // def __init__(self, radius: Int32) -> None:
+    // def __init__(self, radius: int32) -> None:
     Circle() = default;
     explicit Circle(int32_t radius);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Circle";
@@ -33,10 +33,10 @@ inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
 
 // class Rect:
 struct Rect {
-    // width: Int32
+    // width: int32
     int32_t width;
 
-    // def __init__(self, width: Int32) -> None:
+    // def __init__(self, width: int32) -> None:
     Rect() = default;
     explicit Rect(int32_t width);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Rect";
@@ -48,10 +48,10 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
 }
 
 
-// def __init__(self, radius: Int32) -> None:
+// def __init__(self, radius: int32) -> None:
 inline Circle::Circle(int32_t radius) : radius(radius) {}
 
-// def __init__(self, width: Int32) -> None:
+// def __init__(self, width: int32) -> None:
 inline Rect::Rect(int32_t width) : width(width) {}
 using Shape = ::tpy::Union<Circle, Rect>;
 

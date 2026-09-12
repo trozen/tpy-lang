@@ -5,7 +5,7 @@
 # errors, time.sleep negative, negative shift count.
 
 import time
-from tpy import Int32
+from tpy import int32
 
 
 def main() -> None:
@@ -90,8 +90,8 @@ def main() -> None:
 
     # Negative shift count (fixed-int).
     try:
-        a: Int32 = Int32(1)
-        b: Int32 = Int32(-1)
+        a: int32 = int32(1)
+        b: int32 = int32(-1)
         print(a << b)
     except ValueError as e:
         print("caught:", str(e))

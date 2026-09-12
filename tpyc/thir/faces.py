@@ -128,7 +128,7 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # at a storage sink: bare
     "move.opt_own_ptr_lift",        # ptr-repr Optional name lifts owning
                                     # storage via ptr_to_optional_move
-    "arg.native_protocol_value",    # scalar/Char/str value at a native
+    "arg.native_protocol_value",    # scalar/char/str value at a native
                                     # protocol slot -> bare render (__hash__)
     "arg.native_protocol_open_call",  # open-T CALL rvalue at the same slot
                                     # -> bare (hash(self.get()) in a [T] body)
@@ -231,7 +231,7 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # Optional[bytes] binding at its
                                     # family's concat operand: the VIEW
                                     # arm's `(*t)` deref
-    "binop.char_concat",            # Char-typed str-concat operand: the
+    "binop.char_concat",            # char-typed str-concat operand: the
                                     # resolved overload's char_to_str
                                     # operand wrapper
     "binop.scalar_raw",             # resolver-less scalar binop (post-sema
@@ -243,7 +243,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "binop.tuple_ptr_needle",       # pointer-repr tuple-literal membership
                                     # needle: the tuple_to_storage lift
                                     # over the borrow-form literal
-    "subscript.union_elem_tuple",   # `pair[1]` on `tuple[A | B, Int32]`:
+    "subscript.union_elem_tuple",   # `pair[1]` on `tuple[A | B, int32]`:
                                     # the sibling VALUE slot reads bare
     "call.union_elem_tuple_arg",    # ... and the whole tuple at a matching
                                     # param slot (name / borrow literal)
@@ -429,7 +429,7 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # bare (`count(passthru(tree))`)
     "call.own_tuple_storage_ret",   # Own[tuple]-declared callee at the
                                     # owning frame-slot emplace sink
-    "call.open_value_tuple_ret",    # `tuple[T, Int32]` call result bare at
+    "call.open_value_tuple_ret",    # `tuple[T, int32]` call result bare at
                                     # the storage sink (open element, no lift)
     "call.union_elem_tuple_ret",
     # A REFERENCE-element tuple call result at the tuple-source sink
@@ -526,7 +526,7 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # INSTANTIATION is value-typed (the slot
                                     # is `const T&`) -> the rvalue inline
     "ctor.instantiation",           # record-ctor instantiation form
-                                    # (`Cell[Int32]()` / `Poll[T]()`) ->
+                                    # (`Cell[int32]()` / `Poll[T]()`) ->
                                     # rendered `type_to_cpp(call_type)(args)`
     "ctor.typed_dict",              # TypedDict ctor: init_params spelling, no fi
     "call.marker_qualified",        # module-qualified `m.f(x)` / static
@@ -539,7 +539,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "call.module_native",           # bare-@native module callee `m.f(x)`
                                     # -> `::native(args)`
     "call.static_template",         # positional-only @cpp_template static
-                                    # (`UInt32.trunc(i)`) -> template expansion
+                                    # (`uint32.trunc(i)`) -> template expansion
     "call.macro_expansion",         # `@call_macro`/getattr/hasattr call ->
                                     # its sema-synthesized replacement expr
     "call.fstr_expansion",          # `@inline` METHOD call -> the substituted
@@ -675,7 +675,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "arg.own_tuple_borrow_lift",
     "arg.own_tuple_decay_copy",     # still-live storage Own-tuple name at the
                                     # && slot: `sink(auto(p))`
-    "arg.open_value_tuple_name",    # bare NAME at a native `tuple[T, Int32]`
+    "arg.open_value_tuple_name",    # bare NAME at a native `tuple[T, int32]`
                                     # slot -- no lift, the open tuple has none
     "method.recv.bytes_method",     # `srv.recv(32).decode()` -- a bytes-VALUE
                                     # method-call result feeding the outer
@@ -689,11 +689,11 @@ THIR_FACES: frozenset[str] = frozenset({
     "ctor.native",                  # native-record (builtin exception) ctor: `::tpy::OSError(...)`
     "ctor.native_plain",            # plain @native record ctor: `::Vec2(...)` / @native_c `::Point{...}`
     "ctor.ptr_null",                # `Ptr[T]()` -> `static_cast<T*>(nullptr)`
-    "ctor.container_empty_instantiation",  # zero-arg `Array[Int32, 8]()` etc.
+    "ctor.container_empty_instantiation",  # zero-arg `Array[int32, 8]()` etc.
                                     # at the ctor path -> `type_cpp()`
     "ctor.inherited_instantiation", # instantiation spelling over an
                                     # inherited param-ful __init__
-                                    # (`TypedM[Int32](7)`)
+                                    # (`TypedM[int32](7)`)
     "ctor.cross_module",            # imported-record ctor: the qualified
                                     # `::ns::Name(args)` spelling
     "ctor.str_arg",                 # str-slice arg into a str-family ctor slot
@@ -1035,7 +1035,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # Bytes-family FIELD subscript read (lowering; the same field-receiver
     # widening through the bytes dispatch -- `::tpy::bytes_getitem(this->b, i)`).
     "subscript.bytes_field",
-    # A value scalar/Char/enum/typeparam/Ptr field read off a value F1-record
+    # A value scalar/char/enum/typeparam/Ptr field read off a value F1-record
     # field CHAIN receiver (lowering admission; `o.mid.inner.v` -- `_lower_expr`
     # recurses through the receiver, so every link's render is shared with the
     # single-level field read, and admission is the distinguishing site).
@@ -1079,7 +1079,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # -> the STORAGE `std::nullopt`.
     "setitem.optional_none",
     # A scalar source into a value-repr Optional[scalar] element slot
-    # (`xs[0] = 5` on `list[Int32 | None]`) -> the bare scalar.
+    # (`xs[0] = 5` on `list[int32 | None]`) -> the bare scalar.
     "setitem.optval_scalar",
     # Owned-BYTES element read off a list[bytes]/dict-value container
     # (lowering; STORAGE form -- owned sinks copy implicitly, view bindings
@@ -1120,7 +1120,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # THIRFieldAccess inside the shared native-call emit).
     "len.field_recv",
     # A NESTED-CONTAINER element read in a value position (`groups["a"]` off
-    # `dict[str, list[Int32]]`): the checked dunder's element lvalue, which
+    # `dict[str, list[int32]]`): the checked dunder's element lvalue, which
     # lands bare in every value sink because the single element emitter
     # is consumer-blind. Replaced the per-sink `subscript_prechecked` bypasses
     # at len/print, so the gate's receiver checks now apply there too.
@@ -1175,7 +1175,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # rendered target-less).
     "foreach.iter_literal",
     # Str-literal for-each iterable (lowering; `for ch in "abc":` -- the
-    # owning `auto __obj_N = std::string_view("abc");` capture, Char elems).
+    # owning `auto __obj_N = std::string_view("abc");` capture, char elems).
     "foreach.str_literal",
     # Branch-first-declared value locals used after the loop -> `{cpp} {name};`
     # predecls before the loop (lowering; the branch-decl predecls, shared with
@@ -1385,7 +1385,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "ret.closure_ref",              # `return double;` -- a bare func-ref name
                                     # at a Callable return slot
     "ret.tuple_call",               # `return make_pair(n);` -- bare call source
-    # Value-repr Optional[cheap scalar] return slot (`-> Int32 | None`): the
+    # Value-repr Optional[cheap scalar] return slot (`-> int32 | None`): the
     # None-literal `std::nullopt` arm and the whole-optional bare param pass
     # (deref-on-narrow stripped); other scalar sources ride the generic tail.
     "ret.value_opt_none",
@@ -1509,7 +1509,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # (`first(items)` at `list[T]`): binds the ref template param bare.
     "call.generic_open_slot_name",
     # A `T()` default filling an omitted generic param
-    # (`three_params[Int32](10, c=5)` -> `int32_t{}`).
+    # (`three_params[int32](10, c=5)` -> `int32_t{}`).
     "call.tparam_default_construct",
     # A tuple LITERAL at a value-tuple-resolved T slot: the inline spelled
     # brace prvalue (`push_t<...>(pq, std::tuple<...>{2, "second"})`).
@@ -1658,7 +1658,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "ret.tuple_literal",
     "ret.own_storage_tuple",        # Own[tuple[.., record]] literal return ->
                                     # spelled `std::tuple<..>{rvalues}`
-    "ret.wrapper_ref_tuple",        # `return (t, 0)` at tuple[Tree, Int32]
+    "ret.wrapper_ref_tuple",        # `return (t, 0)` at tuple[Tree, int32]
                                     # -> the spelled reference-member brace
     "ret.tuple_name",
     "decl.tuple_literal",
@@ -2165,7 +2165,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # Conditional-expression renders (lowering; cond_pos records at local
     # admission -- the condition-position render is shared with the value
     # emit, so admission is the distinguishing site).
-    "ifexpr.value",                 # scalar / Char / enum result
+    "ifexpr.value",                 # scalar / char / enum result
     "ifexpr.str",                   # str-family result (form-tagged)
     "ifexpr.str_mixed",             # mixed view/owned arms: view-arm wrap
     "ifexpr.bytes",                 # view-result bytes ternary (BORROW span)
@@ -2268,7 +2268,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "fstr.conv_repr",               # `!r` -> `::tpy::repr_of({0})` wrap
     "fstr.conv_str",                # `!s` no-op passthrough (non-user types)
     "fstr.str_field",               # owned-str field arg formats bare
-    "fstr.char_arg",                # Char arg formats bare (`char` is
+    "fstr.char_arg",                # char arg formats bare (`char` is
                                     # std::formattable; no int8 cast)
     "fstr.spec",                    # constant format spec -> `{:spec}`
                                     # placeholder (lowering, routed args only)
@@ -2667,7 +2667,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "arg.native_protocol_field",    # bare optional/record field read at a
                                     # native protocol slot (repr_of(this->f))
     "arg.type_ctor_protocol_field",
-    # An INT-kind type-param arg at a scalar type-ctor slot (`Int32(N)` under
+    # An INT-kind type-param arg at a scalar type-ctor slot (`int32(N)` under
     # `[N: int]`): the non-type template parameter passes bare.
     "arg.type_ctor_int_tparam",  # the same bare member read on the
                                     # TYPE-CTOR arg loop (str(p.name))
@@ -2898,7 +2898,7 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # row (`h.store(b"abc")`)
     "gentuple.field_elem",          # `self.<field>` at an open-T generic
                                     # tuple-literal element slot
-    "decl.open_t_tuple_slot",       # `tuple[T, Int32]` decl slot inside a
+    "decl.open_t_tuple_slot",       # `tuple[T, int32]` decl slot inside a
                                     # generic body: the plain spelled copy
     "method.protocol_open_t_tuple_ret",  # open-T tuple RESULT of a
                                     # protocol method (`s.pair()`)

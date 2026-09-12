@@ -2,12 +2,12 @@
 from tpy import *
 
 class C:
-    value: Int32
-    def __init__(self, value: Int32):
+    value: int32
+    def __init__(self, value: int32):
         self.value = value
 
     @staticmethod
-    def create(x: Int32) -> Own[C]:
+    def create(x: int32) -> Own[C]:
         return C(x)
 
-x = C[Int32].create(1)  # tpyc: error(/not generic/)
+x = C[int32].create(1)  # tpyc: error(/not generic/)

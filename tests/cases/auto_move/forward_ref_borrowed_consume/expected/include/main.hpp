@@ -17,7 +17,7 @@ int32_t drop(std::vector<P>&& xs);
 
 // class P:
 struct P {
-    // vals: list[Int32]
+    // vals: list[int32]
     std::vector<int32_t> vals;
 
     // def __init__(self):

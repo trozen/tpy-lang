@@ -3,14 +3,14 @@
 # deleted copy ctor is never invoked, and the loop var roots in the
 # frame-resident self -- a durable borrow source. Mutation reaches self.items.
 from typing import Iterator
-from tpy import Int32, nocopy
+from tpy import int32, nocopy
 
 
 @nocopy
 class Handle:
-    fd: Int32
+    fd: int32
 
-    def __init__(self, fd: Int32) -> None:
+    def __init__(self, fd: int32) -> None:
         self.fd = fd
 
 

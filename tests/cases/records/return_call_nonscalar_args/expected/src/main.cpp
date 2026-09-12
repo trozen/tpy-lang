@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def build(label: str, values: list[Int32]) -> Own[Config]:
+// def build(label: str, values: list[int32]) -> Own[Config]:
 Config build(std::string_view label, const std::vector<int32_t>& values) {
     // return Config(label, len(values))
     return Config(label, ::tpy::__len__(values));
@@ -18,7 +18,7 @@ Config make() {
     return build("cfg", xs);
 }
 
-// def sized() -> Int32:
+// def sized() -> int32:
 int32_t sized() {
     // ys = [1, 2]
     std::vector<int32_t> ys = {1, 2};

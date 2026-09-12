@@ -17,11 +17,11 @@ void connect(std::string_view host, const Options& kwargs) {
 // def main() -> None:
 void main() {
     // # host positional, kwargs explicit
-    // connect("localhost", port=Int32(9090), debug=False)
+    // connect("localhost", port=int32(9090), debug=False)
     Options __tmp_1 = Options(9090, false);
     connect("localhost", __tmp_1);
     // # host as keyword alongside kwargs
-    // connect(host="example.com", port=Int32(443), debug=True)
+    // connect(host="example.com", port=int32(443), debug=True)
     Options __tmp_2 = Options(443, true);
     connect("example.com", __tmp_2);
 }

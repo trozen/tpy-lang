@@ -2,24 +2,24 @@
 # index is outside the subscript arm's range, so the body rejects. The
 # isinstance narrow over a two-class union is pinned by
 # tests/cases/union/union_isinstance_basic.
-from tpy import Int32
+from tpy import int32
 
 
 class Leaf:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
 
 class Inner:
-    value: Int32
+    value: int32
 
-    def __init__(self, value: Int32):
+    def __init__(self, value: int32):
         self.value = value
 
 
-def wide_index(v: Leaf | Inner, xs: list[Int32]) -> Int32:
+def wide_index(v: Leaf | Inner, xs: list[int32]) -> int32:
     if isinstance(v, Inner):
         return xs[9999999999]  # tpyc: error(/subscript\.index/)
     return v.n

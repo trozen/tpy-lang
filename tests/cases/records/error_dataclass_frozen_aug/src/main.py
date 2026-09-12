@@ -1,11 +1,11 @@
 # Error: cannot use augmented assignment on frozen dataclass field
 from dataclasses import dataclass
-from tpy import Int32
+from tpy import int32
 
 @dataclass(frozen=True)
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 def main() -> None:
     p = Point(1, 2)

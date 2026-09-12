@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // box_int: Box[Int32] = Box[Int32](42)
+    // box_int: Box[int32] = Box[int32](42)
     Box<int32_t> box_int = Box<int32_t>(42);
     // print(box_int.get())
     std::cout << box_int.get() << "\n";
@@ -22,7 +22,7 @@ void main() {
     box_bool.set(false);
     // print(box_bool.get())
     std::cout << ::tpy::print_bool(box_bool.get()) << "\n";
-    // ring: Ring[Int32] = Ring[Int32](0)
+    // ring: Ring[int32] = Ring[int32](0)
     Ring<int32_t> ring = Ring<int32_t>(0);
     // ring.put(10)
     ring.put(10);
@@ -32,7 +32,7 @@ void main() {
     std::cout << ring.get(0) << "\n";
     // print(ring.get(1))
     std::cout << ring.get(1) << "\n";
-    // v: Int32 = 99
+    // v: int32 = 99
     int32_t v = 99;
     // print(identity(v))
     std::cout << identity<int32_t>(v) << "\n";

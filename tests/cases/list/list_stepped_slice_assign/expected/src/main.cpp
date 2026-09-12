@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def gen3() -> Iterator[Int32]:
+// def gen3() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen3::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -32,7 +32,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen3::__next__() {
 }
 
 
-// def gen3() -> Iterator[Int32]:
+// def gen3() -> Iterator[int32]:
 __gen_gen3 gen3() {
     return __gen_gen3();
 }
@@ -40,7 +40,7 @@ __gen_gen3 gen3() {
 // def main() -> None:
 void main() {
     // # Every other element
-    // a: list[Int32] = [1, 2, 3, 4, 5]
+    // a: list[int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> a = {1, 2, 3, 4, 5};
     // a[::2] = [10, 20, 30]
     ::tpy::list_set_stepped_slice(a, ::tpy::Slice{std::nullopt, std::nullopt, 2}, std::vector<int32_t>{10, 20, 30});
@@ -54,7 +54,7 @@ void main() {
         std::cout << x << "\n";
     }
     // # Negative step: reverse order positions
-    // b: list[Int32] = [1, 2, 3, 4, 5]
+    // b: list[int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> b = {1, 2, 3, 4, 5};
     // b[::-2] = [50, 30, 10]
     ::tpy::list_set_stepped_slice(b, ::tpy::Slice{std::nullopt, std::nullopt, -2}, std::vector<int32_t>{50, 30, 10});
@@ -68,7 +68,7 @@ void main() {
         std::cout << x << "\n";
     }
     // # Step with start/stop
-    // c: list[Int32] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    // c: list[int32] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
     std::vector<int32_t> c = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
     // c[1:8:3] = [100, 200, 300]
     ::tpy::list_set_stepped_slice(c, ::tpy::Slice{1, 8, 3}, std::vector<int32_t>{100, 200, 300});
@@ -82,7 +82,7 @@ void main() {
         std::cout << x << "\n";
     }
     // # Step=1 allows resize (same as basic slice)
-    // d: list[Int32] = [1, 2, 3, 4, 5]
+    // d: list[int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> d = {1, 2, 3, 4, 5};
     // d[1:4:1] = [10, 20]
     ::tpy::list_set_stepped_slice(d, ::tpy::Slice{1, 4, 1}, std::vector<int32_t>{10, 20});
@@ -96,7 +96,7 @@ void main() {
         std::cout << x << "\n";
     }
     // # Generator as RHS
-    // e: list[Int32] = [1, 2, 3, 4, 5]
+    // e: list[int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> e = {1, 2, 3, 4, 5};
     // e[::2] = gen3()
     ::tpy::list_set_stepped_slice(e, ::tpy::Slice{std::nullopt, std::nullopt, 2}, gen3());

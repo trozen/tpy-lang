@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def in_branch(n: Int32) -> Int32:
+// def in_branch(n: int32) -> int32:
 int32_t in_branch(int32_t n) {
     // if n > 0:
     if ((n > 0)) {
@@ -60,7 +60,7 @@ void in_loop() {
     }
 }
 
-// def nonvalue_rvalue_reassigned(n: Int32) -> Int32:
+// def nonvalue_rvalue_reassigned(n: int32) -> int32:
 int32_t nonvalue_rvalue_reassigned(int32_t n) {
     std::optional<std::vector<int32_t>> __slot_1;
     // with CM(n) as c:
@@ -93,7 +93,7 @@ int32_t nonvalue_rvalue_reassigned(int32_t n) {
     return ::tpy::__len__((*xs));
 }
 
-// def nonvalue_in_branch(n: Int32) -> Int32:
+// def nonvalue_in_branch(n: int32) -> int32:
 int32_t nonvalue_in_branch(int32_t n) {
     // total = 0
     int32_t total = 0;
@@ -125,7 +125,7 @@ int32_t nonvalue_in_branch(int32_t n) {
     return total;
 }
 
-// def kept_manager_and_reseat() -> Int32:
+// def kept_manager_and_reseat() -> int32:
 int32_t kept_manager_and_reseat() {
     std::optional<Node> __slot_1;
     std::optional<Node> __slot_2;

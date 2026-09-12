@@ -4,17 +4,17 @@
 namespace tpyapp::main {
 
 
-// def main() -> Int32:
+// def main() -> int32:
 int32_t main() {
-    // p = Pt(Int32(3), Int32(4))
+    // p = Pt(int32(3), int32(4))
     ::tpyapp::utils::Point p = ::tpyapp::utils::Point(3, 4);
     // print(p.x)
     std::cout << p.x << "\n";
     // print(MAX)
     std::cout << ::tpyapp::utils::MAX_VALUE << "\n";
-    // print(sum_nums(Int32(10), Int32(20)))
+    // print(sum_nums(int32(10), int32(20)))
     std::cout << ::tpyapp::utils::add(10, 20) << "\n";
-    // return Int32(0)
+    // return int32(0)
     return 0;
 }
 

@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // @error_return(Failed)
-// def run(ok: bool) -> Int32:
+// def run(ok: bool) -> int32:
 std::expected<int32_t, Failed> run(bool ok) {
     // if ok:
     if (ok) {

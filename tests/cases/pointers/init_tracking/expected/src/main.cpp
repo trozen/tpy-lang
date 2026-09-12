@@ -23,7 +23,7 @@ void param_use(const Point& p) {
 // # Value type with init — OK
 // def value_init() -> None:
 void value_init() {
-    // x: Int32 = 42
+    // x: int32 = 42
     int32_t x = 42;
     // print(x)  # tpyc: ok
     std::cout << x << "\n";
@@ -60,11 +60,11 @@ void then_returns(bool cond) {
 }
 
 // # Both branches return — dead code after is fine
-// def both_return(cond: bool) -> Int32:
+// def both_return(cond: bool) -> int32:
 int32_t both_return(bool cond) {
     // if cond:
     if (cond) {
-        // x: Int32 = 1
+        // x: int32 = 1
         int32_t x = 1;
         // return x
         return x;
@@ -78,7 +78,7 @@ int32_t both_return(bool cond) {
 // # Both branches assign (value type) — OK after if
 // def both_branches_assign(cond: bool) -> None:
 void both_branches_assign(bool cond) {
-    // x: Int32
+    // x: int32
     int32_t x;
     // if cond:
     if (cond) {
@@ -96,7 +96,7 @@ void both_branches_assign(bool cond) {
 // # Else-branch returns, then assigns — OK after if
 // def else_returns(cond: bool) -> None:
 void else_returns(bool cond) {
-    // x: Int32
+    // x: int32
     int32_t x;
     // if cond:
     if (cond) {
@@ -114,7 +114,7 @@ void else_returns(bool cond) {
 // # Bare decl then unconditional assign — OK
 // def decl_then_assign() -> None:
 void decl_then_assign() {
-    // x: Int32
+    // x: int32
     int32_t x;
     // x = 42
     x = 42;
@@ -125,9 +125,9 @@ void decl_then_assign() {
 // # Loop var shadows assigned outer var — outer stays assigned after loop
 // def loop_shadow_outer() -> None:
 void loop_shadow_outer() {
-    // items: list[Int32] = [10, 20, 30]
+    // items: list[int32] = [10, 20, 30]
     std::vector<int32_t> items = {10, 20, 30};
-    // x: Int32 = 99
+    // x: int32 = 99
     int32_t x = 99;
     // for x in items:
     auto& __obj_0 = items;

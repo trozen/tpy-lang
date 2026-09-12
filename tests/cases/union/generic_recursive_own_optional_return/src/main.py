@@ -6,20 +6,20 @@
 # case (`error_generic_recursive_optional_return_dangle`) shows the
 # diagnostic users get without Own.
 from typing import Optional
-from tpy import Int32, Own
+from tpy import int32, Own
 
 type Tree[T] = T | list[Tree[T]]
 
 
-def build() -> Own[Tree[Int32]]:
+def build() -> Own[Tree[int32]]:
     return 7
 
 
-def make_some() -> Own[Optional[Tree[Int32]]]:
+def make_some() -> Own[Optional[Tree[int32]]]:
     return build()
 
 
-def make_none() -> Own[Optional[Tree[Int32]]]:
+def make_none() -> Own[Optional[Tree[int32]]]:
     return None
 
 

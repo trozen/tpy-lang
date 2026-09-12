@@ -2,11 +2,11 @@
 # {a,b} placeholder + per-sub-parser rows in the positional section.
 # prog= is passed explicitly so the cpy phase compares byte-identical
 # output against CPython's stdlib argparse.
-from tpy import Int32
+from tpy import int32
 from argparse import ArgumentParser
 
 
-def main() -> Int32:
+def main() -> int32:
     parser = ArgumentParser(prog="prog", description="A test program.")
     parser.add_argument("--verbose", "-v", action="store_true", help="be loud")
 

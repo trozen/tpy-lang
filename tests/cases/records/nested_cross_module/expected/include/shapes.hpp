@@ -20,10 +20,10 @@ struct Container {
 
     // class Inner:
     struct Inner {
-        // val: Int32
+        // val: int32
         int32_t val;
 
-        // def __init__(self, val: Int32) -> None:
+        // def __init__(self, val: int32) -> None:
         Inner() = default;
         explicit Inner(int32_t val);
         static constexpr std::string_view __tpy_class_name__ = "shapes.Container.Inner";
@@ -67,7 +67,7 @@ inline std::ostream& operator<<(std::ostream& __os, Container::Kind __e) {
 }
 
 
-// def __init__(self, val: Int32) -> None:
+// def __init__(self, val: int32) -> None:
 inline Container::Inner::Inner(int32_t val) : val(val) {}
 
 // def __init__(self, kind: Kind) -> None:

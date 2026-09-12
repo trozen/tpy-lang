@@ -1,7 +1,7 @@
 # Optional[generic @dynamic protocol] as a record field is rejected;
-# diagnostic should render the parameterized name `Container[Int32]`.
+# diagnostic should render the parameterized name `Container[int32]`.
 from typing import Protocol, Optional
-from tpy import Int32, dynamic
+from tpy import int32, dynamic
 
 
 @dynamic
@@ -11,7 +11,7 @@ class Container[T](Protocol):
 
 
 class Holder:
-    x: Optional[Container[Int32]]  # tpyc: error(/Optional\[Container\[Int32\]\] is only supported at a parameter position/)
+    x: Optional[Container[int32]]  # tpyc: error(/Optional\[Container\[int32\]\] is only supported at a parameter position/)
 
     def __init__(self) -> None:
         self.x = None

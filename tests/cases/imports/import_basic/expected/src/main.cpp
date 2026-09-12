@@ -4,15 +4,15 @@
 namespace tpyapp::main {
 
 
-// def main() -> Int32:
+// def main() -> int32:
 int32_t main() {
-    // p = Point(Int32(1), Int32(2))
+    // p = Point(int32(1), int32(2))
     ::tpyapp::utils::Point p = ::tpyapp::utils::Point(1, 2);
     // result = add(p.x, p.y)
     int32_t result = ::tpyapp::utils::add(p.x, p.y);
     // print(result)
     std::cout << result << "\n";
-    // return Int32(0)
+    // return int32(0)
     return 0;
 }
 

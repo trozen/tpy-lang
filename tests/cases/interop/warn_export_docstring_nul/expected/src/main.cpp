@@ -39,14 +39,14 @@ namespace tpyapp::main {
 
 
 // @export
-// def has_nul(x: Int64) -> Int64:  # tpyc: warning(/docstring will not be visible from Python/)
+// def has_nul(x: int64) -> int64:  # tpyc: warning(/docstring will not be visible from Python/)
 int64_t has_nul(int64_t x) {
     // return x
     return x;
 }
 
 // @export
-// def clean(x: Int64) -> Int64:  # tpyc: ok
+// def clean(x: int64) -> int64:  # tpyc: ok
 int64_t clean(int64_t x) {
     // return x
     return x;

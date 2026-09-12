@@ -1,24 +1,24 @@
 # List comprehension: annotation propagation (element type coercion)
-from tpy import Int32, Int64, Own
+from tpy import int32, int64, Own
 
 def make_bigints() -> Own[list[int]]:
-    items: list[Int32] = [1, 2, 3]
+    items: list[int32] = [1, 2, 3]
     return [x for x in items]
 
-def accept_wide(items: list[Int64]) -> None:
+def accept_wide(items: list[int64]) -> None:
     print(items)
 
 def main() -> None:
-    # Widen Int32 -> BigInt via annotation
-    items: list[Int32] = [10, 20, 30]
+    # Widen int32 -> BigInt via annotation
+    items: list[int32] = [10, 20, 30]
     big: list[int] = [x for x in items]
     print(big)
 
-    # Widen Int32 -> Int64
-    wide: list[Int64] = [x for x in items]
+    # Widen int32 -> int64
+    wide: list[int64] = [x for x in items]
     print(wide)
 
-    # Return type propagation (Own[list[int]] from Int32 source)
+    # Return type propagation (Own[list[int]] from int32 source)
     result = make_bigints()
     print(result)
 

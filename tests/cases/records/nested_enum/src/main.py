@@ -1,6 +1,6 @@
 # Nested enum inside a class, with member access and field usage.
 # Uses short name (Kind) inside the class body for CPython compatibility.
-from tpy import Int32
+from tpy import int32
 from enum import Enum, auto
 
 class Message:
@@ -10,9 +10,9 @@ class Message:
         VIDEO = auto()
 
     kind: Kind
-    data: Int32
+    data: int32
 
-    def __init__(self, kind: Kind, data: Int32) -> None:
+    def __init__(self, kind: Kind, data: int32) -> None:
         self.kind = kind
         self.data = data
 

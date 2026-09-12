@@ -1,16 +1,16 @@
 # A nested def STRUCTURALLY mutating self's container field (append):
 # exercises the structural mutation replay; growth is visible on the
 # caller's object.
-from tpy import Int32
+from tpy import int32
 
 
 class Bag:
-    items: list[Int32]
+    items: list[int32]
 
     def __init__(self) -> None:
         self.items = []
 
-    def fill(self, v: Int32) -> None:
+    def fill(self, v: int32) -> None:
         def add() -> None:
             self.items.append(v)
 

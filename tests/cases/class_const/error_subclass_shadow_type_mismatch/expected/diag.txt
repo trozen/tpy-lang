@@ -1,1 +1,1 @@
-main.py:15: error: ClassVar 'counter' on 'Child' shadows base 'Parent.counter' with incompatible type 'Int64' (expected 'Int32')
+main.py:15: error: ClassVar 'counter' on 'Child' shadows base 'Parent.counter' with incompatible type 'int64' (expected 'int32')

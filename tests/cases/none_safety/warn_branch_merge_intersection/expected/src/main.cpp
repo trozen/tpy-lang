@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def pick(flag: bool, a: Int32 | None, b: Int32 | None) -> Int32:
+// def pick(flag: bool, a: int32 | None, b: int32 | None) -> int32:
 int32_t pick(bool flag, std::optional<int32_t> a, std::optional<int32_t> b) {
     // if flag:
     if (flag) {

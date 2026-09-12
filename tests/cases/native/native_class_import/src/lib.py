@@ -1,22 +1,22 @@
 from tpy.extern import native
-from tpy import Int32, Ptr
+from tpy import int32, Ptr
 
 # C++ class with rename
 @native("ns::Vec2")
 class Vec2:
-    x: Int32
-    y: Int32
-    def sum(self) -> Int32: ...
+    x: int32
+    y: int32
+    def sum(self) -> int32: ...
 
 # C struct with rename
 @native("Rect", binding="C")
 class MyRect:
-    x: Int32
-    y: Int32
-    w: Int32
-    h: Int32
-    def area(self) -> Int32: ...
+    x: int32
+    y: int32
+    w: int32
+    h: int32
+    def area(self) -> int32: ...
 
 # Native function using native type from this module
 @native(binding="C")
-def rect_area(r: Ptr[MyRect]) -> Int32: ...
+def rect_area(r: Ptr[MyRect]) -> int32: ...

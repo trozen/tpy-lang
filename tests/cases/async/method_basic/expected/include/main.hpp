@@ -20,10 +20,10 @@ __coro_main_coro main_coro();
 
 // class Adder:
 struct Adder {
-    // base: Int32
+    // base: int32
     int32_t base;
 
-    // def __init__(self, b: Int32) -> None:
+    // def __init__(self, b: int32) -> None:
     Adder() = default;
     explicit Adder(int32_t b);
 
@@ -89,7 +89,7 @@ struct __coro_main_coro {
 };
 
 
-// def __init__(self, b: Int32) -> None:
+// def __init__(self, b: int32) -> None:
 inline Adder::Adder(int32_t b) : base(b) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -44,7 +44,7 @@ void main();
 
 // class Flat:
 struct Flat {
-    // n: Int32
+    // n: int32
     int32_t n;
 
     // def __init__(self, data: list[bytes]) -> None:
@@ -60,7 +60,7 @@ inline std::ostream& operator<<(std::ostream& os, const Flat& obj) {
 
 // class Grow:
 struct Grow {
-    // n: Int32
+    // n: int32
     int32_t n;
 
     // def __init__(self, data: list[bytes]) -> None:
@@ -95,10 +95,10 @@ inline std::ostream& operator<<(std::ostream& os, const Keep& obj) {
 
 // class Tally:
 struct Tally {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, d: dict[str, Int32], s: set[Int32]) -> None:
+    // def __init__(self, d: dict[str, int32], s: set[int32]) -> None:
     Tally() = default;
     explicit Tally(const ::tpy::ordered_map<std::string, int32_t>& d, const ::tpy::ordered_set<int32_t>& s);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Tally";
@@ -113,7 +113,7 @@ inline std::ostream& operator<<(std::ostream& os, const Tally& obj) {
 struct CM {
 
 
-    // def __enter__(self) -> Int32:
+    // def __enter__(self) -> int32:
     int32_t __enter__() const;
 
     // def __exit__(self, et, ev, tb) -> None:
@@ -144,16 +144,16 @@ inline std::ostream& operator<<(std::ostream& os, const MyErr& obj) {
 
 // class Site:
 struct Site {
-    // n: Int32
+    // n: int32
     int32_t n;
 
     // # Constructor body (a local decl, not the field initializer itself).
-    // def __init__(self, k: Int32) -> None:
+    // def __init__(self, k: int32) -> None:
     Site() = default;
     explicit Site(int32_t k);
 
     // # Method body.
-    // def bump(self, k: Int32) -> None:
+    // def bump(self, k: int32) -> None:
     void bump(int32_t k);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Site";
 };
@@ -184,10 +184,10 @@ inline void Keep::reset(std::vector<::tpy::Bytes>&& data) {
     this->data = std::move(data);
 }
 
-// def __init__(self, d: dict[str, Int32], s: set[Int32]) -> None:
+// def __init__(self, d: dict[str, int32], s: set[int32]) -> None:
 inline Tally::Tally(const ::tpy::ordered_map<std::string, int32_t>& d, const ::tpy::ordered_set<int32_t>& s) : n((::tpy::add_check<int32_t>(::tpy::__len__(d), ::tpy::__len__(s)))) {}
 
-// def __enter__(self) -> Int32:
+// def __enter__(self) -> int32:
 inline int32_t CM::__enter__() const {
     // return 2
     return 2;
@@ -199,7 +199,7 @@ inline void CM::__exit__(std::monostate et, const ::tpy::BaseException* ev, std:
 }
 
 // # Constructor body (a local decl, not the field initializer itself).
-// def __init__(self, k: Int32) -> None:
+// def __init__(self, k: int32) -> None:
 inline Site::Site(int32_t k) {
     // f = Flat([bytes([i]) for i in range(k)])  # tpyc: ok
     std::vector<::tpy::Bytes> __tmp_1 = ({
@@ -217,7 +217,7 @@ inline Site::Site(int32_t k) {
 }
 
 // # Method body.
-// def bump(self, k: Int32) -> None:
+// def bump(self, k: int32) -> None:
 inline void Site::bump(int32_t k) {
     // f = Flat([bytes([i]) for i in range(k)])  # tpyc: ok
     std::vector<::tpy::Bytes> __tmp_2 = ({

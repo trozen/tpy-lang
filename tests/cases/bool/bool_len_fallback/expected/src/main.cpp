@@ -6,9 +6,9 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // s1 = Stack(Int32(3))
+    // s1 = Stack(int32(3))
     Stack s1 = Stack(3);
-    // s2 = Stack(Int32(0))
+    // s2 = Stack(int32(0))
     Stack s2 = Stack(0);
     // # bool() with __len__ fallback
     // print(bool(s1))  # True

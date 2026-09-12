@@ -182,8 +182,8 @@ def route_stdlib_name(name: str) -> 'tuple[str, str] | None':
     the implicit stdlib modules (`tpy` / `builtins` / `typing`), else
     `None`. Lets cross-module re-exports of stdlib names canonicalize
     against the public stdlib module rather than the source module
-    (so e.g. `Int32` re-exported through `utils` still resolves at
-    `tpy.Int32`, not `utils.Int32`).
+    (so e.g. `int32` re-exported through `utils` still resolves at
+    `tpy.int32`, not `utils.int32`).
     """
     if name in get_tpy_exports():
         return ("tpy", name)
@@ -315,7 +315,7 @@ class ImportProcessor:
 
         If the name is a known tpy/builtins/typing export, bind it from the
         original stdlib module so the parser resolves types correctly (e.g.
-        Int32 should always resolve as a tpy type, even when re-exported
+        int32 should always resolve as a tpy type, even when re-exported
         through a user module).
         """
         stdlib = route_stdlib_name(name)

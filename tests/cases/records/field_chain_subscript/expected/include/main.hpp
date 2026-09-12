@@ -17,7 +17,7 @@ void main();
 
 // class Inner:
 struct Inner {
-    // items: list[Int32]
+    // items: list[int32]
     std::vector<int32_t> items;
 
     // def __init__(self) -> None:
@@ -39,10 +39,10 @@ struct Outer {
     Outer() = default;
     explicit Outer(Inner&& inner);
 
-    // def at(self, i: Int32) -> Int32:
+    // def at(self, i: int32) -> int32:
     int32_t at(int32_t i) const;
 
-    // def bump(self, i: Int32) -> None:
+    // def bump(self, i: int32) -> None:
     void bump(int32_t i);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Outer";
 };
@@ -59,14 +59,14 @@ inline Inner::Inner() : items(std::vector<int32_t>{1, 2, 3}) {}
 // def __init__(self, inner: Own[Inner]) -> None:
 inline Outer::Outer(Inner&& inner) : inner(std::move(inner)) {}
 
-// def at(self, i: Int32) -> Int32:
+// def at(self, i: int32) -> int32:
 inline int32_t Outer::at(int32_t i) const {
     // # The subject inside a method (a `this->` rooted chain).
     // return self.inner.items[i]  # tpyc: ok
     return ::tpy::__getitem__(this->inner.items, i);
 }
 
-// def bump(self, i: Int32) -> None:
+// def bump(self, i: int32) -> None:
 inline void Outer::bump(int32_t i) {
     // self.inner.items[i] += 10  # tpyc: ok
     ::tpy::__setitem__(this->inner.items, i, ::tpy::add_check<int32_t>(::tpy::__getitem__(this->inner.items, i), 10));

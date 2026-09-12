@@ -30,7 +30,7 @@ void main() {
     // print(k[0])            # -5
     std::cout << k[0] << "\n";
     // # containers unaffected
-    // xs: list[Int32] = [1, 2, 3]
+    // xs: list[int32] = [1, 2, 3]
     std::vector<int32_t> xs = {1, 2, 3};
     // xs[1] = 99
     ::tpy::__setitem__(xs, 1, 99);
@@ -38,7 +38,7 @@ void main() {
     ::tpy::__delitem__(xs, 0);
     // print(xs[0], len(xs))  # 99 2
     std::cout << ::tpy::__getitem__(xs, 0) << " " << ::tpy::__len__(xs) << "\n";
-    // d: dict[str, Int32] = {}
+    // d: dict[str, int32] = {}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>();
     // d["x"] = 5
     ::tpy::__setitem__(d, "x", 5);

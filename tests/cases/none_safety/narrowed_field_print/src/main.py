@@ -1,13 +1,13 @@
 # Test print() on narrowed optional fields (value-type and reference-type)
-from tpy import Int32
+from tpy import int32
 from typing import Optional
 
 class Config:
-    port: Optional[Int32]
+    port: Optional[int32]
     name: Optional[str]
     flag: Optional[bool]
     ratio: Optional[float]
-    def __init__(self, port: Optional[Int32], name: Optional[str],
+    def __init__(self, port: Optional[int32], name: Optional[str],
                  flag: Optional[bool], ratio: Optional[float]) -> None:
         self.port = port
         self.name = name

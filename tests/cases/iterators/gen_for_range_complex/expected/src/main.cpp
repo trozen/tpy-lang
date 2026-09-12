@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def squares_plus(n: Int32) -> Iterator[Int32]:
+// def squares_plus(n: int32) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_squares_plus::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -38,7 +38,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_squares_plus::__next__() {
 }
 
 
-// def squares_plus(n: Int32) -> Iterator[Int32]:
+// def squares_plus(n: int32) -> Iterator[int32]:
 __gen_squares_plus squares_plus(int32_t n) {
     return __gen_squares_plus(n);
 }

@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 
 
-def score(x: float | None) -> Int32:
+def score(x: float | None) -> int32:
     if x:  # tpyc: warning(/Truthiness check on optional value/)  # tpyc: warning(/variable 'x'/)
         return 1
     return 0

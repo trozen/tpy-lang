@@ -8,7 +8,7 @@ namespace tpyapp::main {
 void main() {
     // pts: list[Point] = [Point(1, 2), Point(3, 4)]
     std::vector<Point> pts = {Point(1, 2), Point(3, 4)};
-    // vals: list[Int32] = [Int32(10), Int32(20)]
+    // vals: list[int32] = [int32(10), int32(20)]
     std::vector<int32_t> vals = {10, 20};
     // # Non-value T=Point -- warns about copy
     // d = dict(map(lambda p: label(str(p.x), p), pts))  # tpyc: warning(/copies tuple\[str, Point\] elements/)
@@ -22,7 +22,7 @@ void main() {
         // print(k, d[k])
         std::cout << k << " " << ::tpy::__getitem__(d, k) << "\n";
     }
-    // # Value T=Int32 -- no warning
+    // # Value T=int32 -- no warning
     // d2 = dict(map(lambda v: label(str(v), v), vals))  # tpyc: ok
     ::tpy::ordered_map<std::string, int32_t> d2 = ::tpy::dict_construct<std::string, int32_t>(::tpy::builtin_map<int32_t, std::tuple<std::string, int32_t>>([](int32_t v) -> std::tuple<std::string, int32_t> { return label<int32_t>(::tpy::fixed_to_str<int32_t>(v), v); }, vals));
     // for k in d2:

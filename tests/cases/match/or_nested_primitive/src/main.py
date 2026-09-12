@@ -1,9 +1,9 @@
 # Parenthesized or-pattern groups on an int subject (the primitive switch
 # strategy): the group flattens into one set of switch labels.
-from tpy import Int32
+from tpy import int32
 
 
-def classify(n: Int32) -> str:
+def classify(n: int32) -> str:
     match n:
         # Same labels as the flat `case 1 | 2 | 3:`.
         case (1 | 2) | 3:

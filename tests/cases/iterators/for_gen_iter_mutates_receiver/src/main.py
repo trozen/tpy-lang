@@ -3,17 +3,17 @@
 # drives the mutating __iter__, which needs a non-const receiver. The method
 # must be inferred non-readonly. Iterating drains the source (a second pass
 # returns 0), proving the receiver is mutated in place, not copied.
-from tpy import Int32, Own
+from tpy import int32, Own
 from typing import Iterator
 
 
 class Source:
-    _n: Int32
+    _n: int32
 
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self._n = n
 
-    def __iter__(self) -> Iterator[Int32]:
+    def __iter__(self) -> Iterator[int32]:
         while self._n > 0:
             self._n -= 1
             yield self._n
@@ -25,8 +25,8 @@ class Consumer:
     def __init__(self, src: Own[Source]):
         self._src = src
 
-    def drain_sum(self) -> Int32:
-        acc: Int32 = 0
+    def drain_sum(self) -> int32:
+        acc: int32 = 0
         for v in self._src:
             acc += v
         return acc

@@ -16,10 +16,10 @@ void main();
 
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
 
-    // def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: int32) -> None:
     Point() = default;
     explicit Point(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
@@ -39,7 +39,7 @@ struct Holder {
     Holder();
 
     // @readonly
-    // def probe(self) -> Int32:
+    // def probe(self) -> int32:
     int32_t probe() const;
 
     // def bump(self) -> None:
@@ -53,14 +53,14 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 }
 
 
-// def __init__(self, x: Int32) -> None:
+// def __init__(self, x: int32) -> None:
 inline Point::Point(int32_t x) : x(x) {}
 
 // def __init__(self) -> None:
 inline Holder::Holder() : pairs(std::vector<std::optional<Point>>{Point(1), std::nullopt}) {}
 
 // @readonly
-// def probe(self) -> Int32:
+// def probe(self) -> int32:
 inline int32_t Holder::probe() const {
     // first: Point | None = None
     const Point* first = nullptr;

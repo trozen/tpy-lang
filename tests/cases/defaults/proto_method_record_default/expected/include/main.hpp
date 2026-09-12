@@ -26,7 +26,7 @@ struct Vec {
     // self.x = x
     int64_t x;
 
-    // def __init__(self, x: Int64) -> None:
+    // def __init__(self, x: int64) -> None:
     Vec() = default;
     explicit Vec(int64_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Vec";
@@ -48,11 +48,11 @@ struct Circle {
     // self.r = r
     int64_t r;
 
-    // def __init__(self, r: Int64) -> None:
+    // def __init__(self, r: int64) -> None:
     Circle() = default;
     explicit Circle(int64_t r);
 
-    // def draw(self) -> Int64:
+    // def draw(self) -> int64:
     int64_t draw() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Circle";
 };
@@ -67,14 +67,14 @@ struct Holder {
     // self.base = base
     int64_t base;
 
-    // def __init__(self, base: Int64) -> None:
+    // def __init__(self, base: int64) -> None:
     Holder() = default;
     explicit Holder(int64_t base);
 
     // # The protocol param routes this signature through the protocol emit path;
     // # `Vec | None` is value-form over a record, the shape whose default is
     // # suppressed on a FREE function. As a member it must keep its C++ default.
-    // def method(self, d: Drawable, v: Vec | None = None) -> Int64:
+    // def method(self, d: Drawable, v: Vec | None = None) -> int64:
     template<Drawable T_d>
     int64_t method(const T_d& d, std::optional<Vec> v = std::nullopt) const {
         // got = self.base + d.draw()
@@ -96,19 +96,19 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 }
 
 
-// def __init__(self, x: Int64) -> None:
+// def __init__(self, x: int64) -> None:
 inline Vec::Vec(int64_t x) : x(x) {}
 
-// def __init__(self, r: Int64) -> None:
+// def __init__(self, r: int64) -> None:
 inline Circle::Circle(int64_t r) : r(r) {}
 
-// def draw(self) -> Int64:
+// def draw(self) -> int64:
 inline int64_t Circle::draw() const {
     // return self.r
     return this->r;
 }
 
-// def __init__(self, base: Int64) -> None:
+// def __init__(self, base: int64) -> None:
 inline Holder::Holder(int64_t base) : base(base) {}
 void __tpy_init();
 } // namespace tpyapp::main

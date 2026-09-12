@@ -3,13 +3,13 @@
 # `bump_all` mutating back to `xs`, so `xs` stays `std::vector<Box>&`
 # (non-const). Replaces the removed Phase-1 caller-side marking with the
 # call-edge mechanism.
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    val: Int32
+    val: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 

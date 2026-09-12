@@ -1,27 +1,27 @@
 # Test that __iter__() -> SpanIter[T] with @auto_readonly allows iteration from
 # both mutable and const contexts. Mutable __iter__ yields SpanIter<T>, const yields SpanIter<const T>.
-from tpy import Int32, Span, SpanIter, readonly, auto_readonly
+from tpy import int32, Span, SpanIter, readonly, auto_readonly
 
 class Stack:
-    _data: list[Int32]
+    _data: list[int32]
 
     def __init__(self) -> None:
         self._data = []
 
-    def push(self, val: Int32) -> None:
+    def push(self, val: int32) -> None:
         self._data.append(val)
 
     @auto_readonly
-    def __span__(self) -> Span[auto_readonly[Int32]]:
+    def __span__(self) -> Span[auto_readonly[int32]]:
         return self._data
 
     @auto_readonly
-    def __iter__(self) -> SpanIter[auto_readonly[Int32]]:
+    def __iter__(self) -> SpanIter[auto_readonly[int32]]:
         return SpanIter(self.__span__())
 
     @readonly
-    def sum(self) -> Int32:
-        total: Int32 = 0
+    def sum(self) -> int32:
+        total: int32 = 0
         for x in self:
             total += x
         return total

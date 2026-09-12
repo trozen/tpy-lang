@@ -14,16 +14,16 @@ inline constexpr std::string_view __name__ = "config";
 
 // class Settings:
 struct Settings {
-    // width: Int32
+    // width: int32
     int32_t width;
-    // height: Int32
+    // height: int32
     int32_t height;
 
-    // def __init__(self, width: Int32, height: Int32) -> None:
+    // def __init__(self, width: int32, height: int32) -> None:
     Settings() = default;
     explicit Settings(int32_t width, int32_t height);
 
-    // def area(self) -> Int32:
+    // def area(self) -> int32:
     int32_t area() const;
     static constexpr std::string_view __tpy_class_name__ = "config.Settings";
 };
@@ -34,10 +34,10 @@ inline std::ostream& operator<<(std::ostream& os, const Settings& obj) {
 }
 
 
-// def __init__(self, width: Int32, height: Int32) -> None:
+// def __init__(self, width: int32, height: int32) -> None:
 inline Settings::Settings(int32_t width, int32_t height) : width(width), height(height) {}
 
-// def area(self) -> Int32:
+// def area(self) -> int32:
 inline int32_t Settings::area() const {
     // return self.width * self.height
     return (::tpy::mul_check<int32_t>(this->width, this->height));

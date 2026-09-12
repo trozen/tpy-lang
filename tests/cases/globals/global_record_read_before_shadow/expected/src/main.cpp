@@ -6,13 +6,13 @@ namespace tpyapp::main {
 // gate: Gate = Gate(7)
 Gate* gate{};
 
-// def read() -> Int32:
+// def read() -> int32:
 int32_t read() {
     // return gate.x
     return gate->x;
 }
 
-// def read_then_shadow() -> Int32:
+// def read_then_shadow() -> int32:
 int32_t read_then_shadow() {
     // y = gate.x  # the read before the local binding still means the global
     int32_t y = gate->x;

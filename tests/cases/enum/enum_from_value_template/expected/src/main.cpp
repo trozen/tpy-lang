@@ -89,7 +89,7 @@ Color pick(Color c) {
     return c;
 }
 
-// def prios(p: Prio, n: Int32) -> bool:
+// def prios(p: Prio, n: int32) -> bool:
 bool prios(Prio p, int32_t n) {
     // ok = p >= Prio.HIGH
     bool ok = (static_cast<int32_t>(p) >= static_cast<int32_t>(Prio::HIGH));

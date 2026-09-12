@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // arr = Array[Int32, 3]([10, 20, 30])
+    // arr = Array[int32, 3]([10, 20, 30])
     std::array<int32_t, 3> arr = std::array<int32_t, 3>({10, 20, 30});
     // # Mutable span from Ptr
     // p = take_ptr(arr[0])
@@ -20,7 +20,7 @@ void main() {
     // print(s[2])
     std::cout << ::tpy::__getitem__(s, 2) << "\n";
     // # Read-only span from Ptr[readonly[...]]
-    // rp: Ptr[readonly[Int32]] = take_ptr(arr[0])
+    // rp: Ptr[readonly[int32]] = take_ptr(arr[0])
     const int32_t* rp = &::tpy::__getitem__(arr, 0);
     // rs = Span(rp, 3)
     std::span<const int32_t> rs = std::span<const int32_t>(rp, static_cast<size_t>(3));

@@ -47,10 +47,10 @@ inline std::ostream& operator<<(std::ostream& os, const Logger& obj) {
     return os;
 }
 
-// class IntBox(Box[Int32], Logger):
+// class IntBox(Box[int32], Logger):
 struct IntBox : Box<int32_t>, Logger {
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     IntBox() = default;
     explicit IntBox(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.IntBox";
@@ -68,7 +68,7 @@ inline void Logger::log(std::string_view msg) const {
     std::cout << (::tpy::str_concat("[log] ", msg)) << "\n";
 }
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline IntBox::IntBox(int32_t v) : Box<int32_t>(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

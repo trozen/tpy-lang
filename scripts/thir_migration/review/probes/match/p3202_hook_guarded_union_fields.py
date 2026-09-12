@@ -1,17 +1,17 @@
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 class Cat:
-    lives: Int32
-    def __init__(self, lives: Int32) -> None:
+    lives: int32
+    def __init__(self, lives: int32) -> None:
         self.lives = lives
 
 class Dog:
-    lives: Int32
-    def __init__(self, lives: Int32) -> None:
+    lives: int32
+    def __init__(self, lives: int32) -> None:
         self.lives = lives
 
-def gen(a: Cat | Dog) -> Iterator[Int32]:
+def gen(a: Cat | Dog) -> Iterator[int32]:
     match a:
         case Cat(lives=v) if v > 3:
             yield v

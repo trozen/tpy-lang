@@ -125,9 +125,9 @@ def _macro_arg_from_expr(expr: TpyExpr) -> MacroArg:
 # in builder-trace.
 _BUILTIN_TYPE_NAMES: dict[str, TpyType] = {
     "str": STR, "int": BIGINT, "float": FLOAT, "bool": BOOL,
-    "Int8": INT8, "Int16": INT16, "Int32": INT32, "Int64": INT64,
-    "UInt8": UINT8, "UInt16": UINT16, "UInt32": UINT32, "UInt64": UINT64,
-    "Float32": FLOAT32,
+    "int8": INT8, "int16": INT16, "int32": INT32, "int64": INT64,
+    "uint8": UINT8, "uint16": UINT16, "uint32": UINT32, "uint64": UINT64,
+    "float32": FLOAT32,
 }
 
 

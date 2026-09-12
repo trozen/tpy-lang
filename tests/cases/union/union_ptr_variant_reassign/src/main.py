@@ -1,5 +1,5 @@
 # Pointer-variant union reassignment with storage slots
-from tpy import Int32
+from tpy import int32
 
 class Dog:
     name: str

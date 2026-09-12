@@ -13,10 +13,10 @@
 # through import, sema, macro expansion, narrowing, and codegen.
 from pkg_a import Foo, name_of as name_a
 from pkg_b import name_of_b, Bar
-from tpy import Int32
+from tpy import int32
 
 
-def uses_pkg_a(x: Foo) -> Int32:
+def uses_pkg_a(x: Foo) -> int32:
     return x.val
 
 
@@ -31,12 +31,12 @@ def describe(u: Foo | Bar) -> str:
 
 
 def main() -> None:
-    a = Foo(Int32(42))
+    a = Foo(int32(42))
     print(uses_pkg_a(a))
     print(name_a(a))
     print(name_of_b())
     print(describe(a))
-    print(describe(Bar(Int32(7))))
+    print(describe(Bar(int32(7))))
 
 
 main()

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def fetch(n: Int32) -> Int32:
+// async def fetch(n: int32) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_fetch::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -18,7 +18,7 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return n * Int32(2)
+        // return n * int32(2)
         __state = S_DONE;
         int32_t __tpy_async_ret = (::tpy::mul_check<int32_t>(n, 2));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -29,7 +29,7 @@ namespace tpyapp::main {
 }
 
 
-// async def fetch(n: Int32) -> Int32:
+// async def fetch(n: int32) -> int32:
 __coro_fetch fetch(int32_t n) {
     return __coro_fetch(n);
 }
@@ -38,13 +38,13 @@ __coro_fetch fetch(int32_t n) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // tasks: list[asyncio.Task[Int32]] = []
+        // tasks: list[asyncio.Task[int32]] = []
         tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<int32_t>>{});
-        // tasks.append(asyncio.create_task(fetch(Int32(1))))
+        // tasks.append(asyncio.create_task(fetch(int32(1))))
         (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fetch(1))));
-        // tasks.append(asyncio.create_task(fetch(Int32(2))))
+        // tasks.append(asyncio.create_task(fetch(int32(2))))
         (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fetch(2))));
-        // tasks.append(asyncio.create_task(fetch(Int32(3))))
+        // tasks.append(asyncio.create_task(fetch(int32(3))))
         (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fetch(3))));
         // results = await asyncio.gather_list_settled(tasks)
         __sub_0.emplace((*tasks));

@@ -1,8 +1,8 @@
-from tpy import Int32
+from tpy import int32
 class Holder:
-    xs: list[Int32]
+    xs: list[int32]
     def __init__(self) -> None:
         self.xs = [1, 2]
 h: Holder = Holder()
-ys: list[Int32] = h.xs
+ys: list[int32] = h.xs
 print(len(ys))

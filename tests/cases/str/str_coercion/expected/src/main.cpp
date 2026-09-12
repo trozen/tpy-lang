@@ -48,12 +48,12 @@ void main() {
     // # StrView -> str (allocates)
     // take_str(sv)  # view
     take_str(sv);
-    // # Char -> str
-    // c: Char = "X"
+    // # char -> str
+    // c: char = "X"
     char c = 'X';
     // take_str(c)  # X
     take_str(std::string(::tpy::char_to_str(c)));
-    // # Char -> String
+    // # char -> String
     // take_string(c)  # X
     take_string(std::string(1, c));
 }

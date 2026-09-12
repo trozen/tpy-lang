@@ -1,14 +1,14 @@
 # Auto-move from narrowed Optional non-value local on return.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Handle:
-    value: Int32
+    value: int32
 
 
 def extract() -> Own[Handle]:
     h: Handle | None = Handle()
-    h.value = Int32(99)
+    h.value = int32(99)
     assert h is not None
     return h  # tpyc: ok
 

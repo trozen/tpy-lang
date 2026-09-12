@@ -16,13 +16,13 @@ int32_t get_first(const T_s& s);
 void observe(const std::vector<int32_t>& items);
 void main();
 
-// def get_len(s: Sized) -> Int32:
+// def get_len(s: Sized) -> int32:
 template<::tpystd::typing::Sized T_s>
 int32_t get_len(const T_s& s) {
-    // return Int32(len(s))
+    // return int32(len(s))
     return ::tpy::__len__(s);
 }
-// def get_first(s: Sequence[Int32]) -> Int32:
+// def get_first(s: Sequence[int32]) -> int32:
 template<::tpystd::typing::Sequence<int32_t> T_s>
 int32_t get_first(const T_s& s) {
     // return s[0]

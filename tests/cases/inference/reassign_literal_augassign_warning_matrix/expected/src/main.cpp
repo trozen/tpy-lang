@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def ret_i32() -> Int32:
+// def ret_i32() -> int32:
 int32_t ret_i32() {
-    // return Int32(7)
+    // return int32(7)
     return 7;
 }
 
@@ -14,7 +14,7 @@ int32_t ret_i32() {
 void main() {
     // x = 0
     int32_t x = 0;
-    // x += Int32(5)  # tpyc: ok
+    // x += int32(5)  # tpyc: ok
     x = ::tpy::add_check<int32_t>(x, 5);
     // print(x)
     std::cout << x << "\n";
@@ -26,13 +26,13 @@ void main() {
     std::cout << y << "\n";
     // z: int = 0
     ::tpy::BigInt z = ::tpy::BigInt(0);
-    // z += Int32(5)  # tpyc: ok
+    // z += int32(5)  # tpyc: ok
     z = (z) + (::tpy::BigInt(5));
     // print(z)
     std::cout << z << "\n";
     // w = int(0)
     ::tpy::BigInt w = ::tpy::BigInt(0);
-    // w += Int32(5)  # tpyc: ok
+    // w += int32(5)  # tpyc: ok
     w = (w) + (::tpy::BigInt(5));
     // print(w)
     std::cout << w << "\n";

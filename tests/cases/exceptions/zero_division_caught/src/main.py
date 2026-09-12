@@ -9,7 +9,7 @@
 # `int / 0` (the integer true-division path) is covered by the
 # panic_int_truediv_zero case.
 
-from tpy import Int32
+from tpy import int32
 
 
 def main() -> None:
@@ -39,16 +39,16 @@ def main() -> None:
 
     # Fixed-int floor division.
     try:
-        g: Int32 = Int32(10)
-        h: Int32 = Int32(0)
+        g: int32 = int32(10)
+        h: int32 = int32(0)
         print(g // h)
     except ZeroDivisionError:
         print("caught: int //")
 
     # Fixed-int modulo.
     try:
-        i: Int32 = Int32(10)
-        j: Int32 = Int32(0)
+        i: int32 = int32(10)
+        j: int32 = int32(0)
         print(i % j)
     except ZeroDivisionError:
         print("caught: int %")
@@ -71,8 +71,8 @@ def main() -> None:
 
     # divmod on fixed-int.
     try:
-        p: Int32 = Int32(10)
-        q: Int32 = Int32(0)
+        p: int32 = int32(10)
+        q: int32 = int32(0)
         print(divmod(p, q))
     except ZeroDivisionError:
         print("caught: int divmod")

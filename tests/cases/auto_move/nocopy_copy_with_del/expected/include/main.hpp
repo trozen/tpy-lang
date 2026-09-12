@@ -15,11 +15,11 @@ void main();
 
 // class Resource:
 struct Resource {
-    // id: Int32
+    // id: int32
     int32_t id;
     bool __tpy_owned_ = true;
 
-    // def __init__(self, id: Int32):
+    // def __init__(self, id: int32):
     explicit Resource(int32_t id);
     // copyable via __copy__
     Resource(const Resource& other);
@@ -41,7 +41,7 @@ inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
 }
 
 
-// def __init__(self, id: Int32):
+// def __init__(self, id: int32):
 inline Resource::Resource(int32_t id) : id(id) {
     // print("alloc", id)
     std::cout << "alloc" << " " << id << "\n";

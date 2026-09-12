@@ -8,7 +8,7 @@ namespace tpyapp::main {
 void main() {
     // b = Box()
     Box b = Box();
-    // b.value = Int32(42)
+    // b.value = int32(42)
     b.value = 42;
     // print(b.get())  # 42
     std::cout << b.get() << "\n";

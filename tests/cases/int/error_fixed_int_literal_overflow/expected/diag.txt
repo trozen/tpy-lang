@@ -1,1 +1,1 @@
-main.py:6: error: UInt8 overflow: -3 is outside range [0, 255]
+main.py:6: error: uint8 overflow: -3 is outside range [0, 255]

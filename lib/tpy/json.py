@@ -36,7 +36,7 @@
 #     allow_nan, default, cls, skipkeys
 #   - loads kwargs: object_hook, object_pairs_hook, parse_float, parse_int,
 #     parse_constant
-from tpy import Int32, Own, Readable, Writable, error_return
+from tpy import int32, Own, Readable, Writable, error_return
 from tplib.json import JsonError, JsonReader, JsonToken, JsonWriter
 
 
@@ -61,11 +61,11 @@ class JSONDecodeError(ValueError):
     """
     msg: str
     doc: str
-    pos: Int32
-    lineno: Int32
-    colno: Int32
+    pos: int32
+    lineno: int32
+    colno: int32
 
-    def __init__(self, msg: str, doc: str, pos: Int32) -> None:
+    def __init__(self, msg: str, doc: str, pos: int32) -> None:
         # `message` is BaseException's runtime field (used by __str__);
         # `msg` is CPython's documented attribute on JSONDecodeError.
         # Always equal -- both names are exposed for compatibility.
@@ -74,9 +74,9 @@ class JSONDecodeError(ValueError):
         self.doc = doc
         self.pos = pos
         # 1-based to match CPython's JSONDecodeError.lineno/colno contract.
-        line: Int32 = 1
-        col: Int32 = 1
-        i: Int32 = 0
+        line: int32 = 1
+        col: int32 = 1
+        i: int32 = 0
         end = pos
         if end > len(doc):
             end = len(doc)
@@ -130,7 +130,7 @@ def _read_value(reader: JsonReader) -> Own[JsonValue]:
         # Preserve BigInt precision: parse via int() unless the lexeme has
         # float syntax. CPython treats `1` and `1.0` as int and float.
         is_float = False
-        i: Int32 = 0
+        i: int32 = 0
         n = len(raw)
         while i < n:
             c = raw[i]
@@ -202,7 +202,7 @@ def _write_value(v: JsonValue, w: JsonWriter, sort_keys: bool) -> None:
             w.object_end()
 
 
-def dumps(obj: JsonValue, *, indent: Int32 = 0, sort_keys: bool = False) -> str:
+def dumps(obj: JsonValue, *, indent: int32 = 0, sort_keys: bool = False) -> str:
     """Serialize a JsonValue to a JSON-formatted str.
 
     indent: non-zero turns on pretty-printing with that many spaces per level.
@@ -226,10 +226,10 @@ def load(fp: Readable) -> Own[JsonValue]:
     return loads(fp.read())
 
 
-def dump(obj: JsonValue, fp: Writable, *, indent: Int32 = 0, sort_keys: bool = False) -> None:
+def dump(obj: JsonValue, fp: Writable, *, indent: int32 = 0, sort_keys: bool = False) -> None:
     """Serialize a JsonValue as JSON to a text file object.
 
-    `fp` is any object with a `write(str) -> Int32` method (e.g. io.StringIO
+    `fp` is any object with a `write(str) -> int32` method (e.g. io.StringIO
     or open()'s TextIO). Equivalent to fp.write(dumps(obj, ...)).
     """
     fp.write(dumps(obj, indent=indent, sort_keys=sort_keys))

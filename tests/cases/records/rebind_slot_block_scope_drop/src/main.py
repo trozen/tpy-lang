@@ -2,7 +2,7 @@
 # function prologue, so the value it holds outlives the block. Pins the CURRENT
 # drop timing, which is wrong: the superseded value should drop at the rebind,
 # as CPython does. See no_cpython.txt for the tracked cause.
-from tpy import Int32
+from tpy import int32
 
 
 class Noisy:

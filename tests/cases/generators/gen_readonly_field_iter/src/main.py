@@ -7,29 +7,29 @@
 # elements (aliasing, no copy).
 
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
 class Holder:
-    lst: list[Int32] | None
-    plain: list[Int32]
+    lst: list[int32] | None
+    plain: list[int32]
 
     def __init__(self):
         self.lst = [1, 2, 3]
         self.plain = [10, 20]
 
-    def direct(self) -> Iterator[Int32]:
+    def direct(self) -> Iterator[int32]:
         if self.lst is not None:
             for x in self.lst:
                 yield x
 
-    def via_alias(self) -> Iterator[Int32]:
+    def via_alias(self) -> Iterator[int32]:
         h = self.lst
         if h is not None:
             for x in h:
                 yield x
 
-    def simple_alias(self) -> Iterator[Int32]:
+    def simple_alias(self) -> Iterator[int32]:
         # Single yield, so this one takes the simple-gen lambda, which
         # captures `a` by value (the documented escaping-closure snapshot):
         # field mutations after creation are NOT observed here
@@ -42,7 +42,7 @@ class Holder:
     # generator METHOD, TWO yields (frame): the alias binds the field's
     # ADDRESS (`a = &(__self.plain);`), so a write to the field after the
     # bind is observed through it -- CPython's name binding.
-    def live_alias(self) -> Iterator[Int32]:
+    def live_alias(self) -> Iterator[int32]:
         a = self.plain  # tpyc: ok
         yield a[0]
         self.plain[0] = 111
@@ -51,7 +51,7 @@ class Holder:
 
 # free generator, NON-self receiver: the same container-field alias off a
 # PARAM, which had no admitted source row before.
-def alias_param(h: Holder) -> Iterator[Int32]:
+def alias_param(h: Holder) -> Iterator[int32]:
     a = h.plain  # tpyc: ok
     yield a[1]
     h.plain[1] = 222
@@ -59,9 +59,9 @@ def alias_param(h: Holder) -> Iterator[Int32]:
 
 
 class Counter:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32):
+    def __init__(self, v: int32):
         self.v = v
 
 
@@ -71,7 +71,7 @@ class Bumper:
     def __init__(self):
         self.cells = [Counter(5), Counter(6)]
 
-    def bump(self) -> Iterator[Int32]:
+    def bump(self) -> Iterator[int32]:
         for c in self.cells:
             c.v += 1
             yield c.v

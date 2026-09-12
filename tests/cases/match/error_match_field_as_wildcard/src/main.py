@@ -1,17 +1,17 @@
 # A field sub-pattern spelled `(_ as x)`: the wildcard and the capture bind
 # the same field twice, which the arm's condition cannot express.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class X:
-    k: Int32
+    k: int32
 
     def __init__(self) -> None:
         self.k = 5
 
 
 class B:
-    m: Int32
+    m: int32
 
     def __init__(self) -> None:
         self.m = 0
@@ -31,7 +31,7 @@ class W:
         self.v = B()
 
 
-def f(w: W) -> Int32:
+def f(w: W) -> int32:
     match w:  # tpyc: error(/stmt\.match/)
         # The field sub-pattern is a wildcard AND a capture.
         case W(v=(_ as x)):

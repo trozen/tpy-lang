@@ -5,9 +5,9 @@ namespace tpyapp::main {
 
 
 // # Non-mutated param: should become const Point& in codegen
-// def read_point(p: Point) -> Int32:
+// def read_point(p: Point) -> int32:
 int32_t read_point(const Point& p) {
-    // r: Int32 = p.x  # tpyc: type(Int32)
+    // r: int32 = p.x  # tpyc: type(int32)
     int32_t r = p.x;
     // return r
     return r;
@@ -16,7 +16,7 @@ int32_t read_point(const Point& p) {
 // # Mutated param (field write): should stay Point&
 // def mutate_point(p: Point) -> None:
 void mutate_point(Point& p) {
-    // p.x = Int32(99)
+    // p.x = int32(99)
     p.x = 99;
 }
 
@@ -28,7 +28,7 @@ Point* get_ptr(Point& p) {
 }
 
 // # items[i] subscript address-taking: items must stay vector& (not const)
-// def get_elem_ptr(items: list[Point], i: Int32) -> Ptr[Point]:
+// def get_elem_ptr(items: list[Point], i: int32) -> Ptr[Point]:
 Point* get_elem_ptr(std::vector<Point>& items, int32_t i) {
     // return items[i]
     return &::tpy::__getitem__(items, i);
@@ -42,9 +42,9 @@ Point* to_optional(Point& p) {
 }
 
 // # Non-mutated list param: should become const vector&
-// def sum_list(items: list[Int32]) -> Int32:
+// def sum_list(items: list[int32]) -> int32:
 int32_t sum_list(const std::vector<int32_t>& items) {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for x in items:
     auto& __obj_0 = items;
@@ -60,14 +60,14 @@ int32_t sum_list(const std::vector<int32_t>& items) {
 }
 
 // # Mutated list param (append): should stay vector&
-// def append_item(items: list[Int32], v: Int32) -> None:
+// def append_item(items: list[int32], v: int32) -> None:
 void append_item(std::vector<int32_t>& items, int32_t v) {
     // items.append(v)
     items.push_back(v);
 }
 
 // # Phase 2 propagation: wrapper passes items to mutating callee -> items must stay T&
-// def append_wrapper(items: list[Int32], v: Int32) -> None:
+// def append_wrapper(items: list[int32], v: int32) -> None:
 void append_wrapper(std::vector<int32_t>& items, int32_t v) {
     // append_item(items, v)
     append_item(items, v);
@@ -75,7 +75,7 @@ void append_wrapper(std::vector<int32_t>& items, int32_t v) {
 
 // def main() -> None:
 void main() {
-    // p = Point(Int32(1), Int32(2))
+    // p = Point(int32(1), int32(2))
     Point p = Point(1, 2);
     // print(read_point(p))
     std::cout << read_point(p) << "\n";
@@ -83,21 +83,21 @@ void main() {
     mutate_point(p);
     // print(p.x)
     std::cout << p.x << "\n";
-    // pts: list[Point] = [Point(Int32(10), Int32(20)), Point(Int32(30), Int32(40))]
+    // pts: list[Point] = [Point(int32(10), int32(20)), Point(int32(30), int32(40))]
     std::vector<Point> pts = {Point(10, 20), Point(30, 40)};
-    // ptr = get_elem_ptr(pts, Int32(0))
+    // ptr = get_elem_ptr(pts, int32(0))
     Point* ptr = get_elem_ptr(pts, 0);
     // print(ptr.x)
     std::cout << ::tpy::deref_check(ptr).x << "\n";
-    // nums: list[Int32] = [Int32(10), Int32(20)]
+    // nums: list[int32] = [int32(10), int32(20)]
     std::vector<int32_t> nums = {10, 20};
     // print(sum_list(nums))
     std::cout << sum_list(nums) << "\n";
-    // append_item(nums, Int32(30))
+    // append_item(nums, int32(30))
     append_item(nums, 30);
     // print(sum_list(nums))
     std::cout << sum_list(nums) << "\n";
-    // append_wrapper(nums, Int32(40))
+    // append_wrapper(nums, int32(40))
     append_wrapper(nums, 40);
     // print(sum_list(nums))
     std::cout << sum_list(nums) << "\n";

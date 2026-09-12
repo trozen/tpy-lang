@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def make(i: Int32) -> Own[Point]:
+// def make(i: int32) -> Own[Point]:
 Point make(int32_t i) {
     // return Point(i)
     return Point(i);

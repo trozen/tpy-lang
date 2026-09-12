@@ -3,7 +3,7 @@
 # because a reference has no call site to materialize an owned copy at; now that
 # each str/bytes type owns its C++ type the generic's slot IS the twin's own
 # parameter form, so the instantiated signature matches the Fn slot as it stands.
-from tpy import Fn, Int32
+from tpy import Fn, int32
 
 
 def identity[T](x: T) -> T:
@@ -14,8 +14,8 @@ def apply_str(f: Fn[[str], str], s: str) -> str:
     return f(s)
 
 
-def apply_bytes(f: Fn[[bytes], bytes], b: bytes) -> Int32:
-    return Int32(len(f(b)))
+def apply_bytes(f: Fn[[bytes], bytes], b: bytes) -> int32:
+    return int32(len(f(b)))
 
 
 def main() -> None:

@@ -5,17 +5,17 @@
 # this case guards. The second append is the contrast: `bytearray` and `bytes`
 # are distinct types, so an owning `bytes` sink refuses a bytearray outright
 # and the copy is WRITTEN -- `bytes(ba)`, which is never a move. The moved
-# local is a `list[Int32]` rather than the bytearray it used to be for the same
+# local is a `list[int32]` rather than the bytearray it used to be for the same
 # reason: that pair no longer reaches the move arm at all. What the written
 # copy does to the two objects is pinned in
 # tests/cases/bytes/bytearray_copy_into_bytes_sink.
 from typing import Iterator
 
-from tpy import Int32
+from tpy import int32
 
 
 def chunks(n: int) -> Iterator[int]:
-    out: list[list[Int32]] = []
+    out: list[list[int32]] = []
     seen: list[bytes] = []
     buf = [1, 2, 3]
     ba = bytearray(b"abc")

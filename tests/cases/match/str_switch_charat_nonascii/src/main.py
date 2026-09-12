@@ -1,10 +1,10 @@
 # char_at string-switch dispatch with a non-ASCII literal: same-byte-length
 # cases force a byte-position discriminator; the UTF-8 lead byte gets a
 # numeric case label and must still dispatch correctly.
-from tpy import Int32
+from tpy import int32
 
 
-def classify(s: str) -> Int32:
+def classify(s: str) -> int32:
     match s:
         case "aa":
             return 1

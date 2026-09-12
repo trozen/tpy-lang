@@ -1,13 +1,13 @@
 # Soundness fixes must not over-kill: narrowing survives loops that don't
 # touch the variable, plain calls (no nonlocal-writing closure in scope),
 # and code after a try/finally on the normal path.
-from tpy import Int32
+from tpy import int32
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32):
+    def __init__(self, x: int32):
         self.x = x
 
 

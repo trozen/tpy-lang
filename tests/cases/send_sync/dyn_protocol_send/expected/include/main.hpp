@@ -37,14 +37,14 @@ void main();
 
 // class Dog:
 struct Dog {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Dog() = default;
     explicit Dog(int32_t n);
 
-    // def speak(self) -> Int32:
+    // def speak(self) -> int32:
     int32_t speak() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
 };
@@ -74,10 +74,10 @@ struct tpy::RefAdapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
 namespace tpyapp::main {
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Dog::Dog(int32_t n) : n(n) {}
 
-// def speak(self) -> Int32:
+// def speak(self) -> int32:
 inline int32_t Dog::speak() const {
     // return self.n
     return this->n;

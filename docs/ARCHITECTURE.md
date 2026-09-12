@@ -138,7 +138,7 @@ their surface shape; `ImportProcessor._canonical_imports` /
 import would pollute bare `NominalType`s that the analyzer's alias
 resolver uses as placeholders (it skips anything with
 `_module_qname` set), silently breaking compile-time aliases like
-`type Float64 = float`.
+`type float64 = float`.
 
 ## Type system
 
@@ -165,7 +165,7 @@ Use qname/category predicates (`is_list`, `is_fixed_int_type`,
 comparison for nominal dispatch. `type(x) == type(y)` is only
 meaningful between structural classes, because post-collapse every
 container, primitive, record, and enum-class is a `NominalType` --
-`type(list[Int32]) == type(set[Int32])` is `True` and they differ
+`type(list[int32]) == type(set[int32])` is `True` and they differ
 only in `.name` / `.qualified_name()`.
 
 ### Value-form taxonomy
@@ -275,7 +275,7 @@ writing one.
 ### Identity invariants
 
 1. **Nominal identity is qname-based; `_module_qname` is not a
-   semantic shortcut.** Every builtin singleton -- primitives (Int32,
+   semantic shortcut.** Every builtin singleton -- primitives (int32,
    str, bool, ...) and builtin generics (list, dict, set, Array,
    Span, ...) -- has `_module_qname` set. Never branch sema
    validation on "has `_module_qname`" to skip registry/arity checks;
@@ -297,7 +297,7 @@ writing one.
    qname/category predicates or explicit `NominalType.name`
    comparison. Two sites in `sema/overloads.py` (`type_matches_numeric`,
    `_structural_match`) used this anti-pattern pre-Phase-D and
-   silently matched `list[Int32]` against `set[Int32]` overloads via
+   silently matched `list[int32]` against `set[int32]` overloads via
    element recursion after the subclass collapse.
 
 4. **`RecordInfo` carries two module fields.** `RecordInfo.module` is

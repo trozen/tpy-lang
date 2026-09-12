@@ -1,9 +1,9 @@
-from tpy import Int32
+from tpy import int32
 
 # Test extended list methods: pop(index), index(), count(), reverse(), copy(), __setitem__
 
-def print_list(nums: list[Int32]) -> None:
-    i: Int32 = 0
+def print_list(nums: list[int32]) -> None:
+    i: int32 = 0
     while i < len(nums):
         print(nums[i])
         i += 1
@@ -12,10 +12,10 @@ def print_list(nums: list[Int32]) -> None:
 # === list[T] methods ===
 
 def test_pop_at_index() -> None:
-    nums: list[Int32] = [10, 20, 30, 40, 50]
+    nums: list[int32] = [10, 20, 30, 40, 50]
 
     # Pop from middle
-    val: Int32 = nums.pop(2)
+    val: int32 = nums.pop(2)
     print(val)
     print_list(nums)
 
@@ -30,7 +30,7 @@ def test_pop_at_index() -> None:
     print_list(nums)
 
 def test_index() -> None:
-    nums: list[Int32] = [10, 20, 30, 20, 40]
+    nums: list[int32] = [10, 20, 30, 20, 40]
 
     print(nums.index(10))  # 0
     print(nums.index(20))  # 1 (first occurrence)
@@ -38,7 +38,7 @@ def test_index() -> None:
     print(nums.index(40))  # 4
 
 def test_count() -> None:
-    nums: list[Int32] = [1, 2, 2, 3, 2, 4, 2]
+    nums: list[int32] = [1, 2, 2, 3, 2, 4, 2]
 
     print(nums.count(1))  # 1
     print(nums.count(2))  # 4
@@ -46,7 +46,7 @@ def test_count() -> None:
     print(nums.count(5))  # 0 (not found)
 
 def test_reverse() -> None:
-    nums: list[Int32] = [1, 2, 3, 4, 5]
+    nums: list[int32] = [1, 2, 3, 4, 5]
     nums.reverse()
     print_list(nums)
 
@@ -55,8 +55,8 @@ def test_reverse() -> None:
     print_list(nums)
 
 def test_copy() -> None:
-    nums: list[Int32] = [1, 2, 3]
-    copy: list[Int32] = nums.copy()
+    nums: list[int32] = [1, 2, 3]
+    copy: list[int32] = nums.copy()
 
     # Modify original
     nums.append(4)
@@ -67,7 +67,7 @@ def test_copy() -> None:
     print_list(copy)
 
 def test_setitem() -> None:
-    nums: list[Int32] = [10, 20, 30]
+    nums: list[int32] = [10, 20, 30]
 
     nums[0] = 100
     nums[2] = 300

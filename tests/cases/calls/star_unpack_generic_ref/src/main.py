@@ -3,7 +3,7 @@
 # without it, generic-T inference walked the TpyStarUnpack via the
 # structural analyze_expr which had no handler and raised
 # "Unknown expression type: TpyStarUnpack".
-from tpy import Int32, nocopy
+from tpy import int32, nocopy
 
 
 @nocopy
@@ -14,15 +14,15 @@ class Box[T]:
         self.val = v
 
 
-def take_all[T](*boxes: Box[T]) -> Int32:
-    n: Int32 = 0
+def take_all[T](*boxes: Box[T]) -> int32:
+    n: int32 = 0
     for b in boxes:
         n += 1
     return n
 
 
 def main() -> None:
-    items: list[Box[Int32]] = []
+    items: list[Box[int32]] = []
     items.append(Box(1))
     items.append(Box(2))
     items.append(Box(3))

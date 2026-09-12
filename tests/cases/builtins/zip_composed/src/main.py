@@ -1,11 +1,11 @@
 # zip() composed with map() -- owning_zip_iter must store iterators by value
 # (not reference) to avoid dangling references from __iter__() returning Self&.
-from tpy import Int32
+from tpy import int32
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32) -> None:
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
     def __str__(self) -> str:
@@ -14,13 +14,13 @@ class Point:
 def identity(p: Point) -> Point:
     return p
 
-def double(v: Int32) -> Int32:
+def double(v: int32) -> int32:
     return v * 2
 
 def main() -> None:
     pts1: list[Point] = [Point(1, 2), Point(3, 4)]
     pts2: list[Point] = [Point(5, 6), Point(7, 8)]
-    vals: list[Int32] = [10, 20]
+    vals: list[int32] = [10, 20]
 
     # Non-value types through map
     for a, b in zip(map(identity, pts1), map(identity, pts2)):

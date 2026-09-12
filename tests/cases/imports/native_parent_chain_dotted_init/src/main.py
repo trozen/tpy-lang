@@ -4,12 +4,12 @@
 # are undeclared (no .cpp output), failing the C++ build. The fix
 # skips parent-init emission for modules without a runtime init.
 from pkg.inner.leaf import COUNTER
-from tpy import Int32
+from tpy import int32
 
 
 def main() -> None:
     print(COUNTER)
-    print(COUNTER + Int32(1))
+    print(COUNTER + int32(1))
 
 
 main()

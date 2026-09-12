@@ -1,17 +1,17 @@
-from tpy import Int32, Ptr, readonly
+from tpy import int32, Ptr, readonly
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32) -> None:
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 
 def modify_point(p: Ptr[Point]) -> None:
     p.x = 999
 
-def read_point(p: Ptr[readonly[Point]]) -> Int32:
+def read_point(p: Ptr[readonly[Point]]) -> int32:
     return p.x
 
 def test_coercion() -> None:
@@ -22,12 +22,12 @@ def test_coercion() -> None:
     print(pt.x)  # Should print 999
 
     # Record -> Ptr[readonly[...]] coercion in function call
-    result: Int32 = read_point(pt)
+    result: int32 = read_point(pt)
     print(result)  # Should print 999
 
     # Explicit Ptr -> Ptr[readonly[...]] also works
     ptr: Ptr[Point] = pt
-    result2: Int32 = read_point(ptr)
+    result2: int32 = read_point(ptr)
     print(result2)  # Should print 999
 
 # Run test

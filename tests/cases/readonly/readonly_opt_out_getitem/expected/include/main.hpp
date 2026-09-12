@@ -14,16 +14,16 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // class CachedList:
 struct CachedList {
-    // _data: list[Int32]
+    // _data: list[int32]
     std::vector<int32_t> _data;
-    // _hits: Int32
+    // _hits: int32
     int32_t _hits;
 
     // def __init__(self) -> None:
     CachedList();
 
     // @readonly(False)
-    // def __getitem__(self, idx: Int32) -> Int32:
+    // def __getitem__(self, idx: int32) -> int32:
     int32_t __getitem__(int32_t idx);
 
     int32_t operator[](int32_t idx) {
@@ -42,7 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const CachedList& obj) {
 inline CachedList::CachedList() : _data(std::vector<int32_t>{10, 20, 30}), _hits(0) {}
 
 // @readonly(False)
-// def __getitem__(self, idx: Int32) -> Int32:
+// def __getitem__(self, idx: int32) -> int32:
 inline int32_t CachedList::__getitem__(int32_t idx) {
     // self._hits = self._hits + 1
     this->_hits = (::tpy::add_check<int32_t>(this->_hits, 1));

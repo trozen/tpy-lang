@@ -1,5 +1,5 @@
 # Cross-module import of globals defined via tuple unpacking
-from tpy import Int32
+from tpy import int32
 from config import lo, hi
 
 def show() -> None:

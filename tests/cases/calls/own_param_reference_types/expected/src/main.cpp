@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def consume(b: Own[bytearray]) -> Int32:  # tpyc: warning(/never consumed/)
+// def consume(b: Own[bytearray]) -> int32:  # tpyc: warning(/never consumed/)
 int32_t consume(::tpy::ByteArray&& b) {
     // b.append(90)                 # the owned buffer is mutable in the callee
     b.push_back(90);
@@ -12,7 +12,7 @@ int32_t consume(::tpy::ByteArray&& b) {
     return ::tpy::__len__(b);
 }
 
-// def consume_list(xs: Own[list[Int32]]) -> Int32:  # tpyc: warning(/never consumed/)
+// def consume_list(xs: Own[list[int32]]) -> int32:  # tpyc: warning(/never consumed/)
 int32_t consume_list(std::vector<int32_t>&& xs) {
     // xs.append(3)
     xs.push_back(3);
@@ -20,7 +20,7 @@ int32_t consume_list(std::vector<int32_t>&& xs) {
     return ::tpy::__len__(xs);
 }
 
-// def consume_boxes(bs: Own[list[Box[Int32]]]) -> Int32:  # tpyc: ok
+// def consume_boxes(bs: Own[list[Box[int32]]]) -> int32:  # tpyc: ok
 int32_t consume_boxes(std::vector<::tpystd::tplib::box::Box<int32_t>>&& bs) {
     // # The @nocopy leg: this slot has to MOVE, a copy would not compile. It
     // # draws no "never consumed" warning where its two siblings do, because a
@@ -37,11 +37,11 @@ void main() {
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("abc", 3));
     // print(consume(ba))  # tpyc: ok
     std::cout << consume(std::move(ba)) << "\n";
-    // ls: list[Int32] = [1, 2]
+    // ls: list[int32] = [1, 2]
     std::vector<int32_t> ls = {1, 2};
     // print(consume_list(ls))  # tpyc: ok
     std::cout << consume_list(std::move(ls)) << "\n";
-    // boxes: list[Box[Int32]] = [Box(1)]
+    // boxes: list[Box[int32]] = [Box(1)]
     std::vector<::tpystd::tplib::box::Box<int32_t>> boxes = ::tpy::make_vector<::tpystd::tplib::box::Box<int32_t>>(::tpystd::tplib::box::Box<int32_t>(1));
     // print(consume_boxes(boxes))  # tpyc: ok
     std::cout << consume_boxes(std::move(boxes)) << "\n";

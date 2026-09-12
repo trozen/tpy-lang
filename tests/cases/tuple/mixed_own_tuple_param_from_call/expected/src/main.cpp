@@ -16,19 +16,19 @@ std::tuple<Box, Box> make_owned() {
     return std::tuple<Box, Box>{Box(10), Box(20)};
 }
 
-// def take_mixed(p: tuple[Own[Box], Box]) -> Int32:
+// def take_mixed(p: tuple[Own[Box], Box]) -> int32:
 int32_t take_mixed(const std::tuple<Box, const Box*>& p) {
     // return p[0].n + p[1].n
     return (::tpy::add_check<int32_t>(std::get<0>(p).n, std::get<1>(p)->n));
 }
 
-// def take_owned(p: tuple[Own[Box], Own[Box]]) -> Int32:
+// def take_owned(p: tuple[Own[Box], Own[Box]]) -> int32:
 int32_t take_owned(std::tuple<Box, Box>&& p) {
     // return p[0].n + p[1].n
     return (::tpy::add_check<int32_t>(std::get<0>(p).n, std::get<1>(p).n));
 }
 
-// def relay(b: Box) -> Int32:
+// def relay(b: Box) -> int32:
 int32_t relay(Box& b) {
     // # The param forwards onward as a param -- still no conversion.
     // return take_mixed(make_mixed(b))

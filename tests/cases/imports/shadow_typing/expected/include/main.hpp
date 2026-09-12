@@ -15,10 +15,10 @@ void main();
 
 // class Sized:  # tpyc: warning(/shadows import from 'typing'/)
 struct Sized {
-    // val: Int32
+    // val: int32
     int32_t val;
 
-    // def __init__(self, v: Int32):
+    // def __init__(self, v: int32):
     Sized() = default;
     explicit Sized(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Sized";
@@ -30,7 +30,7 @@ inline std::ostream& operator<<(std::ostream& os, const Sized& obj) {
 }
 
 
-// def __init__(self, v: Int32):
+// def __init__(self, v: int32):
 inline Sized::Sized(int32_t v) : val(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

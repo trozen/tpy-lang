@@ -15,16 +15,16 @@ void main();
 
 // class Holder:
 struct Holder {
-    // items: list[Int32]
+    // items: list[int32]
     std::vector<int32_t> items;
 
     // def __init__(self) -> None:
     Holder();
 
-    // def grab(self) -> readonly[Own[list[Int32]]]:
+    // def grab(self) -> readonly[Own[list[int32]]]:
     std::vector<int32_t> grab() const;
 
-    // def grab_copy(self) -> readonly[Own[list[Int32]]]:
+    // def grab_copy(self) -> readonly[Own[list[int32]]]:
     std::vector<int32_t> grab_copy() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
@@ -38,13 +38,13 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 // def __init__(self) -> None:
 inline Holder::Holder() : items(std::vector<int32_t>{1, 2}) {}
 
-// def grab(self) -> readonly[Own[list[Int32]]]:
+// def grab(self) -> readonly[Own[list[int32]]]:
 inline std::vector<int32_t> Holder::grab() const {
-    // return self.items  # tpyc: warning(/copies list\[Int32\] into owned storage/)
+    // return self.items  # tpyc: warning(/copies list\[int32\] into owned storage/)
     return std::vector<int32_t>(this->items);
 }
 
-// def grab_copy(self) -> readonly[Own[list[Int32]]]:
+// def grab_copy(self) -> readonly[Own[list[int32]]]:
 inline std::vector<int32_t> Holder::grab_copy() const {
     // return copy(self.items)  # tpyc: ok
     return std::vector<int32_t>(this->items);

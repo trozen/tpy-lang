@@ -1,18 +1,18 @@
 # Regression guard for the PERMITTED side of the C-ABI allow-list: fixed-width
-# ints, Float32, float, bool, Char and Ptr[T] must stay legal in a C-linkage
+# ints, float32, float, bool, char and Ptr[T] must stay legal in a C-linkage
 # signature, in both param and return position, plus `None` (void) as a return.
 # Narrowing the allow-list has to fail here.
 from tpy.extern import export
-from tpy import (Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64,
-                 Float32, Char, Ptr)
+from tpy import (int8, int16, int32, int64, uint8, uint16, uint32, uint64,
+                 float32, char, Ptr)
 from tpy.unsafe import unsafe_load, unsafe_ptr
 
 # Every permitted family at once in param position, returning None (void).
 @export(binding="C")
-def sink(i8: Int8, i16: Int16, i32: Int32, i64: Int64,
-         u8: UInt8, u16: UInt16, u32: UInt32, u64: UInt64,
-         f32: Float32, d: float, flag: bool, ch: Char,
-         p: Ptr[Int32]) -> None:
+def sink(i8: int8, i16: int16, i32: int32, i64: int64,
+         u8: uint8, u16: uint16, u32: uint32, u64: uint64,
+         f32: float32, d: float, flag: bool, ch: char,
+         p: Ptr[int32]) -> None:
     print(i8)
     print(i16)
     print(i32)
@@ -29,11 +29,11 @@ def sink(i8: Int8, i16: Int16, i32: Int32, i64: Int64,
 
 # The same families in return position -- the gate checks returns separately.
 @export(binding="C")
-def echo_i64(x: Int64) -> Int64:
+def echo_i64(x: int64) -> int64:
     return x
 
 @export(binding="C")
-def echo_f32(x: Float32) -> Float32:
+def echo_f32(x: float32) -> float32:
     return x
 
 @export(binding="C")
@@ -41,23 +41,23 @@ def echo_bool(x: bool) -> bool:
     return x
 
 @export(binding="C")
-def echo_char(x: Char) -> Char:
+def echo_char(x: char) -> char:
     return x
 
 @export(binding="C")
-def echo_ptr(p: Ptr[Int32]) -> Ptr[Int32]:
+def echo_ptr(p: Ptr[int32]) -> Ptr[int32]:
     return p
 
 def main() -> None:
-    xs = [Int32(7), Int32(8)]
+    xs = [int32(7), int32(8)]
     p = unsafe_ptr(xs)
-    sink(Int8(-1), Int16(-2), Int32(-3), Int64(-4),
-         UInt8(1), UInt16(2), UInt32(3), UInt64(4),
-         Float32(0.5), 1.25, True, Char('z'), p)
-    print(echo_i64(Int64(99)))
-    print(echo_f32(Float32(1.5)))
+    sink(int8(-1), int16(-2), int32(-3), int64(-4),
+         uint8(1), uint16(2), uint32(3), uint64(4),
+         float32(0.5), 1.25, True, char('z'), p)
+    print(echo_i64(int64(99)))
+    print(echo_f32(float32(1.5)))
     print(echo_bool(False))
-    print(echo_char(Char('q')))
+    print(echo_char(char('q')))
     print(unsafe_load(echo_ptr(p), 1))
 
 main()

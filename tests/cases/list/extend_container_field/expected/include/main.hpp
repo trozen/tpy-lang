@@ -15,13 +15,13 @@ void main();
 
 // class Holder:
 struct Holder {
-    // nums: list[Int32]
+    // nums: list[int32]
     std::vector<int32_t> nums;
-    // tags: set[Int32]
+    // tags: set[int32]
     ::tpy::ordered_set<int32_t> tags;
     // parts: list[str]
     std::vector<std::string> parts;
-    // ages: dict[str, Int32]
+    // ages: dict[str, int32]
     ::tpy::ordered_map<std::string, int32_t> ages;
 
     // def __init__(self) -> None:

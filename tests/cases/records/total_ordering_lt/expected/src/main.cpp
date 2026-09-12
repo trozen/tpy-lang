@@ -3,11 +3,11 @@
 
 namespace tpyapp::main {
 
-// a = Score(Int32(3))
+// a = Score(int32(3))
 Score* a{};
-// b = Score(Int32(5))
+// b = Score(int32(5))
 Score* b{};
-// c = Score(Int32(3))
+// c = Score(int32(3))
 Score* c{};
 
 void __tpy_init() {
@@ -21,13 +21,13 @@ void __tpy_init() {
     // # `_functools_macros`) is wired correctly.
     // from functools import total_ordering
     ::tpystd::functools::__tpy_init();
-    // a = Score(Int32(3))
+    // a = Score(int32(3))
     static Score __global_slot_1 = Score(3);
     a = &__global_slot_1;
-    // b = Score(Int32(5))
+    // b = Score(int32(5))
     static Score __global_slot_2 = Score(5);
     b = &__global_slot_2;
-    // c = Score(Int32(3))
+    // c = Score(int32(3))
     static Score __global_slot_3 = Score(3);
     c = &__global_slot_3;
     // print(a < b)

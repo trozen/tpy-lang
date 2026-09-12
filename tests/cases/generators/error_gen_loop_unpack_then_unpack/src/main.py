@@ -1,10 +1,10 @@
 # A generator whose for-loop unpack targets are reused by a later tuple
 # unpack: the second binding makes the unpack targets non-exclusive.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
-def gen(items: list[tuple[Int32, Int32]]) -> Iterator[Int32]:
+def gen(items: list[tuple[int32, int32]]) -> Iterator[int32]:
     yield 0
     total = 0
     # `a` / `n` are unpack targets here and again after the loop.

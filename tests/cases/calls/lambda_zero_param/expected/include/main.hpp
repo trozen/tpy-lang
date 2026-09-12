@@ -16,7 +16,7 @@ template<typename __F0>
 int32_t invoke(__F0&& f);
 void main();
 
-// def invoke(f: Fn[[], Int32]) -> Int32:
+// def invoke(f: Fn[[], int32]) -> int32:
 template<typename __F0>
   requires requires(__F0& __fn) {
       { __fn() } -> std::convertible_to<int32_t>;

@@ -1,14 +1,14 @@
 # sum() builtin with different numeric types and start values
-from tpy import Int32, Int64
+from tpy import int32, int64
 
 def main() -> None:
-    # Int32
+    # int32
     vals = [1, 2, 3, 4, 5]
     print(sum(vals))
     print(sum(vals, 100))
 
-    # Int64
-    big: list[Int64] = [1000000000, 2000000000, 3000000000]
+    # int64
+    big: list[int64] = [1000000000, 2000000000, 3000000000]
     print(sum(big))
 
     # float
@@ -17,7 +17,7 @@ def main() -> None:
     print(sum(floats, 10.0))
 
     # empty
-    empty: list[Int32] = []
+    empty: list[int32] = []
     print(sum(empty))
     print(sum(empty, 42))
 

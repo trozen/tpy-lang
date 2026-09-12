@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def pick_elem(rs: list[Rec], c: bool) -> Int32:
+// def pick_elem(rs: list[Rec], c: bool) -> int32:
 int32_t pick_elem(std::vector<Rec>& rs, bool c) {
     // r = rs[0] if c else rs[1]   # tpyc: ok -- two element lvalues
     Rec& r = ((c) ? (::tpy::__getitem__(rs, 0)) : (::tpy::__getitem__(rs, 1)));
@@ -14,7 +14,7 @@ int32_t pick_elem(std::vector<Rec>& rs, bool c) {
     return r.n;
 }
 
-// def pick_opt_elem(rs: list[Rec], c: bool) -> Int32:
+// def pick_opt_elem(rs: list[Rec], c: bool) -> int32:
 int32_t pick_opt_elem(std::vector<Rec>& rs, bool c) {
     // # The copy warning is spurious for an element arm -- the select takes the
     // # element's ADDRESS, and main() observes the mutation on the container
@@ -32,7 +32,7 @@ int32_t pick_opt_elem(std::vector<Rec>& rs, bool c) {
     return -1;
 }
 
-// def pick_optional_element(xs: list[Rec | None], c: bool) -> Int32:
+// def pick_optional_element(xs: list[Rec | None], c: bool) -> int32:
 int32_t pick_optional_element(std::vector<std::optional<Rec>>& xs, bool c) {
     // # The element is a pointer-repr Optional, so the select yields the `Rec*`
     // # itself; the same spurious copy warning fires here.
@@ -49,7 +49,7 @@ int32_t pick_optional_element(std::vector<std::optional<Rec>>& xs, bool c) {
     return -1;
 }
 
-// def pick_array(a: Array[Int32, 2], b: Array[Int32, 2], c: bool) -> Int32:
+// def pick_array(a: Array[int32, 2], b: Array[int32, 2], c: bool) -> int32:
 int32_t pick_array(std::array<int32_t, 2>& a, std::array<int32_t, 2>& b, bool c) {
     // x = a if c else b           # tpyc: ok -- an Array select aliases
     std::array<int32_t, 2>& x = ((c) ? (a) : (b));
@@ -78,9 +78,9 @@ void main() {
         // print(first.n)
         std::cout << first->n << "\n";
     }
-    // arr: Array[Int32, 2] = [0, 0]
+    // arr: Array[int32, 2] = [0, 0]
     std::array<int32_t, 2> arr = {0, 0};
-    // brr: Array[Int32, 2] = [0, 0]
+    // brr: Array[int32, 2] = [0, 0]
     std::array<int32_t, 2> brr = {0, 0};
     // print(pick_array(arr, brr, True), arr[0])
     std::cout << pick_array(arr, brr, true) << " " << ::tpy::__getitem__(arr, 0) << "\n";

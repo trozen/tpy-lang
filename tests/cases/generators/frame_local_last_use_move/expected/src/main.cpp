@@ -8,7 +8,7 @@ namespace tpyapp::main {
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_chunks::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // out: list[list[Int32]] = []
+        // out: list[list[int32]] = []
         out.emplace(std::vector<std::vector<int32_t>>{});
         // seen: list[bytes] = []
         seen.emplace(std::vector<::tpy::Bytes>{});

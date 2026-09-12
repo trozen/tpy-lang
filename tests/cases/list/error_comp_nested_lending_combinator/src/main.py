@@ -4,16 +4,16 @@
 # The fence admits a combinator argument nowhere rather than carve out the one
 # spelling whose safety comes from a different mechanism
 # (BUGS.md#nested-combinator-yields-element-copies).
-from tpy import Int32
+from tpy import int32
 
 
 class Node:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
-    def bump(self, d: Int32) -> Int32:
+    def bump(self, d: int32) -> int32:
         self.v += d
         return self.v
 

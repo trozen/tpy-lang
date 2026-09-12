@@ -8,24 +8,24 @@
 # `slow done`.
 import asyncio
 from asyncio import Event
-from tpy import Int32
+from tpy import int32
 
 
-async def slow(start: Event) -> Int32:
+async def slow(start: Event) -> int32:
     await start
     print("slow done")
-    return Int32(100)
+    return int32(100)
 
 
-async def fast(start: Event) -> Int32:
+async def fast(start: Event) -> int32:
     start.set()
     print("fast done")
-    return Int32(200)
+    return int32(200)
 
 
 async def main_coro() -> None:
     start = Event()
-    tasks: list[asyncio.Task[Int32]] = []
+    tasks: list[asyncio.Task[int32]] = []
     tasks.append(asyncio.create_task(slow(start)))
     tasks.append(asyncio.create_task(fast(start)))
     results = await asyncio.gather_list(tasks)

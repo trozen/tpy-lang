@@ -8,13 +8,13 @@
 # "copies Data into container" at the call site, which misattributes the
 # callee's copy to the caller (BUGS.md#setitem-copy-warning-at-call-site);
 # the annotation below pins that warning as currently emitted, not as right.
-from tpy import Int32
+from tpy import int32
 
 
 class Data:
-    value: Int32
+    value: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.value = v
 
 
@@ -26,13 +26,13 @@ class Slots:
         self.a = Data(0)
         self.b = Data(0)
 
-    def __setitem__(self, index: Int32, value: Data) -> None:
+    def __setitem__(self, index: int32, value: Data) -> None:
         if index == 0:
             self.a = value
         else:
             self.b = value
 
-    def __getitem__(self, index: Int32) -> Data:
+    def __getitem__(self, index: int32) -> Data:
         if index == 0:
             return self.a
         return self.b

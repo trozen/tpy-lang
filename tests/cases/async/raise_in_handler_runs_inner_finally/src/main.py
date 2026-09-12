@@ -7,12 +7,12 @@
 # the handler entry BB's region_stack (not the case-entry's) to
 # populate the active finally chain.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
-async def fail_value() -> Int32:
+async def fail_value() -> int32:
     raise ValueError("inner-fail")
 
-async def go() -> Int32:
+async def go() -> int32:
     try:
         try:
             x = await fail_value()
@@ -24,7 +24,7 @@ async def go() -> Int32:
             print("inner-finally")
     except RuntimeError:
         print("outer-handler")
-        return Int32(42)
+        return int32(42)
     finally:
         print("outer-finally")
 

@@ -20,7 +20,7 @@ Line* line2{};
 Line* line3{};
 
 // # Assign function-returned T | None into optional field (T* → std::optional<T>)
-// def find_point(points: list[Point], target: Int32) -> Point | None:
+// def find_point(points: list[Point], target: int32) -> Point | None:
 Point* find_point(std::vector<Point>& points, int32_t target) {
     // for p in points:
     auto& __obj_0 = points;

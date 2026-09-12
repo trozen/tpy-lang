@@ -1,17 +1,17 @@
 # Multi-await with non-async statements interleaved. Validates region
 # splitting + hoisted locals across multiple suspensions.
-from tpy import Int32
+from tpy import int32
 from tpy.coro import poll_once
 
-async def sub() -> Int32:
-    return Int32(10)
+async def sub() -> int32:
+    return int32(10)
 
-async def caller() -> Int32:
+async def caller() -> int32:
     print("before-1")
     x = await sub()
     print("between-1-2")
     y = await sub()
-    z: Int32 = x + y + Int32(1)
+    z: int32 = x + y + int32(1)
     print("after-2")
     return z
 

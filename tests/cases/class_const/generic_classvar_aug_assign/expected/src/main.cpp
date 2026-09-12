@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // a = C[Int32]()
+    // a = C[int32]()
     C<int32_t> a = C<int32_t>();
     // a.counter += 5  # tpyc: warning(/Assigning to ClassVar 'C.counter' via instance/)
     C<int32_t>::counter = ::tpy::add_check<int32_t>(C<int32_t>::counter, 5);

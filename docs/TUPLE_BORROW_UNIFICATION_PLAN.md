@@ -65,10 +65,10 @@ the plan discovered during the Phase B pass:
 
 The sections below are the original working plan, kept for archaeology.
 - **Repros** (recreate under `/tmp/agents/`, they are not in the repo):
-  - #1 param silent-copy: `def gen(p: tuple[Int32, Box]) -> Iterator[tuple[Int32, Box]]: yield p`
+  - #1 param silent-copy: `def gen(p: tuple[int32, Box]) -> Iterator[tuple[int32, Box]]: yield p`
     then consumer `pair[1].val = 99; print(b.val)` -- TPy 5, CPython 99.
   - #3 local-use build-fail: `def f(b: Box) -> None: t = (1, b); t[1].val = 99`.
-  - function-return: `def f(b: Box) -> tuple[Int32, Box]: return (1, b)`.
+  - function-return: `def f(b: Box) -> tuple[int32, Box]: return (1, b)`.
   (Box is a 1-field record with `__init__`.)
 
 ## Goal
@@ -89,7 +89,7 @@ it to STORAGE form (`std::tuple<..., T>`, owns a value copy). That silent
 demotion is the root cause of:
 
 - **#1 (HIGH, silent divergence):** param-sourced reference-member tuple
-  copies at the yield/return boundary. `def gen(p: tuple[Int32, Box]):
+  copies at the yield/return boundary. `def gen(p: tuple[int32, Box]):
   yield p` then mutate -> TPy 5 vs CPython 99. No diagnostic.
 - **#3 (MED, build fail):** durable reference-member tuple used locally
   (`t = (1, b); t[1].val = 99`) -> `std::tuple<int, Box&>` not
@@ -113,7 +113,7 @@ fact and remove the per-site predicate dispatch, but is NOT a prerequisite.
 
 ## Current-state model (verified)
 
-- `tuple[Int32, Box]` element_types = `(Int32, NominalType(Box))` -- the
+- `tuple[int32, Box]` element_types = `(int32, NominalType(Box))` -- the
   element is a bare nominal, NOT wrapped in `RefType`. Form is derived
   per-context by `TupleType` methods calling `to_cpp` / `to_cpp_return` /
   `to_cpp_stored` on the bare element.
@@ -330,7 +330,7 @@ the value-operation access correct AND is a down payment on THIR item 9
     These become the regression guards that the durable case now SHARES.
 17. KEEP fresh-dangle error cases (error_tuple_local_fresh_wrapper_alias_return
     and the literal fresh cases) -- still rejected.
-18. NEW happy cases: #1 param-sourced (`def gen(p: tuple[Int32, Box]): yield p`
+18. NEW happy cases: #1 param-sourced (`def gen(p: tuple[int32, Box]): yield p`
     + mutate, assert 99), #3 local-use (`t = (1, b); t[1].val = 99`, assert),
     call-return source (`u = make(); yield u`), durable wrapper member.
     - **Test-adequacy (cpython-parity):** every happy case MUST mutate the
@@ -405,7 +405,7 @@ the value-operation access correct AND is a down payment on THIR item 9
 
 Flipping `TupleType._element_to_cpp_param` so a BORROW_REF element renders
 `T*` (instead of `T&`) was probed against the #1 repro
-(`def gen(p: tuple[Int32, Box]) -> Iterator[tuple[Int32, Box]]: yield p`).
+(`def gen(p: tuple[int32, Box]) -> Iterator[tuple[int32, Box]]: yield p`).
 The switch alone is not green -- it exposes the full coordinated set of
 reconciliations (confirming Phases B/C/D are entangled and must land
 together):

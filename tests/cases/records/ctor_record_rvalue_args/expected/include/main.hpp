@@ -19,10 +19,10 @@ void main();
 
 // class Inner:
 struct Inner {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32):
+    // def __init__(self, v: int32):
     Inner() = default;
     explicit Inner(int32_t v);
 
@@ -38,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
 
 // class HolderConst:
 struct HolderConst {
-    // x: Int32
+    // x: int32
     int32_t x;
 
     // def __init__(self, inner: Inner):
@@ -54,7 +54,7 @@ inline std::ostream& operator<<(std::ostream& os, const HolderConst& obj) {
 
 // class HolderMut:
 struct HolderMut {
-    // x: Int32
+    // x: int32
     int32_t x;
 
     // def __init__(self, inner: Inner):
@@ -70,7 +70,7 @@ inline std::ostream& operator<<(std::ostream& os, const HolderMut& obj) {
 
 // class Outer:
 struct Outer {
-    // y: Int32
+    // y: int32
     int32_t y;
 
     // def __init__(self, h: HolderConst):
@@ -85,7 +85,7 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
 }
 
 
-// def __init__(self, v: Int32):
+// def __init__(self, v: int32):
 inline Inner::Inner(int32_t v) : v(v) {}
 
 // def bump(self) -> None:

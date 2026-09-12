@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // user = UserInfo(name="Alice", age=Int32(30), active=True)
+    // user = UserInfo(name="Alice", age=int32(30), active=True)
     UserInfo user = UserInfo("Alice", 30, true);
     // print(user["name"])
     std::cout << user.name << "\n";
@@ -15,12 +15,12 @@ void main() {
     // print(user["active"])
     std::cout << ::tpy::print_bool(user.active) << "\n";
     // # Mutation via subscript
-    // user["age"] = Int32(31)
+    // user["age"] = int32(31)
     user.age = 31;
     // print(user["age"])
     std::cout << user.age << "\n";
     // # Augmented assignment
-    // user["age"] += Int32(1)
+    // user["age"] += int32(1)
     user.age = ::tpy::add_check<int32_t>(user.age, 1);
     // print(user["age"])
     std::cout << user.age << "\n";

@@ -8,9 +8,9 @@ namespace tpyapp::main {
 ::tpystd::tplib::fix_str::FixStr<16> make() {
     // s = FixStr[16]()
     ::tpystd::tplib::fix_str::FixStr<16> s = ::tpystd::tplib::fix_str::FixStr<16>();
-    // a: Char = "a"
+    // a: char = "a"
     char a = 'a';
-    // b: Char = "b"
+    // b: char = "b"
     char b = 'b';
     // s.append(a)
     s.append(a);
@@ -30,7 +30,7 @@ void main() {
     std::cout << ::tpy::__len__(moved) << "\n";
     // print(moved[0], moved[1])    # a b
     std::cout << moved[0] << " " << moved[1] << "\n";
-    // c: Char = "c"
+    // c: char = "c"
     char c = 'c';
     // moved.append(c)              # mutate the relocated handle
     moved.append(c);

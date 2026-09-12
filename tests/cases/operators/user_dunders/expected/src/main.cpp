@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def test_unary() -> None:
 void test_unary() {
-    // v = Vec2(Int32(3), Int32(4))
+    // v = Vec2(int32(3), int32(4))
     Vec2 v = Vec2(3, 4);
     // neg = -v
     Vec2 neg = -(v);
@@ -24,25 +24,25 @@ void test_unary() {
 
 // def test_contains() -> None:
 void test_contains() {
-    // v = Vec2(Int32(10), Int32(20))
+    // v = Vec2(int32(10), int32(20))
     Vec2 v = Vec2(10, 20);
-    // print(Int32(10) in v)
+    // print(int32(10) in v)
     std::cout << ::tpy::print_bool((v.__contains__(10))) << "\n";
-    // print(Int32(20) in v)
+    // print(int32(20) in v)
     std::cout << ::tpy::print_bool((v.__contains__(20))) << "\n";
-    // print(Int32(99) in v)
+    // print(int32(99) in v)
     std::cout << ::tpy::print_bool((v.__contains__(99))) << "\n";
-    // print(Int32(99) not in v)
+    // print(int32(99) not in v)
     std::cout << ::tpy::print_bool((!(v.__contains__(99)))) << "\n";
-    // print(Int32(10) not in v)
+    // print(int32(10) not in v)
     std::cout << ::tpy::print_bool((!(v.__contains__(10)))) << "\n";
 }
 
 // def test_sub_mul() -> None:
 void test_sub_mul() {
-    // a = Vec2(Int32(5), Int32(7))
+    // a = Vec2(int32(5), int32(7))
     Vec2 a = Vec2(5, 7);
-    // b = Vec2(Int32(2), Int32(3))
+    // b = Vec2(int32(2), int32(3))
     Vec2 b = Vec2(2, 3);
     // d = a - b
     Vec2 d = ((a) - (b));
@@ -50,7 +50,7 @@ void test_sub_mul() {
     std::cout << d.x << "\n";
     // print(d.y)
     std::cout << d.y << "\n";
-    // s = a * Int32(3)
+    // s = a * int32(3)
     Vec2 s = ((a) * (3));
     // print(s.x)
     std::cout << s.x << "\n";
@@ -60,9 +60,9 @@ void test_sub_mul() {
 
 // def test_iadd() -> None:
 void test_iadd() {
-    // v = Vec2(Int32(1), Int32(2))
+    // v = Vec2(int32(1), int32(2))
     Vec2 v = Vec2(1, 2);
-    // v += Vec2(Int32(3), Int32(4))
+    // v += Vec2(int32(3), int32(4))
     v.__iadd__(Vec2(3, 4));
     // print(v.x)
     std::cout << v.x << "\n";
@@ -72,9 +72,9 @@ void test_iadd() {
 
 // def test_isub() -> None:
 void test_isub() {
-    // v = Vec2(Int32(10), Int32(20))
+    // v = Vec2(int32(10), int32(20))
     Vec2 v = Vec2(10, 20);
-    // v -= Vec2(Int32(3), Int32(5))
+    // v -= Vec2(int32(3), int32(5))
     v.__isub__(Vec2(3, 5));
     // print(v.x)
     std::cout << v.x << "\n";
@@ -84,7 +84,7 @@ void test_isub() {
 
 // def test_hash() -> None:
 void test_hash() {
-    // v = Vec2(Int32(1), Int32(2))
+    // v = Vec2(int32(1), int32(2))
     Vec2 v = Vec2(1, 2);
     // h = hash(v)
     uint64_t h = ::tpy::__hash__(v);
@@ -94,7 +94,7 @@ void test_hash() {
 
 // def test_len() -> None:
 void test_len() {
-    // v = Vec2(Int32(1), Int32(2))
+    // v = Vec2(int32(1), int32(2))
     Vec2 v = Vec2(1, 2);
     // print(len(v))
     std::cout << ::tpy::__len__(v) << "\n";
@@ -102,11 +102,11 @@ void test_len() {
 
 // def test_eq() -> None:
 void test_eq() {
-    // a = Vec2(Int32(1), Int32(2))
+    // a = Vec2(int32(1), int32(2))
     Vec2 a = Vec2(1, 2);
-    // b = Vec2(Int32(1), Int32(2))
+    // b = Vec2(int32(1), int32(2))
     Vec2 b = Vec2(1, 2);
-    // c = Vec2(Int32(3), Int32(4))
+    // c = Vec2(int32(3), int32(4))
     Vec2 c = Vec2(3, 4);
     // print(a == b)
     std::cout << ::tpy::print_bool(((a) == (b))) << "\n";
@@ -118,11 +118,11 @@ void test_eq() {
 
 // def test_explicit_ne() -> None:
 void test_explicit_ne() {
-    // a = Tag(Int32(1))
+    // a = Tag(int32(1))
     Tag a = Tag(1);
-    // b = Tag(Int32(1))
+    // b = Tag(int32(1))
     Tag b = Tag(1);
-    // c = Tag(Int32(2))
+    // c = Tag(int32(2))
     Tag c = Tag(2);
     // print(a != b)
     std::cout << ::tpy::print_bool(((a) != (b))) << "\n";
@@ -132,11 +132,11 @@ void test_explicit_ne() {
 
 // def test_inherited_eq() -> None:
 void test_inherited_eq() {
-    // a = Child(Int32(1), Int32(2))
+    // a = Child(int32(1), int32(2))
     Child a = Child(1, 2);
-    // b = Child(Int32(1), Int32(2))
+    // b = Child(int32(1), int32(2))
     Child b = Child(1, 2);
-    // c = Child(Int32(3), Int32(4))
+    // c = Child(int32(3), int32(4))
     Child c = Child(3, 4);
     // print(a == b)
     std::cout << ::tpy::print_bool((a == b)) << "\n";
@@ -146,11 +146,11 @@ void test_inherited_eq() {
 
 // def test_comparisons() -> None:
 void test_comparisons() {
-    // a = Score(Int32(10))
+    // a = Score(int32(10))
     Score a = Score(10);
-    // b = Score(Int32(20))
+    // b = Score(int32(20))
     Score b = Score(20);
-    // c = Score(Int32(10))
+    // c = Score(int32(10))
     Score c = Score(10);
     // print(a < b)
     std::cout << ::tpy::print_bool(((a) < (b))) << "\n";
@@ -168,13 +168,13 @@ void test_comparisons() {
 
 // def test_invert() -> None:
 void test_invert() {
-    // m = Mask(Int32(0))
+    // m = Mask(int32(0))
     Mask m = Mask(0);
     // inv = ~m
     Mask inv = ~(m);
     // print(inv.bits)
     std::cout << inv.bits << "\n";
-    // m2 = Mask(Int32(5))
+    // m2 = Mask(int32(5))
     Mask m2 = Mask(5);
     // inv2 = ~m2
     Mask inv2 = ~(m2);
@@ -184,7 +184,7 @@ void test_invert() {
 
 // def test_builtin_pos() -> None:
 void test_builtin_pos() {
-    // x: Int32 = Int32(5)
+    // x: int32 = int32(5)
     int32_t x = 5;
     // print(+x)
     std::cout << +x << "\n";

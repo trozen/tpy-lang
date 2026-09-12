@@ -1,9 +1,9 @@
-from tpy import Int32, copy
+from tpy import int32, copy
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32):
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32):
         self.x = x
         self.y = y
 
@@ -32,9 +32,9 @@ def foreach_outer_container() -> None:
 
 # Value type: no escape concern
 def value_type_ok() -> None:
-    saved: Int32 = 0
+    saved: int32 = 0
     for i in range(3):
-        n: Int32 = i * 10
+        n: int32 = i * 10
         saved = n  # tpyc: ok
     print(saved)
 
@@ -116,7 +116,7 @@ def if_alias_preserved() -> None:
 # Rvalue rebind inside while loop.
 def while_rvalue_rebind() -> None:
     p: Point = Point(0, 0)
-    i: Int32 = 0
+    i: int32 = 0
     while i < 3:
         p = Point(i, i)
         i = i + 1

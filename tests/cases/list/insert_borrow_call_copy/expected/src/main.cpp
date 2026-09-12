@@ -15,7 +15,7 @@ void main() {
     recs.push_back(Payload(h.brec()));
     // recs.insert(0, copy(h.p))  # tpyc: ok
     ::tpy::list_insert(recs, 0, Payload(h.p));
-    // ctrs: list[list[Int32]] = []
+    // ctrs: list[list[int32]] = []
     std::vector<std::vector<int32_t>> ctrs = std::vector<std::vector<int32_t>>{};
     // # The container payload takes the same one-step spelling.
     // ctrs.append(copy(h.bctr()))  # tpyc: ok

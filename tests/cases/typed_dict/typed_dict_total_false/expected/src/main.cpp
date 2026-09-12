@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // # All fields provided
-    // full = Info(name="Alice", age=Int32(30))
+    // full = Info(name="Alice", age=int32(30))
     Info full = Info("Alice", 30);
     // print(full["name"])
     std::cout << ::tpy::typed_dict_field_check(full.name) << "\n";

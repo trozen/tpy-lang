@@ -34,7 +34,7 @@ struct Tree {
     }
 };
 
-// def local_count[T](t: Tree[T]) -> Int32:
+// def local_count[T](t: Tree[T]) -> int32:
 template<typename T>
 int32_t local_count(const Tree<T>& t) {
     // match t:

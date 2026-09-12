@@ -3,13 +3,13 @@
 # BUGS.md#generic-free-call-borrow-return-arg-rejects (the happy method form is
 # the twin case `generics/generic_method_borrow_ret_arg`).
 from __future__ import annotations
-from tpy import Int32
+from tpy import int32
 
 
 class Cell:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 

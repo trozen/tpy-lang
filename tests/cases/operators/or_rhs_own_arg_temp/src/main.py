@@ -5,24 +5,24 @@
 # hoisted it before the pop and reported one element too many.
 # The Own[T] slot COPIES the borrowed list on purpose (the pinned copy
 # warning); the sections observe evaluation ORDER, so the callees only read.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Bag:
-    vals: list[Int32]
+    vals: list[int32]
 
-    def __init__(self, vals: list[Int32]) -> None:
+    def __init__(self, vals: list[int32]) -> None:
         # The print makes a constructor run in a SKIPPED branch visible.
         print("bag", len(vals))
         self.vals = vals
 
 
-def seen(tag: str, o: Own[list[Int32]]) -> bool:
+def seen(tag: str, o: Own[list[int32]]) -> bool:
     print(tag, len(o))
     return True
 
 
-def seen_n(tag: str, o: Own[list[Int32]]) -> Int32:
+def seen_n(tag: str, o: Own[list[int32]]) -> int32:
     print(tag, len(o))
     return len(o)
 
@@ -42,49 +42,49 @@ def seen_bag(tag: str, b: Bag) -> bool:
     return True
 
 
-def or_rhs(xs: list[Int32]) -> bool:
+def or_rhs(xs: list[int32]) -> bool:
     # The `or` RHS runs only when the pop yielded 0, so the copy is taken
     # after the pop.
-    return (xs.pop() > 0) or seen("or", xs)  # tpyc: warning(/copies list\[Int32\] into owned storage/)
+    return (xs.pop() > 0) or seen("or", xs)  # tpyc: warning(/copies list\[int32\] into owned storage/)
 
 
-def and_rhs(xs: list[Int32]) -> bool:
+def and_rhs(xs: list[int32]) -> bool:
     # The `and` RHS: the same region at the other logical operator.
-    return (xs.pop() > 0) and seen("and", xs)  # tpyc: warning(/copies list\[Int32\] into owned storage/)
+    return (xs.pop() > 0) and seen("and", xs)  # tpyc: warning(/copies list\[int32\] into owned storage/)
 
 
-def nested(xs: list[Int32], flag: bool) -> bool:
+def nested(xs: list[int32], flag: bool) -> bool:
     # A region inside a region: the inner `and` RHS banks into the outer
     # `or` RHS region.
-    return flag or (xs.pop() > 0 and seen("nested", xs))  # tpyc: warning(/copies list\[Int32\] into owned storage/)
+    return flag or (xs.pop() > 0 and seen("nested", xs))  # tpyc: warning(/copies list\[int32\] into owned storage/)
 
 
-def ternary(xs: list[Int32]) -> bool:
+def ternary(xs: list[int32]) -> bool:
     # A ternary ARM: each arm opens its own region.
-    return seen("ternary", xs) if xs.pop() > 0 else False  # tpyc: warning(/copies list\[Int32\] into owned storage/)
+    return seen("ternary", xs) if xs.pop() > 0 else False  # tpyc: warning(/copies list\[int32\] into owned storage/)
 
 
-def chained(xs: list[Int32]) -> bool:
+def chained(xs: list[int32]) -> bool:
     # Comparators past the first are conditional operands too.
-    return 0 < xs.pop() < seen_n("chained", xs)  # tpyc: warning(/copies list\[Int32\] into owned storage/)
+    return 0 < xs.pop() < seen_n("chained", xs)  # tpyc: warning(/copies list\[int32\] into owned storage/)
 
 
-def value_select(xs: list[Int32]) -> Int32:
-    # The VALUE-select RHS: `a or b` over two Int32 values renders as a
+def value_select(xs: list[int32]) -> int32:
+    # The VALUE-select RHS: `a or b` over two int32 values renders as a
     # ternary over the left, and its right operand is the same region.
     n = xs.pop()
-    v: Int32 = n or seen_n("valuesel", xs)  # tpyc: warning(/copies list\[Int32\] into owned storage/)
+    v: int32 = n or seen_n("valuesel", xs)  # tpyc: warning(/copies list\[int32\] into owned storage/)
     return v
 
 
-def record_payload(xs: list[Int32]) -> bool:
+def record_payload(xs: list[int32]) -> bool:
     # `or` RHS with a RECORD payload rather than a container: the owning-slot
     # copy of a whole record defers the same way.
     b = Bag(xs)
     return (b.vals.pop() > 0) or seen_rec("record", b)  # tpyc: warning(/copies Bag into owned storage/)
 
 
-def own_str_name(xs: list[Int32], tail: str) -> bool:
+def own_str_name(xs: list[int32], tail: str) -> bool:
     # An OWNED str NAME source: the view->owned conversion temp is audited
     # like the container rows, so it defers instead of being refused.
     s = tail + "!"
@@ -98,10 +98,10 @@ def ref_param_rvalue(flag: bool) -> bool:
     return flag or seen_bag("refparam", Bag([1, 2]))
 
 
-def left_operand(xs: list[Int32]) -> bool:
+def left_operand(xs: list[int32]) -> bool:
     # THE INVERSE: the LEFT operand always evaluates, so its temp stays at
     # the enclosing statement -- no region, no optional slot.
-    return seen("left", xs) or xs.pop() > 0  # tpyc: warning(/copies list\[Int32\] into owned storage/)
+    return seen("left", xs) or xs.pop() > 0  # tpyc: warning(/copies list\[int32\] into owned storage/)
 
 
 def main() -> None:

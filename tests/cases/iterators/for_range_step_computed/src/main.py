@@ -1,21 +1,21 @@
 # A 3-arg range() whose step is a COMPUTED expression (not a literal or a
 # bare name): the step is captured once into a temp, so an arbitrary
 # expression is evaluated exactly once, as Python does.
-from tpy import Int32
+from tpy import int32
 
 
-def stride(n: Int32) -> Int32:
+def stride(n: int32) -> int32:
     return n * 2
 
 
 class Grid:
-    step: Int32
+    step: int32
 
-    def __init__(self, step: Int32):
+    def __init__(self, step: int32):
         self.step = step
 
 
-def fixed_steps(end: Int32) -> Int32:
+def fixed_steps(end: int32) -> int32:
     aux = 7
     total = 0
     # A binop step.

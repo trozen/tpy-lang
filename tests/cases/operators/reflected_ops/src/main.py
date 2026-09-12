@@ -1,29 +1,29 @@
 # Reflected operators on user types: `left OP right` with no forward op dispatches
 # to right.__rOP__(left). Covers __rmul__/__radd__ (value type) and __ror__ (ref class).
 from __future__ import annotations
-from tpy import ValueType, Int64, Int32, Own
+from tpy import ValueType, int64, int32, Own
 
 
 class Dur(ValueType):
-    nanos: Int64
+    nanos: int64
 
-    def __init__(self, ns: Int64) -> None:
+    def __init__(self, ns: int64) -> None:
         self.nanos = ns
 
     def __rmul__(self, f: float) -> float:
         return f * self.nanos
 
-    def __radd__(self, n: Int64) -> Int64:
+    def __radd__(self, n: int64) -> int64:
         return n + self.nanos
 
 
 class Flags:
-    bits: Int32
+    bits: int32
 
-    def __init__(self, bits: Int32) -> None:
+    def __init__(self, bits: int32) -> None:
         self.bits = bits
 
-    def __ror__(self, other: Int32) -> Own[Flags]:
+    def __ror__(self, other: int32) -> Own[Flags]:
         return Flags(other | self.bits)
 
 

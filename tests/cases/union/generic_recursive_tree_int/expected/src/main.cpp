@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def sum_leaves(t: Tree[int]) -> Int32:
+// def sum_leaves(t: Tree[int]) -> int32:
 int32_t sum_leaves(const Tree<::tpy::BigInt>& t) {
     // match t:
     auto& __match_subject_1 = t;

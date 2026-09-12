@@ -3,13 +3,13 @@
 # copies into it either way -- each pair below stores, mutates through the
 # container, and reads the original back, so an alias would show as the written
 # value instead of 2.
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
@@ -17,29 +17,29 @@ def make_borrow(b: Box) -> tuple[Box, Box]:
     return (b, b)
 
 
-def singleton_append(b: Box) -> Int32:
+def singleton_append(b: Box) -> int32:
     xs: list[Box] = []
     xs.append(b)  # tpyc: warning(/copies Box into owned storage/)
     xs[0].n = 21
     return b.n
 
 
-def tuple_append(b: Box) -> Int32:
+def tuple_append(b: Box) -> int32:
     xs: list[tuple[Box, Box]] = []
     xs.append(make_borrow(b))  # tpyc: warning(/copies Box into owned storage/) warning(/copies Box into owned storage/)
     xs[0][0].n = 22
     return b.n
 
 
-def singleton_dict(b: Box) -> Int32:
-    d: dict[Int32, Box] = {}
+def singleton_dict(b: Box) -> int32:
+    d: dict[int32, Box] = {}
     d[1] = b  # tpyc: warning(/copies Box into container/)
     d[1].n = 23
     return b.n
 
 
-def tuple_dict(b: Box) -> Int32:
-    d: dict[Int32, tuple[Box, Box]] = {}
+def tuple_dict(b: Box) -> int32:
+    d: dict[int32, tuple[Box, Box]] = {}
     d[1] = make_borrow(b)  # tpyc: warning(/copies Box into container/) warning(/copies Box into container/)
     d[1][0].n = 24
     return b.n

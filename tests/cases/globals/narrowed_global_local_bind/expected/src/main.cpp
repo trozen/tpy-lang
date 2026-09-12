@@ -3,7 +3,7 @@
 
 namespace tpyapp::main {
 
-// GO: Int32 | None = None
+// GO: int32 | None = None
 std::optional<int32_t> GO;
 
 // def clear() -> None:
@@ -20,7 +20,7 @@ void enable() {
     GO = 5;
 }
 
-// def local_bind() -> Int32:
+// def local_bind() -> int32:
 int32_t local_bind() {
     // v = GO
     std::optional<int32_t> v = GO;
@@ -35,9 +35,9 @@ int32_t local_bind() {
     return -1;
 }
 
-// def shadowed() -> Int32:
+// def shadowed() -> int32:
 int32_t shadowed() {
-    // GO: Int32 | None = 9
+    // GO: int32 | None = 9
     std::optional<int32_t> GO = 9;
     // if GO is not None:
     if ((GO.has_value())) {
@@ -65,7 +65,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // GO: Int32 | None = None
+    // GO: int32 | None = None
     GO = std::nullopt;
     // main()
     main();

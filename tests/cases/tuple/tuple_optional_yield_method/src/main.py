@@ -8,19 +8,19 @@
 # not `self.field` -- BUGS.md tracks the const-source iteration bug that fires
 # when `self.list_field` or `dict.values()` are the iterable.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
 class P:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
 class Holder:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def pairs(self, items: list[P]) -> Iterator[tuple[P | None, P | None]]:
@@ -29,7 +29,7 @@ class Holder:
 
 
 def main() -> None:
-    h = Holder(Int32(0))
+    h = Holder(int32(0))
     items: list[P] = [P(1), P(2), P(3)]
     for a, b in h.pairs(items):
         if a is not None:

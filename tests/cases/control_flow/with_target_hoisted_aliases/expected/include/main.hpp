@@ -19,7 +19,7 @@ struct Logger {
     // self.tag = tag
     int32_t tag;
 
-    // def __init__(self, tag: Int32):
+    // def __init__(self, tag: int32):
     Logger() = default;
     explicit Logger(int32_t tag);
 
@@ -37,7 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const Logger& obj) {
 }
 
 
-// def __init__(self, tag: Int32):
+// def __init__(self, tag: int32):
 inline Logger::Logger(int32_t tag) : tag(tag) {}
 
 // def __enter__(self) -> "Logger":

@@ -1,13 +1,13 @@
 # A pointer-slot global written from an Optional-record FIELD inside a branch.
 # Only rvalue sources (and a pointer-name copy) lower in a branch, so this
 # lvalue lift keeps rejecting -- the top-level flavor is the one that lowers.
-from tpy import Int32
+from tpy import int32
 
 
 class Inner:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 

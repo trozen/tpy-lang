@@ -1,13 +1,13 @@
 # A container ELEMENT read at an `Own[record]` constructor slot: the element
 # cannot move out of its list, so the slot keeps rejecting (sema warns the
 # copy) while the borrow-slot twin lowers (record_elem_subscript_arg_sinks).
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Thing:
     x: float
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = float(x)
 
 

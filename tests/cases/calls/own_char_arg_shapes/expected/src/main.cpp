@@ -4,11 +4,11 @@
 namespace tpyapp::main {
 
 
-// def feed(s: Sink, flag: bool, a: Char, b: Char) -> None:
+// def feed(s: Sink, flag: bool, a: char, b: char) -> None:
 void feed(Sink& s, bool flag, char a, char b) {
-    // s.put(a if flag else b)    # tpyc: ok -- a select at the Own[Char] slot
+    // s.put(a if flag else b)    # tpyc: ok -- a select at the Own[char] slot
     s.put(((flag) ? (a) : (b)));
-    // s.put(Char("z"))           # tpyc: ok -- a ctor rvalue
+    // s.put(char("z"))           # tpyc: ok -- a ctor rvalue
     s.put(::tpy::char_from_str("z"));
 }
 
@@ -16,11 +16,11 @@ void feed(Sink& s, bool flag, char a, char b) {
 void main() {
     // s = Sink()
     Sink s = Sink();
-    // feed(s, True, Char("a"), Char("b"))
+    // feed(s, True, char("a"), char("b"))
     feed(s, true, ::tpy::char_from_str("a"), ::tpy::char_from_str("b"));
     // print(s.n, s.last)
     std::cout << s.n << " " << s.last << "\n";
-    // feed(s, False, Char("a"), Char("b"))
+    // feed(s, False, char("a"), char("b"))
     feed(s, false, ::tpy::char_from_str("a"), ::tpy::char_from_str("b"));
     // print(s.n, s.last)
     std::cout << s.n << " " << s.last << "\n";

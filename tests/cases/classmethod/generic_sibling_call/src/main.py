@@ -2,7 +2,7 @@
 # through `cls`: the callee spelling must name the resolved record, since `cls`
 # is not a C++ name (the generic-static path spells class and method type args
 # separately from the plain one).
-from tpy import Int32
+from tpy import int32
 
 
 class Util:
@@ -13,7 +13,7 @@ class Util:
         return b
 
     @classmethod
-    def larger(cls, a: Int32, b: Int32) -> Int32:
+    def larger(cls, a: int32, b: int32) -> int32:
         return cls.pick(a, b)
 
     @classmethod

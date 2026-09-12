@@ -17,12 +17,12 @@ void main();
 
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
-    // y: Int32
+    // y: int32
     int32_t y;
 
-    // def __init__(self, x: Int32, y: Int32) -> None:
+    // def __init__(self, x: int32, y: int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y);
 
@@ -37,7 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 }
 
 
-// def __init__(self, x: Int32, y: Int32) -> None:
+// def __init__(self, x: int32, y: int32) -> None:
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __str__(self) -> str:
@@ -66,7 +66,7 @@ inline auto my_map(__F0&& fn, T_it& it) {
 
 template<typename T, ::tpystd::typing::Iterable<T> T_it>
 inline auto my_enumerate(T_it& it) {
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     return ::tpy::make_generator<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>>(
         [&it, i, __iter = std::optional<std::decay_t<decltype(::tpy::__iter__(it))>>()]() mutable -> std::optional<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>> {

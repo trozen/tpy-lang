@@ -1,18 +1,18 @@
 # Writing an element of an Optional-element container: a scalar or None into
-# a value-repr `Int32 | None` slot, and None into a pointer-repr
+# a value-repr `int32 | None` slot, and None into a pointer-repr
 # `Node | None` slot, over list and dict receivers.
-from tpy import Int32
+from tpy import int32
 
 
 class Node:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
 def main() -> None:
-    xs: list[Int32 | None] = [None, None]
+    xs: list[int32 | None] = [None, None]
     xs[0] = 5  # a bare scalar into the value-repr optional slot
     n = 3
     xs[1] = n  # tpyc: ok
@@ -37,7 +37,7 @@ def main() -> None:
     if head is not None:
         print(head.n, nodes[1] is None)
 
-    d: dict[str, Int32 | None] = {}
+    d: dict[str, int32 | None] = {}
     d["a"] = 5  # tpyc: ok
     d["b"] = None  # tpyc: ok
     got = d["a"]

@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def make_pair() -> Own[tuple[Int32, Int32]]:
+// def make_pair() -> Own[tuple[int32, int32]]:
 std::tuple<int32_t, int32_t> make_pair() {
-    // return (Int32(10), Int32(20))
+    // return (int32(10), int32(20))
     return std::tuple<int32_t, int32_t>{10, 20};
 }
 

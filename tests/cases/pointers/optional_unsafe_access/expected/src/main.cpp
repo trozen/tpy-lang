@@ -8,13 +8,13 @@ std::vector<Point>* points{};
 
 // # Accessing fields/methods on Optional without None check.
 // # Compiles with warning and inserts a runtime null check.
-// def use_without_check(p: Point | None) -> Int32:
+// def use_without_check(p: Point | None) -> int32:
 int32_t use_without_check(Point* p) {
     // return p.mag()  # tpyc: warning(/Potential None access on optional value/)
     return ::tpy::deref_check(p).mag();
 }
 
-// def find(pts: list[Point], target: Int32) -> Point | None:
+// def find(pts: list[Point], target: int32) -> Point | None:
 Point* find(std::vector<Point>& pts, int32_t target) {
     // for pt in pts:
     auto& __obj_0 = pts;

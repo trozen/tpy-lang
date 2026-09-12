@@ -27,7 +27,7 @@ __coro_msg msg(std::string_view tag) {
     return __coro_msg(tag);
 }
 
-// async def go(x: Int32) -> None:
+// async def go(x: int32) -> None:
 ::tpystd::tpy::Poll<::std::monostate> __coro_go::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -64,7 +64,7 @@ __coro_msg msg(std::string_view tag) {
 }
 
 
-// async def go(x: Int32) -> None:
+// async def go(x: int32) -> None:
 __coro_go go(int32_t x) {
     return __coro_go(x);
 }

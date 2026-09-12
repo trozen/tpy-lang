@@ -205,7 +205,7 @@ class ProtocolChecker:
             # resolved to a concrete type at this site). Identity is all that
             # is provable here.
             return actual == bound
-        # Builtin nominal bound (e.g. `U: T` substituted to `Int32`): identity
+        # Builtin nominal bound (e.g. `U: T` substituted to `int32`): identity
         # is sufficient since builtins don't have a user-visible class hierarchy.
         if actual == bound:
             return True
@@ -247,15 +247,15 @@ class ProtocolChecker:
         For marker protocols (no methods/fields), only explicit extends works.
         For protocols with methods, either mechanism suffices.
 
-        For generic protocols like Sequence[Int32]:
-        - Build type substitution map: {"T": Int32}
+        For generic protocols like Sequence[int32]:
+        - Build type substitution map: {"T": int32}
         - Resolve each method signature with substitutions
         - Check if actual type has the resolved methods
 
         For Self type in protocols:
         - Self is substituted with the actual type being checked
-        - e.g., checking Int32 against Addable with __add__(Self) -> Self
-          expects __add__(Int32) -> Int32
+        - e.g., checking int32 against Addable with __add__(Self) -> Self
+          expects __add__(int32) -> int32
 
         Returns EXPLICIT for compiler-intrinsic matches (e.g. Enum<->Hashable,
         GenExpr<->Iterable, Tuple<->Hashable/Comparable/Equatable,
@@ -499,7 +499,7 @@ class ProtocolChecker:
             return False
 
         # User records: check implemented_protocols (concrete NominalTypes)
-        # Build substitution map for generic records (e.g., ArrayList[T, N] instantiated as ArrayList[Int32, 8])
+        # Build substitution map for generic records (e.g., ArrayList[T, N] instantiated as ArrayList[int32, 8])
         type_subst: dict[str, TpyType] = {}
         if record_info.type_params and isinstance(actual, NominalType) and actual.type_args:
             for param_name, arg in zip(record_info.type_params, actual.type_args):
@@ -547,9 +547,9 @@ class ProtocolChecker:
                         continue
                     if actual_type_arg == protocol.type_args[0]:
                         return True
-                    # Widening-only at the element level: list[Int16] satisfies
-                    # Iterable[Int32], list[Int32] satisfies Iterable[BigInt],
-                    # but list[Int32] does NOT satisfy Iterable[UInt8].
+                    # Widening-only at the element level: list[int16] satisfies
+                    # Iterable[int32], list[int32] satisfies Iterable[BigInt],
+                    # but list[int32] does NOT satisfy Iterable[uint8].
                     if is_protocol_type_arg_widening(
                         actual_type_arg, protocol.type_args[0], self.ctx.default_int_type,
                     ):
@@ -676,7 +676,7 @@ class ProtocolChecker:
 
         Note: For builtin types with generic methods (e.g., list.append(value: T)), the type
         parameter comparison uses direct equality, which doesn't resolve type variables.
-        This is fine for Phase 1 protocols (only Sized with __len__() -> Int32), but would
+        This is fine for Phase 1 protocols (only Sized with __len__() -> int32), but would
         need type parameter resolution for generic protocols like Iterable[T].
         """
         if is_protocol_type(actual):
@@ -686,7 +686,7 @@ class ProtocolChecker:
 
             # Build type substitution map for generic protocols.
             # Include Self so that methods returning Self (e.g. Iterator.__iter__)
-            # resolve to the concrete protocol type (e.g. Iterator[Int32]).
+            # resolve to the concrete protocol type (e.g. Iterator[int32]).
             type_subst: dict[str, TpyType] = {"Self": actual}
             if protocol_info.type_params and actual.type_args:
                 type_subst.update(dict(zip(protocol_info.type_params, actual.type_args)))
@@ -733,7 +733,7 @@ class ProtocolChecker:
                 else:
                     type_subst = instance_subst
 
-            # Transitively resolve TypeParamRef chains (e.g., Base.T->Mid.U->Child.V->Int32)
+            # Transitively resolve TypeParamRef chains (e.g., Base.T->Mid.U->Child.V->int32)
             if type_subst:
                 changed = True
                 while changed:
@@ -826,7 +826,7 @@ class ProtocolChecker:
         if is_protocol_safe_coercion(actual, expected):
             return True
         # Allow BigInt where a fixed int is expected (e.g. __len__() -> int
-        # satisfies Sized which expects -> Int32). The C++ side uses
+        # satisfies Sized which expects -> int32). The C++ side uses
         # std::convertible_to<int32_t> so the implicit conversion is safe.
         if is_fixed_int_type(expected) and is_big_int_type(unwrapped):
             return True
@@ -1020,8 +1020,8 @@ class ProtocolChecker:
         """Look up a field in a record, including inherited fields.
 
         For generic parent classes, substitutes type parameters with concrete types.
-        E.g., if Container[T] has field `value: T` and IntContainer extends Container[Int32],
-        looking up `value` on IntContainer returns FieldInfo with type Int32.
+        E.g., if Container[T] has field `value: T` and IntContainer extends Container[int32],
+        looking up `value` on IntContainer returns FieldInfo with type int32.
         """
         # Check this record's own fields first
         for fld in record_info.fields:
@@ -1080,8 +1080,8 @@ class ProtocolChecker:
         """Look up a method in a record, including inherited methods.
 
         For generic parent classes, substitutes type parameters with concrete types.
-        E.g., if Container[T] has method `get() -> T` and IntContainer extends Container[Int32],
-        looking up `get` on IntContainer returns FunctionInfo with return type Int32.
+        E.g., if Container[T] has method `get() -> T` and IntContainer extends Container[int32],
+        looking up `get` on IntContainer returns FunctionInfo with return type int32.
 
         Supports inheritance from both user-defined classes and builtin types.
         Delegates to lookup_record_method_overloads and returns the first overload.
@@ -1098,7 +1098,7 @@ class ProtocolChecker:
         For generic parent classes, substitutes type parameters in the
         inherited property's accessor signatures with concrete types --
         in-walk, level by level, mirroring lookup_record_field. Without it a
-        subclass of an instantiation (class Sub(Holder[Int32, Rec])) reads an
+        subclass of an instantiation (class Sub(Holder[int32, Rec])) reads an
         inherited `-> K` getter with K unsubstituted.
         """
         prop = record_info.properties.get(prop_name)
@@ -1264,8 +1264,8 @@ class ProtocolChecker:
             return f"missing method '{expected_sig}'"
 
         # Apply inherited-method substitution so that overloads inherited
-        # from a generic parent (e.g. `Container[Int32]` giving a method
-        # returning `T`) render the concrete `Int32` rather than the raw
+        # from a generic parent (e.g. `Container[int32]` giving a method
+        # returning `T`) render the concrete `int32` rather than the raw
         # `T` placeholder in the diagnostic.
         def _render(m: 'FunctionInfo') -> str:
             params = [

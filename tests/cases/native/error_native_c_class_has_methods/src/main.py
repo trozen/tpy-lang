@@ -1,11 +1,11 @@
 from tpy.extern import native
-from tpy import Int32
+from tpy import int32
 
 @native(binding="C")
 class Point:  # tpyc: error(/must have '...' body/)
-    x: Int32
-    y: Int32
-    def distance(self) -> Int32:
+    x: int32
+    y: int32
+    def distance(self) -> int32:
         return self.x
 
 def main() -> None:

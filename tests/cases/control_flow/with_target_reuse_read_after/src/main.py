@@ -7,13 +7,13 @@
 #
 # __del__ writes a sentinel, so a target left pointing at a destroyed manager
 # reads -999 instead of the value.
-from tpy import Int32
+from tpy import int32
 
 
 class Reg:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
     def __enter__(self) -> "Reg":
@@ -26,7 +26,7 @@ class Reg:
         self.n = -999
 
 
-def probe(flag: bool) -> Int32:
+def probe(flag: bool) -> int32:
     with Reg(11) as view:
         pass
     if flag:
@@ -35,7 +35,7 @@ def probe(flag: bool) -> Int32:
     return view.n
 
 
-def rebound_needs_no_hoist() -> Int32:
+def rebound_needs_no_hoist() -> int32:
     with Reg(33) as v:
         pass
     with Reg(44) as v:

@@ -6,13 +6,13 @@ namespace tpyapp::main {
 
 // def make_nodes() -> Own[list[Node]]:
 std::vector<Node> make_nodes() {
-    // return [Node(Int32(1))]
+    // return [Node(int32(1))]
     return {Node(1)};
 }
 
 // def test_list_ctor_ref_type_warns() -> None:
 void test_list_ctor_ref_type_warns() {
-    // b: list[Node] = [Node(Int32(1))]
+    // b: list[Node] = [Node(int32(1))]
     std::vector<Node> b = {Node(1)};
     // a = list(b)  # tpyc: warning(/copies Node elements/)
     std::vector<Node> a = ::tpy::construct<std::vector<Node>>(b);
@@ -22,7 +22,7 @@ void test_list_ctor_ref_type_warns() {
 
 // def test_list_ctor_value_type_no_warn() -> None:
 void test_list_ctor_value_type_no_warn() {
-    // b: list[Int32] = [Int32(1), Int32(2)]
+    // b: list[int32] = [int32(1), int32(2)]
     std::vector<int32_t> b = {1, 2};
     // a = list(b)  # tpyc: ok
     std::vector<int32_t> a = ::tpy::construct<std::vector<int32_t>>(::tpy::own_iter(std::move(b)));
@@ -32,7 +32,7 @@ void test_list_ctor_value_type_no_warn() {
 
 // def test_list_ctor_copy_no_warn() -> None:
 void test_list_ctor_copy_no_warn() {
-    // b: list[Node] = [Node(Int32(1))]
+    // b: list[Node] = [Node(int32(1))]
     std::vector<Node> b = {Node(1)};
     // a = list(copy(b))  # tpyc: ok
     std::vector<Node> a = ::tpy::construct<std::vector<Node>>(std::vector<Node>(b));
@@ -42,7 +42,7 @@ void test_list_ctor_copy_no_warn() {
 
 // def test_list_ctor_last_use_no_warn() -> None:
 void test_list_ctor_last_use_no_warn() {
-    // b: list[Node] = [Node(Int32(1))]
+    // b: list[Node] = [Node(int32(1))]
     std::vector<Node> b = {Node(1)};
     // a = list(b)  # tpyc: ok -- b's last use
     std::vector<Node> a = ::tpy::construct<std::vector<Node>>(::tpy::own_iter(std::move(b)));
@@ -54,7 +54,7 @@ void test_list_ctor_last_use_no_warn() {
 void test_list_ctor_rvalue_no_warn() {
     // a = list(make_nodes())  # tpyc: ok
     std::vector<Node> a = ::tpy::construct<std::vector<Node>>(make_nodes());
-    // b = list([Node(Int32(2))])  # tpyc: ok
+    // b = list([Node(int32(2))])  # tpyc: ok
     std::vector<Node> b = std::vector<Node>({Node(2)});
     // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
@@ -75,7 +75,7 @@ void __tpy_init() {
     test_list_ctor_last_use_no_warn();
     // test_list_ctor_rvalue_no_warn()
     test_list_ctor_rvalue_no_warn();
-    // test_list_ctor_generic_warns([Node(Int32(1))])
+    // test_list_ctor_generic_warns([Node(int32(1))])
     std::vector<Node> __tmp_1 = {Node(1)};
     test_list_ctor_generic_warns<Node>(__tmp_1);
 }

@@ -2,16 +2,16 @@
 # fresh literal over the same durable member b in the other). After the join,
 # returning u aliases b regardless of branch, so a post-boundary mutation
 # reaches b.
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    val: Int32
-    def __init__(self, v: Int32) -> None:
+    val: int32
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 
-def f(b: Box, cond: bool) -> tuple[Int32, Box]:
+def f(b: Box, cond: bool) -> tuple[int32, Box]:
     t = (1, b)
     if cond:
         u = t

@@ -4,11 +4,11 @@
 namespace tpyapp::main {
 
 
-// async def total(pairs: list[tuple[Item, Item]]) -> Int32:
+// async def total(pairs: list[tuple[Item, Item]]) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_total::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // s: Int32 = 0
+        // s: int32 = 0
         s = 0;
         // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
@@ -44,7 +44,7 @@ namespace tpyapp::main {
 }
 
 
-// async def total(pairs: list[tuple[Item, Item]]) -> Int32:
+// async def total(pairs: list[tuple[Item, Item]]) -> int32:
 __coro_total total(std::vector<std::tuple<Item, Item>>& pairs) {
     return __coro_total(pairs);
 }

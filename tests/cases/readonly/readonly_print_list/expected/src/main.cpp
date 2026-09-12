@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def show(l: readonly[list[Int32]]) -> None:
+// def show(l: readonly[list[int32]]) -> None:
 void show(const std::vector<int32_t>& l) {
     // print(l)
     std::cout << ::tpy::ListPrinter(l) << "\n";
@@ -12,7 +12,7 @@ void show(const std::vector<int32_t>& l) {
 
 // def main() -> None:
 void main() {
-    // nums: list[Int32] = [1, 2, 3]
+    // nums: list[int32] = [1, 2, 3]
     std::vector<int32_t> nums = {1, 2, 3};
     // show(nums)
     show(nums);

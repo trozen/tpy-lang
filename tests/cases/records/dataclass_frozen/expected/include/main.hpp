@@ -17,9 +17,9 @@ void main();
 // @dataclass(frozen=True)
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
-    // y: Int32
+    // y: int32
     int32_t y;
 
     Point() = default;
@@ -57,7 +57,7 @@ namespace tpyapp::main {
 struct Config {
     // name: str
     std::string name;
-    // value: Int32
+    // value: int32
     int32_t value;
 
     Config() = default;

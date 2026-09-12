@@ -26,14 +26,14 @@ struct JsonWriter {
     std::string _buf;
     // _needs_comma: bool
     bool _needs_comma;
-    // _indent: Int32
+    // _indent: int32
     int32_t _indent;
-    // _depth: Int32
+    // _depth: int32
     int32_t _depth;
     // _fresh_line: bool
     bool _fresh_line;
 
-    // def __init__(self, indent: Int32 = 0) -> None:
+    // def __init__(self, indent: int32 = 0) -> None:
     explicit JsonWriter(int32_t indent = 0);
 
     // # -- pretty-printing helpers (only called when _indent > 0) --
@@ -68,19 +68,19 @@ struct JsonWriter {
     // def write_str(self, v: str) -> None:
     void write_str(std::string_view v);
 
-    // def write_int(self, v: Int64) -> None:
+    // def write_int(self, v: int64) -> None:
     void write_int(int64_t v);
 
-    // def write_int32(self, v: Int32) -> None:
+    // def write_int32(self, v: int32) -> None:
     void write_int32(int32_t v);
 
     // def write_bigint(self, v: int) -> None:
     void write_bigint(const ::tpy::BigInt& v);
 
-    // def write_float(self, v: Float64) -> None:
+    // def write_float(self, v: float64) -> None:
     void write_float(double v);
 
-    // def write_float32(self, v: Float32) -> None:
+    // def write_float32(self, v: float32) -> None:
     void write_float32(float v);
 
     // def write_bool(self, v: bool) -> None:
@@ -103,7 +103,7 @@ inline std::ostream& operator<<(std::ostream& os, const JsonWriter& obj) {
 }
 
 
-// def __init__(self, indent: Int32 = 0) -> None:
+// def __init__(self, indent: int32 = 0) -> None:
 inline JsonWriter::JsonWriter(int32_t indent) : _buf(""), _needs_comma(false), _indent(indent), _depth(0), _fresh_line(false) {}
 
 // # -- pretty-printing helpers (only called when _indent > 0) --
@@ -241,7 +241,7 @@ inline void JsonWriter::array_end() {
     this->_needs_comma = true;
 }
 
-// def write_int(self, v: Int64) -> None:
+// def write_int(self, v: int64) -> None:
 inline void JsonWriter::write_int(int64_t v) {
     // if self._indent > 0:
     if ((this->_indent > 0)) {
@@ -258,7 +258,7 @@ inline void JsonWriter::write_int(int64_t v) {
     this->_needs_comma = true;
 }
 
-// def write_int32(self, v: Int32) -> None:
+// def write_int32(self, v: int32) -> None:
 inline void JsonWriter::write_int32(int32_t v) {
     // if self._indent > 0:
     if ((this->_indent > 0)) {
@@ -292,7 +292,7 @@ inline void JsonWriter::write_bigint(const ::tpy::BigInt& v) {
     this->_needs_comma = true;
 }
 
-// def write_float(self, v: Float64) -> None:
+// def write_float(self, v: float64) -> None:
 inline void JsonWriter::write_float(double v) {
     // # TODO: nan/inf produce invalid JSON ("nan", "inf"). JSON has no
     // # special float values; CPython raises ValueError (or with
@@ -312,7 +312,7 @@ inline void JsonWriter::write_float(double v) {
     this->_needs_comma = true;
 }
 
-// def write_float32(self, v: Float32) -> None:
+// def write_float32(self, v: float32) -> None:
 inline void JsonWriter::write_float32(float v) {
     // if self._indent > 0:
     if ((this->_indent > 0)) {

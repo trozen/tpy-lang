@@ -1,17 +1,17 @@
 # A generator-valued PROPERTY as a for-each iterable: the user-iterator route has
 # no field-access receiver row, so `for v in b.items:` rejects.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
 class Bag:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     @property
-    def items(self) -> Iterator[Int32]:
+    def items(self) -> Iterator[int32]:
         i = 0
         while i < self.n:
             yield i

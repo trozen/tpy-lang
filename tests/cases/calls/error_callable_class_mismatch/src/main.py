@@ -1,11 +1,11 @@
 # Error: callable class signature doesn't match Fn hint
-from tpy import Int32, Fn
+from tpy import int32, Fn
 
 class TakesTwo:
-    def __call__(self, a: Int32, b: Int32) -> Int32:
+    def __call__(self, a: int32, b: int32) -> int32:
         return a + b
 
-def apply(f: Fn[[Int32], Int32], x: Int32) -> Int32:
+def apply(f: Fn[[int32], int32], x: int32) -> int32:
     return f(x)
 
 def main():

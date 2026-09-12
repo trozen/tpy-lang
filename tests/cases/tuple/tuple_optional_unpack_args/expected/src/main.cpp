@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def peek(t: readonly[T]) -> Int32:
+// def peek(t: readonly[T]) -> int32:
 int32_t peek(const T& t) {
     // return t.x
     return t.x;
@@ -25,7 +25,7 @@ void bump_opt(T* t) {
     }
 }
 
-// def read_first(p: tuple[T | None, T | None]) -> Int32:  # tpyc: ok
+// def read_first(p: tuple[T | None, T | None]) -> int32:  # tpyc: ok
 int32_t read_first(const std::tuple<const T*, const T*>& p) {
     // # Read-only body -- slots stay const, so the targets bind `const T*`
     // # and the narrowed one passes into a readonly param.

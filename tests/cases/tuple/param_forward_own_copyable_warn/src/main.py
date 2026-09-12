@@ -5,17 +5,17 @@
 # scalar Own copyable, TPy copies here where CPython would alias -- an
 # acknowledged, warned divergence. Read-only after the boundary to stay
 # CPython-parity-clean; the copy itself is evidenced by the warning + snapshot.
-from tpy import Own, Int32
+from tpy import Own, int32
 
 
 class A:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
-def sink(p: tuple[Own[A], Own[A]]) -> Int32:
+def sink(p: tuple[Own[A], Own[A]]) -> int32:
     return p[0].n + p[1].n
 
 
@@ -23,12 +23,12 @@ def make() -> tuple[Own[A], Own[A]]:
     return (A(1), A(2))
 
 
-def fwd(p: tuple[Own[A], Own[A]]) -> Int32:
+def fwd(p: tuple[Own[A], Own[A]]) -> int32:
     got = sink(p)  # tpyc: warning(/copies tuple\[Own\[A\], Own\[A\]\] into owned storage/)
     return got + p[0].n
 
 
-def fwd_local() -> Int32:
+def fwd_local() -> int32:
     t = make()
     got = sink(t)  # tpyc: warning(/copies tuple\[Own\[A\], Own\[A\]\] into owned storage/)
     return got + t[0].n

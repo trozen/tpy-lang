@@ -33,14 +33,14 @@
 # tpy: cpp_namespace("tpystd::http::client")
 from __future__ import annotations
 from typing import Final, Protocol
-from tpy import Int32, Own, String, dynamic, copy
+from tpy import int32, Own, String, dynamic, copy
 import socket
 import ssl
 from io import BufferedReader
 
 
-HTTP_PORT: Final[Int32] = 80
-HTTPS_PORT: Final[Int32] = 443
+HTTP_PORT: Final[int32] = 80
+HTTPS_PORT: Final[int32] = 443
 
 
 class HTTPException(Exception):
@@ -60,7 +60,7 @@ class UnknownProtocol(HTTPException):
         super().__init__(version)
 
 
-def _hex_val(c: Int32) -> Int32:
+def _hex_val(c: int32) -> int32:
     if c >= 48 and c <= 57:
         return c - 48
     if c >= 65 and c <= 70:
@@ -81,7 +81,7 @@ def _digits_to_int(s: str) -> int:
     val: int = 0
     i = 0
     while i < n:
-        c = Int32(data[i])
+        c = int32(data[i])
         if c < 48 or c > 57:
             return -1
         val = val * 10 + int(c - 48)
@@ -96,7 +96,7 @@ def _parse_chunk_size(line: bytes) -> int:
     size: int = 0
     i = 0
     while i < n:
-        v = _hex_val(Int32(line[i]))
+        v = _hex_val(int32(line[i]))
         if v < 0:
             break
         size = size * 16 + int(v)
@@ -113,9 +113,9 @@ class HTTPResponse:
 
     _fp: BufferedReader
     _method: str
-    status: Int32
+    status: int32
     reason: str
-    version: Int32
+    version: int32
     _headers: list[tuple[str, str]]
     _length: int      # remaining Content-Length bytes; -1 if unknown (read to close)
     _chunked: bool
@@ -161,7 +161,7 @@ class HTTPResponse:
         code = _digits_to_int(parts[1])
         if code < 100 or code > 999:
             raise BadStatusLine(line)
-        self.status = Int32(code)
+        self.status = int32(code)
         if len(parts) >= 3:
             self.reason = parts[2].strip()
         else:
@@ -229,19 +229,19 @@ class HTTPResponse:
             return True
         return False
 
-    def read(self, amt: Int32 = -1) -> bytes:
+    def read(self, amt: int32 = -1) -> bytes:
         if self._eof:
             return b""
         if self._chunked:
             return self._read_chunked(amt)
         if amt < 0:
-            data = self._fp.read() if self._length < 0 else self._fp.read(Int32(self._length))
+            data = self._fp.read() if self._length < 0 else self._fp.read(int32(self._length))
             self._eof = True
             return data
         want = int(amt)
         if self._length >= 0 and self._length < want:
             want = self._length
-        data = self._fp.read(Int32(want))
+        data = self._fp.read(int32(want))
         if self._length >= 0:
             self._length = self._length - len(data)
             if self._length <= 0:
@@ -252,7 +252,7 @@ class HTTPResponse:
             self._eof = True
         return data
 
-    def _read_chunked(self, amt: Int32) -> bytes:
+    def _read_chunked(self, amt: int32) -> bytes:
         # bytearray accumulator: `result = result + piece` would be
         # O(total*chunks), and chunked framing is normal streamed-response
         # behavior, not an edge (CPython collects pieces and joins once).
@@ -269,7 +269,7 @@ class HTTPResponse:
                 want = self._chunk_left if self._chunk_left < remaining else remaining
             else:
                 want = self._chunk_left
-            piece = self._fp.read(Int32(want))
+            piece = self._fp.read(int32(want))
             if len(piece) == 0:
                 self._eof = True
                 break
@@ -338,7 +338,7 @@ def _content_length(method: str, body: bytes | None) -> int:
 
 def _build_request(method: str, url: str, body: bytes | None,
                    headers: dict[str, str] | None,
-                   host: str, port: Int32, default_port: Int32) -> bytes:
+                   host: str, port: int32, default_port: int32) -> bytes:
     """Serialize a request line + headers + body. A free function shared by
     HTTPConnection and HTTPSConnection (a @dynamic protocol declares no shared
     implementation, so common logic lives in module functions, not a base);
@@ -406,12 +406,12 @@ class HTTPConnection(_Connection):
     server ended reuse. request() after close() reconnects."""
 
     host: str
-    port: Int32
+    port: int32
     timeout: float | None
     sock: socket.socket | None
     _method: str
 
-    def __init__(self, host: str, port: Int32 = HTTP_PORT,
+    def __init__(self, host: str, port: int32 = HTTP_PORT,
                  timeout: float | None = None) -> None:
         self.host = host
         self.port = port
@@ -460,13 +460,13 @@ class HTTPSConnection(_Connection):
     inherit `_Connection` for virtual dispatch through a `Box[_Connection]`.
     """
     host: str
-    port: Int32
+    port: int32
     timeout: float | None
     _context: ssl.SSLContext
     _tls: ssl.SSLSocket | None
     _method: str
 
-    def __init__(self, host: str, port: Int32 = HTTPS_PORT,
+    def __init__(self, host: str, port: int32 = HTTPS_PORT,
                  timeout: float | None = None,
                  context: ssl.SSLContext | None = None) -> None:
         self.host = host

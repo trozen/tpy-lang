@@ -1197,7 +1197,7 @@ class TypeCompatibility:
             if is_big_int_type(expected) or isinstance(expected, IntLiteralType):
                 return None
 
-        # FloatLiteral can coerce to float/Float32 or stay unresolved
+        # FloatLiteral can coerce to float/float32 or stay unresolved
         if isinstance(actual, FloatLiteralType):
             if is_any_float_type(expected):
                 return None
@@ -1267,7 +1267,7 @@ class TypeCompatibility:
                     return None
                 if isinstance(actual_elem, IntLiteralType) and is_integer_type(e_elem):
                     return None
-                # Element type widening (e.g. Int32 -> Int32|None, Int32 -> Int64).
+                # Element type widening (e.g. int32 -> int32|None, int32 -> int64).
                 # Subclass coercion excluded: storing Child in list[Base] silently
                 # slices objects (same invariance as dict/set).
                 both_records = (
@@ -1280,7 +1280,7 @@ class TypeCompatibility:
                     return CompatError(
                         f"Type mismatch in {context}: expected {e}, got {a}", loc)
                 else:
-                    # Element type widening (e.g. Int32 -> Int32|None, Int32 -> Int64).
+                    # Element type widening (e.g. int32 -> int32|None, int32 -> int64).
                     # Container element slot is storage form -- no address-take
                     # mark should fire even if the inner type is pointer-repr Optional.
                     result = self._check_compat(
@@ -1831,7 +1831,7 @@ class TypeCompatibility:
         """Raise a range error when a literal-seeded local would have
         retro-widened to `expected` except a recorded literal value falls
         outside the target's range. Surfaces the literal value (e.g. -1,
-        or 300 against UInt8) instead of the bare "got Int32" mismatch.
+        or 300 against uint8) instead of the bare "got int32" mismatch.
         """
         cand = self.deduction.literal_retro_candidate(expr.name, actual, expected)
         if cand is None:
@@ -2296,7 +2296,7 @@ class TypeCompatibility:
         # A rebuild is only NEEDED when the leaf is not already the union: a
         # literal materialized against the union hint already has union-typed
         # elements (no conversion, handled by the literal path), whereas a
-        # concrete container variable (e.g. dict[str, Int32]) has a genuinely
+        # concrete container variable (e.g. dict[str, int32]) has a genuinely
         # different element. The leaf must also coerce to a union member.
         # `_check_compat` with no source_expr has no side effects.
         if self._resolve_recursive_refs(elem) == union:
@@ -2438,7 +2438,7 @@ class TypeCompatibility:
         Fn/Callable contract. Function params are CONTRAVARIANT: the callee
         must accept everything the contract may pass, so each expected param
         must be compatible with the callee's declared param (e.g. a callee
-        taking Int32 | None satisfies Fn[[Int32], ...], not the reverse).
+        taking int32 | None satisfies Fn[[int32], ...], not the reverse).
         Returns are covariant; a void contract accepts any return.
         """
         if len(actual_params) != len(expected.param_types):

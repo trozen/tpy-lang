@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def client_role(port: Int32) -> None:
+// async def client_role(port: int32) -> None:
 ::tpystd::tpy::Poll<::std::monostate> __coro_client_role::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -82,7 +82,7 @@ namespace tpyapp::main {
 }
 
 
-// async def client_role(port: Int32) -> None:
+// async def client_role(port: int32) -> None:
 __coro_client_role client_role(int32_t port) {
     return __coro_client_role(port);
 }

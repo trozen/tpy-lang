@@ -26,10 +26,10 @@ __coro_driver driver();
 // @nocopy
 // class P:
 struct P {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     P() = default;
     explicit P(int32_t v);
     // non-copyable (@nocopy)
@@ -125,7 +125,7 @@ struct __coro_driver {
 };
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline P::P(int32_t v) : v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

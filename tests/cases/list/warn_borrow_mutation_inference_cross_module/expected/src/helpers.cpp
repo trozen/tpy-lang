@@ -4,9 +4,9 @@
 namespace tpyapp::helpers {
 
 
-// def sum_points(items: list[Point]) -> Int32:
+// def sum_points(items: list[Point]) -> int32:
 int32_t sum_points(const std::vector<Point>& items) {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for p in items:
     auto& __obj_0 = items;
@@ -33,7 +33,7 @@ void add_point_wrapper(std::vector<Point>& items, const Point& p) {
     add_point(items, p);
 }
 
-// def read_wrapper(items: list[Point]) -> Int32:
+// def read_wrapper(items: list[Point]) -> int32:
 int32_t read_wrapper(const std::vector<Point>& items) {
     // return sum_points(items)
     return sum_points(items);

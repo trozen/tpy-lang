@@ -12,7 +12,7 @@ void main() {
     // print("c1:", c1)
     std::cout << "c1:" << " " << c1 << "\n";
     // # Explicit type args
-    // c2 = Container[Int32].create(10)
+    // c2 = Container[int32].create(10)
     Container<int32_t> c2 = Container<int32_t>::create(10);
     // print("c2:", c2)
     std::cout << "c2:" << " " << c2 << "\n";
@@ -22,12 +22,12 @@ void main() {
     // print("c3:", c3)
     std::cout << "c3:" << " " << ::tpy::print_optional_val(c3) << "\n";
     // # Explicit with None
-    // c4 = Container[Int32].wrap_optional(None)
+    // c4 = Container[int32].wrap_optional(None)
     std::optional<Container<int32_t>> c4 = Container<int32_t>::wrap_optional(std::nullopt);
     // print("c4:", c4)
     std::cout << "c4:" << " " << ::tpy::print_optional_val(c4) << "\n";
     // # Explicit with value
-    // c5 = Container[Int32].wrap_optional(77)
+    // c5 = Container[int32].wrap_optional(77)
     std::optional<Container<int32_t>> c5 = Container<int32_t>::wrap_optional(77);
     // print("c5:", c5)
     std::cout << "c5:" << " " << ::tpy::print_optional_val(c5) << "\n";

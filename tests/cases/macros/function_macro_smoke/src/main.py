@@ -2,11 +2,11 @@
 # the function's params / return / body and emits a diagnostic. The function
 # still compiles and runs normally (the macro decorator is stripped).
 from tracemod import trace
-from tpy import Int32
+from tpy import int32
 
 
 @trace
-def add(a: Int32, b: Int32) -> Int32:  # tpyc: warning(/function macro saw add\(a, b\) -> Int32/)
+def add(a: int32, b: int32) -> int32:  # tpyc: warning(/function macro saw add\(a, b\) -> int32/)
     return a + b
 
 

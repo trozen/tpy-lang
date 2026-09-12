@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // c = Combined(Int32(10), Int32(20))
+    // c = Combined(int32(10), int32(20))
     Combined c = Combined(10, 20);
     // print(c.a)
     std::cout << c.a << "\n";

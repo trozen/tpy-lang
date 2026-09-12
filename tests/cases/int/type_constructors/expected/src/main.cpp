@@ -9,25 +9,25 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # --- Int32 constructors ---
-    // # Int32(float): truncate toward zero
-    // print(Int32(3.7))    # 3
+    // # --- int32 constructors ---
+    // # int32(float): truncate toward zero
+    // print(int32(3.7))    # 3
     std::cout << ::tpy::from_float_check<int32_t>(3.7) << "\n";
-    // print(Int32(-3.7))   # -3
+    // print(int32(-3.7))   # -3
     std::cout << ::tpy::from_float_check<int32_t>(-(3.7)) << "\n";
-    // print(Int32(0.0))    # 0
+    // print(int32(0.0))    # 0
     std::cout << ::tpy::from_float_check<int32_t>(0.0) << "\n";
-    // # Int32(str): parse
-    // print(Int32("42"))    # 42
+    // # int32(str): parse
+    // print(int32("42"))    # 42
     std::cout << ::tpy::from_str_check<int32_t>("42") << "\n";
-    // print(Int32("-100"))  # -100
+    // print(int32("-100"))  # -100
     std::cout << ::tpy::from_str_check<int32_t>("-100") << "\n";
-    // print(Int32(" 7 "))   # 7 (whitespace stripped)
+    // print(int32(" 7 "))   # 7 (whitespace stripped)
     std::cout << ::tpy::from_str_check<int32_t>(" 7 ") << "\n";
-    // # Int32(bool)
-    // print(Int32(True))    # 1
+    // # int32(bool)
+    // print(int32(True))    # 1
     std::cout << static_cast<int32_t>(true) << "\n";
-    // print(Int32(False))   # 0
+    // print(int32(False))   # 0
     std::cout << static_cast<int32_t>(false) << "\n";
     // # --- int constructors ---
     // # int(bool)
@@ -35,7 +35,7 @@ void __tpy_init() {
     std::cout << ::tpy::BigInt(static_cast<int32_t>(true)) << "\n";
     // print(int(False))     # 0
     std::cout << ::tpy::BigInt(static_cast<int32_t>(false)) << "\n";
-    // # int(Char)
+    // # int(char)
     // print(int(chr(65)))   # 65 (ASCII 'A')
     std::cout << ::tpy::BigInt(static_cast<int32_t>(static_cast<char>(65))) << "\n";
     // print(int(chr(0)))    # 0

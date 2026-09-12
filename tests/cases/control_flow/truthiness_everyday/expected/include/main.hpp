@@ -23,19 +23,19 @@ void main();
 
 // class Holder:
 struct Holder {
-    // n: Int32
+    // n: int32
     int32_t n;
     // ratio: float
     double ratio;
     // tag: str
     std::string tag;
-    // rows: list[Int32]
+    // rows: list[int32]
     std::vector<int32_t> rows;
 
     // def __init__(self) -> None:
     Holder();
 
-    // def size(self) -> Int32:
+    // def size(self) -> int32:
     int32_t size() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
@@ -49,7 +49,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 // def __init__(self) -> None:
 inline Holder::Holder() : n(2), ratio(0.5), tag("t"), rows(std::vector<int32_t>{7}) {}
 
-// def size(self) -> Int32:
+// def size(self) -> int32:
 inline int32_t Holder::size() const {
     // return self.n
     return this->n;

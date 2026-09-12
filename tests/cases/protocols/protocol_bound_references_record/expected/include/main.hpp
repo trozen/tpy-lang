@@ -19,10 +19,10 @@ concept FooMaker = requires(T& t) {
 // # A record that will be referenced by a bound protocol
 // class Foo:
 struct Foo {
-    // value: Int32
+    // value: int32
     int32_t value;
 
-    // def __init__(self, value: Int32) -> None:
+    // def __init__(self, value: int32) -> None:
     Foo() = default;
     explicit Foo(int32_t value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Foo";
@@ -88,12 +88,12 @@ inline std::ostream& operator<<(std::ostream& os, const Bar<T>& obj) {
 }
 
 
-// def __init__(self, value: Int32) -> None:
+// def __init__(self, value: int32) -> None:
 inline Foo::Foo(int32_t value) : value(value) {}
 
 // def make(self) -> Own[Foo]:
 inline Foo DefaultFooMaker::make() const {
-    // return Foo(Int32(42))
+    // return Foo(int32(42))
     return Foo(42);
 }
 void __tpy_init();

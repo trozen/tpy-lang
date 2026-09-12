@@ -37,23 +37,23 @@ from .validate import (
 # reach a _fail arm (reaching one would mean lowering emitted malformed THIR),
 # so the rules have no case-shaped pin and live here over hand-built THIR.
 _PTR_RECORDS = (
-    "from tpy import Int32, Own, readonly\n"
-    "class A:\n    x: Int32\n    def __init__(self, x: Int32):\n        self.x = x\n"
-    "class B:\n    y: Int32\n    def __init__(self, y: Int32):\n        self.y = y\n"
+    "from tpy import int32, Own, readonly\n"
+    "class A:\n    x: int32\n    def __init__(self, x: int32):\n        self.x = x\n"
+    "class B:\n    y: int32\n    def __init__(self, y: int32):\n        self.y = y\n"
     "class H:\n"
     "    u: A | B\n"
-    "    n: Int32\n"
+    "    n: int32\n"
     "    def __init__(self, v: Own[A | B]):\n"
     "        self.u = v\n        self.n = 0\n"
 )
 
 
-_PRE = "from tpy import Int32\nfrom typing import Iterator\n\n"
+_PRE = "from tpy import int32\nfrom typing import Iterator\n\n"
 
 _ASYNC_SRC = (_PRE
-              + "async def step(n: Int32) -> Int32:\n"
+              + "async def step(n: int32) -> int32:\n"
               + "    return n + 1\n\n"
-              + "async def runner(a: Int32) -> Int32:\n"
+              + "async def runner(a: int32) -> int32:\n"
               + "    n = a\n"
               + "    while n < 3:\n"
               + "        n = await step(n)\n"
@@ -61,7 +61,7 @@ _ASYNC_SRC = (_PRE
               + "def main() -> None:\n    pass\nmain()\n")
 
 _SIMPLE_GEN_SRC = (_PRE
-                   + "def gen(n: Int32) -> Iterator[Int32]:\n"
+                   + "def gen(n: int32) -> Iterator[int32]:\n"
                    + "    i = 0\n"
                    + "    while i < n:\n"
                    + "        yield i\n"
@@ -124,8 +124,8 @@ class TestSeamBodiesAreValidated:
 
         monkeypatch.setattr(_lower_resumable_mod, "validate_stmts", spy)
         _emit_thir(_PRE
-                   + "async def outer(a: Int32) -> Int32:\n"
-                   + "    def helper(v: Int32) -> Int32:\n"
+                   + "async def outer(a: int32) -> int32:\n"
+                   + "    def helper(v: int32) -> int32:\n"
                    + "        return v + 1\n"
                    + "    try:\n"
                    + "        return helper(a)\n"

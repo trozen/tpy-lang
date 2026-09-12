@@ -3,27 +3,27 @@
 # `is_readonly` (or `is_consuming`). The same-param-diff-return check
 # must skip these since C++ realises them with `&` / `const &` / `&&`
 # qualifiers and produces no ambiguity.
-from tpy import Int32, auto_readonly
+from tpy import int32, auto_readonly
 
 
 class Box:
-    value: Int32
+    value: int32
 
     def __init__(self) -> None:
-        self.value = Int32(0)
+        self.value = int32(0)
 
     # @auto_readonly generates a const-qualified clone alongside the
     # mutable original. Both clones have identical positional params
     # (just `self`) and identical return types -- the only difference
     # is the synthesised `is_readonly` flag.
     @auto_readonly
-    def get(self) -> Int32:
+    def get(self) -> int32:
         return self.value
 
 
 def main() -> None:
     b = Box()
-    b.value = Int32(42)
+    b.value = int32(42)
     print(b.get())  # 42
 
 

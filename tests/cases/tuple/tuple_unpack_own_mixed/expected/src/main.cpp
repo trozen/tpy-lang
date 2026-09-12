@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def make() -> tuple[Own[Counter], Int32]:
+// def make() -> tuple[Own[Counter], int32]:
 std::tuple<Counter, int32_t> make() {
     // return (Counter(7), 99)
     return std::tuple<Counter, int32_t>{Counter(7), 99};

@@ -1,5 +1,5 @@
 """Test basic generic functions with type inference."""
-from tpy import Int32
+from tpy import int32
 
 
 def first[T](items: list[T]) -> T:
@@ -20,7 +20,7 @@ words = ["hello", "world"]
 print(first(words))
 print(last(words))
 
-# Inference from list[Int32]
-vals: list[Int32] = [Int32(1), Int32(2), Int32(3)]
+# Inference from list[int32]
+vals: list[int32] = [int32(1), int32(2), int32(3)]
 print(first(vals))
 print(last(vals))

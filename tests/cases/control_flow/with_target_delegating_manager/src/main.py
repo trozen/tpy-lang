@@ -11,13 +11,13 @@
 # target is a const alias, so it cannot be mutated to probe the boundary.
 from typing import Iterator
 
-from tpy import Int32
+from tpy import int32
 
 
 class Sentinel:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
 
@@ -35,7 +35,7 @@ class Wrapper:
         print("wrapper dropped")
 
 
-def gen() -> Iterator[Int32]:
+def gen() -> Iterator[int32]:
     with Wrapper() as g:
         pass
     yield 1

@@ -294,7 +294,7 @@ A **borrow conflict** occurs when:
 - A mutable access happens while a shared borrow is live
 - A shared or mutable borrow is created while a mutable borrow is live
 
-**Value types** (`Int32`, `bool`, `float`, `Char`, `Float32`) are exempt -- they copy
+**Value types** (`int32`, `bool`, `float`, `char`, `float32`) are exempt -- they copy
 on assignment, so no aliasing occurs.
 
 ### What Falls Out of This
@@ -328,12 +328,12 @@ Supports negation (`not (p is not None)`) and `and`/`or` composition. Branch
 merging uses intersection (conservative -- non-null only if all paths agree).
 
 ```python
-def process(p: Ptr[Point]) -> Int32:
+def process(p: Ptr[Point]) -> int32:
     if p is not None:
         return p.x      # skip deref_check (p proven non-null)
-    return Int32(0)
+    return int32(0)
 
-def with_assert(p: Ptr[Point]) -> Int32:
+def with_assert(p: Ptr[Point]) -> int32:
     assert p is not None
     return p.x           # skip deref_check
 ```
@@ -531,7 +531,7 @@ not considered an observable side effect since the returned object is fresh and 
 
 ```python
 @pure
-def square(x: Int32) -> Int32:
+def square(x: int32) -> int32:
     return x * x
 ```
 
@@ -573,14 +573,14 @@ needs to know whether the callee mutates the borrowed argument. Without this
 information, it must warn conservatively -- producing false positives on safe code:
 
 ```python
-def sum_items(items: list[Int32]) -> Int32:
-    total: Int32 = 0
+def sum_items(items: list[int32]) -> int32:
+    total: int32 = 0
     for x in items:
         total += x
     return total
 
 def caller() -> None:
-    data: list[Int32] = [1, 2, 3]
+    data: list[int32] = [1, 2, 3]
     for x in data:
         print(sum_items(data))  # false positive: sum_items doesn't mutate data
 ```
@@ -813,7 +813,7 @@ function get_first(items: list[Point]) -> Point
   mutated_params: {}
   return_borrows_from: {0}       # return borrows param[0]
 
-function add_item(items: list[Int32], val: Int32) -> None
+function add_item(items: list[int32], val: int32) -> None
   mutated_params: {0}            # mutates param 'items'
   return_borrows_from: {}
 ```
@@ -884,7 +884,7 @@ Track provable `[lo, hi]` ranges for integer variables. Sources of range informa
 
 | Source | Range |
 |--------|-------|
-| `x: Int32 = 0` | `[0, 0]` |
+| `x: int32 = 0` | `[0, 0]` |
 | `for i in range(n)` | `[0, n-1]` (if n > 0) |
 | `assert i > 0` | `[1, INT_MAX]` |
 | `assert i >= 0` | `[0, INT_MAX]` |
@@ -906,7 +906,7 @@ The primary consumer. When `arr[i]` is accessed and `i` is provably in
 for i in range(len(arr)):
     x = arr[i]              # i in [0, len(arr)-1] -> skip bounds check
 
-i: Int32 = 0
+i: int32 = 0
 while i < len(arr):
     x = arr[i]              # i in [0, len(arr)-1] -> skip bounds check
     i += 1
@@ -932,7 +932,7 @@ is especially common in latency-sensitive code.
   but keep Python floor-division/modulo semantics and overflow check.
 - Test annotations: `# tpyc: bounds_safe(arr)` / `# tpyc: bounds_checked(arr)` for
   subscripts; `# tpyc: div_safe(b)` / `# tpyc: div_checked(b)` for division/modulo.
-- Literal range tracking: `i: Int32 = 0` sets `ValueRange.from_literal(0)`, enabling
+- Literal range tracking: `i: int32 = 0` sets `ValueRange.from_literal(0)`, enabling
   while-loop bounds elision. Combined with `while i < len(arr)` condition facts, gives
   `ValueRange(lo=0, hi_len_of="arr")` which satisfies `bounds_safe`.
 - Augmented assignment (`i += 1`) invalidates range facts for soundness -- prevents
@@ -941,11 +941,11 @@ is especially common in latency-sensitive code.
 #### 11b. Safe Unsigned Cast
 
 When `assert i > 0` or a comparison proves `i >= 0`, casting to an unsigned type
-(`UInt32`, `UInt64`) can skip the negative-value check:
+(`uint32`, `uint64`) can skip the negative-value check:
 
 ```python
 assert offset >= 0
-ptr = base.offset(UInt64(offset))  # safe: offset proven non-negative
+ptr = base.offset(uint64(offset))  # safe: offset proven non-negative
 ```
 
 **Implementation**: When a cast to unsigned is requested and the source range has
@@ -955,7 +955,7 @@ ptr = base.offset(UInt64(offset))  # safe: offset proven non-negative
 cast has the source proven non-negative (via range tracking) and the target is at
 least as wide as the source (no narrowing risk), sema replaces the `FunctionInfo`
 template with `static_cast<T>()` instead of `tpy::int_cast_check<T>()`. Test
-annotations: `# tpyc: cast_safe(UInt32)` / `# tpyc: cast_checked(UInt32)`.
+annotations: `# tpyc: cast_safe(uint32)` / `# tpyc: cast_checked(uint32)`.
 
 #### 11c. Condition and Assert-Derived Range Facts
 
@@ -987,10 +987,10 @@ The user provides an explicit unchecked fast path:
 
 ```python
 class RingBuffer:
-    def __getitem__(self, i: Int32) -> Int32:
+    def __getitem__(self, i: int32) -> int32:
         return self._data[i]  # checked (default)
 
-    def __getitem_unchecked__(self, i: Int32) -> Int32:
+    def __getitem_unchecked__(self, i: int32) -> int32:
         return self._data.unsafe_get(i)  # no bounds check
 ```
 
@@ -1165,16 +1165,16 @@ class list[T]:
     def append(self, item: T) -> None: ...
 
     @may_reallocate
-    def insert(self, index: Int32, item: T) -> None: ...
+    def insert(self, index: int32, item: T) -> None: ...
 
     @may_reallocate
-    def __delitem__(self, index: Int32) -> None: ...
+    def __delitem__(self, index: int32) -> None: ...
 
     # no annotation = in-place, no reallocation, element borrows survive
-    def __setitem__(self, index: Int32, value: T) -> None: ...
+    def __setitem__(self, index: int32, value: T) -> None: ...
 
     @return_borrows_from(-1)  # return value borrows from self
-    def __getitem__(self, index: Int32) -> T: ...
+    def __getitem__(self, index: int32) -> T: ...
 ```
 
 **Default for unannotated mutating methods**: conservative (treated as structural) --

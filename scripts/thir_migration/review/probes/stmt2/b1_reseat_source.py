@@ -1,14 +1,14 @@
-from tpy import Int32
+from tpy import int32
 class Base:
-    n: Int32
-    def __init__(self, n: Int32) -> None:
+    n: int32
+    def __init__(self, n: int32) -> None:
         self.n = n
 class Sub(Base):
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         Base.__init__(self, n)
 class Holder:
     s: Sub
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.s = Sub(n)
     def __neg__(self) -> Sub:
         return self.s

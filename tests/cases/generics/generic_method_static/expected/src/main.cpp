@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // # Explicit type arg on non-generic class
-    // print(Utils.identity[Int32](Int32(42)))
+    // print(Utils.identity[int32](int32(42)))
     std::cout << Utils::identity<int32_t>(42) << "\n";
     // print(Utils.identity[bool](True))
     std::cout << ::tpy::print_bool(Utils::identity<bool>(true)) << "\n";

@@ -1,21 +1,21 @@
 """Tests that Record -> Ptr[DifferentRecord] is rejected (pointee mismatch)."""
-from tpy import Int32, Ptr
+from tpy import int32, Ptr
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32) -> None:
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 
 
 class Color:
-    r: Int32
-    g: Int32
-    b: Int32
+    r: int32
+    g: int32
+    b: int32
 
-    def __init__(self, r: Int32, g: Int32, b: Int32) -> None:
+    def __init__(self, r: int32, g: int32, b: int32) -> None:
         self.r = r
         self.g = g
         self.b = b

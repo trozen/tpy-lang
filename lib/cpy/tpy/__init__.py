@@ -1,7 +1,7 @@
 """
 TurboPython built-in types and decorators.
 
-Provides Python implementations of TurboPython-specific types (Int32, Ptr, Array, etc.),
+Provides Python implementations of TurboPython-specific types (int32, Ptr, Array, etc.),
 allowing TurboPython source files to run in CPython and enabling IDE support.
 """
 
@@ -20,11 +20,11 @@ T = TypeVar('T')
 
 
 # ---------------------------------------------------------------------------
-# Char
+# char
 # ---------------------------------------------------------------------------
 
-class Char(str):
-    """CPython stub: Char(int) -> chr(int), Char(str) -> str."""
+class char(str):
+    """CPython stub: char(int) -> chr(int), char(str) -> str."""
     def __new__(cls, val):
         if isinstance(val, int):
             return str.__new__(cls, chr(val))
@@ -67,8 +67,8 @@ def _make_fixed_int_type(name: str, bits: int, signed: bool):
             return super().__new__(cls, value)
 
         # Use FixedInt (not type(self)) so that subclass arithmetic
-        # (e.g. IntEnum + Int8) returns the base fixed-int type. _wrap
-        # propagates NotImplemented so mixed-type ops (e.g. Int8 + float)
+        # (e.g. IntEnum + int8) returns the base fixed-int type. _wrap
+        # propagates NotImplemented so mixed-type ops (e.g. int8 + float)
         # fall back to the other operand's reflected dunder rather than
         # crashing on FixedInt(NotImplemented).
         def __add__(self, other): return _wrap(int.__add__(self, other))
@@ -132,22 +132,22 @@ def _make_fixed_int_type(name: str, bits: int, signed: bool):
     return FixedInt
 
 
-Int8 = _make_fixed_int_type("Int8", 8, True)
-Int16 = _make_fixed_int_type("Int16", 16, True)
-Int32 = _make_fixed_int_type("Int32", 32, True)
-Int64 = _make_fixed_int_type("Int64", 64, True)
-UInt8 = _make_fixed_int_type("UInt8", 8, False)
-UInt16 = _make_fixed_int_type("UInt16", 16, False)
-UInt32 = _make_fixed_int_type("UInt32", 32, False)
-UInt64 = _make_fixed_int_type("UInt64", 64, False)
+int8 = _make_fixed_int_type("int8", 8, True)
+int16 = _make_fixed_int_type("int16", 16, True)
+int32 = _make_fixed_int_type("int32", 32, True)
+int64 = _make_fixed_int_type("int64", 64, True)
+uint8 = _make_fixed_int_type("uint8", 8, False)
+uint16 = _make_fixed_int_type("uint16", 16, False)
+uint32 = _make_fixed_int_type("uint32", 32, False)
+uint64 = _make_fixed_int_type("uint64", 64, False)
 
 
 # ---------------------------------------------------------------------------
 # Float types
 # ---------------------------------------------------------------------------
 
-Float32 = float
-Float64 = float
+float32 = float
+float64 = float
 
 
 # ---------------------------------------------------------------------------
@@ -356,8 +356,8 @@ class Array(metaclass=ArrayMeta):
         i = self._normalize_index(index, f"array index out of bounds")
         self._data[i] = value
 
-    def size(self) -> Int32:
-        return Int32(self._size)
+    def size(self) -> int32:
+        return int32(self._size)
 
     def __len__(self) -> int:
         return self._size
@@ -417,8 +417,8 @@ class Span(metaclass=SpanMeta):
             raise RuntimeError(f"span index out of bounds")
         self._data[i] = value
 
-    def size(self) -> Int32:
-        return Int32(len(self._data))
+    def size(self) -> int32:
+        return int32(len(self._data))
 
     def __len__(self) -> int:
         return len(self._data)

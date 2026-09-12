@@ -1,30 +1,30 @@
 # Assigning non-value type into tuple field without copy() warns.
-from tpy import Int32, copy
+from tpy import int32, copy
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32) -> None:
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 
 class Container:
-    data: tuple[Point, Int32]
-    def __init__(self, p: Point, n: Int32) -> None:
+    data: tuple[Point, int32]
+    def __init__(self, p: Point, n: int32) -> None:
         self.data = (p, n)  # tpyc: warning(/copies Point into field/)
     def __repr__(self) -> str:
         return "Container"
 
 class ContainerOk:
-    data: tuple[Point, Int32]
-    def __init__(self, p: Point, n: Int32) -> None:
+    data: tuple[Point, int32]
+    def __init__(self, p: Point, n: int32) -> None:
         self.data = (copy(p), n)  # tpyc: ok
     def __repr__(self) -> str:
         return "ContainerOk"
 
 def main() -> None:
-    p = Point(Int32(1), Int32(2))
-    c = ContainerOk(p, Int32(42))
+    p = Point(int32(1), int32(2))
+    c = ContainerOk(p, int32(42))
     print(c.data[0].x, c.data[1])
 
 main()

@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def make_list(n: Int32) -> Own[list[Int32]]:
+// def make_list(n: int32) -> Own[list[int32]]:
 std::vector<int32_t> make_list(int32_t n) {
-    // out: list[Int32] = []
+    // out: list[int32] = []
     std::vector<int32_t> out = std::vector<int32_t>{};
     // for i in range(n):
     int32_t __stop_0 = n;

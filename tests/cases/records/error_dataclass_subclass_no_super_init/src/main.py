@@ -4,15 +4,15 @@
 # The sema rule must reject with a macro-aware message that doesn't
 # blame the user for code they didn't write.
 from dataclasses import dataclass
-from tpy import Ptr, Int32, nocopy
+from tpy import Ptr, int32, nocopy
 from tpy.unsafe import unsafe_alloc, unsafe_free, unsafe_init, unsafe_drop
 
 
 @nocopy
 class Resource:
-    _ptr: Ptr[Int32]
+    _ptr: Ptr[int32]
 
-    def __init__(self, value: Int32) -> None:
+    def __init__(self, value: int32) -> None:
         self._ptr = unsafe_alloc()
         unsafe_init(self._ptr, value)
 
@@ -24,13 +24,13 @@ class Resource:
 class Base:
     res: Resource
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.res = Resource(v)
 
 
 @dataclass
 class Child(Base):                    # tpyc: error(/synthesized by '@dataclass' for 'Child' does not initialize parent class 'Base'/)
-    extra: Int32
+    extra: int32
 
 
 def main() -> None:

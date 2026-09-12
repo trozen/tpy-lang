@@ -20,13 +20,13 @@ struct Point {
     // self.y = y
     int32_t y;
 
-    // def __init__(self, x: Int32, y: Int32):
+    // def __init__(self, x: int32, y: int32):
     Point() = default;
     explicit Point(int32_t x, int32_t y);
 
     // @overload
     // @classmethod
-    // def make(cls, x: Int32) -> Own[Self]: ...
+    // def make(cls, x: int32) -> Own[Self]: ...
     static Point make(int32_t x) {
         int32_t y = 0;
         // return cls(x, y)
@@ -35,7 +35,7 @@ struct Point {
 
     // @overload
     // @classmethod
-    // def make(cls, x: Int32, y: Int32) -> Own[Self]: ...
+    // def make(cls, x: int32, y: int32) -> Own[Self]: ...
     static Point make(int32_t x, int32_t y) {
         // return cls(x, y)
         return Point(x, y);
@@ -49,7 +49,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 }
 
 
-// def __init__(self, x: Int32, y: Int32):
+// def __init__(self, x: int32, y: int32):
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 void __tpy_init();
 } // namespace tpyapp::main

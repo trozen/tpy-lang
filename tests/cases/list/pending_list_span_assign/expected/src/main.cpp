@@ -8,7 +8,7 @@ namespace tpyapp::main {
 void main() {
     // data = [1, 2, 3]
     std::array<int32_t, 3> data = {1, 2, 3};
-    // s: Span[Int32] = data
+    // s: Span[int32] = data
     std::span<int32_t> s = ::tpy::as_mut_span(data);
     // print(s[0])
     std::cout << ::tpy::__getitem__(s, 0) << "\n";

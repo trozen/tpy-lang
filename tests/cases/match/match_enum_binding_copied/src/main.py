@@ -1,6 +1,6 @@
 # An enum match binding is a free-copy scalar: copied at the arm, so mutating
 # the subject storage (reassigning the union field) keeps the matched value.
-from tpy import Int32
+from tpy import int32
 from enum import Enum
 
 
@@ -17,9 +17,9 @@ class Dog:
 
 
 class Cat:
-    age: Int32
+    age: int32
 
-    def __init__(self, age: Int32) -> None:
+    def __init__(self, age: int32) -> None:
         self.age = age
 
 

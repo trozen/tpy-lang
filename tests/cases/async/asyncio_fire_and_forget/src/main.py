@@ -10,17 +10,17 @@
 # `background_sleep < main_sleep` ordering.
 import asyncio
 from asyncio import Future
-from tpy import Int32
+from tpy import int32
 from asyncio import Task
 
 
-async def background(done: Future[Int32]) -> None:
+async def background(done: Future[int32]) -> None:
     print("background ran")
-    done.set_result(Int32(0))  # sentinel; only the wake matters
+    done.set_result(int32(0))  # sentinel; only the wake matters
 
 
 async def main_coro() -> None:
-    done: Future[Int32] = Future[Int32]()
+    done: Future[int32] = Future[int32]()
     t: Task[None] = asyncio.create_task(background(done))
     # Drop the handle without awaiting; the executor still drives the task.
     del t

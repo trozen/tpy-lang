@@ -6,7 +6,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "decl `p: Ptr[list[Int32]] = None` / `Ptr[str]`: the None-init ladder falls past value-union / wrapper / value-repr-Optional to `_eligible_ptr_value` (predicates.py:3462), which admits only F1-record / scalar / Char / void / @dynamic pointees. Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.var_decl:decl.none_init_slot`, raise traced to this line.",
+  "evidence": "decl `p: Ptr[list[int32]] = None` / `Ptr[str]`: the None-init ladder falls past value-union / wrapper / value-repr-Optional to `_eligible_ptr_value` (predicates.py:3462), which admits only F1-record / scalar / char / void / @dynamic pointees. Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.var_decl:decl.none_init_slot`, raise traced to this line.",
   "probe": "scripts/thir_migration/review/probes/stmt3/b5_e_ptr_none_list.py",
   "plain_raise": false,
   "known_shape": null
@@ -30,7 +30,7 @@
   "reason": "stmt_reject_reason(\n                        stmt,\n                        f\"decl.tuple_literal_shape:{ex.reason}\")",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "borrow-tuple decl `t: tuple[Int32, Box] = (1, b if f else c)`: `_lower_borrow_tuple_literal` rejects the ternary element and this site recomposes it. Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal`, raise traced here (also reproduced by b6_f_decl_wide_tuple_ternary.py).",
+  "evidence": "borrow-tuple decl `t: tuple[int32, Box] = (1, b if f else c)`: `_lower_borrow_tuple_literal` rejects the ternary element and this site recomposes it. Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal`, raise traced here (also reproduced by b6_f_decl_wide_tuple_ternary.py).",
   "probe": "scripts/thir_migration/review/probes/stmt3/b5_e_decl_tuple_elem_ternary.py",
   "plain_raise": false,
   "known_shape": null
@@ -54,7 +54,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "`t = ({'a': 1}, Char('x'))` (wide decl family, tuple_t None): probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.var_decl:decl.tuple_literal_shape`, raise traced here. Also reached by a generic `t = (x, n)` decl in b2_r_generic_tuple.py.",
+  "evidence": "`t = ({'a': 1}, char('x'))` (wide decl family, tuple_t None): probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.var_decl:decl.tuple_literal_shape`, raise traced here. Also reached by a generic `t = (x, n)` decl in b2_r_generic_tuple.py.",
   "probe": "scripts/thir_migration/review/probes/stmt3/b7_g_decl_wide_tuple_char.py",
   "plain_raise": false,
   "known_shape": null
@@ -66,7 +66,7 @@
   "reason": "stmt_reject_reason(\n                    stmt, f\"decl.tuple_literal_shape:{ex.reason}\")",
   "bin": "UNSURE",
   "confidence": "medium",
-  "evidence": "The NARROW value-tuple decl arm (`_value_tuple_nested`) recomposing an inner `_lower_tuple_literal` reject. Arm is live (its own shape reject at 9801 is confirmed BREAKS); missing is a value-tuple element `_lower_container_elem` refuses -- str concat, ternary-of-str, whole-optional and f-string elements all routed; a Char element is refused by sema first.",
+  "evidence": "The NARROW value-tuple decl arm (`_value_tuple_nested`) recomposing an inner `_lower_tuple_literal` reject. Arm is live (its own shape reject at 9801 is confirmed BREAKS); missing is a value-tuple element `_lower_container_elem` refuses -- str concat, ternary-of-str, whole-optional and f-string elements all routed; a char element is refused by sema first.",
   "probe": null,
   "plain_raise": false,
   "known_shape": null
@@ -102,7 +102,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "UNSURE",
   "confidence": "medium",
-  "evidence": "Reachable only from a macro-generated `TpyAssign` with a NAME target -- the parser turns every Name-target assignment into a TpyVarDecl (parse/parser.py:3608 and the multi-assign path at 3903), but the shipped `tplib.json` @model macro does emit one (lib/tpy/tplib/json/model.py:304), so the arm is live. Missing: a model/macro shape whose target is narrowed / `self` / undeclared or whose value is a bytes or Char-from-str literal (a @model with list/dict/nested-record/optional fields routed).",
+  "evidence": "Reachable only from a macro-generated `TpyAssign` with a NAME target -- the parser turns every Name-target assignment into a TpyVarDecl (parse/parser.py:3608 and the multi-assign path at 3903), but the shipped `tplib.json` @model macro does emit one (lib/tpy/tplib/json/model.py:304), so the arm is live. Missing: a model/macro shape whose target is narrowed / `self` / undeclared or whose value is a bytes or char-from-str literal (a @model with list/dict/nested-record/optional fields routed).",
   "probe": null,
   "plain_raise": false,
   "known_shape": null
@@ -150,7 +150,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "`g['a'] = a` on `dict[str, list[Int32]]` where `a` stays live afterwards (a COPY-shaped container name, not a move source, not a container literal). Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.assign:setitem.container_value_shape`, raise traced here.",
+  "evidence": "`g['a'] = a` on `dict[str, list[int32]]` where `a` stays live afterwards (a COPY-shaped container name, not a move source, not a container literal). Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.assign:setitem.container_value_shape`, raise traced here.",
   "probe": "scripts/thir_migration/review/probes/stmt3/b1_si_container_copy.py",
   "plain_raise": false,
   "known_shape": null
@@ -174,7 +174,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "`xs[0] = 5` on `list[Int32 | None]` (value-repr Optional[scalar] element, value neither None nor a whole-optional element read). Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.assign:setitem.optval_value_shape`, raise traced here.",
+  "evidence": "`xs[0] = 5` on `list[int32 | None]` (value-repr Optional[scalar] element, value neither None nor a whole-optional element read). Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.assign:setitem.optval_value_shape`, raise traced here.",
   "probe": "scripts/thir_migration/review/probes/stmt3/b1_si_optval_scalar.py",
   "plain_raise": false,
   "known_shape": null
@@ -210,7 +210,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "`xs[0] = [3, 4]` on `list[Tree]` with `type Tree = Int32 | list[Tree]` (recursive-union wrapper element, container-literal source). Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.assign:setitem.ru_value_shape`, raise traced here.",
+  "evidence": "`xs[0] = [3, 4]` on `list[Tree]` with `type Tree = int32 | list[Tree]` (recursive-union wrapper element, container-literal source). Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.assign:setitem.ru_value_shape`, raise traced here.",
   "probe": "scripts/thir_migration/review/probes/stmt3/b1_si_ru_none.py",
   "plain_raise": false,
   "known_shape": null
@@ -222,7 +222,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "`d[1] = (b1, b2)` on `dict[Int32, tuple[Box, Box]]` (plain record-element tuple slot admits only a borrow-tuple CALL source). Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.assign:setitem.btuple_value_shape`, raise traced here.",
+  "evidence": "`d[1] = (b1, b2)` on `dict[int32, tuple[Box, Box]]` (plain record-element tuple slot admits only a borrow-tuple CALL source). Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.assign:setitem.btuple_value_shape`, raise traced here.",
   "probe": "scripts/thir_migration/review/probes/stmt3/b1_si_btuple_literal.py",
   "plain_raise": false,
   "known_shape": null
@@ -234,7 +234,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "`d[1] = t` on `dict[Int32, tuple[Box | None, Box | None]]` with `t` a tuple-typed local (ptr-Optional-element tuple slot admits only literal / same-tuple subscript / call sources). Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.assign:setitem.btuple_value_shape`, raise traced here.",
+  "evidence": "`d[1] = t` on `dict[int32, tuple[Box | None, Box | None]]` with `t` a tuple-typed local (ptr-Optional-element tuple slot admits only literal / same-tuple subscript / call sources). Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.assign:setitem.btuple_value_shape`, raise traced here.",
   "probe": "scripts/thir_migration/review/probes/stmt3/b3_c_si_btuple_ptropt_name.py",
   "plain_raise": false,
   "known_shape": null
@@ -246,7 +246,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "`d[1] = make()` on `dict[Int32, tuple[Int32, tuple[Int32, Int32]]]` (nested-storage tuple slot admits only a tuple LITERAL). Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.assign:setitem.nested_tuple_value_shape`, raise traced here.",
+  "evidence": "`d[1] = make()` on `dict[int32, tuple[int32, tuple[int32, int32]]]` (nested-storage tuple slot admits only a tuple LITERAL). Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.assign:setitem.nested_tuple_value_shape`, raise traced here.",
   "probe": "scripts/thir_migration/review/probes/stmt3/b1_si_nested_tuple_name.py",
   "plain_raise": false,
   "known_shape": null
@@ -306,7 +306,7 @@
   "reason": "\"stmt.aug_assign\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "`x += 1` on an isinstance-NARROWED union subject (`type NUM = Int32 | Int64`; `if isinstance(x, Int32): x += 1`). Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.aug_assign`, raise traced here.",
+  "evidence": "`x += 1` on an isinstance-NARROWED union subject (`type NUM = int32 | int64`; `if isinstance(x, int32): x += 1`). Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.aug_assign`, raise traced here.",
   "probe": "scripts/thir_migration/review/probes/stmt3/b3_c_aug_narrow_union.py",
   "plain_raise": false,
   "known_shape": null
@@ -366,7 +366,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "`@error_return def outer(n: Int32) -> Int64: return inner(n)` where `inner` returns Int32: sema wraps the call in a widening TpyCoerce, so `_error_return_stmt_fi` still matches but `stmt.value` is not a TpyCall/TpyMethodCall. Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.return:error_return.ret_shape`, raise traced here.",
+  "evidence": "`@error_return def outer(n: int32) -> int64: return inner(n)` where `inner` returns int32: sema wraps the call in a widening TpyCoerce, so `_error_return_stmt_fi` still matches but `stmt.value` is not a TpyCall/TpyMethodCall. Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.return:error_return.ret_shape`, raise traced here.",
   "probe": "scripts/thir_migration/review/probes/stmt3/b5_e_er_ret_coerce.py",
   "plain_raise": false,
   "known_shape": null
@@ -378,7 +378,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "`@error_return def outer(n: Int32) -> Int32 | None: return inner(n)` -- an @error_return passthrough at an Optional return slot. Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.return:error_return.ret_slot`, raise traced here.",
+  "evidence": "`@error_return def outer(n: int32) -> int32 | None: return inner(n)` -- an @error_return passthrough at an Optional return slot. Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.return:error_return.ret_slot`, raise traced here.",
   "probe": "scripts/thir_migration/review/probes/stmt3/b3_c_er_ret_slot.py",
   "plain_raise": false,
   "known_shape": null
@@ -390,7 +390,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "A return slot no `ret_*` family covers and that is not Any: `-> Array[Int32, 3] | None` (and `-> tuple[Int32, Int32] | None`). Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.return:return.slot_type`, raise traced here.",
+  "evidence": "A return slot no `ret_*` family covers and that is not Any: `-> Array[int32, 3] | None` (and `-> tuple[int32, int32] | None`). Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.return:return.slot_type`, raise traced here.",
   "probe": "scripts/thir_migration/review/probes/stmt3/b7_g_ptr_opt_array.py",
   "plain_raise": false,
   "known_shape": null
@@ -450,7 +450,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "Borrow-tuple return with a source outside name / tuple-literal / borrow-call / storage-field-ternary: `return d[1]` at `-> tuple[Int32, Box]`, and a ternary of tuple locals. Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.return`, raise traced here.",
+  "evidence": "Borrow-tuple return with a source outside name / tuple-literal / borrow-call / storage-field-ternary: `return d[1]` at `-> tuple[int32, Box]`, and a ternary of tuple locals. Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.return`, raise traced here.",
   "probe": "scripts/thir_migration/review/probes/stmt3/b3_c_btuple_ret_name.py",
   "plain_raise": false,
   "known_shape": null
@@ -498,7 +498,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "UNSURE",
   "confidence": "medium",
-  "evidence": "Needs a TpyCoerce-wrapped value-opt PARAM (or ValueOptKind.SCALAR binding) name at a value-repr Optional[scalar] return slot. Every optional-to-optional conversion I tried (Int16->Int32, Int32->Int64, Int32->int, readonly[Int32]->Int32) is either a hard sema type mismatch or produces no coerce at all, so I could not produce the coerce layer.",
+  "evidence": "Needs a TpyCoerce-wrapped value-opt PARAM (or ValueOptKind.SCALAR binding) name at a value-repr Optional[scalar] return slot. Every optional-to-optional conversion I tried (int16->int32, int32->int64, int32->int, readonly[int32]->int32) is either a hard sema type mismatch or produces no coerce at all, so I could not produce the coerce layer.",
   "probe": null,
   "plain_raise": false,
   "known_shape": null
@@ -546,7 +546,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "`def a(d: dict[str, list[Int32]]) -> list[Int32]: return d['k']` -- a borrow-form container return whose source is neither a bare container name nor a plain field read. Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.return:return.container_borrow_source`, raise traced here.",
+  "evidence": "`def a(d: dict[str, list[int32]]) -> list[int32]: return d['k']` -- a borrow-form container return whose source is neither a bare container name nor a plain field read. Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.return:return.container_borrow_source`, raise traced here.",
   "probe": "scripts/thir_migration/review/probes/stmt3/b2_r_container_borrow.py",
   "plain_raise": false,
   "known_shape": null
@@ -558,7 +558,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "`return copy(xs) if f else copy(ys)` at `-> Own[list[Int32]]` -- a storage container return whose source is a ternary (not a name / literal / repeat / comprehension). Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.return:return.container_source`, raise traced here.",
+  "evidence": "`return copy(xs) if f else copy(ys)` at `-> Own[list[int32]]` -- a storage container return whose source is a ternary (not a name / literal / repeat / comprehension). Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.return:return.container_source`, raise traced here.",
   "probe": "scripts/thir_migration/review/probes/stmt3/b6_f_container_ternary_copy.py",
   "plain_raise": false,
   "known_shape": null
@@ -570,7 +570,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "`def a(fs: list[Callable[[Int32], Int32]]) -> Callable[[Int32], Int32]: return fs[0]` -- a Callable return whose source is neither a lambda, a func-ref, a callable-valued name nor a nested-def local. Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.return:return.callable_source`, raise traced here.",
+  "evidence": "`def a(fs: list[Callable[[int32], int32]]) -> Callable[[int32], int32]: return fs[0]` -- a Callable return whose source is neither a lambda, a func-ref, a callable-valued name nor a nested-def local. Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.return:return.callable_source`, raise traced here.",
   "probe": "scripts/thir_migration/review/probes/stmt3/b3_c_callable_src.py",
   "plain_raise": false,
   "known_shape": null
@@ -582,7 +582,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "`return t if f else u` at `-> tuple[Int32, str]` -- a value-tuple return whose source is not a tuple LITERAL / admitted call. Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.return:return.tuple_source`, raise traced here.",
+  "evidence": "`return t if f else u` at `-> tuple[int32, str]` -- a value-tuple return whose source is not a tuple LITERAL / admitted call. Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.return:return.tuple_source`, raise traced here.",
   "probe": "scripts/thir_migration/review/probes/stmt3/b2_r_value_tuple.py",
   "plain_raise": false,
   "known_shape": null
@@ -594,7 +594,7 @@
   "reason": "stmt_reject_reason(\n                        stmt, f\"return.tuple_source:{ex.reason}\")",
   "bin": "UNSURE",
   "confidence": "medium",
-  "evidence": "The value-tuple return arm recomposing an inner `_lower_tuple_literal` reject. The arm is live (its own shape reject at 12404 is confirmed BREAKS); missing is an element `_lower_container_elem` refuses inside a VALUE tuple -- str concat, str ternary, f-string, subscript and walrus elements all routed, and a Char element is refused by sema first.",
+  "evidence": "The value-tuple return arm recomposing an inner `_lower_tuple_literal` reject. The arm is live (its own shape reject at 12404 is confirmed BREAKS); missing is an element `_lower_container_elem` refuses inside a VALUE tuple -- str concat, str ternary, f-string, subscript and walrus elements all routed, and a char element is refused by sema first.",
   "probe": null,
   "plain_raise": false,
   "known_shape": null
@@ -606,7 +606,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "`def a(xs: list[Tree], n: Int32) -> tuple[Tree, Int32]: return (xs[0], n)` -- a reference-element tuple return whose wrapper element is not a plain lvalue NAME. Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.return:return.wrapper_ref_tuple_source`, raise traced here.",
+  "evidence": "`def a(xs: list[Tree], n: int32) -> tuple[Tree, int32]: return (xs[0], n)` -- a reference-element tuple return whose wrapper element is not a plain lvalue NAME. Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.return:return.wrapper_ref_tuple_source`, raise traced here.",
   "probe": "scripts/thir_migration/review/probes/stmt3/b3_c_wrapper_ref_tuple.py",
   "plain_raise": false,
   "known_shape": null
@@ -630,7 +630,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "`def a(s: str) -> Int32 | str: return s` -- a view-shaped str source into a value-union return (neither a str literal nor an owned-str field read). Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.return:return.union_view_insert`, raise traced here.",
+  "evidence": "`def a(s: str) -> int32 | str: return s` -- a view-shaped str source into a value-union return (neither a str literal nor an owned-str field read). Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.return:return.union_view_insert`, raise traced here.",
   "probe": "scripts/thir_migration/review/probes/stmt3/b3_c_union_view_insert.py",
   "plain_raise": false,
   "known_shape": null
@@ -666,7 +666,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "DEAD",
   "confidence": "medium",
-  "evidence": "`lc.prescan.ret_char and isinstance(stmt.value, TpyStrLiteral)`. Sema's one-character-literal exemption `is_char_literal_init` (sema/literal_utils.py:32) is wired only into the assignment, argument and default-value checks (registration.py:76, statements.py:61, calls.py:50) -- the RETURN check has none, so `return 'x'` at a `-> Char` slot is a hard sema error ('Type mismatch in return value: expected Char, got str'), reproduced by b3_c_ret_char_lit.py and, for a lambda body, by b4_d_char_lambda.py. Caveat: a macro-synthesized return or an overload-adjusted return could still bypass the sema check.",
+  "evidence": "`lc.prescan.ret_char and isinstance(stmt.value, TpyStrLiteral)`. Sema's one-character-literal exemption `is_char_literal_init` (sema/literal_utils.py:32) is wired only into the assignment, argument and default-value checks (registration.py:76, statements.py:61, calls.py:50) -- the RETURN check has none, so `return 'x'` at a `-> char` slot is a hard sema error ('Type mismatch in return value: expected char, got str'), reproduced by b3_c_ret_char_lit.py and, for a lambda body, by b4_d_char_lambda.py. Caveat: a macro-synthesized return or an overload-adjusted return could still bypass the sema check.",
   "probe": null,
   "plain_raise": false,
   "known_shape": null
@@ -690,7 +690,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "`def a() -> Own[Tree]: t: Tree = 1; return t` with `type Tree = Int32 | list[Tree]` -- an Own[wrapper-union] return from a wrapper-typed local (not None / container literal / member-container name / member ctor / same-wrapper call / scalar). Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.return:return.own_wrapper_source`, raise traced here.",
+  "evidence": "`def a() -> Own[Tree]: t: Tree = 1; return t` with `type Tree = int32 | list[Tree]` -- an Own[wrapper-union] return from a wrapper-typed local (not None / container literal / member-container name / member ctor / same-wrapper call / scalar). Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.return:return.own_wrapper_source`, raise traced here.",
   "probe": "scripts/thir_migration/review/probes/stmt3/b3_c_own_wrapper_src.py",
   "plain_raise": false,
   "known_shape": null
@@ -714,7 +714,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "`def a[T](xs: list[tuple[T, Int32]]) -> tuple[T, Int32]: return xs[0]` -- a generic-tuple return whose source is neither a tuple literal nor a same-generic-tuple call. Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.return:return.generic_tuple_source`, raise traced here.",
+  "evidence": "`def a[T](xs: list[tuple[T, int32]]) -> tuple[T, int32]: return xs[0]` -- a generic-tuple return whose source is neither a tuple literal nor a same-generic-tuple call. Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.return:return.generic_tuple_source`, raise traced here.",
   "probe": "scripts/thir_migration/review/probes/stmt3/b3_c_generic_tuple_src.py",
   "plain_raise": false,
   "known_shape": null
@@ -726,7 +726,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "`def a() -> Own[Tree[Int32]]: t: Tree[Int32] = [1, 2]; return t` with `type Tree[T] = T | list[Tree[T]]` -- a generic recursive-wrapper return from a wrapper local (not a container literal, not a scalar). Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.return:return.genrec_source`, raise traced here.",
+  "evidence": "`def a() -> Own[Tree[int32]]: t: Tree[int32] = [1, 2]; return t` with `type Tree[T] = T | list[Tree[T]]` -- a generic recursive-wrapper return from a wrapper local (not a container literal, not a scalar). Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.return:return.genrec_source`, raise traced here.",
   "probe": "scripts/thir_migration/review/probes/stmt3/b3_c_genrec_src.py",
   "plain_raise": false,
   "known_shape": null
@@ -750,7 +750,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "`def f(p: Speaker | None) -> Int32: if p is not None: ...` with `Speaker` a @dynamic protocol -- the non-swappable @dynamic-member flavor of the nullproto constexpr guard. Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.if:if.constexpr_nullproto_guard`, raise traced here.",
+  "evidence": "`def f(p: Speaker | None) -> int32: if p is not None: ...` with `Speaker` a @dynamic protocol -- the non-swappable @dynamic-member flavor of the nullproto constexpr guard. Probe verdict BREAKS_AT_CUTOVER, fallback `body:stmt.if:if.constexpr_nullproto_guard`, raise traced here.",
   "probe": "scripts/thir_migration/review/probes/stmt3/b4_d_nullproto_dyn_param.py",
   "plain_raise": false,
   "known_shape": null

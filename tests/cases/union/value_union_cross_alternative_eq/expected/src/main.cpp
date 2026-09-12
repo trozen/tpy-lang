@@ -3,23 +3,23 @@
 
 namespace tpyapp::main {
 
-// A: Int32 | Float64 = 1
-::tpy::Union<int32_t, double> A;
-// B: Int32 | Float64 = 1.0
-::tpy::Union<int32_t, double> B;
+// A: int32 | float64 = 1
+::tpy::Union<double, int32_t> A;
+// B: int32 | float64 = 1.0
+::tpy::Union<double, int32_t> B;
 // module_eq = A == B  # module-level statement  # tpyc: ok
 bool module_eq{};
 
 // # The eleven positions that lower. The twelfth, a comprehension holding
 // # such a compare, rejects at `expr.list_comp`
 // # (BUGS.md#list-comp-rejects-value-union-compare).
-// def free_fn(a: Int32 | Float64, b: Int32 | Float64) -> bool:  # free function
-bool free_fn(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t, double>& b) {
+// def free_fn(a: int32 | float64, b: int32 | float64) -> bool:  # free function
+bool free_fn(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b) {
     // return a == b  # tpyc: ok
     return (a == b);
 }
 
-// def gen(a: Int32 | Float64, b: Int32 | Float64) -> Iterator[bool]:  # generator
+// def gen(a: int32 | float64, b: int32 | float64) -> Iterator[bool]:  # generator
 std::expected<bool, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -37,12 +37,12 @@ std::expected<bool, ::tpy::StopIteration> __gen_gen::__next__() {
 }
 
 
-// def gen(a: Int32 | Float64, b: Int32 | Float64) -> Iterator[bool]:  # generator
-__gen_gen gen(::tpy::Union<int32_t, double> a, ::tpy::Union<int32_t, double> b) {
+// def gen(a: int32 | float64, b: int32 | float64) -> Iterator[bool]:  # generator
+__gen_gen gen(::tpy::Union<double, int32_t> a, ::tpy::Union<double, int32_t> b) {
     return __gen_gen(a, b);
 }
 
-// async def in_async(a: Int32 | Float64, b: Int32 | Float64) -> bool:  # async
+// async def in_async(a: int32 | float64, b: int32 | float64) -> bool:  # async
 ::tpystd::tpy::Poll<bool> __coro_in_async::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
@@ -58,13 +58,13 @@ __gen_gen gen(::tpy::Union<int32_t, double> a, ::tpy::Union<int32_t, double> b) 
 }
 
 
-// async def in_async(a: Int32 | Float64, b: Int32 | Float64) -> bool:  # async
-__coro_in_async in_async(::tpy::Union<int32_t, double> a, ::tpy::Union<int32_t, double> b) {
+// async def in_async(a: int32 | float64, b: int32 | float64) -> bool:  # async
+__coro_in_async in_async(::tpy::Union<double, int32_t> a, ::tpy::Union<double, int32_t> b) {
     return __coro_in_async(a, b);
 }
 
-// def in_with(a: Int32 | Float64, b: Int32 | Float64) -> bool:  # with body
-bool in_with(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t, double>& b) {
+// def in_with(a: int32 | float64, b: int32 | float64) -> bool:  # with body
+bool in_with(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b) {
     // with Guard():
     auto __ctx_1 = Guard();
     __ctx_1.__enter__();
@@ -86,8 +86,8 @@ bool in_with(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t,
     }
 }
 
-// def in_closure(a: Int32 | Float64, b: Int32 | Float64) -> bool:  # closure
-bool in_closure(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t, double>& b) {
+// def in_closure(a: int32 | float64, b: int32 | float64) -> bool:  # closure
+bool in_closure(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b) {
     // def inner() -> bool:
     auto inner = [&a, &b]() -> bool {
         // return a == b  # tpyc: ok
@@ -97,8 +97,8 @@ bool in_closure(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32
     return inner();
 }
 
-// def in_try(a: Int32 | Float64, b: Int32 | Float64) -> bool:  # try/finally
-bool in_try(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t, double>& b) {
+// def in_try(a: int32 | float64, b: int32 | float64) -> bool:  # try/finally
+bool in_try(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b) {
     // try:
     {
         bool __fin_ran_2 = false;
@@ -118,15 +118,15 @@ bool in_try(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t, 
 }
 
 // @error_return(Boom)
-// def in_error_return(a: Int32 | Float64, b: Int32 | Float64) -> bool:  # @error_return
-std::expected<bool, Boom> in_error_return(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t, double>& b) {
+// def in_error_return(a: int32 | float64, b: int32 | float64) -> bool:  # @error_return
+std::expected<bool, Boom> in_error_return(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b) {
     // return a == b  # tpyc: ok
     return (a == b);
 }
 
-// def in_match(a: Int32 | Float64, b: Int32 | Float64) -> bool:  # match arm
-bool in_match(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t, double>& b) {
-    // tag: Int32 = 1
+// def in_match(a: int32 | float64, b: int32 | float64) -> bool:  # match arm
+bool in_match(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b) {
+    // tag: int32 = 1
     int32_t tag = 1;
     // match tag:
     auto& __match_subject_1 = tag;
@@ -149,49 +149,49 @@ bool in_match(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t
 
 // # Numeric families: the union answer beside the monomorphic twin's, which is
 // # what the runtime leaf is defined to reproduce.
-// def u_i32_f64(a: Int32 | Float64, b: Int32 | Float64) -> bool:
-bool u_i32_f64(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t, double>& b) {
+// def u_i32_f64(a: int32 | float64, b: int32 | float64) -> bool:
+bool u_i32_f64(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b) {
     // return a == b  # tpyc: ok
     return (a == b);
 }
 
-// def t_i32_f64(a: Int32, b: Float64) -> bool:
+// def t_i32_f64(a: int32, b: float64) -> bool:
 bool t_i32_f64(int32_t a, double b) {
     // return a == b  # tpyc: ok
     return (a == b);
 }
 
-// def u_i32_i64(a: Int32 | Int64, b: Int32 | Int64) -> bool:
+// def u_i32_i64(a: int32 | int64, b: int32 | int64) -> bool:
 bool u_i32_i64(const ::tpy::Union<int32_t, int64_t>& a, const ::tpy::Union<int32_t, int64_t>& b) {
     // return a == b  # tpyc: ok
     return (a == b);
 }
 
-// def t_i32_i64(a: Int32, b: Int64) -> bool:
+// def t_i32_i64(a: int32, b: int64) -> bool:
 bool t_i32_i64(int32_t a, int64_t b) {
     // return a == b  # tpyc: ok
     return (a == b);
 }
 
-// def u_bool_i32(a: bool | Int32, b: bool | Int32) -> bool:
-bool u_bool_i32(const ::tpy::Union<int32_t, bool>& a, const ::tpy::Union<int32_t, bool>& b) {
+// def u_bool_i32(a: bool | int32, b: bool | int32) -> bool:
+bool u_bool_i32(const ::tpy::Union<bool, int32_t>& a, const ::tpy::Union<bool, int32_t>& b) {
     // return a == b  # tpyc: ok
     return (a == b);
 }
 
-// def t_bool_i32(a: bool, b: Int32) -> bool:
+// def t_bool_i32(a: bool, b: int32) -> bool:
 bool t_bool_i32(bool a, int32_t b) {
     // return a == b  # tpyc: ok
     return (a == b);
 }
 
-// def u_u8_i32(a: UInt8 | Int32, b: UInt8 | Int32) -> bool:
+// def u_u8_i32(a: uint8 | int32, b: uint8 | int32) -> bool:
 bool u_u8_i32(const ::tpy::Union<int32_t, uint8_t>& a, const ::tpy::Union<int32_t, uint8_t>& b) {
     // return a == b  # tpyc: ok
     return (a == b);
 }
 
-// def t_u8_i32(a: UInt8, b: Int32) -> bool:
+// def t_u8_i32(a: uint8, b: int32) -> bool:
 bool t_u8_i32(uint8_t a, int32_t b) {
     // # The twin warns where the union does not: the warning is a mixed-sign
     // # SOURCE-level hint, and the union's members are not written as operands.
@@ -199,81 +199,81 @@ bool t_u8_i32(uint8_t a, int32_t b) {
     return ::std::cmp_equal(a, b);
 }
 
-// def u_u32_i32(a: UInt32 | Int32, b: UInt32 | Int32) -> bool:
+// def u_u32_i32(a: uint32 | int32, b: uint32 | int32) -> bool:
 bool u_u32_i32(const ::tpy::Union<int32_t, uint32_t>& a, const ::tpy::Union<int32_t, uint32_t>& b) {
     // return a == b  # tpyc: ok
     return (a == b);
 }
 
-// def t_u32_i32(a: UInt32, b: Int32) -> bool:
+// def t_u32_i32(a: uint32, b: int32) -> bool:
 bool t_u32_i32(uint32_t a, int32_t b) {
     // # Same mixed-sign hint at the 32-bit width.
     // return a == b  # tpyc: warning(/signed and unsigned/)
     return ::std::cmp_equal(a, b);
 }
 
-// def u_int_f64(a: int | Float64, b: int | Float64) -> bool:
+// def u_int_f64(a: int | float64, b: int | float64) -> bool:
 bool u_int_f64(const ::tpy::Union<double, ::tpy::BigInt>& a, const ::tpy::Union<double, ::tpy::BigInt>& b) {
     // return a == b  # tpyc: ok
     return (a == b);
 }
 
-// def t_int_f64(a: int, b: Float64) -> bool:
+// def t_int_f64(a: int, b: float64) -> bool:
 bool t_int_f64(const ::tpy::BigInt& a, double b) {
     // return a == b  # tpyc: ok
     return (static_cast<double>(a) == b);
 }
 
-// def u_ne(a: Int32 | Float64, b: Int32 | Float64) -> bool:
-bool u_ne(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t, double>& b) {
+// def u_ne(a: int32 | float64, b: int32 | float64) -> bool:
+bool u_ne(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b) {
     // return a != b  # tpyc: ok
     return (a != b);
 }
 
 // # readonly[] is a const qualifier, not a shape change, so it routes the same.
-// def u_readonly(a: readonly[Int32 | Float64], b: readonly[Int32 | Float64]) -> bool:
-bool u_readonly(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t, double>& b) {
+// def u_readonly(a: readonly[int32 | float64], b: readonly[int32 | float64]) -> bool:
+bool u_readonly(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b) {
     // return a == b  # tpyc: ok
     return (a == b);
 }
 
 // # Containers: the standard operators reach the nested variant's own.
-// def list_eq(xs: list[Int32 | Float64], ys: list[Int32 | Float64]) -> bool:
-bool list_eq(const std::vector<::tpy::Union<int32_t, double>>& xs, const std::vector<::tpy::Union<int32_t, double>>& ys) {
+// def list_eq(xs: list[int32 | float64], ys: list[int32 | float64]) -> bool:
+bool list_eq(const std::vector<::tpy::Union<double, int32_t>>& xs, const std::vector<::tpy::Union<double, int32_t>>& ys) {
     // return xs == ys  # tpyc: ok
     return (xs == ys);
 }
 
-// def append_float(xs: list[Int32 | Float64]) -> None:
-void append_float(std::vector<::tpy::Union<int32_t, double>>& xs) {
-    // v: Int32 | Float64 = 2.0
-    ::tpy::Union<int32_t, double> v = 2.0;
+// def append_float(xs: list[int32 | float64]) -> None:
+void append_float(std::vector<::tpy::Union<double, int32_t>>& xs) {
+    // v: int32 | float64 = 2.0
+    ::tpy::Union<double, int32_t> v = 2.0;
     // xs.append(v)
     xs.push_back(v);
 }
 
-// def list_of_tuple_eq(xs: list[tuple[Int32 | Float64, Int32]],
-// ys: list[tuple[Int32 | Float64, Int32]]) -> bool:
-bool list_of_tuple_eq(const std::vector<std::tuple<::tpy::Union<int32_t, double>, int32_t>>& xs, const std::vector<std::tuple<::tpy::Union<int32_t, double>, int32_t>>& ys) {
+// def list_of_tuple_eq(xs: list[tuple[int32 | float64, int32]],
+// ys: list[tuple[int32 | float64, int32]]) -> bool:
+bool list_of_tuple_eq(const std::vector<std::tuple<::tpy::Union<double, int32_t>, int32_t>>& xs, const std::vector<std::tuple<::tpy::Union<double, int32_t>, int32_t>>& ys) {
     // return xs == ys  # tpyc: ok
     return (xs == ys);
 }
 
-// def dict_eq(ds: dict[str, Int32 | Float64],
-// es: dict[str, Int32 | Float64]) -> bool:
-bool dict_eq(const ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, double>>& ds, const ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, double>>& es) {
+// def dict_eq(ds: dict[str, int32 | float64],
+// es: dict[str, int32 | float64]) -> bool:
+bool dict_eq(const ::tpy::ordered_map<std::string, ::tpy::Union<double, int32_t>>& ds, const ::tpy::ordered_map<std::string, ::tpy::Union<double, int32_t>>& es) {
     // return ds == es  # tpyc: ok
     return (ds == es);
 }
 
-// def array_eq(a: Array[Int32 | Float64, 2], b: Array[Int32 | Float64, 2]) -> bool:
-bool array_eq(const std::array<::tpy::Union<int32_t, double>, 2>& a, const std::array<::tpy::Union<int32_t, double>, 2>& b) {
+// def array_eq(a: Array[int32 | float64, 2], b: Array[int32 | float64, 2]) -> bool:
+bool array_eq(const std::array<::tpy::Union<double, int32_t>, 2>& a, const std::array<::tpy::Union<double, int32_t>, 2>& b) {
     // return a == b  # tpyc: ok
     return (a == b);
 }
 
-// def tree_eq(a: Tree[Int32 | Float64], b: Tree[Int32 | Float64]) -> bool:
-bool tree_eq(const Tree<::tpy::Union<int32_t, double>>& a, const Tree<::tpy::Union<int32_t, double>>& b) {
+// def tree_eq(a: Tree[int32 | float64], b: Tree[int32 | float64]) -> bool:
+bool tree_eq(const Tree<::tpy::Union<double, int32_t>>& a, const Tree<::tpy::Union<double, int32_t>>& b) {
     // return a == b  # tpyc: ok
     return (a == b);
 }
@@ -317,26 +317,26 @@ bool shape_tree_eq(const std::vector<ShapeTree>& xs, const std::vector<ShapeTree
 }
 
 // # Ordering across alternatives.
-// def u_lt(a: Int32 | Float64, b: Int32 | Float64) -> bool:
-bool u_lt(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t, double>& b) {
+// def u_lt(a: int32 | float64, b: int32 | float64) -> bool:
+bool u_lt(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b) {
     // return a < b  # tpyc: ok
     return (a < b);
 }
 
-// def u_le(a: Int32 | Float64, b: Int32 | Float64) -> bool:
-bool u_le(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t, double>& b) {
+// def u_le(a: int32 | float64, b: int32 | float64) -> bool:
+bool u_le(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b) {
     // return a <= b  # tpyc: ok
     return (a <= b);
 }
 
-// def u_gt(a: Int32 | Float64, b: Int32 | Float64) -> bool:
-bool u_gt(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t, double>& b) {
+// def u_gt(a: int32 | float64, b: int32 | float64) -> bool:
+bool u_gt(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b) {
     // return a > b  # tpyc: ok
     return (a > b);
 }
 
-// def u_ge(a: Int32 | Float64, b: Int32 | Float64) -> bool:
-bool u_ge(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t, double>& b) {
+// def u_ge(a: int32 | float64, b: int32 | float64) -> bool:
+bool u_ge(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b) {
     // return a >= b  # tpyc: ok
     return (a >= b);
 }
@@ -344,13 +344,13 @@ bool u_ge(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t, do
 // # A NaN operand: the ordering ops apply the operator, not a reduction onto
 // # `<` (`a <= b` and `not (b < a)` disagree on NaN), so the union answer must
 // # stay the twin's.
-// def t_le(a: Float64, b: Float64) -> bool:
+// def t_le(a: float64, b: float64) -> bool:
 bool t_le(double a, double b) {
     // return a <= b  # tpyc: ok
     return (a <= b);
 }
 
-// def t_ge(a: Float64, b: Float64) -> bool:
+// def t_ge(a: float64, b: float64) -> bool:
 bool t_ge(double a, double b) {
     // return a >= b  # tpyc: ok
     return (a >= b);
@@ -384,7 +384,7 @@ std::string value_record_lt(const ::tpy::Union<Fixed, Zone>& a, const ::tpy::Uni
 // # False. A stable token is printed rather than the message text: TPy's names
 // # the TPy type where CPython names the Python one
 // # (BUGS.md#union-order-typeerror-names-tpy-type).
-// def str_int_cmp(a: Int32 | str, b: Int32 | str, which: Int32) -> str:
+// def str_int_cmp(a: int32 | str, b: int32 | str, which: int32) -> str:
 std::string str_int_cmp(const ::tpy::Union<int32_t, std::string>& a, const ::tpy::Union<int32_t, std::string>& b, int32_t which) {
     // try:
     bool ordered;
@@ -416,13 +416,13 @@ std::string str_int_cmp(const ::tpy::Union<int32_t, std::string>& a, const ::tpy
     }
 }
 
-// def str_int_eq(a: Int32 | str, b: Int32 | str) -> bool:
+// def str_int_eq(a: int32 | str, b: int32 | str) -> bool:
 bool str_int_eq(const ::tpy::Union<int32_t, std::string>& a, const ::tpy::Union<int32_t, std::string>& b) {
     // return a == b  # tpyc: ok
     return (a == b);
 }
 
-// async def amain(x: Int32 | Float64, y: Int32 | Float64) -> None:
+// async def amain(x: int32 | float64, y: int32 | float64) -> None:
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -447,17 +447,17 @@ bool str_int_eq(const ::tpy::Union<int32_t, std::string>& a, const ::tpy::Union<
 }
 
 
-// async def amain(x: Int32 | Float64, y: Int32 | Float64) -> None:
-__coro_amain amain(::tpy::Union<int32_t, double> x, ::tpy::Union<int32_t, double> y) {
+// async def amain(x: int32 | float64, y: int32 | float64) -> None:
+__coro_amain amain(::tpy::Union<double, int32_t> x, ::tpy::Union<double, int32_t> y) {
     return __coro_amain(x, y);
 }
 
 // def main() -> None:
 void main() {
-    // x: Int32 | Float64 = 1
-    ::tpy::Union<int32_t, double> x = 1;
-    // y: Int32 | Float64 = 1.0
-    ::tpy::Union<int32_t, double> y = 1.0;
+    // x: int32 | float64 = 1
+    ::tpy::Union<double, int32_t> x = 1;
+    // y: int32 | float64 = 1.0
+    ::tpy::Union<double, int32_t> y = 1.0;
     // print("module", module_eq)
     std::cout << "module" << " " << ::tpy::print_bool(module_eq) << "\n";
     // print("free_fn", free_fn(x, y))
@@ -499,57 +499,57 @@ void main() {
     std::cout << "match" << " " << ::tpy::print_bool(in_match(x, y)) << "\n";
     // asyncio.run(amain(x, y))
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(amain(x, y)));
-    // i32: Int32 = 1
+    // i32: int32 = 1
     int32_t i32 = 1;
-    // f64: Float64 = 1.0
+    // f64: float64 = 1.0
     double f64 = 1.0;
-    // i64: Int64 = 1
+    // i64: int64 = 1
     int64_t i64 = 1;
-    // u8: UInt8 = 1
+    // u8: uint8 = 1
     uint8_t u8 = 1;
-    // u32: UInt32 = 1
+    // u32: uint32 = 1
     uint32_t u32 = 1;
     // flag = True
     bool flag = true;
     // big: int = 1
     ::tpy::BigInt big = ::tpy::BigInt(1);
-    // print("family Int32|Float64", u_i32_f64(i32, f64), t_i32_f64(i32, f64))
-    ::tpy::Union<int32_t, double> __tmp_1 = i32;
-    ::tpy::Union<int32_t, double> __tmp_2 = f64;
-    std::cout << "family Int32|Float64" << " " << ::tpy::print_bool(u_i32_f64(__tmp_1, __tmp_2)) << " " << ::tpy::print_bool(t_i32_f64(i32, f64)) << "\n";
-    // print("family Int32|Int64", u_i32_i64(i32, i64), t_i32_i64(i32, i64))
+    // print("family int32|float64", u_i32_f64(i32, f64), t_i32_f64(i32, f64))
+    ::tpy::Union<double, int32_t> __tmp_1 = i32;
+    ::tpy::Union<double, int32_t> __tmp_2 = f64;
+    std::cout << "family int32|float64" << " " << ::tpy::print_bool(u_i32_f64(__tmp_1, __tmp_2)) << " " << ::tpy::print_bool(t_i32_f64(i32, f64)) << "\n";
+    // print("family int32|int64", u_i32_i64(i32, i64), t_i32_i64(i32, i64))
     ::tpy::Union<int32_t, int64_t> __tmp_3 = i32;
     ::tpy::Union<int32_t, int64_t> __tmp_4 = i64;
-    std::cout << "family Int32|Int64" << " " << ::tpy::print_bool(u_i32_i64(__tmp_3, __tmp_4)) << " " << ::tpy::print_bool(t_i32_i64(i32, i64)) << "\n";
-    // print("family bool|Int32", u_bool_i32(flag, i32), t_bool_i32(flag, i32))
-    ::tpy::Union<int32_t, bool> __tmp_5 = flag;
-    ::tpy::Union<int32_t, bool> __tmp_6 = i32;
-    std::cout << "family bool|Int32" << " " << ::tpy::print_bool(u_bool_i32(__tmp_5, __tmp_6)) << " " << ::tpy::print_bool(t_bool_i32(flag, i32)) << "\n";
-    // print("family UInt8|Int32", u_u8_i32(u8, i32), t_u8_i32(u8, i32))
+    std::cout << "family int32|int64" << " " << ::tpy::print_bool(u_i32_i64(__tmp_3, __tmp_4)) << " " << ::tpy::print_bool(t_i32_i64(i32, i64)) << "\n";
+    // print("family bool|int32", u_bool_i32(flag, i32), t_bool_i32(flag, i32))
+    ::tpy::Union<bool, int32_t> __tmp_5 = flag;
+    ::tpy::Union<bool, int32_t> __tmp_6 = i32;
+    std::cout << "family bool|int32" << " " << ::tpy::print_bool(u_bool_i32(__tmp_5, __tmp_6)) << " " << ::tpy::print_bool(t_bool_i32(flag, i32)) << "\n";
+    // print("family uint8|int32", u_u8_i32(u8, i32), t_u8_i32(u8, i32))
     ::tpy::Union<int32_t, uint8_t> __tmp_7 = i32;
-    std::cout << "family UInt8|Int32" << " " << ::tpy::print_bool(u_u8_i32(static_cast<::tpy::Union<int32_t, uint8_t>>(u8), __tmp_7)) << " " << ::tpy::print_bool(t_u8_i32(u8, i32)) << "\n";
-    // print("family UInt32|Int32", u_u32_i32(u32, i32), t_u32_i32(u32, i32))
+    std::cout << "family uint8|int32" << " " << ::tpy::print_bool(u_u8_i32(static_cast<::tpy::Union<int32_t, uint8_t>>(u8), __tmp_7)) << " " << ::tpy::print_bool(t_u8_i32(u8, i32)) << "\n";
+    // print("family uint32|int32", u_u32_i32(u32, i32), t_u32_i32(u32, i32))
     ::tpy::Union<int32_t, uint32_t> __tmp_8 = u32;
     ::tpy::Union<int32_t, uint32_t> __tmp_9 = i32;
-    std::cout << "family UInt32|Int32" << " " << ::tpy::print_bool(u_u32_i32(__tmp_8, __tmp_9)) << " " << ::tpy::print_bool(t_u32_i32(u32, i32)) << "\n";
-    // print("family int|Float64", u_int_f64(big, f64), t_int_f64(big, f64))
+    std::cout << "family uint32|int32" << " " << ::tpy::print_bool(u_u32_i32(__tmp_8, __tmp_9)) << " " << ::tpy::print_bool(t_u32_i32(u32, i32)) << "\n";
+    // print("family int|float64", u_int_f64(big, f64), t_int_f64(big, f64))
     ::tpy::Union<double, ::tpy::BigInt> __tmp_10 = big;
     ::tpy::Union<double, ::tpy::BigInt> __tmp_11 = f64;
-    std::cout << "family int|Float64" << " " << ::tpy::print_bool(u_int_f64(__tmp_10, __tmp_11)) << " " << ::tpy::print_bool(t_int_f64(big, f64)) << "\n";
+    std::cout << "family int|float64" << " " << ::tpy::print_bool(u_int_f64(__tmp_10, __tmp_11)) << " " << ::tpy::print_bool(t_int_f64(big, f64)) << "\n";
     // print("ne", u_ne(x, y))
     std::cout << "ne" << " " << ::tpy::print_bool(u_ne(x, y)) << "\n";
     // print("readonly", u_readonly(x, y))
     std::cout << "readonly" << " " << ::tpy::print_bool(u_readonly(x, y)) << "\n";
     // print("same alternative", u_i32_f64(i32, i32), u_ne(i32, i32))
-    ::tpy::Union<int32_t, double> __tmp_12 = i32;
-    ::tpy::Union<int32_t, double> __tmp_13 = i32;
-    ::tpy::Union<int32_t, double> __tmp_14 = i32;
-    ::tpy::Union<int32_t, double> __tmp_15 = i32;
+    ::tpy::Union<double, int32_t> __tmp_12 = i32;
+    ::tpy::Union<double, int32_t> __tmp_13 = i32;
+    ::tpy::Union<double, int32_t> __tmp_14 = i32;
+    ::tpy::Union<double, int32_t> __tmp_15 = i32;
     std::cout << "same alternative" << " " << ::tpy::print_bool(u_i32_f64(__tmp_12, __tmp_13)) << " " << ::tpy::print_bool(u_ne(__tmp_14, __tmp_15)) << "\n";
-    // xs: list[Int32 | Float64] = [1]
-    std::vector<::tpy::Union<int32_t, double>> xs = {1};
-    // ys: list[Int32 | Float64] = [1.0]
-    std::vector<::tpy::Union<int32_t, double>> ys = {1.0};
+    // xs: list[int32 | float64] = [1]
+    std::vector<::tpy::Union<double, int32_t>> xs = {1};
+    // ys: list[int32 | float64] = [1.0]
+    std::vector<::tpy::Union<double, int32_t>> ys = {1.0};
     // print("list", list_eq(xs, ys))
     std::cout << "list" << " " << ::tpy::print_bool(list_eq(xs, ys)) << "\n";
     // # The callee's append is visible here, so the list crossed the boundary
@@ -558,28 +558,28 @@ void main() {
     append_float(xs);
     // print("list after append", len(xs), list_eq(xs, ys))
     std::cout << "list after append" << " " << ::tpy::__len__(xs) << " " << ::tpy::print_bool(list_eq(xs, ys)) << "\n";
-    // ts: list[tuple[Int32 | Float64, Int32]] = [(1, 2)]
-    std::vector<std::tuple<::tpy::Union<int32_t, double>, int32_t>> ts = {std::tuple<::tpy::Union<int32_t, double>, int32_t>{1, 2}};
-    // us: list[tuple[Int32 | Float64, Int32]] = [(1.0, 2)]
-    std::vector<std::tuple<::tpy::Union<int32_t, double>, int32_t>> us = {std::tuple<::tpy::Union<int32_t, double>, int32_t>{1.0, 2}};
+    // ts: list[tuple[int32 | float64, int32]] = [(1, 2)]
+    std::vector<std::tuple<::tpy::Union<double, int32_t>, int32_t>> ts = {std::tuple<::tpy::Union<double, int32_t>, int32_t>{1, 2}};
+    // us: list[tuple[int32 | float64, int32]] = [(1.0, 2)]
+    std::vector<std::tuple<::tpy::Union<double, int32_t>, int32_t>> us = {std::tuple<::tpy::Union<double, int32_t>, int32_t>{1.0, 2}};
     // print("list of tuple", list_of_tuple_eq(ts, us))
     std::cout << "list of tuple" << " " << ::tpy::print_bool(list_of_tuple_eq(ts, us)) << "\n";
-    // ds: dict[str, Int32 | Float64] = {"k": 1}
-    ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, double>> ds = ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, double>>({{"k", 1}});
-    // es: dict[str, Int32 | Float64] = {"k": 1.0}
-    ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, double>> es = ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, double>>({{"k", 1.0}});
+    // ds: dict[str, int32 | float64] = {"k": 1}
+    ::tpy::ordered_map<std::string, ::tpy::Union<double, int32_t>> ds = ::tpy::ordered_map<std::string, ::tpy::Union<double, int32_t>>({{"k", 1}});
+    // es: dict[str, int32 | float64] = {"k": 1.0}
+    ::tpy::ordered_map<std::string, ::tpy::Union<double, int32_t>> es = ::tpy::ordered_map<std::string, ::tpy::Union<double, int32_t>>({{"k", 1.0}});
     // print("dict", dict_eq(ds, es))
     std::cout << "dict" << " " << ::tpy::print_bool(dict_eq(ds, es)) << "\n";
-    // ar: Array[Int32 | Float64, 2] = [1, 2]
-    std::array<::tpy::Union<int32_t, double>, 2> ar = {1, 2};
-    // br: Array[Int32 | Float64, 2] = [1.0, 2.0]
-    std::array<::tpy::Union<int32_t, double>, 2> br = {1.0, 2.0};
+    // ar: Array[int32 | float64, 2] = [1, 2]
+    std::array<::tpy::Union<double, int32_t>, 2> ar = {1, 2};
+    // br: Array[int32 | float64, 2] = [1.0, 2.0]
+    std::array<::tpy::Union<double, int32_t>, 2> br = {1.0, 2.0};
     // print("array", array_eq(ar, br))
     std::cout << "array" << " " << ::tpy::print_bool(array_eq(ar, br)) << "\n";
-    // t1: Tree[Int32 | Float64] = 1
-    Tree<::tpy::Union<int32_t, double>> t1 = 1;
-    // t2: Tree[Int32 | Float64] = 1.0
-    Tree<::tpy::Union<int32_t, double>> t2 = 1.0;
+    // t1: Tree[int32 | float64] = 1
+    Tree<::tpy::Union<double, int32_t>> t1 = 1;
+    // t2: Tree[int32 | float64] = 1.0
+    Tree<::tpy::Union<double, int32_t>> t2 = 1.0;
     // print("alias", tree_eq(t1, t2))
     std::cout << "alias" << " " << ::tpy::print_bool(tree_eq(t1, t2)) << "\n";
     // vi: list[V] = [1]
@@ -627,36 +627,36 @@ void main() {
     // print("record alias", shape_tree_eq(st1, st2), shape_tree_eq(st1, st3))
     std::cout << "record alias" << " " << ::tpy::print_bool(shape_tree_eq(st1, st2)) << " " << ::tpy::print_bool(shape_tree_eq(st1, st3)) << "\n";
     // print("lt", u_lt(f64, i32), u_lt(i32, 2.5))
-    ::tpy::Union<int32_t, double> __tmp_16 = f64;
-    ::tpy::Union<int32_t, double> __tmp_17 = i32;
-    ::tpy::Union<int32_t, double> __tmp_18 = i32;
-    ::tpy::Union<int32_t, double> __tmp_19 = 2.5;
+    ::tpy::Union<double, int32_t> __tmp_16 = f64;
+    ::tpy::Union<double, int32_t> __tmp_17 = i32;
+    ::tpy::Union<double, int32_t> __tmp_18 = i32;
+    ::tpy::Union<double, int32_t> __tmp_19 = 2.5;
     std::cout << "lt" << " " << ::tpy::print_bool(u_lt(__tmp_16, __tmp_17)) << " " << ::tpy::print_bool(u_lt(__tmp_18, __tmp_19)) << "\n";
     // print("le", u_le(i32, f64))
-    ::tpy::Union<int32_t, double> __tmp_20 = i32;
-    ::tpy::Union<int32_t, double> __tmp_21 = f64;
+    ::tpy::Union<double, int32_t> __tmp_20 = i32;
+    ::tpy::Union<double, int32_t> __tmp_21 = f64;
     std::cout << "le" << " " << ::tpy::print_bool(u_le(__tmp_20, __tmp_21)) << "\n";
     // print("gt", u_gt(i32, 0.5))
-    ::tpy::Union<int32_t, double> __tmp_22 = i32;
-    ::tpy::Union<int32_t, double> __tmp_23 = 0.5;
+    ::tpy::Union<double, int32_t> __tmp_22 = i32;
+    ::tpy::Union<double, int32_t> __tmp_23 = 0.5;
     std::cout << "gt" << " " << ::tpy::print_bool(u_gt(__tmp_22, __tmp_23)) << "\n";
     // print("ge", u_ge(i32, f64))
-    ::tpy::Union<int32_t, double> __tmp_24 = i32;
-    ::tpy::Union<int32_t, double> __tmp_25 = f64;
+    ::tpy::Union<double, int32_t> __tmp_24 = i32;
+    ::tpy::Union<double, int32_t> __tmp_25 = f64;
     std::cout << "ge" << " " << ::tpy::print_bool(u_ge(__tmp_24, __tmp_25)) << "\n";
     // nan = float("nan")
     double nan = std::numeric_limits<double>::quiet_NaN();
-    // nan_u: Int32 | Float64 = nan
-    ::tpy::Union<int32_t, double> nan_u = nan;
+    // nan_u: int32 | float64 = nan
+    ::tpy::Union<double, int32_t> nan_u = nan;
     // print("nan le", u_le(nan_u, f64), t_le(nan, f64))
-    ::tpy::Union<int32_t, double> __tmp_26 = f64;
+    ::tpy::Union<double, int32_t> __tmp_26 = f64;
     std::cout << "nan le" << " " << ::tpy::print_bool(u_le(nan_u, __tmp_26)) << " " << ::tpy::print_bool(t_le(nan, f64)) << "\n";
     // print("nan ge", u_ge(nan_u, f64), t_ge(nan, f64))
-    ::tpy::Union<int32_t, double> __tmp_27 = f64;
+    ::tpy::Union<double, int32_t> __tmp_27 = f64;
     std::cout << "nan ge" << " " << ::tpy::print_bool(u_ge(nan_u, __tmp_27)) << " " << ::tpy::print_bool(t_ge(nan, f64)) << "\n";
-    // n: Int32 | str = 1
+    // n: int32 | str = 1
     ::tpy::Union<int32_t, std::string> n = 1;
-    // s: Int32 | str = "a"
+    // s: int32 | str = "a"
     ::tpy::Union<int32_t, std::string> s = "a";
     // print("value record lt", value_record_lt(Fixed(1), Fixed(2)))
     ::tpy::Union<Fixed, Zone> __tmp_28 = Fixed(1);
@@ -684,14 +684,14 @@ void __tpy_init() {
     initialized = true;
 
     // # A value union compares BY VALUE across alternatives, as CPython does:
-    // # `Int32 | Float64` holding 1 equals one holding 1.0. Each section names the
+    // # `int32 | float64` holding 1 equals one holding 1.0. Each section names the
     // # position or shape it covers; the compares are the subject lines.
     // import asyncio
     ::tpystd::asyncio::__tpy_init();
     // from dataclasses import dataclass
-    // A: Int32 | Float64 = 1
+    // A: int32 | float64 = 1
     A = 1;
-    // B: Int32 | Float64 = 1.0
+    // B: int32 | float64 = 1.0
     B = 1.0;
     // module_eq = A == B  # module-level statement  # tpyc: ok
     module_eq = (A == B);

@@ -6,15 +6,15 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // # Test with Int32 and str
-    // p1: Pair[Int32, str] = Pair[Int32, str](42, "hello")
+    // # Test with int32 and str
+    // p1: Pair[int32, str] = Pair[int32, str](42, "hello")
     Pair<int32_t, std::string> p1 = Pair<int32_t, std::string>(42, "hello");
     // print(p1.get_first())
     std::cout << p1.get_first() << "\n";
     // print(p1.get_second())
     std::cout << p1.get_second() << "\n";
-    // # Test with str and Int32 (reversed)
-    // p2: Pair[str, Int32] = Pair[str, Int32]("world", 100)
+    // # Test with str and int32 (reversed)
+    // p2: Pair[str, int32] = Pair[str, int32]("world", 100)
     Pair<std::string, int32_t> p2 = Pair<std::string, int32_t>("world", 100);
     // print(p2.get_first())
     std::cout << p2.get_first() << "\n";

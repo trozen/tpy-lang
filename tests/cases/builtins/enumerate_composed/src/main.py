@@ -1,11 +1,11 @@
 # enumerate() composed with map() -- val_or_ref elements in tuples must be
 # unwrapped correctly when destructuring the (index, element) pair.
-from tpy import Int32
+from tpy import int32
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32) -> None:
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
     def __str__(self) -> str:
@@ -14,12 +14,12 @@ class Point:
 def identity(p: Point) -> Point:
     return p
 
-def double(v: Int32) -> Int32:
+def double(v: int32) -> int32:
     return v * 2
 
 def main() -> None:
     pts: list[Point] = [Point(1, 2), Point(3, 4)]
-    vals: list[Int32] = [10, 20]
+    vals: list[int32] = [10, 20]
 
     # Non-value type through map: val_or_ref<Point> in tuple
     for i, p in enumerate(map(identity, pts)):

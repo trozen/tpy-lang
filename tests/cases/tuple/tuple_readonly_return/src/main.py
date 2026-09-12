@@ -3,12 +3,12 @@
 # value-form tuple that binds dangling const-refs into the return slot.
 # Source reads from a readonly-borrowed container (const), so the slots
 # must be const-ref to bind.
-from tpy import Int32, readonly
+from tpy import int32, readonly
 
 
 class P:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 

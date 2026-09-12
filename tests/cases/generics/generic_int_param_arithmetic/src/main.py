@@ -1,15 +1,15 @@
-from tpy import Int32
+from tpy import int32
 
 
 class Container[T, N: int]:
-    def get_double(self) -> Int32:
-        return Int32(N * 2)
+    def get_double(self) -> int32:
+        return int32(N * 2)
 
-    def get_plus_one(self) -> Int32:
-        return Int32(N + 1)
+    def get_plus_one(self) -> int32:
+        return int32(N + 1)
 
-    def get_minus_five(self) -> Int32:
-        return Int32(N - 5)
+    def get_minus_five(self) -> int32:
+        return int32(N - 5)
 
 
 def main() -> None:

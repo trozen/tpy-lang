@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // # Test 'in' and 'not in' operators for different container types
 // def test_list_membership() -> None:
 void test_list_membership() {
-    // nums: list[Int32] = [10, 20, 30, 40, 50]
+    // nums: list[int32] = [10, 20, 30, 40, 50]
     std::vector<int32_t> nums = {10, 20, 30, 40, 50};
     // # 'in' operator
     // if 30 in nums:
@@ -43,7 +43,7 @@ void test_list_membership() {
 
 // def test_array_membership() -> None:
 void test_array_membership() {
-    // arr: Array[Int32, 4] = [1, 2, 3, 4]
+    // arr: Array[int32, 4] = [1, 2, 3, 4]
     std::array<int32_t, 4> arr = {1, 2, 3, 4};
     // if 3 in arr:
     if (std::ranges::contains(arr, 3)) {
@@ -66,7 +66,7 @@ void test_array_membership() {
     }
 }
 
-// def check_span_contains(data: Span[Int32], value: Int32) -> bool:
+// def check_span_contains(data: Span[int32], value: int32) -> bool:
 bool check_span_contains(std::span<int32_t> data, int32_t value) {
     // return value in data
     return std::ranges::contains(data, value);
@@ -74,7 +74,7 @@ bool check_span_contains(std::span<int32_t> data, int32_t value) {
 
 // def test_span_membership() -> None:
 void test_span_membership() {
-    // nums: Array[Int32, 5] = [100, 200, 300, 400, 500]
+    // nums: Array[int32, 5] = [100, 200, 300, 400, 500]
     std::array<int32_t, 5> nums = {100, 200, 300, 400, 500};
     // if check_span_contains(nums, 300):
     if (check_span_contains(::tpy::as_mut_span(nums), 300)) {
@@ -145,7 +145,7 @@ void test_string_membership() {
 
 // def test_membership_in_conditions() -> None:
 void test_membership_in_conditions() {
-    // nums: list[Int32] = [1, 2, 3, 4, 5]
+    // nums: list[int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> nums = {1, 2, 3, 4, 5};
     // # Combined with 'and'
     // if 2 in nums and 4 in nums:
@@ -169,11 +169,11 @@ void test_membership_in_conditions() {
 
 // def test_membership_with_variables() -> None:
 void test_membership_with_variables() {
-    // nums: list[Int32] = [5, 10, 15, 20]
+    // nums: list[int32] = [5, 10, 15, 20]
     std::vector<int32_t> nums = {5, 10, 15, 20};
-    // target: Int32 = 10
+    // target: int32 = 10
     int32_t target = 10;
-    // missing: Int32 = 7
+    // missing: int32 = 7
     int32_t missing = 7;
     // if target in nums:
     if (std::ranges::contains(nums, target)) {

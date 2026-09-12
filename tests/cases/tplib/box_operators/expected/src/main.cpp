@@ -6,11 +6,11 @@ namespace tpyapp::main {
 
 // def test_eq() -> None:
 void test_eq() {
-    // a = Box(Int32(1))
+    // a = Box(int32(1))
     ::tpystd::tplib::box::Box<int32_t> a = ::tpystd::tplib::box::Box<int32_t>(1);
-    // b = Box(Int32(1))
+    // b = Box(int32(1))
     ::tpystd::tplib::box::Box<int32_t> b = ::tpystd::tplib::box::Box<int32_t>(1);
-    // c = Box(Int32(2))
+    // c = Box(int32(2))
     ::tpystd::tplib::box::Box<int32_t> c = ::tpystd::tplib::box::Box<int32_t>(2);
     // print(a == b)
     std::cout << ::tpy::print_bool(((a) == (b))) << "\n";
@@ -24,11 +24,11 @@ void test_eq() {
 
 // def test_comparisons() -> None:
 void test_comparisons() {
-    // a = Box(Int32(1))
+    // a = Box(int32(1))
     ::tpystd::tplib::box::Box<int32_t> a = ::tpystd::tplib::box::Box<int32_t>(1);
-    // b = Box(Int32(2))
+    // b = Box(int32(2))
     ::tpystd::tplib::box::Box<int32_t> b = ::tpystd::tplib::box::Box<int32_t>(2);
-    // c = Box(Int32(1))
+    // c = Box(int32(1))
     ::tpystd::tplib::box::Box<int32_t> c = ::tpystd::tplib::box::Box<int32_t>(1);
     // print(a < b)
     std::cout << ::tpy::print_bool(((a) < (b))) << "\n";
@@ -50,9 +50,9 @@ void test_comparisons() {
 
 // def test_hash() -> None:
 void test_hash() {
-    // a = Box(Int32(42))
+    // a = Box(int32(42))
     ::tpystd::tplib::box::Box<int32_t> a = ::tpystd::tplib::box::Box<int32_t>(42);
-    // b = Box(Int32(42))
+    // b = Box(int32(42))
     ::tpystd::tplib::box::Box<int32_t> b = ::tpystd::tplib::box::Box<int32_t>(42);
     // print(hash(a) == hash(b))
     std::cout << ::tpy::print_bool((::tpy::__hash__(a) == ::tpy::__hash__(b))) << "\n";

@@ -1,14 +1,14 @@
 # Calling a non-readonly protocol method in a @readonly context is an error.
-from tpy import Int32, readonly
+from tpy import int32, readonly
 from typing import Protocol
 
 
 class Mixed(Protocol):
     @readonly
-    def read(self) -> Int32:
+    def read(self) -> int32:
         ...
 
-    def write(self, v: Int32) -> None:
+    def write(self, v: int32) -> None:
         ...
 
 

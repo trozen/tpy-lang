@@ -1,21 +1,21 @@
 # Pass callable objects to Fn parameters (zero-cost template dispatch)
-from tpy import Int32, Fn
+from tpy import int32, Fn
 
 class Doubler:
-    def __call__(self, x: Int32) -> Int32:
+    def __call__(self, x: int32) -> int32:
         return x * 2
 
 class Adder:
-    offset: Int32
-    def __init__(self, offset: Int32):
+    offset: int32
+    def __init__(self, offset: int32):
         self.offset = offset
-    def __call__(self, x: Int32) -> Int32:
+    def __call__(self, x: int32) -> int32:
         return x + self.offset
 
-def apply(f: Fn[[Int32], Int32], x: Int32) -> Int32:
+def apply(f: Fn[[int32], int32], x: int32) -> int32:
     return f(x)
 
-def apply_twice(f: Fn[[Int32], Int32], x: Int32) -> Int32:
+def apply_twice(f: Fn[[int32], int32], x: int32) -> int32:
     return f(f(x))
 
 def main():

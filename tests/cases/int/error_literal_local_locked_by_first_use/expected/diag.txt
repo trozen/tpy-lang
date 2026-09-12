@@ -1,1 +1,1 @@
-main.py:18: error: Type mismatch in argument 'x': expected Int32, got UInt64 ('a' was promoted to 'UInt64' by earlier use at line 17)
+main.py:18: error: Type mismatch in argument 'x': expected int32, got uint64 ('a' was promoted to 'uint64' by earlier use at line 17)

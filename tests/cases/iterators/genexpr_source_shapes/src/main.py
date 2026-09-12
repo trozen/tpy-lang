@@ -1,16 +1,16 @@
 # Generator-expression source and loop-var shapes: a bare dict (whose begin() is
 # the KEY iterator), a moved container-literal source under a tuple-unpack head,
 # an F1-record unpack target, and a value-repr Optional[scalar] loop var.
-from tpy import Int32
+from tpy import int32
 
 
 class P:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
-    def bump(self) -> Int32:
+    def bump(self) -> int32:
         self.x += 10
         return self.x
 
@@ -27,7 +27,7 @@ def main() -> None:
     # the genexpr mutates through `p`, and the source elements show it after.
     print(sum(p.bump() for p, n in items))  # tpyc: ok
     print([p.x for p, n in items])  # tpyc: ok
-    xs: list[Int32 | None] = [1, None, 3]
+    xs: list[int32 | None] = [1, None, 3]
     # A value-repr Optional[scalar] loop var binds the typed optional copy and
     # the filter reads it whole.
     print(sum(1 for x in xs if x is not None))  # tpyc: ok

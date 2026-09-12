@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def consume(p: Own[Point]) -> Int32:
+// def consume(p: Own[Point]) -> int32:
 int32_t consume(Point&& p) {
     // return p.x + p.y
     return (::tpy::add_check<int32_t>(p.x, p.y));
 }
 
-// def forward(p: Own[Point]) -> Int32:
+// def forward(p: Own[Point]) -> int32:
 int32_t forward(Point&& p) {
     // # p is an Own param; forwarding to another Own param at last use
     // return consume(p)

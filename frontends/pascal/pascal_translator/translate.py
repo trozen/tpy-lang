@@ -4,7 +4,7 @@ Walks the Pascal AST and emits a `FrontendModule`. Responsibilities:
 
 - Hoist module-level `var` section into per-name IR `VarDecl`s.
 - Map Pascal type spellings (`integer`, `boolean`) onto TPy builtins
-  (`Int32`, `bool`) and emit corresponding `from tpy import T` imports.
+  (`int32`, `bool`) and emit corresponding `from tpy import T` imports.
 - Translate each procedure / function into an IR `Function`. For
   `function name ...: T;` Pascal's "return by assigning the function
   name" convention is rewritten via a synthetic `__result` local + a
@@ -84,27 +84,27 @@ from . import ast as pa
 # builtins namespace; the translator records the mapping so the static
 # type env still tracks bool variables for writeln dispatch.
 _TYPE_MAP: dict[str, str] = {
-    "integer": "Int32",
+    "integer": "int32",
     "boolean": "bool",
-    "char": "Char",
+    "char": "char",
     # TP7 numeric type aliases. `byte` is 0..255 (8-bit), `word`
     # is 0..65535 (16-bit), `longint` is the signed 32-bit alias,
     # `cardinal` / `longword` are the unsigned 32-bit aliases. The
-    # POC collapses all of them onto Int32 (signed 32-bit) so they
+    # POC collapses all of them onto int32 (signed 32-bit) so they
     # interoperate freely with the rest of the Pascal stdlib
-    # (initgraph, etc., all use Int32). The unsigned/byte/word
+    # (initgraph, etc., all use int32). The unsigned/byte/word
     # ranges are not enforced; programs that depend on
     # wraparound-on-overflow semantics will need explicit subrange
     # types once those land.
-    "byte": "Int32",
-    "shortint": "Int32",
-    "word": "Int32",
-    "smallint": "Int32",
-    "longint": "Int32",
-    "longword": "Int32",
-    "cardinal": "Int32",
-    "int64": "Int64",
-    "qword": "Int64",
+    "byte": "int32",
+    "shortint": "int32",
+    "word": "int32",
+    "smallint": "int32",
+    "longint": "int32",
+    "longword": "int32",
+    "cardinal": "int32",
+    "int64": "int64",
+    "qword": "int64",
     # TP `real` is a 6-byte float at the hardware level; we map both
     # `real` and `double` to TPy's `float` (IEEE 754 64-bit) for the
     # POC. Divergence documented in
@@ -886,7 +886,7 @@ def _lower_type_spec(spec, ctx: _Ctx):
         # because the user already did. `pointer` maps to `BgiImage`
         # -- the legacy corpus only ever uses `pointer` as an image
         # save/restore buffer, so an alias is enough.
-        # `fillpatterntype` flattens to `Array[Int32, 8]` directly
+        # `fillpatterntype` flattens to `Array[int32, 8]` directly
         # (it's a TP7 `array[1..8] of byte`); `pointtype` resolves
         # to the matching `pointtype` record exported by graph.py.
         if spec.name == "pointer":
@@ -896,12 +896,12 @@ def _lower_type_spec(spec, ctx: _Ctx):
             return NamedType(name="pointtype", args=(),
                              loc=_to_ir_loc(spec.loc))
         if spec.name == "fillpatterntype":
-            ctx.add_import("tpy", "Int32")
+            ctx.add_import("tpy", "int32")
             ctx.add_import("tpy", "Array")
             return NamedType(
                 name="Array",
                 args=(TypeTypeArg(value=NamedType(
-                          name="Int32", args=(),
+                          name="int32", args=(),
                           loc=_to_ir_loc(spec.loc))),
                       IntTypeArg(value=8)),
                 loc=_to_ir_loc(spec.loc),
@@ -940,13 +940,13 @@ def _lower_type_spec(spec, ctx: _Ctx):
             loc=_to_ir_loc(spec.loc),
         )
     if isinstance(spec, pa.SubrangeTypeSpec):
-        # The IR type is plain `Int32`; subrange enforcement happens at
+        # The IR type is plain `int32`; subrange enforcement happens at
         # the assignment / parameter-entry sites by wrapping the RHS in
         # `check_subrange(value, lo, hi, name)`. Going via a runtime
         # helper rather than a new IR-level Assert node keeps the
         # subrange invariant fully inside the Pascal frontend.
-        ctx.add_import("tpy", "Int32")
-        return NamedType(name="Int32", args=(),
+        ctx.add_import("tpy", "int32")
+        return NamedType(name="int32", args=(),
                          loc=_to_ir_loc(spec.loc))
     if isinstance(spec, pa.SetTypeSpec):
         elem = _lower_type_spec(spec.element, ctx)
@@ -1942,8 +1942,8 @@ def _lower_assign_stmt(stmt: pa.AssignStmt, ctx: _Ctx):
         if target_name in ctx.string_vars and _produces_string_value(
                 stmt.value, ctx):
             return _lower_string_assign(target_name, stmt, ctx)
-        # Char-typed target: a 1-char string literal RHS auto-wraps
-        # in `Char(...)`. Pascal doesn't distinguish single-char
+        # char-typed target: a 1-char string literal RHS auto-wraps
+        # in `char(...)`. Pascal doesn't distinguish single-char
         # string vs char literals at the syntax level -- both spell as
         # 'A' -- so the conversion lands at the assignment site.
         if (ctx.type_env.get(target_name) == "char"
@@ -2335,7 +2335,7 @@ def _lower_case_stmt(stmt: pa.CaseStmt, ctx: _Ctx):
     # Enum range labels (`Mon..Fri:`) expand to one MatchValue arm
     # per enum member in [lo..hi] -- the enum's member list is in
     # `ctx.enum_types`, so we don't need ordering comparisons on
-    # enum types (TPy doesn't expose any). Integer / Char ranges
+    # enum types (TPy doesn't expose any). Integer / char ranges
     # fall back to a guarded MatchWildcard arm.
     guard_ranges_present = any(
         isinstance(v, pa.RangeLabel) and not _enum_range_members(v, ctx)
@@ -3535,10 +3535,10 @@ _BUILTIN_EXPR: dict[str, "Callable"] = {
     "abs": lambda e, c: _builtin_passthrough("abs", e, c),
     "chr": lambda e, c: _builtin_passthrough("chr", e, c),
     "ord": lambda e, c: _builtin_passthrough("ord", e, c),
-    # Pascal-internal char wrapping: `char('X')` -> TPy Char('X').
+    # Pascal-internal char wrapping: `char('X')` -> TPy char('X').
     # Emitted by the assignment-coercion path when a 1-char string
-    # literal lands in a Char-typed lvalue.
-    "char": lambda e, c: _builtin_passthrough("Char", e, c),
+    # literal lands in a char-typed lvalue.
+    "char": lambda e, c: _builtin_passthrough("char", e, c),
     # Desugar-only builtins.
     "sqr": _builtin_sqr,
     "odd": _builtin_odd,
@@ -3693,7 +3693,7 @@ def _static_type_of(expr, ctx: _Ctx) -> str | None:
         if name == "chr":
             return "char"
         if name == "abs":
-            # abs propagates the operand type (Int32 / real / etc.).
+            # abs propagates the operand type (int32 / real / etc.).
             return _static_type_of(expr.args[0], ctx) if expr.args else None
         if name == "sqr":
             return _static_type_of(expr.args[0], ctx) if expr.args else None

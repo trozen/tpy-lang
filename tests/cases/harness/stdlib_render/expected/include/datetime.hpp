@@ -62,11 +62,11 @@ void _check_zone_key(std::string_view key);
 struct timedelta {
     // # Normalized: 0 <= seconds < 86400, 0 <= microseconds < 10**6,
     // # -999999999 <= days <= 999999999. Fields carry CPython's attribute names.
-    // days: Int32
+    // days: int32
     int32_t days;
-    // seconds: Int32
+    // seconds: int32
     int32_t seconds;
-    // microseconds: Int32
+    // microseconds: int32
     int32_t microseconds;
 
     // def __init__(self, days: int = 0, seconds: int = 0, microseconds: int = 0,
@@ -257,9 +257,9 @@ struct timezone {
     // # unnamed, so timezone(off) and timezone(off, "") stay distinct --
     // # CPython stores None vs ""). Field layout mirrors datetime's inline
     // # tz block so ingestion/reconstruction are raw field copies.
-    // _off_us: Int64
+    // _off_us: int64
     int64_t _off_us;
-    // _name_id: Int32
+    // _name_id: int32
     int32_t _name_id;
 
     // def __init__(self, offset: timedelta, name: str | None = None) -> None:
@@ -346,7 +346,7 @@ struct ZoneInfo {
     // # key, which matches CPython's per-key instance cache (no_cache /
     // # from_file / available_timezones are unsupported -- see the roadmap).
     // # Offsets are per-instant: utcoffset/dst/tzname need the datetime.
-    // _zid: Int32
+    // _zid: int32
     int32_t _zid;
 
     // def __init__(self, key: str) -> None:
@@ -415,14 +415,14 @@ namespace tpystd::datetime {
 // class date(ValueType):
 struct date {
     // # Packed to 4B: narrow private storage (validated ranges fit exactly),
-    // # public attrs are Int32-widening properties so user arithmetic never
+    // # public attrs are int32-widening properties so user arithmetic never
     // # touches the narrow types. Storage stays in significance order --
     // # order=True tuple comparison over it is the chronological order.
-    // _y: Int16
+    // _y: int16
     int16_t _y;
-    // _mo: Int8
+    // _mo: int8
     int8_t _mo;
-    // _d: Int8
+    // _d: int8
     int8_t _d;
 
     // def __init__(self, year: int, month: int, day: int) -> None:
@@ -430,15 +430,15 @@ struct date {
     explicit date(const ::tpy::BigInt& year, const ::tpy::BigInt& month, const ::tpy::BigInt& day);
 
     // @property
-    // def year(self) -> Int32:
+    // def year(self) -> int32:
     int32_t year() const;
 
     // @property
-    // def month(self) -> Int32:
+    // def month(self) -> int32:
     int32_t month() const;
 
     // @property
-    // def day(self) -> Int32:
+    // def day(self) -> int32:
     int32_t day() const;
 
     // @staticmethod
@@ -562,14 +562,14 @@ struct time {
     // # Naive only (no tzinfo/fold; aware time is out of scope -- see the
     // # roadmap). Packed to 8B: narrow private storage in significance order
     // # (order=True tuple comparison stays chronological), public attrs are
-    // # Int32-widening properties.
-    // _hh: Int8
+    // # int32-widening properties.
+    // _hh: int8
     int8_t _hh;
-    // _mm: Int8
+    // _mm: int8
     int8_t _mm;
-    // _ss: Int8
+    // _ss: int8
     int8_t _ss;
-    // _us: Int32
+    // _us: int32
     int32_t _us;
 
     // def __init__(self, hour: int = 0, minute: int = 0, second: int = 0,
@@ -577,19 +577,19 @@ struct time {
     explicit time(const ::tpy::BigInt& hour = ::tpy::BigInt(0), const ::tpy::BigInt& minute = ::tpy::BigInt(0), const ::tpy::BigInt& second = ::tpy::BigInt(0), const ::tpy::BigInt& microsecond = ::tpy::BigInt(0));
 
     // @property
-    // def hour(self) -> Int32:
+    // def hour(self) -> int32:
     int32_t hour() const;
 
     // @property
-    // def minute(self) -> Int32:
+    // def minute(self) -> int32:
     int32_t minute() const;
 
     // @property
-    // def second(self) -> Int32:
+    // def second(self) -> int32:
     int32_t second() const;
 
     // @property
-    // def microsecond(self) -> Int32:
+    // def microsecond(self) -> int32:
     int32_t microsecond() const;
 
     // @staticmethod
@@ -677,7 +677,7 @@ struct datetime {
     // # Awareness is a RUNTIME property; mixing naive and aware in ordering/
     // # subtraction raises TypeError exactly like CPython.
     // # Packed to 24B, trivially copyable: narrow private storage behind
-    // # Int32-widening properties, and the tz inline as a kind-tagged triple
+    // # int32-widening properties, and the tz inline as a kind-tagged triple
     // # (_tzf packs kind 0=naive/1=fixed/2=zoneinfo in the low bits + the
     // # PEP 495 fold in bit 2; _tz_off_us holds the fixed offset, unused for
     // # zoneinfo whose offset is per-instant; _tz_name_id holds the interned
@@ -686,25 +686,25 @@ struct datetime {
     // # paths directly. Field order is packing order (widest first); nothing
     // # here relies on declaration order (all comparisons/hash/repr are
     // # hand-written).
-    // _tz_off_us: Int64
+    // _tz_off_us: int64
     int64_t _tz_off_us;
-    // _us: Int32
+    // _us: int32
     int32_t _us;
-    // _tz_name_id: Int32
+    // _tz_name_id: int32
     int32_t _tz_name_id;
-    // _y: Int16
+    // _y: int16
     int16_t _y;
-    // _mo: Int8
+    // _mo: int8
     int8_t _mo;
-    // _d: Int8
+    // _d: int8
     int8_t _d;
-    // _hh: Int8
+    // _hh: int8
     int8_t _hh;
-    // _mm: Int8
+    // _mm: int8
     int8_t _mm;
-    // _ss: Int8
+    // _ss: int8
     int8_t _ss;
-    // _tzf: Int8
+    // _tzf: int8
     int8_t _tzf;
 
     // def __init__(self, year: int, month: int, day: int, hour: int = 0,
@@ -718,35 +718,35 @@ struct datetime {
     ::tpy::BigInt _tz_kind() const;
 
     // @property
-    // def fold(self) -> Int32:
+    // def fold(self) -> int32:
     int32_t fold() const;
 
     // @property
-    // def year(self) -> Int32:
+    // def year(self) -> int32:
     int32_t year() const;
 
     // @property
-    // def month(self) -> Int32:
+    // def month(self) -> int32:
     int32_t month() const;
 
     // @property
-    // def day(self) -> Int32:
+    // def day(self) -> int32:
     int32_t day() const;
 
     // @property
-    // def hour(self) -> Int32:
+    // def hour(self) -> int32:
     int32_t hour() const;
 
     // @property
-    // def minute(self) -> Int32:
+    // def minute(self) -> int32:
     int32_t minute() const;
 
     // @property
-    // def second(self) -> Int32:
+    // def second(self) -> int32:
     int32_t second() const;
 
     // @property
-    // def microsecond(self) -> Int32:
+    // def microsecond(self) -> int32:
     int32_t microsecond() const;
 
     // def date(self) -> date:
@@ -948,9 +948,9 @@ namespace tpystd::datetime {
 
 // def _to_microseconds(self) -> int:
 inline ::tpy::BigInt timedelta::_to_microseconds() const {
-    // # Widen the Int32 fields to BigInt before combining: the max total
-    // # (~8.6e19 us) exceeds Int64, and an Int32 intermediate overflows even
-    // # for an hour (3600 * 10**6 > Int32 max).
+    // # Widen the int32 fields to BigInt before combining: the max total
+    // # (~8.6e19 us) exceeds int64, and an int32 intermediate overflows even
+    // # for an hour (3600 * 10**6 > int32 max).
     // return (int(self.days) * 86400 + int(self.seconds)) * 1000000 + int(self.microseconds)
     return ((((((((::tpy::BigInt(static_cast<int64_t>(this->days))) * (::tpy::BigInt(86400)))) + (::tpy::BigInt(static_cast<int64_t>(this->seconds))))) * (::tpy::BigInt(1000000)))) + (::tpy::BigInt(static_cast<int64_t>(this->microseconds))));
 }
@@ -1153,7 +1153,7 @@ inline timezone::timezone(timedelta offset, std::optional<std::string_view> name
         // "-timedelta(hours=24) and timedelta(hours=24).")
         throw ::tpy::ValueError("offset must be a timedelta strictly between -timedelta(hours=24) and timedelta(hours=24).");
     }
-    // # The range check bounds us under 2**37, so the Int64 store is safe.
+    // # The range check bounds us under 2**37, so the int64 store is safe.
     // self._off_us = us
     this->_off_us = (us).to_fixed_check<int64_t>();
     // self._name_id = 0 if name is None else tz_intern.intern_name(name)
@@ -1267,7 +1267,7 @@ inline std::optional<timedelta> ZoneInfo::utcoffset(std::optional<datetime> dt) 
         return std::nullopt;
     }
     // return timedelta(seconds=int(hinnant_date.zone_wall_offset_seconds(
-    // self._zid, Int64(dt._epoch_us() // 1000000), dt.fold)))
+    // self._zid, int64(dt._epoch_us() // 1000000), dt.fold)))
     return timedelta(::tpy::BigInt(0), ::tpy::BigInt(static_cast<int64_t>(::tpy::stdlib::datetime::zone_wall_offset_seconds(this->_zid, ((((*dt)._epoch_us()) / (::tpy::BigInt(1000000)))).to_fixed_check<int64_t>(), (*dt).fold()))));
 }
 
@@ -1279,7 +1279,7 @@ inline std::optional<std::string> ZoneInfo::tzname(std::optional<datetime> dt) c
         return std::nullopt;
     }
     // return hinnant_date.zone_wall_abbrev(
-    // self._zid, Int64(dt._epoch_us() // 1000000), dt.fold)
+    // self._zid, int64(dt._epoch_us() // 1000000), dt.fold)
     return ::tpy::stdlib::datetime::zone_wall_abbrev(this->_zid, ((((*dt)._epoch_us()) / (::tpy::BigInt(1000000)))).to_fixed_check<int64_t>(), (*dt).fold());
 }
 
@@ -1291,7 +1291,7 @@ inline std::optional<timedelta> ZoneInfo::dst(std::optional<datetime> dt) const 
         return std::nullopt;
     }
     // return timedelta(seconds=int(hinnant_date.zone_wall_dst_seconds(
-    // self._zid, Int64(dt._epoch_us() // 1000000), dt.fold)))
+    // self._zid, int64(dt._epoch_us() // 1000000), dt.fold)))
     return timedelta(::tpy::BigInt(0), ::tpy::BigInt(static_cast<int64_t>(::tpy::stdlib::datetime::zone_wall_dst_seconds(this->_zid, ((((*dt)._epoch_us()) / (::tpy::BigInt(1000000)))).to_fixed_check<int64_t>(), (*dt).fold()))));
 }
 
@@ -1353,23 +1353,23 @@ inline date::date(const ::tpy::BigInt& year, const ::tpy::BigInt& month, const :
 }
 
 // @property
-// def year(self) -> Int32:
+// def year(self) -> int32:
 inline int32_t date::year() const {
-    // return Int32(self._y)
+    // return int32(self._y)
     return ::tpy::int_cast_check<int32_t>(this->_y);
 }
 
 // @property
-// def month(self) -> Int32:
+// def month(self) -> int32:
 inline int32_t date::month() const {
-    // return Int32(self._mo)
+    // return int32(self._mo)
     return ::tpy::int_cast_check<int32_t>(this->_mo);
 }
 
 // @property
-// def day(self) -> Int32:
+// def day(self) -> int32:
 inline int32_t date::day() const {
-    // return Int32(self._d)
+    // return int32(self._d)
     return ::tpy::int_cast_check<int32_t>(this->_d);
 }
 
@@ -1581,28 +1581,28 @@ inline time::time(const ::tpy::BigInt& hour, const ::tpy::BigInt& minute, const 
 }
 
 // @property
-// def hour(self) -> Int32:
+// def hour(self) -> int32:
 inline int32_t time::hour() const {
-    // return Int32(self._hh)
+    // return int32(self._hh)
     return ::tpy::int_cast_check<int32_t>(this->_hh);
 }
 
 // @property
-// def minute(self) -> Int32:
+// def minute(self) -> int32:
 inline int32_t time::minute() const {
-    // return Int32(self._mm)
+    // return int32(self._mm)
     return ::tpy::int_cast_check<int32_t>(this->_mm);
 }
 
 // @property
-// def second(self) -> Int32:
+// def second(self) -> int32:
 inline int32_t time::second() const {
-    // return Int32(self._ss)
+    // return int32(self._ss)
     return ::tpy::int_cast_check<int32_t>(this->_ss);
 }
 
 // @property
-// def microsecond(self) -> Int32:
+// def microsecond(self) -> int32:
 inline int32_t time::microsecond() const {
     // return self._us
     return this->_us;
@@ -1737,56 +1737,56 @@ inline ::tpy::BigInt datetime::_tz_kind() const {
 }
 
 // @property
-// def fold(self) -> Int32:
+// def fold(self) -> int32:
 inline int32_t datetime::fold() const {
-    // return Int32(int(self._tzf) >> 2)
+    // return int32(int(self._tzf) >> 2)
     return (((::tpy::BigInt(static_cast<int64_t>(this->_tzf))) >> (::tpy::BigInt(2)))).to_fixed_check<int32_t>();
 }
 
 // @property
-// def year(self) -> Int32:
+// def year(self) -> int32:
 inline int32_t datetime::year() const {
-    // return Int32(self._y)
+    // return int32(self._y)
     return ::tpy::int_cast_check<int32_t>(this->_y);
 }
 
 // @property
-// def month(self) -> Int32:
+// def month(self) -> int32:
 inline int32_t datetime::month() const {
-    // return Int32(self._mo)
+    // return int32(self._mo)
     return ::tpy::int_cast_check<int32_t>(this->_mo);
 }
 
 // @property
-// def day(self) -> Int32:
+// def day(self) -> int32:
 inline int32_t datetime::day() const {
-    // return Int32(self._d)
+    // return int32(self._d)
     return ::tpy::int_cast_check<int32_t>(this->_d);
 }
 
 // @property
-// def hour(self) -> Int32:
+// def hour(self) -> int32:
 inline int32_t datetime::hour() const {
-    // return Int32(self._hh)
+    // return int32(self._hh)
     return ::tpy::int_cast_check<int32_t>(this->_hh);
 }
 
 // @property
-// def minute(self) -> Int32:
+// def minute(self) -> int32:
 inline int32_t datetime::minute() const {
-    // return Int32(self._mm)
+    // return int32(self._mm)
     return ::tpy::int_cast_check<int32_t>(this->_mm);
 }
 
 // @property
-// def second(self) -> Int32:
+// def second(self) -> int32:
 inline int32_t datetime::second() const {
-    // return Int32(self._ss)
+    // return int32(self._ss)
     return ::tpy::int_cast_check<int32_t>(this->_ss);
 }
 
 // @property
-// def microsecond(self) -> Int32:
+// def microsecond(self) -> int32:
 inline int32_t datetime::microsecond() const {
     // return self._us
     return this->_us;
@@ -1828,8 +1828,8 @@ inline ::tpy::BigInt datetime::_utcoffset_us(const ::tpy::BigInt& fold) const {
         return ::tpy::BigInt(static_cast<int64_t>(this->_tz_off_us));
     }
     // return int(hinnant_date.zone_wall_offset_seconds(
-    // self._tz_name_id, Int64(self._epoch_us() // 1000000),
-    // Int32(fold))) * 1000000
+    // self._tz_name_id, int64(self._epoch_us() // 1000000),
+    // int32(fold))) * 1000000
     return ((::tpy::BigInt(static_cast<int64_t>(::tpy::stdlib::datetime::zone_wall_offset_seconds(this->_tz_name_id, (((this->_epoch_us()) / (::tpy::BigInt(1000000)))).to_fixed_check<int64_t>(), (fold).to_fixed_check<int32_t>())))) * (::tpy::BigInt(1000000)));
 }
 
@@ -1870,7 +1870,7 @@ inline std::optional<::tpystd::datetime::timedelta> datetime::dst() const {
         return std::nullopt;
     }
     // return timedelta(seconds=int(hinnant_date.zone_wall_dst_seconds(
-    // self._tz_name_id, Int64(self._epoch_us() // 1000000),
+    // self._tz_name_id, int64(self._epoch_us() // 1000000),
     // self.fold)))
     return ::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(static_cast<int64_t>(::tpy::stdlib::datetime::zone_wall_dst_seconds(this->_tz_name_id, (((this->_epoch_us()) / (::tpy::BigInt(1000000)))).to_fixed_check<int64_t>(), this->fold()))));
 }

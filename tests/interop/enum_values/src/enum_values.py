@@ -3,10 +3,10 @@
 # function (or method) param/return crosses as its CPython member. The value
 # round-trips through the module's enum type, so member identity is preserved
 # (Color(v) returns the singleton). Covers IntEnum + plain Enum, a negative-
-# valued member, a UInt64 member above INT64_MAX (must cross unsigned), and a
+# valued member, a uint64 member above INT64_MAX (must cross unsigned), and a
 # method param/return. A non-member arg is rejected (strict by-type) -- ext_checks.
 from enum import Enum, IntEnum
-from tpy import Int64, UInt64
+from tpy import int64, uint64
 from tpy.extern import export
 
 
@@ -24,7 +24,7 @@ class Shape(Enum):
 
 
 @export
-class Big(UInt64, Enum):
+class Big(uint64, Enum):
     LOW = 1
     HIGH = 0x8000000000000000  # 2**63, above INT64_MAX -- must not wrap negative
 
@@ -62,7 +62,7 @@ def default_color() -> Color:
 
 @export
 class Toggle:
-    def __init__(self, n: Int64):
+    def __init__(self, n: int64):
         self.n = n
 
     def pick(self, c: Color) -> Color:

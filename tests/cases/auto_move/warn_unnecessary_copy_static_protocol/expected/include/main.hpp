@@ -26,9 +26,9 @@ void main();
 
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
-    // y: Int32
+    // y: int32
     int32_t y;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
@@ -58,7 +58,7 @@ struct Factory {
 
 
     // @staticmethod
-    // def consume(p: Own[Point]) -> Int32:
+    // def consume(p: Own[Point]) -> int32:
     static int32_t consume(Point&& p);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Factory";
 };
@@ -76,7 +76,7 @@ inline void MyHolder::store(Point&& p) const {
 }
 
 // @staticmethod
-// def consume(p: Own[Point]) -> Int32:
+// def consume(p: Own[Point]) -> int32:
 inline int32_t Factory::consume(Point&& p) {
     // return p.x
     return p.x;

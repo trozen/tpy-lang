@@ -6,9 +6,9 @@ namespace tpyapp::pkg::amod {
 // _A: bytes = b"AAAA"
 ::tpy::Bytes _A;
 
-// def a_first() -> Int32:
+// def a_first() -> int32:
 int32_t a_first() {
-    // return Int32(_A[0])
+    // return int32(_A[0])
     return ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(_A, 0));
 }
 

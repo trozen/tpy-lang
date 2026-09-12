@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // p = Point(Int32(3), Int32(4))
+    // p = Point(int32(3), int32(4))
     Point p = Point(3, 4);
     // print(p.z)
     std::cout << p.z << "\n";

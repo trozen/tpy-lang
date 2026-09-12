@@ -1,13 +1,13 @@
 # Tuple unpacking with Own[T] element (should unwrap)
-from tpy import Int32, Own
+from tpy import int32, Own
 
 class Pair:
-    def __init__(self, x: Int32, y: Int32) -> None:
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 
-def make() -> tuple[Own[Pair], Int32]:
-    return (Pair(Int32(1), Int32(2)), Int32(99))
+def make() -> tuple[Own[Pair], int32]:
+    return (Pair(int32(1), int32(2)), int32(99))
 
 def main() -> None:
     p, n = make()

@@ -20,10 +20,10 @@ struct Helper {
     // def __init__(self) -> None: pass
     Helper();
 
-    // def work(self) -> Int32:
+    // def work(self) -> int32:
     int32_t work() const;
 
-    // def caller(self, x: Other) -> Int32:
+    // def caller(self, x: Other) -> int32:
     int32_t caller(const ::tpyapp::a::A& x) const;
     static constexpr std::string_view __tpy_class_name__ = "b.Helper";
 };

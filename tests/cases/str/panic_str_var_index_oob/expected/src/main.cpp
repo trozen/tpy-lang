@@ -8,7 +8,7 @@ namespace tpyapp::main {
 void main() {
     // s: str = "hi"
     std::string_view s = "hi";
-    // i: Int32 = -10
+    // i: int32 = -10
     int32_t i = -10;
     // print(s[i])
     std::cout << ::tpy::__getitem__(s, i) << "\n";

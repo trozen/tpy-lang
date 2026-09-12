@@ -1,9 +1,9 @@
-from tpy import Int32
+from tpy import int32
 class Rec:
-    n: Int32
-    def __init__(self, n: Int32) -> None:
+    n: int32
+    def __init__(self, n: int32) -> None:
         self.n = n
-def f(b: Rec, c: Rec) -> Int32:
+def f(b: Rec, c: Rec) -> int32:
     if (t := (1, b))[0] > 0:
         return t[1].n
     t = (2, c)

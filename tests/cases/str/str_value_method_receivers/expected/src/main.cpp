@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def shout(a: str, b: str, c: bool) -> Int32:
+// def shout(a: str, b: str, c: bool) -> int32:
 int32_t shout(std::string_view a, std::string_view b, bool c) {
     // n = (a + b).upper()         # tpyc: ok -- a concat receiver
     std::string n = ::tpy::str_upper((::tpy::str_concat(a, b)));

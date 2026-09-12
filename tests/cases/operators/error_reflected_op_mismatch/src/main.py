@@ -1,15 +1,15 @@
-# Guard: a reflected operator must not over-match. __radd__ takes an Int64 left
+# Guard: a reflected operator must not over-match. __radd__ takes an int64 left
 # operand, so `1.5 + d` (float left) has no viable forward/reverse op and is rejected.
-from tpy import ValueType, Int64
+from tpy import ValueType, int64
 
 
 class Dur(ValueType):
-    nanos: Int64
+    nanos: int64
 
-    def __init__(self, ns: Int64) -> None:
+    def __init__(self, ns: int64) -> None:
         self.nanos = ns
 
-    def __radd__(self, n: Int64) -> Int64:
+    def __radd__(self, n: int64) -> int64:
         return n + self.nanos
 
 

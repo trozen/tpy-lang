@@ -19,7 +19,7 @@ struct Shape {
     // self.sides = sides
     int32_t sides;
 
-    // def __init__(self, sides: Int32):
+    // def __init__(self, sides: int32):
     Shape() = default;
     explicit Shape(int32_t sides);
 
@@ -51,7 +51,7 @@ inline std::ostream& operator<<(std::ostream& os, const Square& obj) {
 }
 
 
-// def __init__(self, sides: Int32):
+// def __init__(self, sides: int32):
 inline Shape::Shape(int32_t sides) : sides(sides) {}
 
 // @classmethod

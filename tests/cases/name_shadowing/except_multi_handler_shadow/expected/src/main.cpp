@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def pick(which: Int32) -> Int32:
+// def pick(which: int32) -> int32:
 int32_t pick(int32_t which) {
     // try:
     {

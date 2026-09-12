@@ -3,11 +3,11 @@
 # inlined at the error site, and that a custom ``usage=`` line is the
 # usage shown above the error message. Stderr must contain
 # ``"myapp: error: ..."`` and the usage override.
-from tpy import Int32
+from tpy import int32
 from argparse import ArgumentParser
 
 
-def main() -> Int32:
+def main() -> int32:
     parser = ArgumentParser(
         prog="myapp",
         usage="myapp [--count N]",

@@ -1,5 +1,5 @@
 # Deferred generic inference: field access before type params resolved
-from tpy import Int32
+from tpy import int32
 
 class Container[T]:
     val: T

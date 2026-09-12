@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def value(n: Int32) -> Int32:
+// async def value(n: int32) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_value::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
@@ -20,12 +20,12 @@ namespace tpyapp::main {
 }
 
 
-// async def value(n: Int32) -> Int32:
+// async def value(n: int32) -> int32:
 __coro_value value(int32_t n) {
     return __coro_value(n);
 }
 
-// async def fail() -> Int32:
+// async def fail() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_fail::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
@@ -39,12 +39,12 @@ __coro_value value(int32_t n) {
 }
 
 
-// async def fail() -> Int32:
+// async def fail() -> int32:
 __coro_fail fail() {
     return __coro_fail();
 }
 
-// async def go() -> Int32:
+// async def go() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_go::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -63,7 +63,7 @@ __coro_fail fail() {
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         } catch (const ::tpy::ValueError&) {
             __sub_0.reset();
-            // y = await value(Int32(123))
+            // y = await value(int32(123))
             __sub_1.emplace(123);
             __state = S_RESUME_1;
             continue;
@@ -94,7 +94,7 @@ __coro_fail fail() {
 }
 
 
-// async def go() -> Int32:
+// async def go() -> int32:
 __coro_go go() {
     return __coro_go();
 }

@@ -20,7 +20,7 @@ void main();
 // @nocopy
 // class Tally(Counter):
 struct Tally : ::tpyapp::pet::Counter {
-    // n: Int32
+    // n: int32
     int32_t n;
 
     // def __init__(self) -> None:
@@ -31,10 +31,10 @@ struct Tally : ::tpyapp::pet::Counter {
     Tally(Tally&&) = default;
     Tally& operator=(Tally&&) = default;
 
-    // def bump(self, by: Int32) -> None:
+    // def bump(self, by: int32) -> None:
     void bump(int32_t by) override;
 
-    // def value(self) -> Int32:
+    // def value(self) -> int32:
     int32_t value() override;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Tally";
 };
@@ -61,7 +61,7 @@ struct Notifier {
     // def aim(self, p: Ptr[Counter]) -> None:
     void aim(::tpyapp::pet::Counter* p);
 
-    // def trigger(self, by: Int32) -> None:
+    // def trigger(self, by: int32) -> None:
     void trigger(int32_t by);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Notifier";
 };
@@ -75,13 +75,13 @@ inline std::ostream& operator<<(std::ostream& os, const Notifier& obj) {
 // def __init__(self) -> None:
 inline Tally::Tally() : n(0) {}
 
-// def bump(self, by: Int32) -> None:
+// def bump(self, by: int32) -> None:
 inline void Tally::bump(int32_t by) {
     // self.n += by
     this->n = ::tpy::add_check<int32_t>(this->n, by);
 }
 
-// def value(self) -> Int32:
+// def value(self) -> int32:
 inline int32_t Tally::value() {
     // return self.n
     return this->n;
@@ -96,7 +96,7 @@ inline void Notifier::aim(::tpyapp::pet::Counter* p) {
     this->target = p;
 }
 
-// def trigger(self, by: Int32) -> None:
+// def trigger(self, by: int32) -> None:
 inline void Notifier::trigger(int32_t by) {
     // if self.target is None:
     if ((this->target == nullptr)) {

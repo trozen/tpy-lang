@@ -20,7 +20,7 @@ struct A {
     // def __init__(self) -> None: pass
     A();
 
-    // def go(self) -> Int32:
+    // def go(self) -> int32:
     int32_t go() const;
     static constexpr std::string_view __tpy_class_name__ = "a.A";
 };

@@ -1,17 +1,17 @@
 # Regression: a subclass that OVERRIDES an async method must use its own coro
 # struct, not rebase to the base's (guards the owning==receiver branch).
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
 class Base:
-    async def val(self) -> Int32:
+    async def val(self) -> int32:
         await asyncio.sleep(0)
         return 1
 
 
 class Derived(Base):
-    async def val(self) -> Int32:
+    async def val(self) -> int32:
         await asyncio.sleep(0)
         return 2
 

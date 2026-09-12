@@ -20,10 +20,10 @@ void main();
 
 // class Box:
 struct Box {
-    // val: Int32
+    // val: int32
     int32_t val;
 
-    // def __init__(self, val: Int32) -> None:
+    // def __init__(self, val: int32) -> None:
     Box() = default;
     explicit Box(int32_t val);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
@@ -35,7 +35,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 }
 
 
-// def __init__(self, val: Int32) -> None:
+// def __init__(self, val: int32) -> None:
 inline Box::Box(int32_t val) : val(val) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -3,22 +3,22 @@
 # error on a @nocopy type, so this case pins the ownership transfer.
 from typing import Self
 
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 
 
 @nocopy
 class Handle:
-    fd: Int32
+    fd: int32
 
-    def __init__(self, fd: Int32):
+    def __init__(self, fd: int32):
         self.fd = fd
 
     @classmethod
-    def opened(cls, fd: Int32) -> Own[Self]:
+    def opened(cls, fd: int32) -> Own[Self]:
         return cls(fd)
 
 
-def consume(h: Own[Handle]) -> Int32:
+def consume(h: Own[Handle]) -> int32:
     return h.fd
 
 

@@ -8,7 +8,7 @@ namespace tpyapp::main {
 void main() {
     // x: F64 = 1.5
     double x = 1.5;
-    // y = F64(Int32(10))
+    // y = F64(int32(10))
     double y = static_cast<double>(10);
     // print(x)
     std::cout << ::tpy::print_float(x) << "\n";

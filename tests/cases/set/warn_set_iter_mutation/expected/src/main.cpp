@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def test_add() -> None:
 void test_add() {
-    // s: set[Int32] = {Int32(1), Int32(2)}
+    // s: set[int32] = {int32(1), int32(2)}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2});
     // for x in s:
     auto& __obj_0 = s;
@@ -21,7 +21,7 @@ void test_add() {
 
 // def test_remove() -> None:
 void test_remove() {
-    // s: set[Int32] = {Int32(1), Int32(2)}
+    // s: set[int32] = {int32(1), int32(2)}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2});
     // for x in s:
     auto& __obj_0 = s;
@@ -36,7 +36,7 @@ void test_remove() {
 
 // def test_discard() -> None:
 void test_discard() {
-    // s: set[Int32] = {Int32(1), Int32(2)}
+    // s: set[int32] = {int32(1), int32(2)}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2});
     // for x in s:
     auto& __obj_0 = s;
@@ -51,7 +51,7 @@ void test_discard() {
 
 // def test_pop() -> None:
 void test_pop() {
-    // s: set[Int32] = {Int32(1), Int32(2)}
+    // s: set[int32] = {int32(1), int32(2)}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2});
     // for x in s:
     auto& __obj_0 = s;
@@ -66,7 +66,7 @@ void test_pop() {
 
 // def test_clear() -> None:
 void test_clear() {
-    // s: set[Int32] = {Int32(1), Int32(2)}
+    // s: set[int32] = {int32(1), int32(2)}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2});
     // for x in s:
     auto& __obj_0 = s;
@@ -81,9 +81,9 @@ void test_clear() {
 
 // def test_update() -> None:
 void test_update() {
-    // s: set[Int32] = {Int32(1), Int32(2)}
+    // s: set[int32] = {int32(1), int32(2)}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2});
-    // other: set[Int32] = {Int32(3)}
+    // other: set[int32] = {int32(3)}
     ::tpy::ordered_set<int32_t> other = ::tpy::ordered_set<int32_t>({3});
     // for x in s:
     auto& __obj_0 = s;
@@ -98,7 +98,7 @@ void test_update() {
 
 // def test_no_warn_after_loop() -> None:
 void test_no_warn_after_loop() {
-    // s: set[Int32] = {Int32(1), Int32(2)}
+    // s: set[int32] = {int32(1), int32(2)}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2});
     // for x in s:
     auto& __obj_0 = s;
@@ -108,15 +108,15 @@ void test_no_warn_after_loop() {
         int32_t x = *__beg_0;
         // pass
     }
-    // s.add(Int32(3))  # tpyc: ok
+    // s.add(int32(3))  # tpyc: ok
     s.insert(3);
 }
 
 // def test_read_only_ok() -> None:
 void test_read_only_ok() {
-    // s: set[Int32] = {Int32(1), Int32(2)}
+    // s: set[int32] = {int32(1), int32(2)}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2});
-    // total: Int32 = Int32(0)
+    // total: int32 = int32(0)
     int32_t total = 0;
     // for x in s:
     auto& __obj_0 = s;

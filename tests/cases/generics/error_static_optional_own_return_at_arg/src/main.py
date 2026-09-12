@@ -1,7 +1,7 @@
 # A static method returning `Own[T] | None` consumed as a plain call
 # ARGUMENT: the storage escape that admits the return is storage-gated, and
 # an argument is not a storage sink.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Container[T]:
@@ -17,7 +17,7 @@ class Container[T]:
         return None
 
 
-def check(c: Container[Int32] | None) -> bool:
+def check(c: Container[int32] | None) -> bool:
     return c is not None
 
 

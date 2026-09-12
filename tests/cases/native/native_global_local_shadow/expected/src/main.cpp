@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // # Local should shadow the native global
-    // score: Int32 = Int32(42)
+    // score: int32 = int32(42)
     int32_t score = 42;
     // print(score)
     std::cout << score << "\n";

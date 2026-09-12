@@ -16,11 +16,11 @@ void main();
 
 // class H:
 struct H {
-    // arr: Array[Int32, 2]
+    // arr: Array[int32, 2]
     std::array<int32_t, 2> arr;
-    // xs: list[Int32]
+    // xs: list[int32]
     std::vector<int32_t> xs;
-    // d: dict[str, Int32]
+    // d: dict[str, int32]
     ::tpy::ordered_map<std::string, int32_t> d;
 
     // def __init__(self) -> None:

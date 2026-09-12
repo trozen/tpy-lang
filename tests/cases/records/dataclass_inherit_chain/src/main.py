@@ -1,18 +1,18 @@
 # 3-level @dataclass inheritance chain: grandparent -> parent -> child
 from dataclasses import dataclass
-from tpy import Int32
+from tpy import int32
 
 @dataclass
 class A:
-    x: Int32
+    x: int32
 
 @dataclass
 class B(A):
-    y: Int32
+    y: int32
 
 @dataclass
 class C(B):
-    z: Int32
+    z: int32
 
 def main() -> None:
     c = C(1, 2, 3)

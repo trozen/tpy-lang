@@ -1,10 +1,10 @@
 # Test: unnecessary copy() warning for static method and protocol method Own[T] params
 from typing import Protocol
-from tpy import Int32, Own, copy
+from tpy import int32, Own, copy
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 class Holder(Protocol):
     def store(self, p: Own[Point]) -> None: ...
@@ -15,14 +15,14 @@ class MyHolder:
 
 class Factory:
     @staticmethod
-    def consume(p: Own[Point]) -> Int32:
+    def consume(p: Own[Point]) -> int32:
         return p.x
 
 def test_static() -> None:
     p: Point = Point()
     p.x = 10
     # copy() at last use -- should warn unnecessary
-    result: Int32 = Factory.consume(copy(p))  # tpyc: warning(/unnecessary copy/)
+    result: int32 = Factory.consume(copy(p))  # tpyc: warning(/unnecessary copy/)
     print(result)
 
 def test_protocol() -> None:

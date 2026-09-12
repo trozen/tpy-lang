@@ -4,7 +4,7 @@
 namespace tpyapp::helper {
 
 
-// def triple(x: Int32) -> Int32:
+// def triple(x: int32) -> int32:
 int32_t triple(int32_t x) {
     // return x * 3
     return (::tpy::mul_check<int32_t>(x, 3));

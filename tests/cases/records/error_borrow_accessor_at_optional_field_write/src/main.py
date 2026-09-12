@@ -2,13 +2,13 @@
 # the owned-rvalue slice the write row admits. Concretely, `n.byval =
 # h.get()` writes a borrowed accessor result into an optional field; TPy
 # rejects that assignment today.
-from tpy import Int32, copy
+from tpy import int32, copy
 
 
 class Val:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 

@@ -10,7 +10,7 @@ void main() {
     ::tpy::String s = (::tpy::str_concat("hello", (::tpy::str_concat(" ", "world"))));
     // print(s)
     std::cout << s << "\n";
-    // x: Int32 = 42
+    // x: int32 = 42
     int32_t x = 42;
     // s2 = concat("x", x, sep="=")
     ::tpy::String s2 = (::tpy::str_concat("x", (::tpy::str_concat("=", ::tpy::fixed_to_str<int32_t>(x)))));

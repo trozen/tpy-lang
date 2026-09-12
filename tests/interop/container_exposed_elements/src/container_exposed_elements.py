@@ -6,7 +6,7 @@
 # container cliff -- a mutated class-element param is not visible to the caller;
 # see ext_checks). (An exposed CLASS as a tuple element, and any exposed type
 # nested inside a container element, are deferred -- see the error_export_* cases.)
-from tpy import Int64, Own
+from tpy import int64, Own
 from enum import IntEnum
 from tpy.extern import export
 
@@ -20,7 +20,7 @@ class Color(IntEnum):
 
 @export
 class Counter:
-    def __init__(self, v: Int64):
+    def __init__(self, v: int64):
         self.value = v
 
     def bump(self) -> None:
@@ -36,23 +36,23 @@ def cycle(cs: list[Color]) -> Own[list[Color]]:
 
 
 @export
-def total(cs: list[Counter]) -> Int64:
-    t: Int64 = 0
+def total(cs: list[Counter]) -> int64:
+    t: int64 = 0
     for c in cs:
         t += c.value
     return t
 
 
 @export
-def dict_total(m: dict[str, Counter]) -> Int64:
-    t: Int64 = 0
+def dict_total(m: dict[str, Counter]) -> int64:
+    t: int64 = 0
     for k in m:
         t += m[k].value
     return t
 
 
 @export
-def counters(n: Int64) -> Own[list[Counter]]:
+def counters(n: int64) -> Own[list[Counter]]:
     out: list[Counter] = []
     i = 0
     while i < n:
@@ -76,10 +76,10 @@ def dedup(cs: list[Color]) -> Own[set[Color]]:
 
 
 @export
-def weight(m: dict[Color, Int64], c: Color) -> Int64:
+def weight(m: dict[Color, int64], c: Color) -> int64:
     return m[c]
 
 
 @export
-def tag_value(t: tuple[Color, Int64]) -> Int64:
+def tag_value(t: tuple[Color, int64]) -> int64:
     return t[1] if t[0] == Color.RED else -t[1]

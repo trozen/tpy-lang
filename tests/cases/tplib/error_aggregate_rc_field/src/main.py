@@ -2,12 +2,12 @@
 # `_is_default_constructible` (distinct from the required-arg __init__ branch).
 # Without this guard, zero-arg construction would compile and C++ would
 # implicitly delete the synthesized ctor.
-from tpy import Int32
+from tpy import int32
 from tplib.rc import Rc
 
 
 class Counter:
-    x: Int32 = 0
+    x: int32 = 0
 
 
 class Holder:

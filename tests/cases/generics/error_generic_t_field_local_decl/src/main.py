@@ -1,7 +1,7 @@
 # Binding a generic record's `T` field to a LOCAL: the alias binding has no row
 # for an open type param (neither an F1 record nor an alias-ref container), so
 # the declaration rejects.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Cell[T]:
@@ -16,7 +16,7 @@ class Cell[T]:
 
 
 def main() -> None:
-    c = Cell[Int32](1)
+    c = Cell[int32](1)
     print(c.copy_out())
 
 

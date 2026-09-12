@@ -1,8 +1,8 @@
 # Error: dict comprehension over non-iterable type
-from tpy import Int32
+from tpy import int32
 
 def main() -> None:
-    x: Int32 = 5
+    x: int32 = 5
     d = {i: i for i in x}  # tpyc: error(/Cannot iterate/)
 
 main()

@@ -34,9 +34,9 @@ void test_not_with_bool_literals() {
 
 // def test_not_with_comparisons() -> None:
 void test_not_with_comparisons() {
-    // x: Int32 = 5
+    // x: int32 = 5
     int32_t x = 5;
-    // y: Int32 = 10
+    // y: int32 = 10
     int32_t y = 10;
     // # not with comparison
     // if not (x > y):
@@ -115,7 +115,7 @@ void test_double_negation() {
     }
 }
 
-// def is_valid(x: Int32) -> bool:
+// def is_valid(x: int32) -> bool:
 bool is_valid(int32_t x) {
     // return x > 0
     return (x > 0);
@@ -143,7 +143,7 @@ void test_not_with_function_call() {
 void test_not_in_while() {
     // done: bool = False
     bool done = false;
-    // count: Int32 = 0
+    // count: int32 = 0
     int32_t count = 0;
     // while not done:
     while ((!(done))) {

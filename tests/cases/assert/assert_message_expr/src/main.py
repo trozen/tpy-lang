@@ -1,16 +1,16 @@
 # Assert with expression messages (variables, method calls, field access).
-from tpy import Int32
+from tpy import int32
 
 class Error:
     message: str
     def __init__(self, message: str) -> None:
         self.message = message
 
-def check_positive(n: Int32, msg: str) -> Int32:
+def check_positive(n: int32, msg: str) -> int32:
     assert n > 0, msg
     return n
 
-def check_error(n: Int32, e: Error) -> Int32:
+def check_error(n: int32, e: Error) -> int32:
     assert n > 0, e.message
     return n
 

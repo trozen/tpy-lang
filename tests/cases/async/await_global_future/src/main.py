@@ -3,9 +3,9 @@
 # Future is completed by a spawned task so the await resolves.
 import asyncio
 from asyncio import Future
-from tpy import Int32
+from tpy import int32
 
-done: Future[Int32] = Future[Int32]()
+done: Future[int32] = Future[int32]()
 
 
 async def producer() -> None:

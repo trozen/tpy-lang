@@ -1,5 +1,5 @@
 from a import K
-from tpy import Int32
+from tpy import int32
 
-def H() -> Int32:
+def H() -> int32:
     return K()

@@ -1,38 +1,38 @@
-# Container subscript READS of scalar elements -- list[Int32] (literal and dynamic
-# index) and dict[Int32, Int32] (fixed-int key). These are the shapes the THIR
+# Container subscript READS of scalar elements -- list[int32] (literal and dynamic
+# index) and dict[int32, int32] (fixed-int key). These are the shapes the THIR
 # container-subscript-read cell routes to `::tpy::__getitem__(c, i)`. The results are
 # value scalars (copied on both paths), so there is no reference/aliasing distinction
 # to force here. The whole-corpus --thir-codegen byte-diff exercises the routed emit.
-from tpy import Int32
+from tpy import int32
 
 
-def first(items: list[Int32]) -> Int32:
+def first(items: list[int32]) -> int32:
     return items[0]
 
 
-def at(items: list[Int32], i: Int32) -> Int32:
+def at(items: list[int32], i: int32) -> int32:
     return items[i]
 
 
-def sum_two(items: list[Int32], i: Int32, j: Int32) -> Int32:
+def sum_two(items: list[int32], i: int32, j: int32) -> int32:
     return items[i] + items[j]
 
 
-def dget(d: dict[Int32, Int32], k: Int32) -> Int32:
+def dget(d: dict[int32, int32], k: int32) -> int32:
     return d[k]
 
 
 class Box:
-    xs: list[Int32]
+    xs: list[int32]
 
     def __init__(self) -> None:
         self.xs = [1, 2, 3]
 
-    def get(self) -> list[Int32]:
+    def get(self) -> list[int32]:
         return self.xs
 
 
-def read_through_call(b: Box) -> Int32:
+def read_through_call(b: Box) -> int32:
     return b.get()[0]  # tpyc: ok -- the receiver is a CALL, not a name
 
 

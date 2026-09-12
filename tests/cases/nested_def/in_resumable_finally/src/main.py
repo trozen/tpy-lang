@@ -2,10 +2,10 @@
 # finally, and a def defined in the body but CALLED from a finally.
 import asyncio
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
-async def def_in_finally() -> Int32:
+async def def_in_finally() -> int32:
     total = 0
     try:
         await asyncio.sleep(0)
@@ -20,7 +20,7 @@ async def def_in_finally() -> Int32:
     return total
 
 
-def gen_def_in_finally() -> Iterator[Int32]:
+def gen_def_in_finally() -> Iterator[int32]:
     total = 0
     try:
         yield 1
@@ -34,7 +34,7 @@ def gen_def_in_finally() -> Iterator[Int32]:
     yield total
 
 
-async def called_from_finally() -> Int32:
+async def called_from_finally() -> int32:
     count = 0
 
     def tick() -> None:

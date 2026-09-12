@@ -10,24 +10,24 @@
 # explicit `h = None` reassign inside the coroutine to hit the
 # pointer-local rebind path's None-literal branch.
 import asyncio
-from tpy import nocopy, Int32
+from tpy import nocopy, int32
 
 
 @nocopy
 class P:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
-def maybe_p(items: list[P], i: Int32) -> P | None:
+def maybe_p(items: list[P], i: int32) -> P | None:
     if i < len(items):
         return items[i]
     return None
 
 
-async def pick(items: list[P], i: Int32, drop: bool) -> Int32:
+async def pick(items: list[P], i: int32, drop: bool) -> int32:
     # h is a pointer-repr Optional local that must survive the await.
     h = maybe_p(items, i)
     if drop:

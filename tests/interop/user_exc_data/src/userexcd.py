@@ -7,7 +7,7 @@
 # typed fields, not the original constructor arg tuple), an acknowledged
 # divergence asserted ext-only in ext_checks.py. That divergence is
 # documented, not warned -- it is unavoidable with no author-side action.
-from tpy import Int32, Int64
+from tpy import int32, int64
 from tpy.extern import export
 from enum import IntEnum
 
@@ -19,12 +19,12 @@ class Severity(IntEnum):
 
 
 class ParseError(ValueError):
-    line: Int32
+    line: int32
     detail: str
     payload: bytes
     severity: Severity
 
-    def __init__(self, message: str, line: Int32, detail: str,
+    def __init__(self, message: str, line: int32, detail: str,
                  payload: bytes, severity: Severity):
         self.message = message
         self.line = line
@@ -34,7 +34,7 @@ class ParseError(ValueError):
 
 
 @export
-def parse(n: Int64) -> Int64:
+def parse(n: int64) -> int64:
     if n < 0:
         raise ParseError("bad input", 7, "unexpected token", b"raw", Severity.FATAL)
     return n

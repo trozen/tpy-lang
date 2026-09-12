@@ -143,7 +143,7 @@ inline std::ostream& operator<<(std::ostream& os, const widget& obj) {
 
 // class gauge:
 struct gauge {
-    // day: Final[Int32] = 3                   # class constant shadows type `day`
+    // day: Final[int32] = 3                   # class constant shadows type `day`
     static constexpr int32_t day = 3;
 
 

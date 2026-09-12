@@ -15,13 +15,13 @@ void main();
 
 // class Stack:
 struct Stack {
-    // items: list[Int32]
+    // items: list[int32]
     std::vector<int32_t> items;
 
     // def __init__(self) -> None:
     Stack();
 
-    // def __iter__(self) -> Iterator[Int32]:
+    // def __iter__(self) -> Iterator[int32]:
     auto __iter__() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Stack";
 };
@@ -35,7 +35,7 @@ inline std::ostream& operator<<(std::ostream& os, const Stack& obj) {
 // def __init__(self) -> None:
 inline Stack::Stack() : items(std::vector<int32_t>{1, 2, 3}) {}
 
-// def __iter__(self) -> Iterator[Int32]:
+// def __iter__(self) -> Iterator[int32]:
 inline auto Stack::__iter__() const {
     // return iter(self.items)
     return ::tpy::__iter__(this->items);

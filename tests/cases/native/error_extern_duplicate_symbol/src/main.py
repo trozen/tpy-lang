@@ -1,5 +1,5 @@
 from tpy.extern import native
-from tpy import Int32
+from tpy import int32
 
 @native(binding="C")
 def my_func() -> None: ...

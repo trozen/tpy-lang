@@ -1,10 +1,10 @@
 # map over rvalue iterable (owning iterator prevents dangling)
-from tpy import Int32, Own
+from tpy import int32, Own
 
-def make_nums() -> Own[list[Int32]]:
+def make_nums() -> Own[list[int32]]:
     return [10, 20, 30]
 
-def double(x: Int32) -> Int32:
+def double(x: int32) -> int32:
     return x * 2
 
 def main() -> None:

@@ -22,7 +22,7 @@ void main();
 
 // class Holder:
 struct Holder {
-    // val: UInt64
+    // val: uint64
     uint64_t val;
 
     // def __init__(self) -> None:

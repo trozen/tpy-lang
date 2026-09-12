@@ -15,19 +15,19 @@ void main();
 
 // class Clamped:
 struct Clamped {
-    // _value: Int32
+    // _value: int32
     int32_t _value;
 
-    // def __init__(self, value: Int32) -> None:
+    // def __init__(self, value: int32) -> None:
     Clamped() = default;
     explicit Clamped(int32_t value);
 
     // @property
-    // def value(self) -> Int32:
+    // def value(self) -> int32:
     int32_t value() const;
 
     // @value.setter
-    // def value(self, v: Int32) -> None:
+    // def value(self, v: int32) -> None:
     void set_value(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Clamped";
 };
@@ -38,18 +38,18 @@ inline std::ostream& operator<<(std::ostream& os, const Clamped& obj) {
 }
 
 
-// def __init__(self, value: Int32) -> None:
+// def __init__(self, value: int32) -> None:
 inline Clamped::Clamped(int32_t value) : _value(value) {}
 
 // @property
-// def value(self) -> Int32:
+// def value(self) -> int32:
 inline int32_t Clamped::value() const {
     // return self._value
     return this->_value;
 }
 
 // @value.setter
-// def value(self, v: Int32) -> None:
+// def value(self, v: int32) -> None:
 inline void Clamped::set_value(int32_t v) {
     // if v < 0:
     if ((v < 0)) {

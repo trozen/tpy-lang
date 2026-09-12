@@ -4,7 +4,7 @@
 # builtins): the lambda param binds to the caller's type param (calls.py guard),
 # and a bounded Fn-return type param infers from the lambda body instead of
 # collapsing to its bound (type_ops seed-skip).
-from tpy import Fn, Int32, Comparable, Own
+from tpy import Fn, int32, Comparable, Own
 
 
 # K is in the return, so it seeds from the return hint; the caller's T
@@ -35,15 +35,15 @@ def names[T](pairs: list[tuple[T, str]]) -> Own[list[str]]:
     return map_keys(pairs, lambda p: p[1])  # tpyc: ok
 
 
-def keep[T](pairs: list[tuple[T, Int32]]) -> Own[list[tuple[T, Int32]]]:
+def keep[T](pairs: list[tuple[T, int32]]) -> Own[list[tuple[T, int32]]]:
     return above_first(pairs, lambda p: p[1])
 
 
 def main() -> None:
-    ps: list[tuple[Int32, str]] = [(1, "c"), (2, "a"), (3, "b")]
+    ps: list[tuple[int32, str]] = [(1, "c"), (2, "a"), (3, "b")]
     for s in names(ps):
         print(s)
-    qs: list[tuple[str, Int32]] = [("a", 3), ("b", 7), ("c", 1)]
+    qs: list[tuple[str, int32]] = [("a", 3), ("b", 7), ("c", 1)]
     for k, n in keep(qs):
         print(k, n)
 

@@ -22,10 +22,10 @@ __coro_drive drive();
 
 // class Holder:
 struct Holder {
-    // f: Int32 | None
+    // f: int32 | None
     std::optional<int32_t> f;
 
-    // def __init__(self, v: Int32 | None) -> None:
+    // def __init__(self, v: int32 | None) -> None:
     Holder() = default;
     explicit Holder(std::optional<int32_t> v);
 
@@ -130,7 +130,7 @@ struct __coro_drive {
 };
 
 
-// def __init__(self, v: Int32 | None) -> None:
+// def __init__(self, v: int32 | None) -> None:
 inline Holder::Holder(std::optional<int32_t> v) : f(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

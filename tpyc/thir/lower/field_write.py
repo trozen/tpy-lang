@@ -149,7 +149,7 @@ def _btuple_elem_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
     (`t[1].val = 99` -> `std::get<1>(t)->val = 99;`): the target rides the
     tuple-subscript field READ arm (the `_subscript_yields_borrow_ptr`
     arrow) off an in-scope borrow-tuple NAME receiver; only value-scalar /
-    Char field slots admit (record/container slots carry write machinery
+    char field slots admit (record/container slots carry write machinery
     this family does not render)."""
     target = stmt.target
     if not (isinstance(target, TpyFieldAccess)
@@ -340,7 +340,7 @@ def _lower_class_const(stmt: TpyAssign, plan: _ClassConstPlan, lc: _LowerCtx,
 
 
 class _ValueRender(Enum):
-    PLAIN = auto()      # scalar / Char / enum / Ptr: target-typed flush
+    PLAIN = auto()      # scalar / char / enum / Ptr: target-typed flush
     VALUE_OPT = auto()  # value-repr Optional[scalar | owned-str literal]
     STR = auto()        # owned-str family: operator=(string_view) absorbs
     BYTES = auto()      # owned bytes: a view (span) source takes `Bytes(x)`

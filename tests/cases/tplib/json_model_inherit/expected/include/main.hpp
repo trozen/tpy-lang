@@ -36,7 +36,7 @@ void main();
 struct Base {
     // name: str
     std::string name;
-    // age: Int32
+    // age: int32
     int32_t age;
 
     Base() = default;
@@ -77,9 +77,9 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
 // @model
 // class WithDefaults:
 struct WithDefaults {
-    // x: Int32
+    // x: int32
     int32_t x;
-    // y: Int32 = 0
+    // y: int32 = 0
     int32_t y = 0;
 
     WithDefaults() = default;
@@ -202,7 +202,7 @@ inline std::ostream& operator<<(std::ostream& os, const User& obj) {
 // @model
 // class Extended(WithDefaults):
 struct Extended : WithDefaults {
-    // z: Int32 = 99
+    // z: int32 = 99
     int32_t z = 99;
 
     Extended() = default;
@@ -242,7 +242,7 @@ inline std::ostream& operator<<(std::ostream& os, const Extended& obj) {
 // @model
 // class Scored(Tagged):
 struct Scored : Tagged {
-    // score: Int32 = 0
+    // score: int32 = 0
     int32_t score = 0;
 
     Scored() = default;
@@ -381,7 +381,7 @@ inline void Base::save_json(std::string_view __path, int32_t indent) const {
     auto& __f = __ctx_1.__enter__();
     try {
         // # @model inheritance: parent fields included in JSON serialization, multi-level.
-        // from tpy import Int32
+        // from tpy import int32
         __f.write(this->to_json(indent));
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -402,7 +402,7 @@ inline Base Base::load_json(std::string_view __path) {
     auto& __f = __ctx_2.__enter__();
     try {
         // # @model inheritance: parent fields included in JSON serialization, multi-level.
-        // from tpy import Int32
+        // from tpy import int32
         __data = __f.read();
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
@@ -425,7 +425,7 @@ inline std::expected<Base, ::tpystd::tplib::json::parser::JsonError> Base::try_l
     auto& __f = __ctx_3.__enter__();
     try {
         // # @model inheritance: parent fields included in JSON serialization, multi-level.
-        // from tpy import Int32
+        // from tpy import int32
         __data = __f.read();
         goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
@@ -501,7 +501,7 @@ inline void WithDefaults::save_json(std::string_view __path, int32_t indent) con
     auto& __f = __ctx_4.__enter__();
     try {
         // # @model inheritance: parent fields included in JSON serialization, multi-level.
-        // from tpy import Int32
+        // from tpy import int32
         __f.write(this->to_json(indent));
         goto __with_exit_4;
     } catch (::tpy::BaseException& __exc_4) {
@@ -522,7 +522,7 @@ inline WithDefaults WithDefaults::load_json(std::string_view __path) {
     auto& __f = __ctx_5.__enter__();
     try {
         // # @model inheritance: parent fields included in JSON serialization, multi-level.
-        // from tpy import Int32
+        // from tpy import int32
         __data = __f.read();
         goto __with_exit_5;
     } catch (::tpy::BaseException& __exc_5) {
@@ -545,7 +545,7 @@ inline std::expected<WithDefaults, ::tpystd::tplib::json::parser::JsonError> Wit
     auto& __f = __ctx_6.__enter__();
     try {
         // # @model inheritance: parent fields included in JSON serialization, multi-level.
-        // from tpy import Int32
+        // from tpy import int32
         __data = __f.read();
         goto __with_exit_6;
     } catch (::tpy::BaseException& __exc_6) {
@@ -612,7 +612,7 @@ inline void Tagged::save_json(std::string_view __path, int32_t indent) const {
     auto& __f = __ctx_7.__enter__();
     try {
         // # @model inheritance: parent fields included in JSON serialization, multi-level.
-        // from tpy import Int32
+        // from tpy import int32
         __f.write(this->to_json(indent));
         goto __with_exit_7;
     } catch (::tpy::BaseException& __exc_7) {
@@ -633,7 +633,7 @@ inline Tagged Tagged::load_json(std::string_view __path) {
     auto& __f = __ctx_8.__enter__();
     try {
         // # @model inheritance: parent fields included in JSON serialization, multi-level.
-        // from tpy import Int32
+        // from tpy import int32
         __data = __f.read();
         goto __with_exit_8;
     } catch (::tpy::BaseException& __exc_8) {
@@ -656,7 +656,7 @@ inline std::expected<Tagged, ::tpystd::tplib::json::parser::JsonError> Tagged::t
     auto& __f = __ctx_9.__enter__();
     try {
         // # @model inheritance: parent fields included in JSON serialization, multi-level.
-        // from tpy import Int32
+        // from tpy import int32
         __data = __f.read();
         goto __with_exit_9;
     } catch (::tpy::BaseException& __exc_9) {
@@ -723,7 +723,7 @@ inline void User::save_json(std::string_view __path, int32_t indent) const {
     auto& __f = __ctx_10.__enter__();
     try {
         // # @model inheritance: parent fields included in JSON serialization, multi-level.
-        // from tpy import Int32
+        // from tpy import int32
         __f.write(this->to_json(indent));
         goto __with_exit_10;
     } catch (::tpy::BaseException& __exc_10) {
@@ -744,7 +744,7 @@ inline User User::load_json(std::string_view __path) {
     auto& __f = __ctx_11.__enter__();
     try {
         // # @model inheritance: parent fields included in JSON serialization, multi-level.
-        // from tpy import Int32
+        // from tpy import int32
         __data = __f.read();
         goto __with_exit_11;
     } catch (::tpy::BaseException& __exc_11) {
@@ -767,7 +767,7 @@ inline std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::try_l
     auto& __f = __ctx_12.__enter__();
     try {
         // # @model inheritance: parent fields included in JSON serialization, multi-level.
-        // from tpy import Int32
+        // from tpy import int32
         __data = __f.read();
         goto __with_exit_12;
     } catch (::tpy::BaseException& __exc_12) {
@@ -834,7 +834,7 @@ inline void Extended::save_json(std::string_view __path, int32_t indent) const {
     auto& __f = __ctx_13.__enter__();
     try {
         // # @model inheritance: parent fields included in JSON serialization, multi-level.
-        // from tpy import Int32
+        // from tpy import int32
         __f.write(this->to_json(indent));
         goto __with_exit_13;
     } catch (::tpy::BaseException& __exc_13) {
@@ -855,7 +855,7 @@ inline Extended Extended::load_json(std::string_view __path) {
     auto& __f = __ctx_14.__enter__();
     try {
         // # @model inheritance: parent fields included in JSON serialization, multi-level.
-        // from tpy import Int32
+        // from tpy import int32
         __data = __f.read();
         goto __with_exit_14;
     } catch (::tpy::BaseException& __exc_14) {
@@ -878,7 +878,7 @@ inline std::expected<Extended, ::tpystd::tplib::json::parser::JsonError> Extende
     auto& __f = __ctx_15.__enter__();
     try {
         // # @model inheritance: parent fields included in JSON serialization, multi-level.
-        // from tpy import Int32
+        // from tpy import int32
         __data = __f.read();
         goto __with_exit_15;
     } catch (::tpy::BaseException& __exc_15) {
@@ -945,7 +945,7 @@ inline void Scored::save_json(std::string_view __path, int32_t indent) const {
     auto& __f = __ctx_16.__enter__();
     try {
         // # @model inheritance: parent fields included in JSON serialization, multi-level.
-        // from tpy import Int32
+        // from tpy import int32
         __f.write(this->to_json(indent));
         goto __with_exit_16;
     } catch (::tpy::BaseException& __exc_16) {
@@ -966,7 +966,7 @@ inline Scored Scored::load_json(std::string_view __path) {
     auto& __f = __ctx_17.__enter__();
     try {
         // # @model inheritance: parent fields included in JSON serialization, multi-level.
-        // from tpy import Int32
+        // from tpy import int32
         __data = __f.read();
         goto __with_exit_17;
     } catch (::tpy::BaseException& __exc_17) {
@@ -989,7 +989,7 @@ inline std::expected<Scored, ::tpystd::tplib::json::parser::JsonError> Scored::t
     auto& __f = __ctx_18.__enter__();
     try {
         // # @model inheritance: parent fields included in JSON serialization, multi-level.
-        // from tpy import Int32
+        // from tpy import int32
         __data = __f.read();
         goto __with_exit_18;
     } catch (::tpy::BaseException& __exc_18) {
@@ -1056,7 +1056,7 @@ inline void Admin::save_json(std::string_view __path, int32_t indent) const {
     auto& __f = __ctx_19.__enter__();
     try {
         // # @model inheritance: parent fields included in JSON serialization, multi-level.
-        // from tpy import Int32
+        // from tpy import int32
         __f.write(this->to_json(indent));
         goto __with_exit_19;
     } catch (::tpy::BaseException& __exc_19) {
@@ -1077,7 +1077,7 @@ inline Admin Admin::load_json(std::string_view __path) {
     auto& __f = __ctx_20.__enter__();
     try {
         // # @model inheritance: parent fields included in JSON serialization, multi-level.
-        // from tpy import Int32
+        // from tpy import int32
         __data = __f.read();
         goto __with_exit_20;
     } catch (::tpy::BaseException& __exc_20) {
@@ -1100,7 +1100,7 @@ inline std::expected<Admin, ::tpystd::tplib::json::parser::JsonError> Admin::try
     auto& __f = __ctx_21.__enter__();
     try {
         // # @model inheritance: parent fields included in JSON serialization, multi-level.
-        // from tpy import Int32
+        // from tpy import int32
         __data = __f.read();
         goto __with_exit_21;
     } catch (::tpy::BaseException& __exc_21) {

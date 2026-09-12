@@ -21,7 +21,7 @@ void start_safe(const Config& kwargs) {
 // def main() -> None:
 void main() {
     // # All fields provided
-    // start(host="localhost", port=Int32(8080))
+    // start(host="localhost", port=int32(8080))
     Config __tmp_1 = Config("localhost", 8080);
     start(__tmp_1);
     // # Partial -- only host (port access would panic)

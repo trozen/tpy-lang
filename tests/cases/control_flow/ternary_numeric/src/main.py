@@ -1,11 +1,11 @@
 # Ternary expression: numeric type widening between branches
-from tpy import Int32, Int64
+from tpy import int32, int64
 
-def wider(flag: bool, a: Int32, b: Int64) -> Int64:
-    # Int32 + Int64 -> Int64
+def wider(flag: bool, a: int32, b: int64) -> int64:
+    # int32 + int64 -> int64
     return a if flag else b
 
-def literal_with_typed(flag: bool, x: Int32) -> Int32:
+def literal_with_typed(flag: bool, x: int32) -> int32:
     # Int literal adopts the concrete type from the other branch
     return x if flag else 0
 

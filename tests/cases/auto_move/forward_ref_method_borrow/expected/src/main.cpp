@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def drop(xs: Own[list[P]]) -> Int32:
+// def drop(xs: Own[list[P]]) -> int32:
 int32_t drop(std::vector<P>&& xs) {
     // store: list[list[P]] = []
     std::vector<std::vector<P>> store = std::vector<std::vector<P>>{};

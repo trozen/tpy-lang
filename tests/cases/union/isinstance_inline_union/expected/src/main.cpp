@@ -16,7 +16,7 @@ std::string classify(::tpy::Union<const A*, const B*, const C*> v) {
     return "c";
 }
 
-// def excluded(v: A | B | C) -> Int32:
+// def excluded(v: A | B | C) -> int32:
 int32_t excluded(::tpy::Union<const A*, const B*, const C*> v) {
     // if not isinstance(v, A | B):
     if ((!((std::holds_alternative<const A*>(v) || std::holds_alternative<const B*>(v))))) {

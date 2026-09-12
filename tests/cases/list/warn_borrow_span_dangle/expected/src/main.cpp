@@ -6,11 +6,11 @@ namespace tpyapp::main {
 
 // def test_span_append_warns() -> None:
 void test_span_append_warns() {
-    // items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4)), Point(Int32(5), Int32(6))]
+    // items: list[Point] = [Point(int32(1), int32(2)), Point(int32(3), int32(4)), Point(int32(5), int32(6))]
     std::vector<Point> items = {Point(1, 2), Point(3, 4), Point(5, 6)};
-    // span = items[Int32(1):Int32(3)]
+    // span = items[int32(1):int32(3)]
     std::span<Point> span = ::tpy::list_slice(items, ::tpy::BasicSlice{1, 3});
-    // items.append(Point(Int32(9), Int32(9)))  # tpyc: warning(/Mutation of 'items'/)
+    // items.append(Point(int32(9), int32(9)))  # tpyc: warning(/Mutation of 'items'/)
     items.push_back(Point(9, 9));
     // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
@@ -18,23 +18,23 @@ void test_span_append_warns() {
 
 // def test_span_subscript_write_ok() -> None:
 void test_span_subscript_write_ok() {
-    // items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
+    // items: list[Point] = [Point(int32(1), int32(2)), Point(int32(3), int32(4))]
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
-    // span = items[Int32(0):Int32(2)]
+    // span = items[int32(0):int32(2)]
     std::span<Point> span = ::tpy::list_slice(items, ::tpy::BasicSlice{0, 2});
-    // items[Int32(0)] = Point(Int32(9), Int32(9))  # tpyc: ok
+    // items[int32(0)] = Point(int32(9), int32(9))  # tpyc: ok
     ::tpy::__setitem__(items, 0, Point(9, 9));
-    // print(items[Int32(0)].x)
+    // print(items[int32(0)].x)
     std::cout << ::tpy::__getitem__(items, 0).x << "\n";
 }
 
 // def test_span_del_warns() -> None:
 void test_span_del_warns() {
-    // items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
+    // items: list[Point] = [Point(int32(1), int32(2)), Point(int32(3), int32(4))]
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
-    // span = items[Int32(0):Int32(2)]
+    // span = items[int32(0):int32(2)]
     std::span<Point> span = ::tpy::list_slice(items, ::tpy::BasicSlice{0, 2});
-    // del items[Int32(0)]  # tpyc: warning(/Mutation of 'items'/)
+    // del items[int32(0)]  # tpyc: warning(/Mutation of 'items'/)
     ::tpy::__delitem__(items, 0);
     // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
@@ -42,11 +42,11 @@ void test_span_del_warns() {
 
 // def test_span_no_mutation_no_warn() -> None:
 void test_span_no_mutation_no_warn() {
-    // items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
+    // items: list[Point] = [Point(int32(1), int32(2)), Point(int32(3), int32(4))]
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
-    // span = items[Int32(0):Int32(2)]
+    // span = items[int32(0):int32(2)]
     std::span<Point> span = ::tpy::list_slice(items, ::tpy::BasicSlice{0, 2});
-    // print(span[Int32(0)].x)
+    // print(span[int32(0)].x)
     std::cout << ::tpy::__getitem__(span, 0).x << "\n";
     // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
@@ -54,9 +54,9 @@ void test_span_no_mutation_no_warn() {
 
 // def test_no_span_no_warn() -> None:
 void test_no_span_no_warn() {
-    // items: list[Point] = [Point(Int32(1), Int32(2))]
+    // items: list[Point] = [Point(int32(1), int32(2))]
     std::vector<Point> items = {Point(1, 2)};
-    // items.append(Point(Int32(3), Int32(4)))  # tpyc: ok
+    // items.append(Point(int32(3), int32(4)))  # tpyc: ok
     items.push_back(Point(3, 4));
     // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
@@ -64,11 +64,11 @@ void test_no_span_no_warn() {
 
 // def test_value_type_span_warns() -> None:
 void test_value_type_span_warns() {
-    // items: list[Int32] = [Int32(1), Int32(2), Int32(3)]
+    // items: list[int32] = [int32(1), int32(2), int32(3)]
     std::vector<int32_t> items = {1, 2, 3};
-    // span = items[Int32(0):Int32(2)]
+    // span = items[int32(0):int32(2)]
     std::span<int32_t> span = ::tpy::list_slice(items, ::tpy::BasicSlice{0, 2});
-    // items.append(Int32(9))  # tpyc: warning(/Mutation of 'items'/)
+    // items.append(int32(9))  # tpyc: warning(/Mutation of 'items'/)
     items.push_back(9);
     // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";

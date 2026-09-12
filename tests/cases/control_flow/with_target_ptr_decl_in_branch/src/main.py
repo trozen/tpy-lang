@@ -2,20 +2,20 @@
 # and that decl now lands inside a branch or loop body as well as at function
 # top. The manager mutates through the borrow after the block, so a silent copy
 # of the target would print the pre-mutation value.
-from tpy import Int32
+from tpy import int32
 
 
 class Slot:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 
 class Res:
     s: Slot
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.s = Slot(v)
 
     def __enter__(self) -> Slot:

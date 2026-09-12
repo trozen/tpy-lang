@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def counts() -> Iterator[Int32]:
+// def counts() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_counts::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -36,7 +36,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_counts::__next__() {
 }
 
 
-// def counts() -> Iterator[Int32]:
+// def counts() -> Iterator[int32]:
 __gen_counts counts() {
     return __gen_counts();
 }

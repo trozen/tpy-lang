@@ -3,7 +3,7 @@
 
 namespace tpyapp::mypackage {
 
-// VERSION: Int32 = Int32(42)
+// VERSION: int32 = int32(42)
 int32_t VERSION{};
 
 void __tpy_init() {
@@ -13,7 +13,7 @@ void __tpy_init() {
 
     // from .utils import add
     ::tpyapp::mypackage::utils::__tpy_init();
-    // VERSION: Int32 = Int32(42)
+    // VERSION: int32 = int32(42)
     VERSION = 42;
 }
 

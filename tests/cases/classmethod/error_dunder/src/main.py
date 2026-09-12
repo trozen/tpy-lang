@@ -1,10 +1,10 @@
 # Dunder methods take an instance receiver, so none of them can be a
 # classmethod.
-from tpy import Int32
+from tpy import int32
 
 
 class P:
-    def __init__(self, x: Int32):
+    def __init__(self, x: int32):
         self.x = x
 
     @classmethod

@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // c = Container[Int32](10)
+    // c = Container[int32](10)
     Container<int32_t> c = Container<int32_t>(10);
     // print(c.get_or_default())
     std::cout << c.get_or_default() << "\n";

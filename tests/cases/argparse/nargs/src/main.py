@@ -4,11 +4,11 @@
 #   * extend action paired with nargs (accumulates across calls)
 #   * nargs='?' on an optional flag (uses const when bare)
 #   * absent optional flag with no default -> Optional[T] field, None
-from tpy import Int32
+from tpy import int32
 from argparse import ArgumentParser
 
 
-def main() -> Int32:
+def main() -> int32:
     p1 = ArgumentParser()
     p1.add_argument("files", nargs="+")
     a1 = p1.parse_args(["a.txt", "b.txt"])

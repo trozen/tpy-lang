@@ -1,15 +1,15 @@
-from tpy import Char
+from tpy import char
 
 
-def eq_both(a: Char | None, b: Char | None) -> bool:
+def eq_both(a: char | None, b: char | None) -> bool:
     return a == b  # tpyc: ok
 
 
-x: Char = "x"
-y: Char = "y"
-sx: Char | None = x
-sy: Char | None = y
-n: Char | None = None
+x: char = "x"
+y: char = "y"
+sx: char | None = x
+sy: char | None = y
+n: char | None = None
 
 print(eq_both(sx, sx))
 print(eq_both(sx, sy))

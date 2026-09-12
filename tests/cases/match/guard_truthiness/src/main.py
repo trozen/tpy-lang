@@ -4,7 +4,7 @@
 # `Optional[scalar]` guard tested engagement only, so `Some(0)` matched.
 from enum import Enum, IntEnum, auto
 from typing import Any
-from tpy import Int32
+from tpy import int32
 
 
 class Color(Enum):
@@ -19,23 +19,23 @@ class Level(IntEnum):
 
 class Plain:
     # Neither __bool__ nor __len__ -- Python's default object truthiness.
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
 class Bag:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
-    def __len__(self) -> Int32:
+    def __len__(self) -> int32:
         return self.n
 
 
-def opt_guard(k: Int32, v: Int32 | None) -> Int32:
+def opt_guard(k: int32, v: int32 | None) -> int32:
     match k:
         # No optional-truthiness warning fires here, unlike the same test in
         # an `if` -- a diagnostic gap tracked in BUGS.md, not a fix target.
@@ -45,7 +45,7 @@ def opt_guard(k: Int32, v: Int32 | None) -> Int32:
             return 20
 
 
-def str_guard(k: Int32, t: str) -> Int32:
+def str_guard(k: int32, t: str) -> int32:
     match k:
         case 1 if t:
             return 10
@@ -53,7 +53,7 @@ def str_guard(k: Int32, t: str) -> Int32:
             return 20
 
 
-def list_guard(k: Int32, xs: list[Int32]) -> Int32:
+def list_guard(k: int32, xs: list[int32]) -> int32:
     match k:
         case 1 if xs:
             return 10
@@ -61,7 +61,7 @@ def list_guard(k: Int32, xs: list[Int32]) -> Int32:
             return 20
 
 
-def record_guard(k: Int32, g: Bag) -> Int32:
+def record_guard(k: int32, g: Bag) -> int32:
     match k:
         case 1 if g:
             return 10
@@ -69,7 +69,7 @@ def record_guard(k: Int32, g: Bag) -> Int32:
             return 20
 
 
-def not_guard(k: Int32, t: str) -> Int32:
+def not_guard(k: int32, t: str) -> int32:
     match k:
         case 1 if not t:
             return 10
@@ -77,7 +77,7 @@ def not_guard(k: Int32, t: str) -> Int32:
             return 20
 
 
-def enum_guard(k: Int32, c: Color) -> Int32:
+def enum_guard(k: int32, c: Color) -> int32:
     match k:
         case 1 if c:
             return 10
@@ -85,7 +85,7 @@ def enum_guard(k: Int32, c: Color) -> Int32:
             return 20
 
 
-def int_enum_guard(k: Int32, lv: Level) -> Int32:
+def int_enum_guard(k: int32, lv: Level) -> int32:
     match k:
         case 1 if lv:
             return 10
@@ -93,7 +93,7 @@ def int_enum_guard(k: Int32, lv: Level) -> Int32:
             return 20
 
 
-def plain_record_guard(k: Int32, p: Plain) -> Int32:
+def plain_record_guard(k: int32, p: Plain) -> int32:
     match k:
         case 1 if p:
             return 10
@@ -101,7 +101,7 @@ def plain_record_guard(k: Int32, p: Plain) -> Int32:
             return 20
 
 
-def any_guard(k: Int32, v: Any) -> Int32:
+def any_guard(k: int32, v: Any) -> int32:
     match k:
         case 1 if v:
             return 10
@@ -109,7 +109,7 @@ def any_guard(k: Int32, v: Any) -> Int32:
             return 20
 
 
-def and_guard(k: Int32, t: str, xs: list[Int32]) -> Int32:
+def and_guard(k: int32, t: str, xs: list[int32]) -> int32:
     match k:
         case 1 if t and xs:
             return 10

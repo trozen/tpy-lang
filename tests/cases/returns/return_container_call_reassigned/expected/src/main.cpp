@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def gen(n: Int32) -> Own[list[Int32]]:
+// def gen(n: int32) -> Own[list[int32]]:
 std::vector<int32_t> gen(int32_t n) {
-    // out: list[Int32] = []
+    // out: list[int32] = []
     std::vector<int32_t> out = std::vector<int32_t>{};
     // for i in range(n):
     int32_t __stop_0 = n;
@@ -18,7 +18,7 @@ std::vector<int32_t> gen(int32_t n) {
     return out;
 }
 
-// def longest(n: Int32) -> Own[list[Int32]]:
+// def longest(n: int32) -> Own[list[int32]]:
 std::vector<int32_t> longest(int32_t n) {
     std::optional<std::vector<int32_t>> __slot_2;
     // best = gen(0)  # tpyc: ok

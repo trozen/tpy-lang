@@ -9,13 +9,13 @@
 # is the point of the case, and the deref sugar is not what it tests.
 from tplib.rc import Rc
 
-from tpy import Int32
+from tpy import int32
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32):
+    def __init__(self, x: int32):
         self.x = x
 
 

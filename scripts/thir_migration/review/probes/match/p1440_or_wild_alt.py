@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 
 def main() -> None:
-    n: Int32 = 3
+    n: int32 = 3
     match n:
         case 1 | _:
             print("one-or-any")

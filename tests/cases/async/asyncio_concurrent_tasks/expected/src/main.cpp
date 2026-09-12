@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def doubler(n: Int32, label: str) -> Int32:
+// async def doubler(n: int32, label: str) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_doubler::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -22,7 +22,7 @@ namespace tpyapp::main {
         __sub_0.reset();
         // print(label, "post")
         std::cout << label << " " << "post" << "\n";
-        // return n * Int32(2)
+        // return n * int32(2)
         __state = S_DONE;
         int32_t __tpy_async_ret = (::tpy::mul_check<int32_t>(n, 2));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -33,7 +33,7 @@ namespace tpyapp::main {
 }
 
 
-// async def doubler(n: Int32, label: str) -> Int32:
+// async def doubler(n: int32, label: str) -> int32:
 __coro_doubler doubler(int32_t n, std::string_view label) {
     return __coro_doubler(n, label);
 }
@@ -43,10 +43,10 @@ __coro_doubler doubler(int32_t n, std::string_view label) {
     while (true) switch (__state) {
     case S_INITIAL: {
         __coro_arg_0 = "t1";
-        // t1: Task[Int32] = asyncio.create_task(doubler(Int32(5), "t1"))
+        // t1: Task[int32] = asyncio.create_task(doubler(int32(5), "t1"))
         t1.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(doubler(5, __coro_arg_0))));
         __coro_arg_1 = "t2";
-        // t2: Task[Int32] = asyncio.create_task(doubler(Int32(7), "t2"))
+        // t2: Task[int32] = asyncio.create_task(doubler(int32(7), "t2"))
         t2.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(doubler(7, __coro_arg_1))));
         // a = await t1
         __sub_0 = &((*t1));

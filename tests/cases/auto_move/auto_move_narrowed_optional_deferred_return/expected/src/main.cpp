@@ -11,7 +11,7 @@ Handle extract() {
     // h = Handle()
     Handle __slot_1 = Handle();
     h = &__slot_1;
-    // h.value = Int32(88)
+    // h.value = int32(88)
     h->value = 88;
     // assert h is not None
     if (!((h != nullptr))) ::tpy::raise_assertion_error();

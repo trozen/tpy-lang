@@ -4,14 +4,14 @@
 # begin/end iterator doesn't dangle across the suspension. A leading yield
 # makes this non-simple, so it takes the struct/resumable path.
 from typing import Iterator
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
-def make() -> Own[list[Int32]]:
+def make() -> Own[list[int32]]:
     return [10, 20, 30]
 
 
-def gen() -> Iterator[Int32]:
+def gen() -> Iterator[int32]:
     yield 0
     for x in make():
         yield x

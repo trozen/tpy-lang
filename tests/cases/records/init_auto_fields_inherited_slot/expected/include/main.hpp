@@ -16,14 +16,14 @@ void main();
 
 // class Base:
 struct Base {
-    // x: Int32
+    // x: int32
     int32_t x;
 
-    // def __init__(self, x: Int32):
+    // def __init__(self, x: int32):
     Base() = default;
     explicit Base(int32_t x);
 
-    // def get_x(self) -> Int32:
+    // def get_x(self) -> int32:
     int32_t get_x() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
@@ -36,7 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
 // class Child(Base):
 struct Child : Base {
 
-    // def __init__(self, x: Int32):
+    // def __init__(self, x: int32):
     Child() = default;
     explicit Child(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
@@ -48,16 +48,16 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 }
 
 
-// def __init__(self, x: Int32):
+// def __init__(self, x: int32):
 inline Base::Base(int32_t x) : x(x) {}
 
-// def get_x(self) -> Int32:
+// def get_x(self) -> int32:
 inline int32_t Base::get_x() const {
     // return self.x
     return this->x;
 }
 
-// def __init__(self, x: Int32):
+// def __init__(self, x: int32):
 inline Child::Child(int32_t x) {
     // self.x = x          # x is Base.x -- reuse the inherited slot, no shadow
     this->x = x;

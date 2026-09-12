@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // groups: dict[str, list[Int32]] = {}
+    // groups: dict[str, list[int32]] = {}
     ::tpy::ordered_map<std::string, std::vector<int32_t>> groups = ::tpy::ordered_map<std::string, std::vector<int32_t>>();
     // groups["odds"] = [1, 3, 5, 7]  # tpyc: ok
     ::tpy::__setitem__(groups, "odds", std::vector<int32_t>{1, 3, 5, 7});
@@ -24,7 +24,7 @@ void main() {
     // print(groups["calc"][0], groups["calc"][1], groups["calc"][2])
     std::cout << ::tpy::__getitem__(::tpy::__getitem__(groups, "calc"), 0) << " " << ::tpy::__getitem__(::tpy::__getitem__(groups, "calc"), 1) << " " << ::tpy::__getitem__(::tpy::__getitem__(groups, "calc"), 2) << "\n";
     // # Same hazard via an integer index into a list-of-lists.
-    // matrix: list[list[Int32]] = [[0]]
+    // matrix: list[list[int32]] = [[0]]
     std::vector<std::vector<int32_t>> matrix = {{0}};
     // matrix[0] = [1, 2, 3]  # tpyc: ok
     ::tpy::__setitem__(matrix, 0, std::vector<int32_t>{1, 2, 3});
@@ -35,7 +35,7 @@ void main() {
     // # Proven bounds-safe index: takes the `x[i] = value` lvalue path, which
     // # binds a bare brace-init directly (no type prefix). Guards that the
     // # deliberately-unwrapped path stays correct.
-    // rows: list[list[Int32]] = [[0], [0], [0]]
+    // rows: list[list[int32]] = [[0], [0], [0]]
     std::vector<std::vector<int32_t>> rows = {{0}, {0}, {0}};
     // for i in range(len(rows)):
     int32_t __stop_0 = ::tpy::__len__(rows);

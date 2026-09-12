@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // t = (Int32(10), "hello", True)
+    // t = (int32(10), "hello", True)
     std::tuple<int32_t, std::string, bool> t = std::tuple<int32_t, std::string, bool>{10, "hello", true};
     // # Positive indexing
     // a = t[0]

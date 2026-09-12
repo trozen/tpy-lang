@@ -19,23 +19,23 @@ void main();
 
 // class A:
 struct A {
-    // x: Int32
+    // x: int32
     int32_t x;
-    // u: Int32 | Float64
-    ::tpy::Union<int32_t, double> u;
+    // u: int32 | float64
+    ::tpy::Union<double, int32_t> u;
 
-    // def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: int32) -> None:
     explicit A(int32_t x);
 
-    // # Discriminates on Float64 (== float under CPython) so a plain-int
+    // # Discriminates on float64 (== float under CPython) so a plain-int
     // # argument narrows the same way on both runtimes.
-    // def tag(self, v: Int32 | Float64) -> Int32:
-    int32_t tag(const ::tpy::Union<int32_t, double>& v) const;
+    // def tag(self, v: int32 | float64) -> int32:
+    int32_t tag(const ::tpy::Union<double, int32_t>& v) const;
 
-    // def helper(self) -> Int32:
+    // def helper(self) -> int32:
     int32_t helper() const;
 
-    // def outer(self) -> Int32:
+    // def outer(self) -> int32:
     int32_t outer() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.A";
 };
@@ -48,7 +48,7 @@ inline std::ostream& operator<<(std::ostream& os, const A& obj) {
 // class Child(A):
 struct Child : A {
 
-    // def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: int32) -> None:
     explicit Child(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
@@ -59,14 +59,14 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 }
 
 
-// def __init__(self, x: Int32) -> None:
+// def __init__(self, x: int32) -> None:
 inline A::A(int32_t x) : x(x), u(0) {}
 
-// # Discriminates on Float64 (== float under CPython) so a plain-int
+// # Discriminates on float64 (== float under CPython) so a plain-int
 // # argument narrows the same way on both runtimes.
-// def tag(self, v: Int32 | Float64) -> Int32:
-inline int32_t A::tag(const ::tpy::Union<int32_t, double>& v) const {
-    // if isinstance(v, Float64):
+// def tag(self, v: int32 | float64) -> int32:
+inline int32_t A::tag(const ::tpy::Union<double, int32_t>& v) const {
+    // if isinstance(v, float64):
     if (std::holds_alternative<double>(v)) {
         const auto& __v = std::get<double>(v);
         // return self.x
@@ -77,20 +77,20 @@ inline int32_t A::tag(const ::tpy::Union<int32_t, double>& v) const {
     return (::tpy::add_check<int32_t>(this->x, __v));
 }
 
-// def helper(self) -> Int32:
+// def helper(self) -> int32:
 inline int32_t A::helper() const {
     // return self.x + 1
     return (::tpy::add_check<int32_t>(this->x, 1));
 }
 
-// def outer(self) -> Int32:
+// def outer(self) -> int32:
 inline int32_t A::outer() const {
     // # The self receiver renders through the arrow.
     // return self.helper()
     return this->helper();
 }
 
-// def __init__(self, x: Int32) -> None:
+// def __init__(self, x: int32) -> None:
 inline Child::Child(int32_t x) : A(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

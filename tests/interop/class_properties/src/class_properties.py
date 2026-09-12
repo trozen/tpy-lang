@@ -6,7 +6,7 @@
 # raise inside either accessor crosses like a method raise. `_`-named
 # properties are internal (never a Python attribute; ext-only, ext_checks.py).
 from enum import IntEnum
-from tpy import Int32, Own
+from tpy import int32, Own
 from tpy.extern import export
 
 
@@ -20,12 +20,12 @@ class Color(IntEnum):
 @export
 class Rect:
     name: str
-    _w: Int32
-    _h: Int32
+    _w: int32
+    _h: int32
     _color: Color
-    _tags: list[Int32]
+    _tags: list[int32]
 
-    def __init__(self, w: Int32, h: Int32) -> None:
+    def __init__(self, w: int32, h: int32) -> None:
         self.name = "rect"
         self._w = w
         self._h = h
@@ -33,15 +33,15 @@ class Rect:
         self._tags = []
 
     @property
-    def area(self) -> Int32:
+    def area(self) -> int32:
         return self._w * self._h
 
     @property
-    def width(self) -> Int32:
+    def width(self) -> int32:
         return self._w
 
     @width.setter
-    def width(self, v: Int32) -> None:
+    def width(self, v: int32) -> None:
         if v < 0:
             raise ValueError("negative width")
         self._w = v
@@ -53,7 +53,7 @@ class Rect:
         return "rect"
 
     @property
-    def dims(self) -> Own[list[Int32]]:
+    def dims(self) -> Own[list[int32]]:
         return [self._w, self._h]
 
     @property
@@ -65,14 +65,14 @@ class Rect:
         self._color = c
 
     @property
-    def tags(self) -> Own[list[Int32]]:
-        out: list[Int32] = []
+    def tags(self) -> Own[list[int32]]:
+        out: list[int32] = []
         for t in self._tags:
             out.append(t)
         return out
 
     @tags.setter
-    def tags(self, v: list[Int32]) -> None:
+    def tags(self, v: list[int32]) -> None:
         self._tags = v
 
     @property
@@ -80,17 +80,17 @@ class Rect:
         return b"pb"
 
     @property
-    def mapping(self) -> Own[dict[str, Int32]]:
+    def mapping(self) -> Own[dict[str, int32]]:
         return {"w": self._w, "h": self._h}
 
     @property
-    def _diag(self) -> Int32:
+    def _diag(self) -> int32:
         return self._w + self._h
 
     @property
-    def _scale(self) -> Int32:
+    def _scale(self) -> int32:
         return self._w
 
     @_scale.setter
-    def _scale(self, v: Int32) -> None:
+    def _scale(self, v: int32) -> None:
         self._w = v

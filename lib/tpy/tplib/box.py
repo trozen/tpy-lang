@@ -1,7 +1,7 @@
 # Box[T] -- heap-allocated owning container.
 from __future__ import annotations
 from typing import Self
-from tpy import Own, Ptr, UInt64, Deref, Covariant, Copyable, Equatable, Comparable, Hashable, nocopy, readonly, auto_readonly, copy
+from tpy import Own, Ptr, uint64, Deref, Covariant, Copyable, Equatable, Comparable, Hashable, nocopy, readonly, auto_readonly, copy
 from tpy.unsafe import unsafe_take, unsafe_release, unsafe_replace, unsafe_transfer_ownership
 
 # @nocopy: deliberate duplication is always explicit via Box.clone. Mirrors
@@ -60,5 +60,5 @@ class Box[T](Deref[T], Covariant[T]):
     def __ge__[T: Comparable](self, other: Box[T]) -> bool:
         return not self.get() < other.get()
 
-    def __hash__[T: Hashable](self) -> UInt64:
+    def __hash__[T: Hashable](self) -> uint64:
         return hash(self.get())

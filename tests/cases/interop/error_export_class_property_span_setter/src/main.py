@@ -3,23 +3,23 @@
 # returns, so the stored span would dangle. Methods keep Span params (read
 # for the call's duration); setters must take list[T].
 # tpy: ext_module
-from tpy import Int32, Span
+from tpy import int32, Span
 from tpy.extern import export
 
 
 @export
 class Buf:
-    _total: Int32
+    _total: int32
 
     def __init__(self) -> None:
         self._total = 0
 
     @property
-    def data(self) -> Int32:
+    def data(self) -> int32:
         return self._total
 
     @data.setter
-    def data(self, v: Span[Int32]) -> None:  # tpyc: error(/property 'data' setter cannot take a Span/)
+    def data(self, v: Span[int32]) -> None:  # tpyc: error(/property 'data' setter cannot take a Span/)
         total = 0
         for x in v:
             total += x

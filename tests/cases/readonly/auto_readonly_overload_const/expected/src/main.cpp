@@ -4,37 +4,37 @@
 namespace tpyapp::main {
 
 
-// def read_container(c: readonly[Container[Int32]]) -> None:
+// def read_container(c: readonly[Container[int32]]) -> None:
 void read_container(const Container<int32_t>& c) {
-    // x = c[Int32(0)]    # tpyc: type(Int32)
+    // x = c[int32(0)]    # tpyc: type(int32)
     int32_t x = c[0];
-    // s = c[Int32(0):Int32(2)]  # tpyc: type(Span[readonly[Int32]])
+    // s = c[int32(0):int32(2)]  # tpyc: type(Span[readonly[int32]])
     std::span<const int32_t> s = c.__getitem__(::tpy::BasicSlice{0, 2});
     // print(x)
     std::cout << x << "\n";
-    // print(s[Int32(0)])
+    // print(s[int32(0)])
     std::cout << ::tpy::__getitem__(s, 0) << "\n";
-    // print(s[Int32(1)])
+    // print(s[int32(1)])
     std::cout << ::tpy::__getitem__(s, 1) << "\n";
 }
 
 // def main() -> None:
 void main() {
-    // c = Container[Int32]()
+    // c = Container[int32]()
     Container<int32_t> c = Container<int32_t>();
-    // c.add(Int32(10))
+    // c.add(int32(10))
     c.add(10);
-    // c.add(Int32(20))
+    // c.add(int32(20))
     c.add(20);
-    // c.add(Int32(30))
+    // c.add(int32(30))
     c.add(30);
-    // x = c[Int32(1)]    # tpyc: type(Int32)
+    // x = c[int32(1)]    # tpyc: type(int32)
     int32_t x = c[1];
-    // s = c[Int32(0):Int32(2)]  # tpyc: type(Span[Int32])
+    // s = c[int32(0):int32(2)]  # tpyc: type(Span[int32])
     std::span<int32_t> s = c.__getitem__(::tpy::BasicSlice{0, 2});
     // print(x)
     std::cout << x << "\n";
-    // print(s[Int32(0)])
+    // print(s[int32(0)])
     std::cout << ::tpy::__getitem__(s, 0) << "\n";
     // read_container(c)
     read_container(c);

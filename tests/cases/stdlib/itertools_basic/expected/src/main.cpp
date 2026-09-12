@@ -111,7 +111,7 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    // empty: list[Int32] = []
+    // empty: list[int32] = []
     std::vector<int32_t> empty = std::vector<int32_t>{};
     // print([x for x in itertools.islice(itertools.cycle(empty), 5)])
     auto __tmp_6 = ::tpystd::itertools::cycle<int32_t>(empty);
@@ -167,7 +167,7 @@ void main() {
         std::move(__result);
     })) << "\n";
     // # takewhile / dropwhile / filterfalse over a list
-    // nums: list[Int32] = [1, 2, 3, 4, 1, 2]
+    // nums: list[int32] = [1, 2, 3, 4, 1, 2]
     std::vector<int32_t> nums = {1, 2, 3, 4, 1, 2};
     // print([x for x in itertools.takewhile(lambda n: n < 3, nums)])
     std::cout << ::tpy::ListPrinter(({

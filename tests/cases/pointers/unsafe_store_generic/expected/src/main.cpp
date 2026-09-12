@@ -6,23 +6,23 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // nums: Array[Int32, 3] = [10, 20, 30]
+    // nums: Array[int32, 3] = [10, 20, 30]
     std::array<int32_t, 3> nums = {10, 20, 30};
-    // np: Ptr[Int32] = unsafe_ptr(nums)
+    // np: Ptr[int32] = unsafe_ptr(nums)
     int32_t* np = nums.data();
-    // store_at(np, UInt32(1), Int32(99))
+    // store_at(np, uint32(1), int32(99))
     store_at<int32_t>(np, 1, 99);
-    // print(unsafe_load(np, UInt32(1)))
+    // print(unsafe_load(np, uint32(1)))
     std::cout << np[1] << "\n";
     // pts: Array[Point, 2] = [Point(1, 2), Point(3, 4)]
     std::array<Point, 2> pts = {Point(1, 2), Point(3, 4)};
     // pp: Ptr[Point] = unsafe_ptr(pts)
     Point* pp = pts.data();
-    // store_at(pp, UInt32(0), Point(10, 20))
+    // store_at(pp, uint32(0), Point(10, 20))
     store_at<Point>(pp, 0, Point(10, 20));
-    // print(unsafe_load(pp, UInt32(0)).x)
+    // print(unsafe_load(pp, uint32(0)).x)
     std::cout << pp[0].x << "\n";
-    // print(unsafe_load(pp, UInt32(0)).y)
+    // print(unsafe_load(pp, uint32(0)).y)
     std::cout << pp[0].y << "\n";
 }
 

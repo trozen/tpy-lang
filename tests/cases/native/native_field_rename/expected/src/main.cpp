@@ -6,13 +6,13 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // v = Vec2(Int32(3), Int32(4))
+    // v = Vec2(int32(3), int32(4))
     ::Vec2 v = ::Vec2(3, 4);
     // print(v.x)
     std::cout << v.m_x << "\n";
     // print(v.y)
     std::cout << v.m_y << "\n";
-    // v.x = Int32(10)
+    // v.x = int32(10)
     v.m_x = 10;
     // print(v.x)
     std::cout << v.m_x << "\n";

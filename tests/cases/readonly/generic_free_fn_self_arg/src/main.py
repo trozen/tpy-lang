@@ -2,7 +2,7 @@
 # its parameter. Auto-readonly inference must NOT mark the calling method as
 # readonly: mutation propagates through the -1 sentinel in param_map.
 from typing import Protocol
-from tpy import Int32
+from tpy import int32
 
 
 class Bumpable(Protocol):
@@ -14,7 +14,7 @@ def trigger[T: Bumpable](x: T) -> None:
 
 
 class Counter:
-    n: Int32
+    n: int32
 
     def __init__(self) -> None:
         self.n = 0

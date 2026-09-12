@@ -42,14 +42,14 @@ The semantic gaps that actually bite when writing code:
   same file must also run under CPython, add an `__init__` that assigns each
   field -- CPython doesn't create attributes from type annotations alone.
 - **The `int` annotation means arbitrary precision (`BigInt`).** Use a
-  fixed-width type (`Int32`, `Int64`, ...) when you want machine integer
+  fixed-width type (`int32`, `int64`, ...) when you want machine integer
   performance.
-- **Untyped integer literals default to `Int32`** (configurable per
-  project via `--default-int=Int64|BigInt`). Plain `x = 5` infers as
-  `Int32`, not `BigInt`.
+- **Untyped integer literals default to `int32`** (configurable per
+  project via `--default-int=int64|BigInt`). Plain `x = 5` infers as
+  `int32`, not `BigInt`.
 - **`str` is fine as a parameter type.** The compiler passes it as
   `std::string_view` in parameters and stores it as `std::string` in fields.
-  You only need `StrView` / `String` / `Char` when you want explicit
+  You only need `StrView` / `String` / `char` when you want explicit
   control.
 - **`None`-safety is enforced.** Optional values must be narrowed (`if x is
   None` / `if x is not None`) before non-optional use.
@@ -71,8 +71,8 @@ files. Core types:
 
 | Category | Types |
 |----------|-------|
-| Numeric  | `int` (BigInt), `Int8`/`Int16`/`Int32`/`Int64`, `UInt8`/`UInt16`/`UInt32`/`UInt64`, `float` / `Float64`, `Float32`, `bool` |
-| Text     | `str`, `StrView`, `String`, `Char`, `FStr` (parameter type that accepts an f-string without materialising a `str`) |
+| Numeric  | `int` (BigInt), `int8`/`int16`/`int32`/`int64`, `uint8`/`uint16`/`uint32`/`uint64`, `float` / `float64`, `float32`, `bool` |
+| Text     | `str`, `StrView`, `String`, `char`, `FStr` (parameter type that accepts an f-string without materialising a `str`) |
 | Collections | `list[T]`, `dict[K, V]`, `set[T]`, `tuple[...]`, `Array[T, N]`, `Span[T]` |
 | Bytes    | `bytes`, `bytearray`, `BytesView` |
 | Optional / union | `Optional[T]` / `T | None`, `A | B` |
@@ -81,7 +81,7 @@ files. Core types:
 
 When to reach for each:
 
-- **`int` vs fixed-width**: use fixed-width (`Int32` / `Int64`) for
+- **`int` vs fixed-width**: use fixed-width (`int32` / `int64`) for
   performance. Use `int` / `BigInt` only when you genuinely need arbitrary
   precision -- it is much slower.
 - **`list[T]`** is the default growable container, same role as in Python.
@@ -117,14 +117,14 @@ For full details (semantics, tradeoffs, current rough edges), see
 
 ## 4. Integer conventions
 
-- Default fixed-int is **`Int32`** unless the downstream project configures
+- Default fixed-int is **`int32`** unless the downstream project configures
   `--default-int` otherwise. Check the project's build config (or just try
   compiling a snippet with a literal) before assuming.
-- Prefer `Int32` for counters, loop variables, and small counts.
-- Use `Int64` when you might plausibly exceed 2 billion (byte counts on
+- Prefer `int32` for counters, loop variables, and small counts.
+- Use `int64` when you might plausibly exceed 2 billion (byte counts on
   large data, timestamps in nanoseconds, etc.).
 - Use `int` / `BigInt` only when unbounded precision is required.
-- Do not sprinkle `Int32(...)` constructors -- trust inference and write
+- Do not sprinkle `int32(...)` constructors -- trust inference and write
   plain literals (`x = 5`, `xs = [1, 2, 3]`). Explicit constructors are
   only needed when the inferred type would otherwise be wrong.
 
@@ -145,7 +145,7 @@ list/dict/set elements, globals -- which *own* their values rather than
 sharing references.
 
 This single change (storage owns values) is the root of every ownership
-rule below. Value types (`Int32`, `bool`, `float`, `str`, `Char`, ...) are
+rule below. Value types (`int32`, `bool`, `float`, `str`, `char`, ...) are
 unaffected: they copy silently and never need `Own`.
 
 The compiler internally distinguishes two C++ shapes for non-value types:
@@ -164,7 +164,7 @@ the full definition if you need it.
 - **Locals**: `y = x` aliases the same object, exactly like Python.
 - **Returning references to caller-owned data** (e.g. an element of a list
   parameter): plain `T`.
-- **Value types**: always plain. Never wrap `Int32` or `str` in `Own`.
+- **Value types**: always plain. Never wrap `int32` or `str` in `Own`.
 
 ### 5.3 When you need `Own[T]`
 
@@ -175,7 +175,7 @@ that produce fresh values. The compiler is free to put the value on the
 stack or the heap; what matters is that the caller now owns it.
 
 ```python
-def make_point(x: Int32, y: Int32) -> Own[Point]:
+def make_point(x: int32, y: int32) -> Own[Point]:
     return Point(x, y)
 
 def load_config(path: str) -> Own[Config]:
@@ -242,7 +242,7 @@ source of:
 It does **not** fire when:
 
 - The source is an rvalue (e.g. `xs.append(Point(1, 2))`).
-- The source is a value type (`Int32`, `bool`, `float`, `str`, `Char`,
+- The source is a value type (`int32`, `bool`, `float`, `str`, `char`,
   ...).
 - The source is at its last use (auto-move kicks in silently -- see 5.5).
 
@@ -372,17 +372,17 @@ Only the things that differ from Python or that agents commonly get wrong.
 **Record with fields and methods.**
 
 ```python
-from tpy import Int32
+from tpy import int32
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32) -> None:
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 
-    def distance_sq(self, other: Point) -> Int32:
+    def distance_sq(self, other: Point) -> int32:
         dx = self.x - other.x
         dy = self.y - other.y
         return dx * dx + dy * dy
@@ -461,11 +461,11 @@ def clone_it[T: Clonable](item: T) -> Own[T]:
 from tpy import Ptr, Own
 
 class TreeNode:
-    value: Int32
+    value: int32
     parent: Ptr[TreeNode]
     children: list[TreeNode]
 
-    def __init__(self, value: Int32) -> None:
+    def __init__(self, value: int32) -> None:
         self.value = value
         self.parent = None
         self.children = []
@@ -494,9 +494,9 @@ class Cache:
 
 ```python
 import asyncio
-from tpy import Int32
+from tpy import int32
 
-async def work(n: Int32) -> Int32:
+async def work(n: int32) -> int32:
     await asyncio.sleep(0.001)
     return n * 2
 
@@ -523,15 +523,15 @@ compile-checked -- moving a non-`Send` value across `spawn` or a channel
 is a compile error, not a race.
 
 ```python
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 from tpy.thread import spawn
 from tplib.channel import channel, Sender
 
 @nocopy
 class Producer:
-    tx: Sender[Int32]
+    tx: Sender[int32]
 
-    def __init__(self, tx: Own[Sender[Int32]]) -> None:
+    def __init__(self, tx: Own[Sender[int32]]) -> None:
         self.tx = tx
 
     def run(self) -> None:
@@ -539,7 +539,7 @@ class Producer:
             self.tx.send(i)
 
 def main() -> None:
-    tx, rx = channel[Int32](4)
+    tx, rx = channel[int32](4)
     h1 = spawn(Producer(tx.clone()))
     h2 = spawn(Producer(tx))         # last sender moved in
     total = 0

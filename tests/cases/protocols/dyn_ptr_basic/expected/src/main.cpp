@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // # record -> Ptr[Awaker] direct upcast (UPCAST_TO_PTR path). Takes a
 // # CONCRETE-record param so the coerce happens at the call site, not
 // # inside the body.
-// def fire_direct(exec: ExecutorA, tid: Int32) -> None:
+// def fire_direct(exec: ExecutorA, tid: int32) -> None:
 void fire_direct(ExecutorA& exec, int32_t tid) {
     // n = Notifier()
     Notifier n = Notifier();

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def main() -> Int32:
+// def main() -> int32:
 int32_t main() {
     // res = c.build()
     __tpy_builder_counter_1 res = __tpy_builder_build_counter_1();

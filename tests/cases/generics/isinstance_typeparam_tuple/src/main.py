@@ -1,21 +1,21 @@
 # Tuple-form isinstance(x, (A, B)) on a generic type-param subject lowers to an
 # OR-fold of per-member compile-time traits.
-from tpy import Int32
+from tpy import int32
 
 class Animal:
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
 class Dog(Animal):
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
 class Cat(Animal):
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
 class Puppy(Dog):
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
 def is_dog_or_cat[T: Animal](x: T) -> bool:

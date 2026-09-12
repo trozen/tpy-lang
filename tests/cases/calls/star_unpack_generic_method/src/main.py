@@ -2,7 +2,7 @@
 # Methods route through _infer_method_subst_with_seed / the method-overload
 # probe, which previously had no TpyStarUnpack handler and crashed with
 # "Unknown expression type: TpyStarUnpack".
-from tpy import Int32, nocopy
+from tpy import int32, nocopy
 
 
 @nocopy
@@ -14,8 +14,8 @@ class Box[T]:
 
 
 class Pile:
-    def total[T](self, *boxes: Box[T]) -> Int32:
-        n: Int32 = 0
+    def total[T](self, *boxes: Box[T]) -> int32:
+        n: int32 = 0
         for b in boxes:
             n += 1
         return n
@@ -23,7 +23,7 @@ class Pile:
 
 def main() -> None:
     p = Pile()
-    items: list[Box[Int32]] = []
+    items: list[Box[int32]] = []
     items.append(Box(1))
     items.append(Box(2))
     items.append(Box(3))

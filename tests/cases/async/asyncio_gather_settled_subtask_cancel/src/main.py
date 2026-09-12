@@ -6,31 +6,31 @@
 # via a `clone()` handed to a concurrent canceller -- Task.clone shares the
 # TaskState, so cancelling the clone cancels the task the gather is awaiting.
 import asyncio
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
-async def slow() -> Int32:
+async def slow() -> int32:
     try:
         # 1s never elapses -- the canceller fires at ~2ms; the wide margin
         # keeps the cancel-before-completion race deterministic under load.
         await asyncio.sleep(1.0)
-        return Int32(1)
+        return int32(1)
     except asyncio.CancelledError:
         # Propagate so the gather observes it and collects it.
         raise
 
 
-async def fast() -> Int32:
+async def fast() -> int32:
     await asyncio.sleep(0.001)
-    return Int32(2)
+    return int32(2)
 
 
-async def canceller(target: Own[asyncio.Task[Int32]]) -> None:
+async def canceller(target: Own[asyncio.Task[int32]]) -> None:
     await asyncio.sleep(0.002)
     target.cancel()
 
 
-async def gather_helper() -> Own[list[asyncio.Settled[Int32]]]:
+async def gather_helper() -> Own[list[asyncio.Settled[int32]]]:
     a = asyncio.create_task(slow())
     b = asyncio.create_task(fast())
     # Hand a clone to the canceller; cancel propagates through the shared
@@ -39,7 +39,7 @@ async def gather_helper() -> Own[list[asyncio.Settled[Int32]]]:
     # instead of moves in async bodies (BUGS.md codegen entry); rvalue
     # clones move cleanly.
     asyncio.create_task(canceller(a.clone()))
-    tasks: list[asyncio.Task[Int32]] = []
+    tasks: list[asyncio.Task[int32]] = []
     tasks.append(a.clone())
     tasks.append(b.clone())
     return await asyncio.gather_list_settled(tasks)

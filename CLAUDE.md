@@ -151,7 +151,7 @@ its fatal-error paths; see BUGS.md.)
 
 `options.json` is layered: the conftest walks up from the case directory toward `tests/cases/`, merging every options.json it finds (deeper file overrides; `dsl_opts` merges per-key). One file at the group level (e.g. `tests/cases/pascal/options.json`) covers every case underneath; per-case files only need the keys that differ. Supported keys:
 
-- `default_int` -- `"Int32" | "Int64" | "BigInt"`. Per-case scope.
+- `default_int` -- `"int32" | "int64" | "BigInt"`. Per-case scope.
 - `plugin` -- path (relative to repo root) to a frontend-plugin `.py` file. Usually set at the group level (e.g. `frontends/pascal/pascal_frontend.py`).
 - `dsl_opts` -- dict of string options passed to the plugin's constructor (forwarded as if via `--dsl-opt name.key=value` on the CLI). Library paths come from the plugin's `library_paths()` hook -- no `-L` plumbing needed in options.json.
 - `snapshot_lib_modules` -- list of glob patterns over library module names (e.g. `["tplib.array_list"]`, `["os.*"]`, `["*"]`) whose generated C++ this case ALSO snapshots into its own `expected/` tree, on top of its `src/` modules. For a stdlib module whose emission at this case's instantiations and `default_int` is worth pinning. Always explicit -- adding an import never starts snapshotting a module -- and an entry matching NO compiled library module fails the case, so a rename cannot quietly narrow coverage. A plain list, so a per-case file REPLACES a group-level one (only `dsl_opts` merges).
@@ -198,19 +198,19 @@ Concretely, prefer the left form over the right when both compile:
 
 | Prefer | Avoid (when context determines the type) |
 |--------|------------------------------------------|
-| `1`, `"hi"`, `{1, 2}`, `-1` | `Int32(1)`, `StrView("hi")`, `Int32(-1)` |
-| `n = len(xs)`, `i < len(xs)` | `n = Int32(len(xs))`, `i < Int32(len(xs))` |
-| `self.count = 0`, `self.count += 1` | `self.count = UInt32(0)`, `self.count += UInt32(1)` |
+| `1`, `"hi"`, `{1, 2}`, `-1` | `int32(1)`, `StrView("hi")`, `int32(-1)` |
+| `n = len(xs)`, `i < len(xs)` | `n = int32(len(xs))`, `i < int32(len(xs))` |
+| `self.count = 0`, `self.count += 1` | `self.count = uint32(0)`, `self.count += uint32(1)` |
 | `poll_pending()` (return type infers `T`) | `poll_pending[None]()`, `poll_pending[T]()` |
 | `def f() -> Poll[T]: return poll_pending()` | `... return poll_pending[T]()` |
 
-TPy infers integer-typed-field assigns and augmented-assigns, comparisons that widen BigInt to a sibling IntN, and generic-function type params from return-type context. The explicit form is appropriate when the inferred type would be wrong (e.g. `n: BigInt = len(xs)` when you actually want BigInt for arithmetic that would overflow Int32) or when there's no return-type context at all.
+TPy infers integer-typed-field assigns and augmented-assigns, comparisons that widen BigInt to a sibling IntN, and generic-function type params from return-type context. The explicit form is appropriate when the inferred type would be wrong (e.g. `n: BigInt = len(xs)` when you actually want BigInt for arithmetic that would overflow int32) or when there's no return-type context at all.
 
 **Comments explain WHY, not WHAT -- and carry no dead history.** Write a comment only when the *why* is non-obvious: a hidden constraint, an invariant, a workaround for a specific bug. The code already says what it does, so don't narrate it. Keep comments short -- one line is usually enough; avoid multi-paragraph blocks. Do **not** embed transient or external narrative that rots as the code moves: refactoring-phase markers ("phase 3 of the X migration"), references to design docs that may not exist, or "added for X" / "used by Y" / "handles issue #N". That context belongs in the commit message or PR, not the source. **One exception:** a filed defect may be cited by its `BUGS.md` slug, spelled `BUGS.md#<slug>` -- slugs are immutable and `tpyc/test_bugs_slugs.py` fails on a reference whose entry is gone, so unlike a bug number it cannot rot silently. Still state the fact the comment is about; the slug is a pointer, not a substitute for saying what is true. Applies everywhere, not just `tpyc/`.
 
 ## Terminology
 
-TurboPython distinguishes **value types** (primitives, `bool`, `Char`, `str`, `bytes`, views like `Span[T]`, tuples, user types implementing `ValueType` -- value semantics; `is_value_type()` is True) from **reference types** (classes/records, `list`, `dict`, `set`, `Array[T, N]`, `bytearray` -- not copied at function boundaries, stored inline in fields and containers; borrow returns render `T&`). Always use "reference types" for the latter, never "object types". `str` and `bytes` are value types although they own buffers: they are immutable in Python, so copy-vs-alias is unobservable -- their mutable siblings (`String` internals aside, `bytearray`) are the reference types. Param shapes are a separate axis: reference types pass by C++ reference (`T&`/`const T&`), while the value-typed `str`/`bytes` pass as views (`std::string_view` / `::tpy::BytesView`) -- borrowed, not copied, despite value semantics elsewhere. When classifying a type, check `is_value_type()` / its TypeDef in the compiler rather than reasoning from this list. `Own[T]` means ownership transfer (move), not heap allocation; on a value type it transfers nothing -- at a return it resolves to plain `T`, at a parameter it selects the owned form (`std::string` by value for `str`) over the view, so spell it there only when the callee must own the buffer (whether that spelling should exist at all, against the generic `Own[T]` instantiated at `str`, is an open design entry in TODO.md).
+TurboPython distinguishes **value types** (primitives, `bool`, `char`, `str`, `bytes`, views like `Span[T]`, tuples, user types implementing `ValueType` -- value semantics; `is_value_type()` is True) from **reference types** (classes/records, `list`, `dict`, `set`, `Array[T, N]`, `bytearray` -- not copied at function boundaries, stored inline in fields and containers; borrow returns render `T&`). Always use "reference types" for the latter, never "object types". `str` and `bytes` are value types although they own buffers: they are immutable in Python, so copy-vs-alias is unobservable -- their mutable siblings (`String` internals aside, `bytearray`) are the reference types. Param shapes are a separate axis: reference types pass by C++ reference (`T&`/`const T&`), while the value-typed `str`/`bytes` pass as views (`std::string_view` / `::tpy::BytesView`) -- borrowed, not copied, despite value semantics elsewhere. When classifying a type, check `is_value_type()` / its TypeDef in the compiler rather than reasoning from this list. `Own[T]` means ownership transfer (move), not heap allocation; on a value type it transfers nothing -- at a return it resolves to plain `T`, at a parameter it selects the owned form (`std::string` by value for `str`) over the view, so spell it there only when the callee must own the buffer (whether that spelling should exist at all, against the generic `Own[T]` instantiated at `str`, is an open design entry in TODO.md).
 
 ## Architecture
 
@@ -293,9 +293,9 @@ Full TurboPython -> C++ type mapping lives in `docs/LANGUAGE_FEATURES.md`. Types
 |------|-----|
 | `int` | `tpy::BigInt` (arbitrary precision) |
 | `String` | `::tpy::String` (a `std::string` subclass; parameters `const ::tpy::String&`) -- the mutable, owning sibling of `str`. Its own C++ type so a trait keyed on the C++ type can tell it from `str` |
-| `bytes` / `bytearray` | `::tpy::Bytes` / `::tpy::ByteArray` (both `std::vector<uint8_t>` subclasses; a `bytes` parameter is `::tpy::BytesView`, a `bytearray` one a reference). Distinct from each other and from `list[UInt8]`, which keeps the plain `std::vector<uint8_t>` |
+| `bytes` / `bytearray` | `::tpy::Bytes` / `::tpy::ByteArray` (both `std::vector<uint8_t>` subclasses; a `bytes` parameter is `::tpy::BytesView`, a `bytearray` one a reference). Distinct from each other and from `list[uint8]`, which keeps the plain `std::vector<uint8_t>` |
 | `StrView` | `std::string_view` |
-| `Char` | `char` |
+| `char` | `char` |
 | `Span[T]` / `Span[readonly[T]]` | `std::span<T>` / `std::span<const T>` |
 | `SpanIter[T]` | `tpy::SpanIter<T>` |
 | `Array[T, N]` | `std::array<T, N>` |

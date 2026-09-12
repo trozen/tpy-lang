@@ -1,17 +1,17 @@
 # A comprehension whose element returns Own[CopyableRecord]: the Own collapses
 # to storage form, but a default-constructible copyable element keeps the stack
 # Array (exercises the Own-collapse independently of the nocopy fallback).
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
-def make(i: Int32) -> Own[Point]:
+def make(i: int32) -> Own[Point]:
     return Point(i)
 
 

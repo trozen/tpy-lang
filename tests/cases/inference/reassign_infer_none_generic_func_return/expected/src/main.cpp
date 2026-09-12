@@ -13,7 +13,7 @@ void __tpy_init() {
 
     // x = None
     x = std::nullopt;
-    // x = first([Int32(41), Int32(42)])
+    // x = first([int32(41), int32(42)])
     std::vector<int32_t> __tmp_1 = {41, 42};
     x = first<int32_t>(__tmp_1);
     // print(x)

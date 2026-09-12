@@ -1,6 +1,6 @@
 # Static evaluation of isinstance() on non-union variables.
 # Uses the declared type to fold the check to a compile-time bool.
-from tpy import Int32
+from tpy import int32
 
 
 class A:
@@ -15,19 +15,19 @@ class B:
         self.y = y
 
 
-def match_int(x: Int32) -> bool:
-    return isinstance(x, Int32)
+def match_int(x: int32) -> bool:
+    return isinstance(x, int32)
 
 
-def mismatch(x: Int32) -> bool:
+def mismatch(x: int32) -> bool:
     return isinstance(x, A)
 
 
-def tuple_contains(x: Int32) -> bool:
-    return isinstance(x, (A, Int32))
+def tuple_contains(x: int32) -> bool:
+    return isinstance(x, (A, int32))
 
 
-def tuple_miss(x: Int32) -> bool:
+def tuple_miss(x: int32) -> bool:
     return isinstance(x, (A, B))
 
 
@@ -44,33 +44,33 @@ def record_other(a: A) -> int:
     return a.x
 
 
-def negate(x: Int32) -> bool:
+def negate(x: int32) -> bool:
     return not isinstance(x, A)
 
 
-def compound(x: Int32, flag: bool) -> bool:
-    return isinstance(x, Int32) and flag
+def compound(x: int32, flag: bool) -> bool:
+    return isinstance(x, int32) and flag
 
 
-def match_guard(x: Int32) -> str:
+def match_guard(x: int32) -> str:
     match x:
-        case _ if isinstance(x, Int32):
+        case _ if isinstance(x, int32):
             return "int32"
         case _:
             return "other"
 
 
 def main() -> None:
-    print(match_int(Int32(1)))
-    print(mismatch(Int32(1)))
-    print(tuple_contains(Int32(1)))
-    print(tuple_miss(Int32(1)))
+    print(match_int(int32(1)))
+    print(mismatch(int32(1)))
+    print(tuple_contains(int32(1)))
+    print(tuple_miss(int32(1)))
     print(record_self(A(7)))
     print(record_other(A(8)))
-    print(negate(Int32(1)))
-    print(compound(Int32(1), True))
-    print(compound(Int32(1), False))
-    print(match_guard(Int32(1)))
+    print(negate(int32(1)))
+    print(compound(int32(1), True))
+    print(compound(int32(1), False))
+    print(match_guard(int32(1)))
 
 
 main()

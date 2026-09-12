@@ -16,12 +16,12 @@ void main();
 
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
-    // y: Int32
+    // y: int32
     int32_t y;
 
-    // def __init__(self, x: Int32, y: Int32) -> None:
+    // def __init__(self, x: int32, y: int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
@@ -36,7 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 struct Container {
     // _name: str
     std::string _name;
-    // _items: list[Int32]
+    // _items: list[int32]
     std::vector<int32_t> _items;
     // _pt: Point
     Point _pt;
@@ -55,11 +55,11 @@ struct Container {
     void set_name(std::string_view v);
 
     // @property
-    // def items(self) -> list[Int32]:
+    // def items(self) -> list[int32]:
     std::vector<int32_t>& items();
 
     // @property
-    // def items(self) -> list[Int32]:
+    // def items(self) -> list[int32]:
     const std::vector<int32_t>& items() const;
 
     // @property
@@ -82,7 +82,7 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
 }
 
 
-// def __init__(self, x: Int32, y: Int32) -> None:
+// def __init__(self, x: int32, y: int32) -> None:
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __init__(self) -> None:
@@ -103,14 +103,14 @@ inline void Container::set_name(std::string_view v) {
 }
 
 // @property
-// def items(self) -> list[Int32]:
+// def items(self) -> list[int32]:
 inline std::vector<int32_t>& Container::items() {
     // return self._items
     return this->_items;
 }
 
 // @property
-// def items(self) -> list[Int32]:
+// def items(self) -> list[int32]:
 inline const std::vector<int32_t>& Container::items() const {
     // return self._items
     return this->_items;

@@ -5,7 +5,7 @@
 callback via ctx.defer_until_sema_complete. The callback runs after the body
 is type-checked, reads the first argument's inferred type via ctx.type_of
 (impossible at pass 5.5 -- expr_types is empty there), rewrites the
-`sentinel(a, b)` call to `a + b` when the arg is Int32, and types the emitted
+`sentinel(a, b)` call to `a + b` when the arg is int32, and types the emitted
 BinOp via set_expr_type so codegen sees it.
 """
 from tpyc.macro_api import (
@@ -34,7 +34,7 @@ def _resolve(ctx) -> None:
         arg0 = call.args[0]
         t = ctx.type_of(arg0)
         if t is None or not t.is_int32:
-            ctx.error("post-sema macro expected an Int32 first argument")
+            ctx.error("post-sema macro expected an int32 first argument")
         summed = ast.binop(call.args[0], "+", call.args[1])
         ctx.set_expr_type(summed, t)
         ctx.replace_expr(call, summed)

@@ -1,16 +1,16 @@
-from tpy import Int32
+from tpy import int32
 from typing import Callable
 class H:
-    cb: Callable[[Int32], None]
-    def __init__(self, cb: Callable[[Int32], None]) -> None:
+    cb: Callable[[int32], None]
+    def __init__(self, cb: Callable[[int32], None]) -> None:
         self.cb = cb
 def a1() -> None:
-    xs: list[Int32] = []
-    f: Callable[[Int32], None] = lambda x: xs.append(x)
+    xs: list[int32] = []
+    f: Callable[[int32], None] = lambda x: xs.append(x)
     f(1)
     print(len(xs))
 def a2() -> None:
-    xs: list[Int32] = []
+    xs: list[int32] = []
     h = H(lambda x: xs.append(x))
     h.cb(1)
     print(len(xs))
@@ -19,7 +19,7 @@ def a3() -> None:
     ks = sorted(d.keys(), key=lambda k: d[k])
     print(ks[0])
 def a4() -> None:
-    xs: list[Int32] = []
+    xs: list[int32] = []
     h = H(lambda x: print(x))
     h.cb = lambda x: xs.append(x)
     h.cb(1)

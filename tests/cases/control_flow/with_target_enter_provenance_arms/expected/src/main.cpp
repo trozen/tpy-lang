@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def read_nested(flag: bool) -> Int32:
+// def read_nested(flag: bool) -> int32:
 int32_t read_nested(bool flag) {
     std::optional<ViaNestedDef> __slot_2;
     std::optional<ViaNestedDef> __slot_3;
@@ -52,7 +52,7 @@ int32_t read_nested(bool flag) {
     return c->n;
 }
 
-// def read_two_returns(flag: bool) -> Int32:
+// def read_two_returns(flag: bool) -> int32:
 int32_t read_two_returns(bool flag) {
     std::optional<ViaTwoReturns> __slot_2;
     std::optional<ViaTwoReturns> __slot_3;

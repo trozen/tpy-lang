@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def main() -> Int32:
+// def main() -> int32:
 int32_t main() {
     // return Boosted(3).boost()
     return ::tpyapp::pkg::helper::Boosted(3).boost();

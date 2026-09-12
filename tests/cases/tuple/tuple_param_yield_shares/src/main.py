@@ -4,16 +4,16 @@
 # param-sourced silent-copy divergence (the frame used to store the storage
 # form, copying the member).
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    val: Int32
-    def __init__(self, v: Int32) -> None:
+    val: int32
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 
-def gen(p: tuple[Int32, Box]) -> Iterator[tuple[Int32, Box]]:
+def gen(p: tuple[int32, Box]) -> Iterator[tuple[int32, Box]]:
     yield p
 
 

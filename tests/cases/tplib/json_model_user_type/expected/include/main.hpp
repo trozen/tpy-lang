@@ -31,10 +31,10 @@ void test_optional();
 
 // class Seconds:
 struct Seconds {
-    // _value: Int32
+    // _value: int32
     int32_t _value;
 
-    // def __init__(self, value: Int32) -> None:
+    // def __init__(self, value: int32) -> None:
     Seconds() = default;
     explicit Seconds(int32_t value);
 
@@ -147,7 +147,7 @@ inline std::ostream& operator<<(std::ostream& os, const Schedule& obj) {
 }
 
 
-// def __init__(self, value: Int32) -> None:
+// def __init__(self, value: int32) -> None:
 inline Seconds::Seconds(int32_t value) : _value(value) {}
 
 // def __eq__(self, other: Seconds) -> bool:
@@ -173,7 +173,7 @@ inline std::expected<Seconds, ::tpystd::tplib::json::parser::JsonError> Seconds:
         if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
         raw = ::tpy::unwrap_ref_move(*__try_tmp_1);
     }
-    // return Seconds(Int32(raw))
+    // return Seconds(int32(raw))
     return Seconds(::tpy::int_cast_check<int32_t>(raw));
 }
 

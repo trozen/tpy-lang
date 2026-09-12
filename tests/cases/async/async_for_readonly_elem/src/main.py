@@ -3,22 +3,22 @@
 # `const Point*`. `@nocopy` makes the alternative visible -- an owning frame
 # slot would copy the element and fail to compile.
 import asyncio
-from tpy import Int32, nocopy, readonly
+from tpy import int32, nocopy, readonly
 
 
 @nocopy
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
-async def step(n: Int32) -> Int32:
+async def step(n: int32) -> int32:
     return n
 
 
-async def total(ps: readonly[list[Point]]) -> Int32:
+async def total(ps: readonly[list[Point]]) -> int32:
     n = 0
     for p in ps:
         # The await splits the loop, so `p` is a frame field rather than a

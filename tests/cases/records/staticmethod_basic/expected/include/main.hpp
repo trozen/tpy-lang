@@ -14,22 +14,22 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // class Counter:
 struct Counter {
-    // value: Int32
+    // value: int32
     int32_t value;
 
-    // def __init__(self, start: Int32):
+    // def __init__(self, start: int32):
     Counter() = default;
     explicit Counter(int32_t start);
 
     // @staticmethod
-    // def zero() -> Int32:
+    // def zero() -> int32:
     static int32_t zero();
 
     // @staticmethod
-    // def add(a: Int32, b: Int32) -> Int32:
+    // def add(a: int32, b: int32) -> int32:
     static int32_t add(int32_t a, int32_t b);
 
-    // def get(self) -> Int32:
+    // def get(self) -> int32:
     int32_t get() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
@@ -40,24 +40,24 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 }
 
 
-// def __init__(self, start: Int32):
+// def __init__(self, start: int32):
 inline Counter::Counter(int32_t start) : value(start) {}
 
 // @staticmethod
-// def zero() -> Int32:
+// def zero() -> int32:
 inline int32_t Counter::zero() {
     // return 0
     return 0;
 }
 
 // @staticmethod
-// def add(a: Int32, b: Int32) -> Int32:
+// def add(a: int32, b: int32) -> int32:
 inline int32_t Counter::add(int32_t a, int32_t b) {
     // return a + b
     return (::tpy::add_check<int32_t>(a, b));
 }
 
-// def get(self) -> Int32:
+// def get(self) -> int32:
 inline int32_t Counter::get() const {
     // return self.value
     return this->value;

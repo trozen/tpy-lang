@@ -22,7 +22,7 @@ void main() {
     }
 }
 
-// def items(self) -> Iterator[Int32]:
+// def items(self) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_Series_items::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {

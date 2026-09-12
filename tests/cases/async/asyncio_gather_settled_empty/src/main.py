@@ -2,11 +2,11 @@
 # result (matches CPython `gather() == []`). Pins the n==0 fast path in
 # `_GatherSettledFuture.__poll__`.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
 async def main_coro() -> None:
-    tasks: list[asyncio.Task[Int32]] = []
+    tasks: list[asyncio.Task[int32]] = []
     results = await asyncio.gather_list_settled(tasks)
     print("count", len(results))
 

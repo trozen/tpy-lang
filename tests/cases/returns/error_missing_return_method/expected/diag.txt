@@ -1,1 +1,1 @@
-main.py:11: error: 'pick' can reach the end of the function without returning a value; declared return type is 'Int32' (return or raise on every path)
+main.py:11: error: 'pick' can reach the end of the function without returning a value; declared return type is 'int32' (return or raise on every path)

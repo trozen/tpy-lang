@@ -16,7 +16,7 @@ void main();
 
 // class Base:
 struct Base {
-    // SCALE: Final[Int32] = 10
+    // SCALE: Final[int32] = 10
     static constexpr int32_t SCALE = 10;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
@@ -29,26 +29,26 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
 
 // class Counter(Base):
 struct Counter : Base {
-    // START: Final[Int32] = 3
+    // START: Final[int32] = 3
     static constexpr int32_t START = 3;
-    // calls: ClassVar[Int32] = 0
+    // calls: ClassVar[int32] = 0
     static inline int32_t calls = 0;
 
 
     // @classmethod
-    // def bump(cls) -> Int32:
+    // def bump(cls) -> int32:
     static int32_t bump();
 
     // @classmethod
-    // def scaled_start(cls) -> Int32:
+    // def scaled_start(cls) -> int32:
     static int32_t scaled_start();
 
     // @classmethod
-    // def twice(cls) -> Int32:
+    // def twice(cls) -> int32:
     static int32_t twice();
 
     // @staticmethod
-    // def double(n: Int32) -> Int32:
+    // def double(n: int32) -> int32:
     static int32_t double_(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
@@ -60,7 +60,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 
 // @classmethod
-// def bump(cls) -> Int32:
+// def bump(cls) -> int32:
 inline int32_t Counter::bump() {
     // cls.calls += 1
     Counter::calls = ::tpy::add_check<int32_t>(Counter::calls, 1);
@@ -69,7 +69,7 @@ inline int32_t Counter::bump() {
 }
 
 // @classmethod
-// def scaled_start(cls) -> Int32:
+// def scaled_start(cls) -> int32:
 inline int32_t Counter::scaled_start() {
     // # Inherited class constant, plus a sibling staticmethod through cls.
     // return cls.double(cls.START * cls.SCALE)
@@ -77,7 +77,7 @@ inline int32_t Counter::scaled_start() {
 }
 
 // @classmethod
-// def twice(cls) -> Int32:
+// def twice(cls) -> int32:
 inline int32_t Counter::twice() {
     // # A classmethod calling another classmethod through cls.
     // return cls.bump() + cls.bump()
@@ -85,7 +85,7 @@ inline int32_t Counter::twice() {
 }
 
 // @staticmethod
-// def double(n: Int32) -> Int32:
+// def double(n: int32) -> int32:
 inline int32_t Counter::double_(int32_t n) {
     // return n * 2
     return (::tpy::mul_check<int32_t>(n, 2));

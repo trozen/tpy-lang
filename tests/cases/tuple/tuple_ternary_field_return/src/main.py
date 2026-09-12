@@ -1,24 +1,24 @@
 # A ternary return of two durable storage reads lifts the selected arm's
 # element addresses (C++ evaluates one branch of the conditional): both
 # arms root in the param, so the caller's mutation reaches the field.
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    val: Int32
-    def __init__(self, v: Int32) -> None:
+    val: int32
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 
 class Holder:
-    a: tuple[Int32, Box]
-    b: tuple[Int32, Box]
+    a: tuple[int32, Box]
+    b: tuple[int32, Box]
     def __init__(self) -> None:
         self.a = (1, Box(5))
         self.b = (2, Box(7))
 
 
-def pick(h: Holder, c: bool) -> tuple[Int32, Box]:
+def pick(h: Holder, c: bool) -> tuple[int32, Box]:
     return h.a if c else h.b
 
 

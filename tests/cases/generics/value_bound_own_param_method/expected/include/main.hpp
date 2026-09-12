@@ -23,7 +23,7 @@ struct Cell {
     Cell() = default;
     explicit Cell(T item) : item(std::move(item)) {}
 
-    // def replace(self, item: Own[T]) -> Int32:
+    // def replace(self, item: Own[T]) -> int32:
     int32_t replace(T item) {
         // self.item = item  # tpyc: ok
         this->item = item;

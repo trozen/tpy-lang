@@ -3,20 +3,20 @@
 # position -- no carve-out in the renderer. Only the alias and a parameter
 # signature reach codegen today (BUGS.md#ptr-member-union-unreachable);
 # those are the pins.
-from tpy import Int32, Ptr
+from tpy import int32, Ptr
 
 
 class Dog:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
 class Cat:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
@@ -28,7 +28,7 @@ type PtrPet = Ptr[Dog] | Ptr[Cat]
 # type, so the union takes the value-union parameter convention (a const ref
 # to the whole union) over a pointer alternative pack, which is what makes it
 # compare through the pointee. No call site can build the argument yet.
-def takes(u: PtrPet) -> Int32:  # tpyc: ok
+def takes(u: PtrPet) -> int32:  # tpyc: ok
     return 1
 
 

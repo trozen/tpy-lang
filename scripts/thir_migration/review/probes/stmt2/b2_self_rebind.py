@@ -1,9 +1,9 @@
-from tpy import Int32
+from tpy import int32
 class A:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
-    def go(self) -> Int32:
+    def go(self) -> int32:
         self = A(2)
         return self.x
 def main() -> None:

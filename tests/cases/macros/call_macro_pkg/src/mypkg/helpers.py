@@ -1,6 +1,6 @@
 # Helper module: provides tag() function used by the macro.
-from tpy import Int32
+from tpy import int32
 
 
-def tag(label: str, value: Int32) -> str:
+def tag(label: str, value: int32) -> str:
     return label + "=" + str(value)

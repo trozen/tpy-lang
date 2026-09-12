@@ -2,33 +2,33 @@
 # Own[T]); the escape hatch is the borrow form tuple[A, A], which does not
 # warn (read_borrow). The warning is suppressed for @nocopy elements
 # (consume-by-drop is legitimate), so read_nocopy does not warn either.
-from tpy import Own, nocopy, Int32
+from tpy import Own, nocopy, int32
 
 
 class A:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
 @nocopy
 class B:
-    m: Int32
+    m: int32
 
-    def __init__(self, m: Int32) -> None:
+    def __init__(self, m: int32) -> None:
         self.m = m
 
 
-def read_owned(p: tuple[Own[A], Own[A]]) -> Int32:  # tpyc: warning(/owned tuple param 'p' is never consumed/)
+def read_owned(p: tuple[Own[A], Own[A]]) -> int32:  # tpyc: warning(/owned tuple param 'p' is never consumed/)
     return p[0].n + p[1].n
 
 
-def read_borrow(p: tuple[A, A]) -> Int32:  # tpyc: ok
+def read_borrow(p: tuple[A, A]) -> int32:  # tpyc: ok
     return p[0].n + p[1].n
 
 
-def read_nocopy(p: tuple[Own[B], Own[B]]) -> Int32:  # tpyc: ok
+def read_nocopy(p: tuple[Own[B], Own[B]]) -> int32:  # tpyc: ok
     return p[0].m + p[1].m
 
 

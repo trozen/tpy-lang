@@ -15,14 +15,14 @@ void main();
 
 // class Processor:
 struct Processor {
-    // value: Int32
+    // value: int32
     int32_t value;
 
-    // def __init__(self, value: Int32) -> None:
+    // def __init__(self, value: int32) -> None:
     Processor() = default;
     explicit Processor(int32_t value);
 
-    // def apply(self, f: Fn[[Int32], Int32]) -> Int32:
+    // def apply(self, f: Fn[[int32], int32]) -> int32:
     template<typename __F0>
       requires requires(__F0& __fn, int32_t __a0) {
           { __fn(__a0) } -> std::convertible_to<int32_t>;
@@ -32,7 +32,7 @@ struct Processor {
         return f(this->value);
     }
 
-    // def apply_binary(self, other: Int32, f: Fn[[Int32, Int32], Int32]) -> Int32:
+    // def apply_binary(self, other: int32, f: Fn[[int32, int32], int32]) -> int32:
     template<typename __F0>
       requires requires(__F0& __fn, int32_t __a0, int32_t __a1) {
           { __fn(__a0, __a1) } -> std::convertible_to<int32_t>;
@@ -50,7 +50,7 @@ inline std::ostream& operator<<(std::ostream& os, const Processor& obj) {
 }
 
 
-// def __init__(self, value: Int32) -> None:
+// def __init__(self, value: int32) -> None:
 inline Processor::Processor(int32_t value) : value(value) {}
 void __tpy_init();
 } // namespace tpyapp::main

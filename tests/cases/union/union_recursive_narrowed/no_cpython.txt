@@ -1,1 +1,1 @@
-isinstance(5, Int32) is False in CPython (Int32 is a subclass of int, not int itself)
+isinstance(5, int32) is False in CPython (int32 is a subclass of int, not int itself)

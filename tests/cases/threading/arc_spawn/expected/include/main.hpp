@@ -24,10 +24,10 @@ void main();
 
 // class Counter:
 struct Counter {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Counter() = default;
     explicit Counter(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
@@ -43,10 +43,10 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 struct Hammer {
     // shared: Arc[Counter]
     ::tpystd::tplib::arc::Arc<Counter> shared;
-    // iters: Int32
+    // iters: int32
     int32_t iters;
 
-    // def __init__(self, shared: Own[Arc[Counter]], iters: Int32) -> None:
+    // def __init__(self, shared: Own[Arc[Counter]], iters: int32) -> None:
     explicit Hammer(::tpystd::tplib::arc::Arc<Counter>&& shared, int32_t iters);
     // non-copyable (@nocopy)
     Hammer(const Hammer&) = delete;
@@ -54,7 +54,7 @@ struct Hammer {
     Hammer(Hammer&&) = default;
     Hammer& operator=(Hammer&&) = default;
 
-    // def run(self) -> Int32:
+    // def run(self) -> int32:
     int32_t run();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Hammer";
 };
@@ -65,13 +65,13 @@ inline std::ostream& operator<<(std::ostream& os, const Hammer& obj) {
 }
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Counter::Counter(int32_t n) : n(n) {}
 
-// def __init__(self, shared: Own[Arc[Counter]], iters: Int32) -> None:
+// def __init__(self, shared: Own[Arc[Counter]], iters: int32) -> None:
 inline Hammer::Hammer(::tpystd::tplib::arc::Arc<Counter>&& shared, int32_t iters) : shared(std::move(shared)), iters(iters) {}
 
-// def run(self) -> Int32:
+// def run(self) -> int32:
 inline int32_t Hammer::run() {
     // total = 0
     int32_t total = 0;

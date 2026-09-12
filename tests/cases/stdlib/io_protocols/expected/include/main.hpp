@@ -64,12 +64,12 @@ template<::tpystd::tpy::BinaryReadable T_fp>
     // return fp.read()
     return fp.read();
 }
-// def rewind_and_close(fp: Seekable) -> Int32:
+// def rewind_and_close(fp: Seekable) -> int32:
 template<::tpystd::tpy::Seekable T_fp>
 int32_t rewind_and_close(T_fp& fp) {
     // pos_before = fp.tell()
     int32_t pos_before = fp.tell();
-    // fp.seek(Int32(0))  # Defaults declared in the protocol method propagate.
+    // fp.seek(int32(0))  # Defaults declared in the protocol method propagate.
     fp.seek(0);
     // return pos_before
     return pos_before;

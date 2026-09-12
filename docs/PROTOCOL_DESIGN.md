@@ -24,7 +24,7 @@ Protocols enable structural subtyping (compile-time duck typing). A type matches
 from typing import Protocol
 
 class Sized(Protocol):
-    def __len__(self) -> Int32: ...
+    def __len__(self) -> int32: ...
 
 class Iterable(Protocol[T]):  # Generic protocol
     def __iter__(self) -> Iterator[T]: ...
@@ -33,11 +33,11 @@ class SupportsAdd(Protocol):
     def __add__(self, other: Self) -> Self: ...
 
 # Usage in type annotations
-def process(items: Sized) -> Int32:
+def process(items: Sized) -> int32:
     return len(items)
 
-def sum_all(items: Iterable[Int32]) -> Int32:
-    total: Int32 = 0
+def sum_all(items: Iterable[int32]) -> int32:
+    total: int32 = 0
     for x in items:
         total += x
     return total
@@ -259,7 +259,7 @@ from typing import Protocol
 
 class HasLength(Protocol):
     """Types that support len()."""
-    def __len__(self) -> Int32: ...
+    def __len__(self) -> int32: ...
 
 class Iterable(Protocol[T]):
     """Types that can be iterated over."""
@@ -272,11 +272,11 @@ class ConstructibleFromRange(Protocol[T]):
 
 class SubscriptableRead(Protocol[T]):
     """Types that support read-only indexing: x[i]."""
-    def __getitem__(self, index: Int32) -> T: ...
+    def __getitem__(self, index: int32) -> T: ...
 
 class SubscriptableMut(SubscriptableRead[T], Protocol[T]):
     """Types that support mutable indexing: x[i] = value."""
-    def __setitem__(self, index: Int32, value: T) -> None: ...
+    def __setitem__(self, index: int32, value: T) -> None: ...
 ```
 
 ### How the Compiler Uses Traits
@@ -305,16 +305,16 @@ Types declare their capabilities through two parallel mechanisms:
 ```python
 # ArrayList has __len__ and __getitem__, so it conforms to Sequence[T]
 class ArrayList(Generic[T, N]):
-    def __len__(self) -> Int32: ...         # -> conforms to Sized
-    def __getitem__(self, i: Int32) -> T: ...  # + __len__ -> conforms to Sequence[T]
-    def __setitem__(self, i: Int32, v: T) -> None: ...
+    def __len__(self) -> int32: ...         # -> conforms to Sized
+    def __getitem__(self, i: int32) -> T: ...  # + __len__ -> conforms to Sequence[T]
+    def __setitem__(self, i: int32, v: T) -> None: ...
 ```
 
 **2. Explicit extends** - for marker protocols with no methods:
 ```python
 # In module system, types declare protocol conformance
 module.type("list", ..., extends=["NativeIterable[T]", "Spannable[T]"])
-module.register_type(STR, ..., extends=["NativeIterable[Char]"])  # str is not Spannable
+module.register_type(STR, ..., extends=["NativeIterable[char]"])  # str is not Spannable
 ```
 
 This design allows:
@@ -327,13 +327,13 @@ This design allows:
 Implicit coercions are driven by protocol conformance:
 
 ```python
-def takes_span(s: Span[Int32]) -> None: ...
+def takes_span(s: Span[int32]) -> None: ...
 
-arr: Array[Int32, 3] = [1, 2, 3]
-takes_span(arr)  # OK: Array extends Spannable[Int32]
+arr: Array[int32, 3] = [1, 2, 3]
+takes_span(arr)  # OK: Array extends Spannable[int32]
 
-lst: list[Int32] = [1, 2, 3]
-takes_span(lst)  # OK: list extends Spannable[Int32]
+lst: list[int32] = [1, 2, 3]
+takes_span(lst)  # OK: list extends Spannable[int32]
 
 s: str = "hello"
 takes_span(s)  # ERROR: str does not extend Spannable
@@ -437,15 +437,15 @@ We chose `NativeIterable[T]` instead of `Iterable[T]` because:
 | **Reserves standard name** | `Iterable[T]` in `typing` should match Python semantics |
 | **Sets expectations** | "Native" signals C++/compiler-level, not user-extensible |
 | **Avoids confusion** | Users won't expect to implement `__iter__` on their types |
-| **Optional divergence** | Like `Int32` vs `int`, users opt into TurboPython-specific types |
+| **Optional divergence** | Like `int32` vs `int`, users opt into TurboPython-specific types |
 
 ### NativeIterable[T] (Current - Phase 4)
 
 ```python
-from tpy import NativeIterable, Int32
+from tpy import NativeIterable, int32
 
-def sum_all(items: NativeIterable[Int32]) -> Int32:
-    total: Int32 = 0
+def sum_all(items: NativeIterable[int32]) -> int32:
+    total: int32 = 0
     for x in items:
         total += x
     return total
@@ -464,7 +464,7 @@ def sum_all(items: NativeIterable[Int32]) -> Int32:
 # Types declare conformance explicitly
 module.type("list", ..., extends=["NativeIterable[T]"])
 module.type("Array", ..., extends=["NativeIterable[T]"])
-module.register_type(STR, ..., extends=["NativeIterable[Char]"])
+module.register_type(STR, ..., extends=["NativeIterable[char]"])
 ```
 
 **Two conformance mechanisms work in parallel**:
@@ -476,14 +476,14 @@ module.register_type(STR, ..., extends=["NativeIterable[Char]"])
 ```python
 from typing import Iterable, Iterator
 
-class MyIterator(Iterator[Int32]):
-    def __next__(self) -> Int32:
+class MyIterator(Iterator[int32]):
+    def __next__(self) -> int32:
         if self.done:
             raise StopIteration
         return self.value
 
-class MyContainer(Iterable[Int32]):
-    def __iter__(self) -> Iterator[Int32]:
+class MyContainer(Iterable[int32]):
+    def __iter__(self) -> Iterator[int32]:
         return MyIterator(self.data)
 ```
 
@@ -507,7 +507,7 @@ Three approaches were considered for signaling iteration exhaustion:
 
 Users write standard Python:
 ```python
-def __next__(self) -> Int32:
+def __next__(self) -> int32:
     if self.done:
         raise StopIteration
     return self.value

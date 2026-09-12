@@ -1,1 +1,1 @@
-TurboPython panic: Int32 overflow in power
+TurboPython panic: int32 overflow in power

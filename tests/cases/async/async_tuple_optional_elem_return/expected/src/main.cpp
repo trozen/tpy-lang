@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def pick(n: Int32) -> tuple[Int32, Int32 | None]:
+// async def pick(n: int32) -> tuple[int32, int32 | None]:
 ::tpystd::tpy::Poll<std::tuple<int32_t, std::optional<int32_t>>> __coro_pick::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
@@ -27,7 +27,7 @@ namespace tpyapp::main {
 }
 
 
-// async def pick(n: Int32) -> tuple[Int32, Int32 | None]:
+// async def pick(n: int32) -> tuple[int32, int32 | None]:
 __coro_pick pick(int32_t n) {
     return __coro_pick(n);
 }

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def stale_after_rebind(b: Box, other: Box) -> Int32:
+// def stale_after_rebind(b: Box, other: Box) -> int32:
 int32_t stale_after_rebind(Box& b, Box& other) {
     // local: Box = b
     Box* local = &(b);

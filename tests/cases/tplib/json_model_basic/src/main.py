@@ -1,11 +1,11 @@
 # Test @model macro: basic serialization/deserialization, round-trip, optionals.
-from tpy import Int32
+from tpy import int32
 from tplib.json.model import model
 
 @model
 class User:
     name: str
-    age: Int32
+    age: int32
     active: bool
     email: str | None = None
 

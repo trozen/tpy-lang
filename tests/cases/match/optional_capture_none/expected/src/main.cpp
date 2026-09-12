@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def full(v: Int32 | None) -> None:
+// def full(v: int32 | None) -> None:
 void full(std::optional<int32_t> v) {
     // match v:
     std::optional<int32_t> x;
@@ -24,7 +24,7 @@ void full(std::optional<int32_t> v) {
     }
 }
 
-// def narrowed(v: Int32 | None) -> None:
+// def narrowed(v: int32 | None) -> None:
 void narrowed(std::optional<int32_t> v) {
     // match v:
     auto& __match_subject_1 = v;

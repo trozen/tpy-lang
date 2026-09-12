@@ -4,9 +4,9 @@
 namespace tpyapp::outer::inner::consumer {
 
 
-// def compute() -> Int32:
+// def compute() -> int32:
 int32_t compute() {
-    // return add(Int32(100), Int32(23))
+    // return add(int32(100), int32(23))
     return ::tpyapp::outer::utils::add(100, 23);
 }
 

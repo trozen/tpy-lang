@@ -3,11 +3,11 @@
 
 namespace tpyapp::main {
 
-// x: Int32 = 0
+// x: int32 = 0
 int32_t x{};
 
 // @readonly
-// def ok() -> Int32:
+// def ok() -> int32:
 int32_t ok() {
     // global x
     // x = 1  # tpyc: ok
@@ -21,7 +21,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // x: Int32 = 0
+    // x: int32 = 0
     x = 0;
     // print(ok())
     std::cout << ok() << "\n";

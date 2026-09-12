@@ -2,20 +2,20 @@
 # any non-Optional union field. Codegen does not emit `Base() = default;`
 # for classes with union fields (its predicate falls through to the
 # False arm for UnionType), so subclass without super() must be rejected.
-from tpy import Int32
+from tpy import int32
 
 
 class A:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
 class B:
-    y: Int32
+    y: int32
 
-    def __init__(self, y: Int32) -> None:
+    def __init__(self, y: int32) -> None:
         self.y = y
 
 
@@ -27,9 +27,9 @@ class Base:
 
 
 class Child(Base):
-    extra: Int32
+    extra: int32
 
-    def __init__(self, e: Int32) -> None:   # tpyc: error(/must call 'super\(\).__init__/)
+    def __init__(self, e: int32) -> None:   # tpyc: error(/must call 'super\(\).__init__/)
         self.extra = e
 
 

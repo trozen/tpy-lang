@@ -1,7 +1,7 @@
-from tpy import Ptr, Int32
+from tpy import Ptr, int32
 
 def main() -> None:
-    p: Ptr[Int32] = Ptr[Int32]()
+    p: Ptr[int32] = Ptr[int32]()
     print(p.__deref__())
 
 main()

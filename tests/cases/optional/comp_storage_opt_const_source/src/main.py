@@ -4,18 +4,18 @@
 # directly and a whole-optional read lifts through optional_to_ptr. `P` is
 # `@nocopy`: every read here is through the const source, so a silent element
 # copy would be a compile error rather than an invisible divergence.
-from tpy import Int32, nocopy, readonly
+from tpy import int32, nocopy, readonly
 
 
 @nocopy
 class P:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
-def peek(p: P | None) -> Int32:
+def peek(p: P | None) -> int32:
     return -1 if p is None else p.x
 
 

@@ -3,9 +3,9 @@
 
 namespace tpyapp::main {
 
-// a = Child(Int32(3))
+// a = Child(int32(3))
 Child* a{};
-// b = Child(Int32(5))
+// b = Child(int32(5))
 Child* b{};
 
 void __tpy_init() {
@@ -18,10 +18,10 @@ void __tpy_init() {
     // # parent records via the registry so inherited dunders count.
     // from functools import total_ordering
     ::tpystd::functools::__tpy_init();
-    // a = Child(Int32(3))
+    // a = Child(int32(3))
     static Child __global_slot_1 = Child(3);
     a = &__global_slot_1;
-    // b = Child(Int32(5))
+    // b = Child(int32(5))
     static Child __global_slot_2 = Child(5);
     b = &__global_slot_2;
     // print(a < b)

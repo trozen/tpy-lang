@@ -1,1 +1,1 @@
-main.py:6: error: Integer literal 200 is outside Int8 range [-128, 127] in parameter 'x'
+main.py:6: error: Integer literal 200 is outside int8 range [-128, 127] in parameter 'x'

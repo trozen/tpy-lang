@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 
 class Container[T]:
     value: T
@@ -10,10 +10,10 @@ class Container[T]:
         return self.value
 
 
-class LabeledContainer(Container[Int32]):
+class LabeledContainer(Container[int32]):
     label: str
 
-    def __init__(self, label: str, value: Int32) -> None:
+    def __init__(self, label: str, value: int32) -> None:
         super().__init__(value)
         self.label = label
 

@@ -7,13 +7,13 @@ namespace tpyapp::main {
 // def test_value_types():
 void test_value_types() {
     // # Value type on ArrayList - get_value (copy semantics)
-    // nums = ArrayList[Int32, 4]()
+    // nums = ArrayList[int32, 4]()
     ::tpystd::tplib::array_list::ArrayList<int32_t, 4> nums = ::tpystd::tplib::array_list::ArrayList<int32_t, 4>();
     // nums.append(10)
     nums.append(10);
     // nums.append(20)
     nums.append(20);
-    // val: Int32 = nums[0]
+    // val: int32 = nums[0]
     int32_t val = nums[0];
     // print(val)  # 10
     std::cout << val << "\n";
@@ -23,9 +23,9 @@ void test_value_types() {
     // print(nums[0])  # Still 10
     std::cout << nums[0] << "\n";
     // # Test with list[T] as well
-    // int_list: list[Int32] = [5, 6, 7]
+    // int_list: list[int32] = [5, 6, 7]
     std::vector<int32_t> int_list = {5, 6, 7};
-    // v: Int32 = int_list[1]  # get_value for Int32 element
+    // v: int32 = int_list[1]  # get_value for int32 element
     int32_t v = ::tpy::__getitem__(int_list, 1);
     // print(v)  # 6
     std::cout << v << "\n";

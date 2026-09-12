@@ -1,12 +1,12 @@
-from tpy import Int32, Own, error_return, ReturnException
+from tpy import int32, Own, error_return, ReturnException
 class Err(Exception, ReturnException):
     pass
 class Cat:
-    n: Int32
+    n: int32
     def __init__(self) -> None:
         self.n = 1
 class Dog:
-    n: Int32
+    n: int32
     def __init__(self) -> None:
         self.n = 2
 class H:

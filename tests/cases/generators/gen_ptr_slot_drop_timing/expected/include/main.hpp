@@ -18,11 +18,11 @@ void main();
 
 // class Resource:
 struct Resource {
-    // n: Int32
+    // n: int32
     int32_t n;
     bool __tpy_owned_ = true;
 
-    // def __init__(self, n: Int32):
+    // def __init__(self, n: int32):
     explicit Resource(int32_t n);
     Resource(const Resource&) = delete;
     Resource& operator=(const Resource&) = delete;
@@ -65,7 +65,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
 };
 
 
-// def __init__(self, n: Int32):
+// def __init__(self, n: int32):
 inline Resource::Resource(int32_t n) : n(n) {}
 
 inline Resource::Resource(Resource&& other) noexcept : n(std::move(other.n)) {

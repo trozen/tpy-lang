@@ -23,7 +23,7 @@ void main();
 
 // class BaseAIter:
 struct BaseAIter {
-    // i: Int32
+    // i: int32
     int32_t i;
 
     // def __init__(self) -> None:

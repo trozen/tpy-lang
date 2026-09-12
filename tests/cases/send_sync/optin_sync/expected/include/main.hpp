@@ -15,12 +15,12 @@ void main();
 
 // class Config(Send, Sync):
 struct Config {
-    // rate: Int32
+    // rate: int32
     int32_t rate;
-    // depth: Int32
+    // depth: int32
     int32_t depth;
 
-    // def __init__(self, rate: Int32, depth: Int32) -> None:
+    // def __init__(self, rate: int32, depth: int32) -> None:
     Config() = default;
     explicit Config(int32_t rate, int32_t depth);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Config";
@@ -32,7 +32,7 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
 }
 
 
-// def __init__(self, rate: Int32, depth: Int32) -> None:
+// def __init__(self, rate: int32, depth: int32) -> None:
 inline Config::Config(int32_t rate, int32_t depth) : rate(rate), depth(depth) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -31,7 +31,7 @@ struct Util {
     }
 
     // @classmethod
-    // def larger(cls, a: Int32, b: Int32) -> Int32:
+    // def larger(cls, a: int32, b: int32) -> int32:
     static int32_t larger(int32_t a, int32_t b);
 
     // @classmethod
@@ -47,7 +47,7 @@ inline std::ostream& operator<<(std::ostream& os, const Util& obj) {
 
 
 // @classmethod
-// def larger(cls, a: Int32, b: Int32) -> Int32:
+// def larger(cls, a: int32, b: int32) -> int32:
 inline int32_t Util::larger(int32_t a, int32_t b) {
     // return cls.pick(a, b)
     return Util::pick<int32_t>(a, b);

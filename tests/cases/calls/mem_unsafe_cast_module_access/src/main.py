@@ -1,8 +1,8 @@
 import tpy.unsafe as m
-from tpy import Ptr, Int32, UInt32, Array
+from tpy import Ptr, int32, uint32, Array
 
-arr: Array[Int32, 2] = [Int32(1), Int32(2)]
-p: Ptr[Int32] = m.unsafe_ptr(arr)
-q: Ptr[UInt32] = m.unsafe_cast(p)
-print(m.unsafe_load(q, UInt32(0)))
-print(m.unsafe_load(q, UInt32(1)))
+arr: Array[int32, 2] = [int32(1), int32(2)]
+p: Ptr[int32] = m.unsafe_ptr(arr)
+q: Ptr[uint32] = m.unsafe_cast(p)
+print(m.unsafe_load(q, uint32(0)))
+print(m.unsafe_load(q, uint32(1)))

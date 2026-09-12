@@ -10,13 +10,13 @@ void show_list_param(const std::vector<::tpy::BigInt>* lst) {
     std::cout << ::tpy::print_optional<::tpy::ListPrinter<std::vector<::tpy::BigInt>>, std::vector<::tpy::BigInt>>(lst) << "\n";
 }
 
-// def show_dict_param(d: dict[str, Int32] | None) -> None:
+// def show_dict_param(d: dict[str, int32] | None) -> None:
 void show_dict_param(const ::tpy::ordered_map<std::string, int32_t>* d) {
     // print(d)
     std::cout << ::tpy::print_optional<::tpy::DictPrinter<std::string, int32_t>, ::tpy::ordered_map<std::string, int32_t>>(d) << "\n";
 }
 
-// def show_set_param(s: set[Int32] | None) -> None:
+// def show_set_param(s: set[int32] | None) -> None:
 void show_set_param(const ::tpy::ordered_set<int32_t>* s) {
     // print(s)
     std::cout << ::tpy::print_optional<::tpy::SetPrinter<int32_t>, ::tpy::ordered_set<int32_t>>(s) << "\n";
@@ -41,9 +41,9 @@ void main() {
     // # rvalue-address-of issue worked around in the param-call section below).
     // init_items: list[int] = [1, 2]
     std::vector<::tpy::BigInt> init_items = {1, 2};
-    // init_by_key: dict[str, Int32] = {"a": 1}
+    // init_by_key: dict[str, int32] = {"a": 1}
     ::tpy::ordered_map<std::string, int32_t> init_by_key = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
-    // init_elems: set[Int32] = {3, 4}
+    // init_elems: set[int32] = {3, 4}
     ::tpy::ordered_set<int32_t> init_elems = ::tpy::ordered_set<int32_t>({3, 4});
     // init_buf = bytearray(b"yo")
     ::tpy::ByteArray init_buf = ::tpy::ByteArray(::tpy::bytes_literal("yo", 2));
@@ -61,13 +61,13 @@ void main() {
     show_list_param(&(lst));
     // show_list_param(None)
     show_list_param(nullptr);
-    // d: dict[str, Int32] = {"k": 7}
+    // d: dict[str, int32] = {"k": 7}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"k", 7}});
     // show_dict_param(d)
     show_dict_param(&(d));
     // show_dict_param(None)
     show_dict_param(nullptr);
-    // s: set[Int32] = {9}
+    // s: set[int32] = {9}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({9});
     // show_set_param(s)
     show_set_param(&(s));

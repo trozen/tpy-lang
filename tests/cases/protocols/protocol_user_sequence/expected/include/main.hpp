@@ -19,17 +19,17 @@ void main();
 
 // class IntWrapper:
 struct IntWrapper {
-    // data: list[Int32]
+    // data: list[int32]
     std::vector<int32_t> data;
 
-    // def __init__(self, items: list[Int32]) -> None:
+    // def __init__(self, items: list[int32]) -> None:
     IntWrapper() = default;
     explicit IntWrapper(const std::vector<int32_t>& items);
 
-    // def __len__(self) -> Int32:
+    // def __len__(self) -> int32:
     int32_t __len__() const;
 
-    // def __getitem__(self, index: Int32) -> Int32:
+    // def __getitem__(self, index: int32) -> int32:
     int32_t __getitem__(int32_t index) const;
 
     int32_t operator[](int32_t index) const {
@@ -50,26 +50,26 @@ inline std::ostream& operator<<(std::ostream& os, const IntWrapper& obj) {
 }
 
 
-// def __init__(self, items: list[Int32]) -> None:
+// def __init__(self, items: list[int32]) -> None:
 inline IntWrapper::IntWrapper(const std::vector<int32_t>& items) : data(items) {}
 
-// def __len__(self) -> Int32:
+// def __len__(self) -> int32:
 inline int32_t IntWrapper::__len__() const {
     // return len(self.data)
     return ::tpy::__len__(this->data);
 }
 
-// def __getitem__(self, index: Int32) -> Int32:
+// def __getitem__(self, index: int32) -> int32:
 inline int32_t IntWrapper::__getitem__(int32_t index) const {
     // return self.data[index]
     return ::tpy::__getitem__(this->data, index);
 }
-// def sum_seq(s: Sequence[Int32]) -> Int32:
+// def sum_seq(s: Sequence[int32]) -> int32:
 template<::tpystd::typing::Sequence<int32_t> T_s>
 int32_t sum_seq(const T_s& s) {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < len(s):
     while ((i < ::tpy::__len__(s))) {
@@ -81,7 +81,7 @@ int32_t sum_seq(const T_s& s) {
     // return total
     return total;
 }
-// def first(s: Sequence[Int32]) -> Int32:
+// def first(s: Sequence[int32]) -> int32:
 template<::tpystd::typing::Sequence<int32_t> T_s>
 int32_t first(const T_s& s) {
     // return s[0]

@@ -1,8 +1,8 @@
-from tpy import Int32
+from tpy import int32
 class Outer:
     class Inner:
-        v: Int32
-        def __init__(self, v: Int32, w: Int32 = 0) -> None:
+        v: int32
+        def __init__(self, v: int32, w: int32 = 0) -> None:
             self.v = v + w
 def main() -> None:
     i = Outer.Inner(v=1)

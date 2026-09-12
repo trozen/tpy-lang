@@ -39,10 +39,10 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
     return os;
 }
 
-// def take_all[T](*boxes: Box[T]) -> Int32:
+// def take_all[T](*boxes: Box[T]) -> int32:
 template<typename T>
 int32_t take_all(::tpy::varargs<const Box<T>> boxes) {
-    // n: Int32 = 0
+    // n: int32 = 0
     int32_t n = 0;
     // for b in boxes:
     auto& __obj_0 = boxes;

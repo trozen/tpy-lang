@@ -1,11 +1,11 @@
 # asyncio.gather is homogeneous: all positional task args must share T.
-# Mixing Task[Int32] with Task[str] must produce a clean tpyc diagnostic
+# Mixing Task[int32] with Task[str] must produce a clean tpyc diagnostic
 # at the call site rather than a cryptic C++ template error.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
-async def fetch_int() -> Int32:
+async def fetch_int() -> int32:
     await asyncio.sleep(0.0)
     return 42
 

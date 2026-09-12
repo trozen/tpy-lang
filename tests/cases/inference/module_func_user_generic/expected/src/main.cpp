@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // # module.func[T](args) syntax on user-defined generic
-    // y = helpers.identity[Int32](Int32(7))
+    // y = helpers.identity[int32](int32(7))
     int32_t y = ::tpyapp::helpers::identity<int32_t>(7);
     // print(y)
     std::cout << y << "\n";

@@ -6,27 +6,27 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // a: list[Int32] = [1, 3, 5, 7]
+    // a: list[int32] = [1, 3, 5, 7]
     std::vector<int32_t> a = {1, 3, 5, 7};
-    // print(bisect_left(a, Int32(4)))
+    // print(bisect_left(a, int32(4)))
     std::cout << ::tpystd::bisect::bisect_left<int32_t>(a, 4) << "\n";
-    // print(bisect_right(a, Int32(5)))
+    // print(bisect_right(a, int32(5)))
     std::cout << ::tpystd::bisect::bisect_right<int32_t>(a, 5) << "\n";
-    // print(bisect(a, Int32(5)))  # alias for bisect_right
+    // print(bisect(a, int32(5)))  # alias for bisect_right
     std::cout << ::tpystd::bisect::bisect<int32_t>(a, 5) << "\n";
-    // insort_left(a, Int32(4))
+    // insort_left(a, int32(4))
     ::tpystd::bisect::insort_left<int32_t>(a, 4);
     // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
-    // b: list[Int32] = [1, 3, 5, 7]
+    // b: list[int32] = [1, 3, 5, 7]
     std::vector<int32_t> b = {1, 3, 5, 7};
-    // insort_right(b, Int32(3))
+    // insort_right(b, int32(3))
     ::tpystd::bisect::insort_right<int32_t>(b, 3);
     // print(b[1], b[2])
     std::cout << ::tpy::__getitem__(b, 1) << " " << ::tpy::__getitem__(b, 2) << "\n";
-    // c: list[Int32] = [1, 3, 5, 7]
+    // c: list[int32] = [1, 3, 5, 7]
     std::vector<int32_t> c = {1, 3, 5, 7};
-    // insort(c, Int32(3))  # alias for insort_right
+    // insort(c, int32(3))  # alias for insort_right
     ::tpystd::bisect::insort<int32_t>(c, 3);
     // print(c[1], c[2])
     std::cout << ::tpy::__getitem__(c, 1) << " " << ::tpy::__getitem__(c, 2) << "\n";

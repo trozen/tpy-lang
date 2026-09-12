@@ -1,5 +1,5 @@
-from tpy import Int32
-def f(xs: list[Int32] | str) -> Int32:
+from tpy import int32
+def f(xs: list[int32] | str) -> int32:
     if isinstance(xs, list):
         return sum(x for x in xs)
     return 0

@@ -29,10 +29,10 @@ from .diagnostics import DiagnosticLevel
 _STDLIB_DIRS = [get_lib_dir() / "tpy"]
 
 _ACC_BORROW = (
-    "from tpy import Int32\n"
+    "from tpy import int32\n"
     "class Acc:\n"
-    "    n: Int32\n"
-    "    def __init__(self, n: Int32):\n"
+    "    n: int32\n"
+    "    def __init__(self, n: int32):\n"
     "        self.n = n\n"
     "    def __add__(self, o: 'Acc') -> 'Acc':\n"
     "        return self if self.n >= o.n else o\n"
@@ -41,10 +41,10 @@ _ACC_BORROW = (
 )
 
 _ACC_OWN = (
-    "from tpy import Int32, Own\n"
+    "from tpy import int32, Own\n"
     "class Acc:\n"
-    "    n: Int32\n"
-    "    def __init__(self, n: Int32):\n"
+    "    n: int32\n"
+    "    def __init__(self, n: int32):\n"
     "        self.n = n\n"
     "    def __add__(self, o: 'Acc') -> Own['Acc']:\n"
     "        return Acc(self.n + o.n)\n"
@@ -104,10 +104,10 @@ class TestTempOperandBorrowWarnings:
 
 
 _HOLDER = (
-    "from tpy import Int32, Own\n"
+    "from tpy import int32, Own\n"
     "class Payload:\n"
-    "    v: Int32\n"
-    "    def __init__(self, v: Int32):\n"
+    "    v: int32\n"
+    "    def __init__(self, v: int32):\n"
     "        self.v = v\n"
     "class Holder:\n"
     "    p: Payload\n"
@@ -128,7 +128,7 @@ class TestOwnSlotBorrowCallCopyWarning:
     def test_own_param_of_free_function_warns(self):
         warnings = _warnings(
             _HOLDER
-            + "def keep(p: Own[Payload]) -> Int32:\n"
+            + "def keep(p: Own[Payload]) -> int32:\n"
             + "    return p.v\n"
             + "def use(h: Holder) -> None:\n"
             + "    print(keep(h.borrow()))\n"
@@ -186,7 +186,7 @@ class TestOwnSlotBorrowCallCopyWarning:
             _HOLDER
             + "def make() -> Own[Payload]:\n"
             + "    return Payload(1)\n"
-            + "def keep(p: Own[Payload]) -> Int32:\n"
+            + "def keep(p: Own[Payload]) -> int32:\n"
             + "    return p.v\n"
             + "def use() -> None:\n"
             + "    print(keep(make()))\n"

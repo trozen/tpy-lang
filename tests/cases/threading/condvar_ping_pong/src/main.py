@@ -3,15 +3,15 @@
 # <-> MutexGuard interop (wait releases the guard's lock, blocks, reacquires)
 # and that the handoff crosses the thread boundary through the shared state --
 # the log is mutated by both threads under one lock and observed after join.
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 from tplib.arc import Arc
 from tpy.thread import spawn
 from tpy.sync import Mutex, Condvar
 
 
 class PingState:
-    turn: Int32          # 0 = main's turn, 1 = worker's turn
-    log: list[Int32]
+    turn: int32          # 0 = main's turn, 1 = worker's turn
+    log: list[int32]
 
     def __init__(self) -> None:
         self.turn = 0

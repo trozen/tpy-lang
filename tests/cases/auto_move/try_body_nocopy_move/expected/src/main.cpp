@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // boxes: list[Box[Int32]] = []
+    // boxes: list[Box[int32]] = []
     std::vector<::tpystd::tplib::box::Box<int32_t>> boxes = std::vector<::tpystd::tplib::box::Box<int32_t>>{};
     // try:
     {

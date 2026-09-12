@@ -31,12 +31,12 @@ compiler source itself uses 53 dataclass definitions (23 frozen, 30 mutable).
 
 ```python
 from dataclasses import dataclass
-from tpy import Int32
+from tpy import int32
 
 @dataclass
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 p = Point(1, 2)
 print(p)              # Point(x=1, y=2)
@@ -88,18 +88,18 @@ The minimal viable feature: `@dataclass` generates `__init__` from field annotat
 
 ```python
 from dataclasses import dataclass
-from tpy import Int32
+from tpy import int32
 
 @dataclass
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 # Equivalent to writing:
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32) -> None:
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 ```
@@ -113,7 +113,7 @@ Fields can have default values. Fields with defaults must come after fields with
 @dataclass
 class Config:
     name: str
-    value: Int32 = 0
+    value: int32 = 0
     enabled: bool = True
 
 c1 = Config("test")           # value=0, enabled=True
@@ -126,8 +126,8 @@ Error case:
 ```python
 @dataclass
 class Bad:
-    x: Int32 = 0
-    y: Int32       # error: field without default after field with default
+    x: int32 = 0
+    y: int32       # error: field without default after field with default
 ```
 
 ### Validation Rules
@@ -179,8 +179,8 @@ Python's `@dataclass` generates `__eq__` by default (comparing all fields).
 ```python
 @dataclass
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 p1 = Point(1, 2)
 p2 = Point(1, 2)
@@ -230,8 +230,8 @@ compiler source (23 frozen dataclasses for type system types).
 ```python
 @dataclass(frozen=True)
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 p = Point(1, 2)
 p.x = 3  # error: cannot assign to field of frozen dataclass 'Point'
@@ -282,8 +282,8 @@ by default.
 ```python
 @dataclass(frozen=True)
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 d: dict[Point, str] = {Point(1, 2): "a", Point(3, 4): "b"}
 ```
@@ -294,8 +294,8 @@ Synthesize `__hash__` that combines field hashes:
 
 ```python
 # Synthesized (conceptual):
-def __hash__(self) -> UInt64:
-    return hash(self.x) ^ (hash(self.y) * UInt64(31))
+def __hash__(self) -> uint64:
+    return hash(self.x) ^ (hash(self.y) * uint64(31))
 ```
 
 Uses a simple hash-combining strategy. The exact algorithm can follow Python's
@@ -374,12 +374,12 @@ changes to the shared record codegen -- deferred to a future cleanup.
 
 ```python
 from dataclasses import dataclass
-from tpy import Int32
+from tpy import int32
 
 @dataclass
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 def main() -> None:
     p = Point(1, 2)
@@ -399,14 +399,14 @@ Point(x=1, y=2)
 
 ```python
 from dataclasses import dataclass
-from tpy import Int32
+from tpy import int32
 
 @dataclass
 class Color:
-    r: Int32
-    g: Int32
-    b: Int32
-    a: Int32 = 255
+    r: int32
+    g: int32
+    b: int32
+    a: int32 = 255
 
 def main() -> None:
     red = Color(255, 0, 0)
@@ -427,12 +427,12 @@ Color(r=255, g=0, b=0, a=128)
 
 ```python
 from dataclasses import dataclass
-from tpy import Int32
+from tpy import int32
 
 @dataclass(frozen=True)
 class Vec2:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 def main() -> None:
     v = Vec2(3, 4)
@@ -446,12 +446,12 @@ main()
 
 ```python
 from dataclasses import dataclass
-from tpy import Int32
+from tpy import int32
 
 @dataclass
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 def main() -> None:
     a = Point(1, 2)

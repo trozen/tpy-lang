@@ -15,7 +15,7 @@ int32_t pick(std::string_view xs);
 void main();
 
 // @overload
-// def pick[T: Comparable](xs: list[T]) -> Int32: ...
+// def pick[T: Comparable](xs: list[T]) -> int32: ...
 template<::tpystd::tpy::Comparable T>
 int32_t pick(const std::vector<T>& xs) {
     // n = 0
@@ -34,7 +34,7 @@ int32_t pick(const std::vector<T>& xs) {
 }
 
 // @overload
-// def pick(xs: str) -> Int32: ...
+// def pick(xs: str) -> int32: ...
 inline int32_t pick(std::string_view xs) {
     // return len(xs)
     return ::tpy::__len__(xs);

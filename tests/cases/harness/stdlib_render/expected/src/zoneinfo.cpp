@@ -17,7 +17,7 @@ namespace tpystd::zoneinfo {
     // for i in range(n):
     ::tpy::BigInt __stop_0 = n;
     for (::tpy::BigInt i = 0; i < __stop_0; ++i) {
-        // out.add(hinnant_date.zone_db_key_at(Int32(i)))
+        // out.add(hinnant_date.zone_db_key_at(int32(i)))
         out.insert(::tpy::stdlib::datetime::zone_db_key_at((i).to_fixed_check<int32_t>()));
     }
     // return out

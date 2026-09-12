@@ -41,7 +41,7 @@ void main();
 
 // class Inner:
 struct Inner {
-    // counter: Int32
+    // counter: int32
     int32_t counter;
 
     // def __init__(self) -> None:
@@ -59,7 +59,7 @@ inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
 
 // class Impl:
 struct Impl {
-    // counter: Int32
+    // counter: int32
     int32_t counter;
 
     // def __init__(self) -> None:

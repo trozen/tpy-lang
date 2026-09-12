@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def bump_first(p: tuple[Item, Int32]) -> None:
+// def bump_first(p: tuple[Item, int32]) -> None:
 void bump_first(const std::tuple<Item*, int32_t>& p) {
     // # Borrowing param: writing through the element must reach the caller's
     // # object, which is only true if the slot stayed a borrow.
@@ -12,7 +12,7 @@ void bump_first(const std::tuple<Item*, int32_t>& p) {
     std::get<0>(p)->n = (::tpy::add_check<int32_t>(std::get<0>(p)->n, std::get<1>(p)));
 }
 
-// def read_pair(p: tuple[Item, Int32]) -> Int32:
+// def read_pair(p: tuple[Item, int32]) -> int32:
 int32_t read_pair(const std::tuple<const Item*, int32_t>& p) {
     // return p[0].n * p[1]
     return (::tpy::mul_check<int32_t>(std::get<0>(p)->n, std::get<1>(p)));

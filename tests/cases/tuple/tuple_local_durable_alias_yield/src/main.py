@@ -2,16 +2,16 @@
 # yielding the alias now aliases the member, so a post-boundary mutation reaches
 # the caller's object.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    val: Int32
-    def __init__(self, v: Int32) -> None:
+    val: int32
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 
-def gen(b: Box) -> Iterator[tuple[Int32, Box]]:
+def gen(b: Box) -> Iterator[tuple[int32, Box]]:
     t = (1, b)
     u = t
     yield u

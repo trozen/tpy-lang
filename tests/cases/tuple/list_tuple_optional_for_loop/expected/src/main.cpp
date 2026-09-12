@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def f(t: tuple[T | None, T | None]) -> Int32:
+// def f(t: tuple[T | None, T | None]) -> int32:
 int32_t f(const std::tuple<const T*, const T*>& t) {
     // a, b = t
     auto& __tup_1 = t;
@@ -12,7 +12,7 @@ int32_t f(const std::tuple<const T*, const T*>& t) {
     const T* b = std::get<1>(__tup_1);
     // if a is None or b is None:
     if (((a == nullptr) || (b == nullptr))) {
-        // return Int32(0)
+        // return int32(0)
         return 0;
     }
     // return a.x + b.x
@@ -22,8 +22,8 @@ int32_t f(const std::tuple<const T*, const T*>& t) {
 // def main() -> None:
 void main() {
     // items: list[tuple[T | None, T | None]] = [
-    // (T(Int32(1)), T(Int32(2))),
-    // (None, T(Int32(3))),
+    // (T(int32(1)), T(int32(2))),
+    // (None, T(int32(3))),
     // ]
     std::vector<std::tuple<std::optional<T>, std::optional<T>>> items = {::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(::tpy::tuple_value_to_borrow<std::tuple<T*, T*>>(std::tuple<T, T>{T(1), T(2)})), ::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(::tpy::tuple_value_to_borrow<std::tuple<T*, T*>>(std::tuple<T*, T>{nullptr, T(3)}))};
     // for it in items:

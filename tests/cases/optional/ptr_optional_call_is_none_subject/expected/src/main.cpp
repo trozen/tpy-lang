@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def find(xs: list[Rec], want: Int32) -> Rec | None:
+// def find(xs: list[Rec], want: int32) -> Rec | None:
 Rec* find(std::vector<Rec>& xs, int32_t want) {
     // for r in xs:
     auto& __obj_0 = xs;

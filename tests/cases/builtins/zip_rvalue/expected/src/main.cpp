@@ -10,7 +10,7 @@ std::vector<std::string> get_names() {
     return {"alice", "bob"};
 }
 
-// def get_scores() -> Own[list[Int32]]:
+// def get_scores() -> Own[list[int32]]:
 std::vector<int32_t> get_scores() {
     // return [100, 200]
     return {100, 200};

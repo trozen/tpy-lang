@@ -36,10 +36,10 @@ inline std::ostream& operator<<(std::ostream& os, const Named& obj) {
 
 // class Counted:
 struct Counted {
-    // count: Int32
+    // count: int32
     int32_t count;
 
-    // def __init__(self, count: Int32) -> None:
+    // def __init__(self, count: int32) -> None:
     Counted() = default;
     explicit Counted(int32_t count);
 
@@ -58,7 +58,7 @@ struct Widget : Named, Counted {
     // tag: str
     std::string tag;
 
-    // def __init__(self, name: str, count: Int32, tag: str) -> None:
+    // def __init__(self, name: str, count: int32, tag: str) -> None:
     Widget() = default;
     explicit Widget(std::string_view name, int32_t count, std::string_view tag);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Widget";
@@ -79,7 +79,7 @@ inline std::string Named::describe() const {
     return this->name;
 }
 
-// def __init__(self, count: Int32) -> None:
+// def __init__(self, count: int32) -> None:
 inline Counted::Counted(int32_t count) : count(count) {}
 
 // def inc(self) -> None:
@@ -88,7 +88,7 @@ inline void Counted::inc() {
     this->count = (::tpy::add_check<int32_t>(this->count, 1));
 }
 
-// def __init__(self, name: str, count: Int32, tag: str) -> None:
+// def __init__(self, name: str, count: int32, tag: str) -> None:
 inline Widget::Widget(std::string_view name, int32_t count, std::string_view tag) : Named(name), Counted(count), tag(tag) {}
 void __tpy_init();
 } // namespace tpyapp::main

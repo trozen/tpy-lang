@@ -6,18 +6,18 @@
 # does not contain, which is where a case-block manager would already be dead.
 from typing import Iterator
 
-from tpy import Int32, StrView
+from tpy import int32, StrView
 
 
 class Box:
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
 
 class Holder:
     box: Box
 
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.box = Box(n)
 
     def __enter__(self) -> "Box | None":
@@ -40,7 +40,7 @@ class Named:
         pass
 
 
-def gen() -> Iterator[Int32]:
+def gen() -> Iterator[int32]:
     h = Holder(7)
     with h as m:
         pass

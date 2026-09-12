@@ -1,10 +1,10 @@
 # Unpack tuple with reference element -- unpacked variable is a reference
-from tpy import Int32
+from tpy import int32
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32) -> None:
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
     def __repr__(self) -> str:
@@ -14,12 +14,12 @@ def find(p: Point) -> tuple[Point, bool]:
     return (p, True)
 
 def main() -> None:
-    p = Point(Int32(10), Int32(20))
+    p = Point(int32(10), int32(20))
     pt, found = find(p)
     print(pt)
     print(found)
     # Mutation through reference
-    p.x = Int32(99)
+    p.x = int32(99)
     print(pt)
 
 main()

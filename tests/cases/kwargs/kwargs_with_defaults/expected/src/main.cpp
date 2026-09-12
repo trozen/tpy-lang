@@ -16,8 +16,8 @@ void g(std::string_view x, std::string_view y, std::string_view z) {
     std::cout << std::format("x={} y={} z={}", x, y, z) << "\n";
 }
 
-// # Also test with Int32 to cover the fixed-int default path
-// def h(a: Int32, b: Int32 = Int32(100)) -> None:
+// # Also test with int32 to cover the fixed-int default path
+// def h(a: int32, b: int32 = int32(100)) -> None:
 void h(int32_t a, int32_t b) {
     // print(f"a={a} b={b}")
     std::cout << std::format("a={} b={}", a, b) << "\n";
@@ -33,7 +33,7 @@ void main() {
     f(::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3));
     // g("hello", z="world")
     g("hello", "default_y", "world");
-    // h(Int32(5), b=Int32(9))
+    // h(int32(5), b=int32(9))
     h(5, 9);
 }
 

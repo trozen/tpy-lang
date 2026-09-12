@@ -6,14 +6,14 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // h = HeapVal(Int32(42))
+    // h = HeapVal(int32(42))
     HeapVal h = HeapVal(42);
-    // val: Int32 = h.take()
+    // val: int32 = h.take()
     int32_t val = std::move(h).take();
     // print("got", val)
     std::cout << "got" << " " << val << "\n";
     // # Temporary
-    // val2: Int32 = HeapVal(Int32(99)).take()
+    // val2: int32 = HeapVal(int32(99)).take()
     int32_t val2 = HeapVal(99).take();
     // print("got", val2)
     std::cout << "got" << " " << val2 << "\n";

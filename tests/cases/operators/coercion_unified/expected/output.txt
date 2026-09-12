@@ -1,4 +1,4 @@
-BigInt -> Int32 coercions:
+BigInt -> int32 coercions:
 100
 200
 42

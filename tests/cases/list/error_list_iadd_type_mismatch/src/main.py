@@ -1,8 +1,8 @@
 # Error: list += with mismatched element type
-from tpy import Int32
+from tpy import int32
 
 def main() -> None:
-    a: list[Int32] = [1, 2]
+    a: list[int32] = [1, 2]
     b: list[str] = ["x"]
     a += b  # tpyc: error(/does not conform to protocol Iterable/)
 

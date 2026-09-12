@@ -3,9 +3,9 @@
 # parent's complete type, which the cycle's forward-decl headers
 # cannot provide.
 from a import A
-from tpy import Int32
+from tpy import int32
 
-def main() -> Int32:
+def main() -> int32:
     return 0
 
 main()

@@ -38,7 +38,7 @@ void main();
 // @nocopy
 // class ExecutorA(Awaker):
 struct ExecutorA : Awaker {
-    // log: list[Int32]
+    // log: list[int32]
     std::vector<int32_t> log;
 
     // def __init__(self) -> None:
@@ -49,7 +49,7 @@ struct ExecutorA : Awaker {
     ExecutorA(ExecutorA&&) = default;
     ExecutorA& operator=(ExecutorA&&) = default;
 
-    // def mark(self, task_id: Int32) -> None:
+    // def mark(self, task_id: int32) -> None:
     void mark(int32_t task_id) override;
     static constexpr std::string_view __tpy_class_name__ = "__main__.ExecutorA";
 };
@@ -62,7 +62,7 @@ inline std::ostream& operator<<(std::ostream& os, const ExecutorA& obj) {
 // @nocopy
 // class ExecutorB(Awaker):
 struct ExecutorB : Awaker {
-    // log: list[Int32]
+    // log: list[int32]
     std::vector<int32_t> log;
 
     // def __init__(self) -> None:
@@ -73,7 +73,7 @@ struct ExecutorB : Awaker {
     ExecutorB(ExecutorB&&) = default;
     ExecutorB& operator=(ExecutorB&&) = default;
 
-    // def mark(self, task_id: Int32) -> None:
+    // def mark(self, task_id: int32) -> None:
     void mark(int32_t task_id) override;
     static constexpr std::string_view __tpy_class_name__ = "__main__.ExecutorB";
 };
@@ -88,7 +88,7 @@ inline std::ostream& operator<<(std::ostream& os, const ExecutorB& obj) {
 struct Notifier {
     // awaker: Ptr[Awaker]
     Awaker* awaker;
-    // task_id: Int32
+    // task_id: int32
     int32_t task_id;
 
     // def __init__(self) -> None:
@@ -99,7 +99,7 @@ struct Notifier {
     Notifier(Notifier&&) = default;
     Notifier& operator=(Notifier&&) = default;
 
-    // def aim(self, p: Ptr[Awaker], tid: Int32) -> None:
+    // def aim(self, p: Ptr[Awaker], tid: int32) -> None:
     void aim(Awaker* p, int32_t tid);
 
     // def fire(self) -> None:
@@ -135,7 +135,7 @@ namespace tpyapp::main {
 // def __init__(self) -> None:
 inline ExecutorA::ExecutorA() : log(std::vector<int32_t>{}) {}
 
-// def mark(self, task_id: Int32) -> None:
+// def mark(self, task_id: int32) -> None:
 inline void ExecutorA::mark(int32_t task_id) {
     // self.log.append(task_id * 10)
     this->log.push_back((::tpy::mul_check<int32_t>(task_id, 10)));
@@ -144,7 +144,7 @@ inline void ExecutorA::mark(int32_t task_id) {
 // def __init__(self) -> None:
 inline ExecutorB::ExecutorB() : log(std::vector<int32_t>{}) {}
 
-// def mark(self, task_id: Int32) -> None:
+// def mark(self, task_id: int32) -> None:
 inline void ExecutorB::mark(int32_t task_id) {
     // self.log.append(task_id + 1000)
     this->log.push_back((::tpy::add_check<int32_t>(task_id, 1000)));
@@ -153,7 +153,7 @@ inline void ExecutorB::mark(int32_t task_id) {
 // def __init__(self) -> None:
 inline Notifier::Notifier() : awaker(nullptr), task_id(0) {}
 
-// def aim(self, p: Ptr[Awaker], tid: Int32) -> None:
+// def aim(self, p: Ptr[Awaker], tid: int32) -> None:
 inline void Notifier::aim(Awaker* p, int32_t tid) {
     // self.awaker = p
     this->awaker = p;

@@ -1,2 +1,2 @@
-utils.py:3: warning: ALL_CAPS variable 'MAX' without Final annotation; use Final[Int32] if this is a constant
-main.py:5: warning: ALL_CAPS variable 'MAX' without Final annotation; use Final[Int32] if this is a constant
+utils.py:3: warning: ALL_CAPS variable 'MAX' without Final annotation; use Final[int32] if this is a constant
+main.py:5: warning: ALL_CAPS variable 'MAX' without Final annotation; use Final[int32] if this is a constant

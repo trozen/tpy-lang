@@ -16,18 +16,18 @@ void main();
 
 // class Container:
 struct Container {
-    // _items: list[Int32]
+    // _items: list[int32]
     std::vector<int32_t> _items;
 
     // def __init__(self) -> None:
     Container();
 
     // @readonly
-    // def items(self) -> list[Int32]:
+    // def items(self) -> list[int32]:
     const std::vector<int32_t>& items() const;
 
     // @readonly
-    // def count(self) -> Int32:
+    // def count(self) -> int32:
     int32_t count() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
@@ -42,16 +42,16 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
 inline Container::Container() : _items(std::vector<int32_t>{10, 20, 30}) {}
 
 // @readonly
-// def items(self) -> list[Int32]:
+// def items(self) -> list[int32]:
 inline const std::vector<int32_t>& Container::items() const {
     // return self._items
     return this->_items;
 }
 
 // @readonly
-// def count(self) -> Int32:
+// def count(self) -> int32:
 inline int32_t Container::count() const {
-    // return Int32(len(self._items))
+    // return int32(len(self._items))
     return ::tpy::__len__(this->_items);
 }
 void __tpy_init();

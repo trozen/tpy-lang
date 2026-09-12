@@ -15,7 +15,7 @@ std::vector<::tpy::Bytes> take_own(std::vector<::tpy::Bytes>&& data) {
     return data;
 }
 
-// def use_flat(f: Flat) -> Int32:
+// def use_flat(f: Flat) -> int32:
 int32_t use_flat(const Flat& f) {
     // return f.n
     return f.n;
@@ -105,7 +105,7 @@ void ctor_nested_call() {
 }
 
 // # ... as a return value.
-// def make(k: Int32) -> Own[Flat]:
+// def make(k: int32) -> Own[Flat]:
 Flat make(int32_t k) {
     // return Flat([bytes([i]) for i in range(k)])  # tpyc: ok
     std::vector<::tpy::Bytes> __tmp_9 = ({
@@ -217,7 +217,7 @@ void own_stub_elem() {
     ::tpy::__getitem__(table, 0).push_back(9.0);
     // print("own_stub_elem", len(table), table[0])
     std::cout << "own_stub_elem" << " " << ::tpy::__len__(table) << " " << ::tpy::ListPrinter(::tpy::__getitem__(table, 0)) << "\n";
-    // d: dict[Int32, list[Int32]] = {}
+    // d: dict[int32, list[int32]] = {}
     ::tpy::ordered_map<int32_t, std::vector<int32_t>> d = ::tpy::ordered_map<int32_t, std::vector<int32_t>>();
     // got = d.setdefault(1, [x for x in range(3)])  # tpyc: ok
     std::vector<int32_t>& got = ::tpy::dict_setdefault(d, 1, ({
@@ -274,7 +274,7 @@ void own_marker_and_pending() {
 
 // # An rvalue-reassigned local: the temp lands before the rebind-slot
 // # declaration and before each in-place slot rewrite.
-// def rebind_slot_reseat(k: Int32) -> None:
+// def rebind_slot_reseat(k: int32) -> None:
 void rebind_slot_reseat(int32_t k) {
     std::optional<Flat> __slot_2;
     // f = Flat([bytes([i]) for i in range(k)])  # tpyc: ok
@@ -310,7 +310,7 @@ void rebind_slot_reseat(int32_t k) {
 // # own gap, BUGS.md#nested-def-native-call-list-literal-arg).
 // def closure() -> None:
 void closure() {
-    // def inner(k: Int32) -> Int32:
+    // def inner(k: int32) -> int32:
     auto inner = [](int32_t k) -> int32_t {
         // return Flat([b"x" for i in range(k)]).n  # tpyc: ok
         std::vector<::tpy::Bytes> __tmp_14 = ({
@@ -329,7 +329,7 @@ void closure() {
 }
 
 // # With body, try body, match arm.
-// def blocks(k: Int32) -> None:
+// def blocks(k: int32) -> None:
 void blocks(int32_t k) {
     std::optional<Flat> __slot_1;
     // with CM() as n:
@@ -412,7 +412,7 @@ void blocks(int32_t k) {
 
 // # A reseat of a with-hoisted, reassigned record: the argument temp must land
 // # BEFORE the rebind write (every valued reseat kind flushes first).
-// def hoisted_reseat(k: Int32) -> None:
+// def hoisted_reseat(k: int32) -> None:
 void hoisted_reseat(int32_t k) {
     std::optional<Flat> __slot_1;
     // with CM() as n:
@@ -449,7 +449,7 @@ void hoisted_reseat(int32_t k) {
     std::cout << "hoisted_reseat" << " " << f->n << "\n";
 }
 
-// def label(k: Int32) -> str:
+// def label(k: int32) -> str:
 std::string label(int32_t k) {
     // if k == 0:
     if ((k == 0)) {
@@ -462,7 +462,7 @@ std::string label(int32_t k) {
 
 // # The str in-place append drains its value's temp first (the `or` operand
 // # materializes one).
-// def str_append_temp(k: Int32) -> None:
+// def str_append_temp(k: int32) -> None:
 void str_append_temp(int32_t k) {
     // s = "start"
     std::string s = "start";
@@ -478,7 +478,7 @@ void str_append_temp(int32_t k) {
 
 // # @error_return body.
 // @error_return(MyErr)
-// def error_return_body(k: Int32) -> Int32:
+// def error_return_body(k: int32) -> int32:
 std::expected<int32_t, MyErr> error_return_body(int32_t k) {
     // f = Flat([bytes([i]) for i in range(k)])  # tpyc: ok
     std::vector<::tpy::Bytes> __tmp_21 = ({

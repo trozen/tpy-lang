@@ -17,10 +17,10 @@ void main();
 
 // class A:
 struct A {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     A() = default;
     explicit A(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.A";
@@ -70,7 +70,7 @@ inline std::ostream& operator<<(std::ostream& os, const Const& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline A::A(int32_t v) : v(v) {}
 
 // # Param escapes via mutable Ptr[A] field -> must emit `A& a`, not `const A& a`.

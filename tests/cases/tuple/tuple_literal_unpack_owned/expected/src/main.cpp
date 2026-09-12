@@ -4,14 +4,14 @@
 namespace tpyapp::main {
 
 
-// def make(v: Int32) -> Own[Box[Int32]]:
+// def make(v: int32) -> Own[Box[int32]]:
 ::tpystd::tplib::box::Box<int32_t> make(int32_t v) {
     // return Box(v)
     int32_t __tmp_1 = v;
     return ::tpystd::tplib::box::Box<int32_t>(std::move(__tmp_1));
 }
 
-// def pair() -> tuple[Own[Box[Int32]], Own[Box[Int32]]]:
+// def pair() -> tuple[Own[Box[int32]], Own[Box[int32]]]:
 std::tuple<::tpystd::tplib::box::Box<int32_t>, ::tpystd::tplib::box::Box<int32_t>> pair() {
     // a, b = (make(7), make(9))
     ::tpystd::tplib::box::Box<int32_t> __unpack_0_0 = make(7);

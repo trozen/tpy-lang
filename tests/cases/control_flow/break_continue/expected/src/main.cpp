@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def test_break():
 void test_break() {
     // # Break in while loop
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < 10:
     while ((i < 10)) {
@@ -26,7 +26,7 @@ void test_break() {
 // def test_continue():
 void test_continue() {
     // # Continue in for loop - skip even numbers
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for i in range(10):
     for (int32_t i = 0; i < 10; ++i) {
@@ -45,7 +45,7 @@ void test_continue() {
 // def test_nested_break():
 void test_nested_break() {
     // # Break only exits innermost loop
-    // count: Int32 = 0
+    // count: int32 = 0
     int32_t count = 0;
     // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
@@ -67,7 +67,7 @@ void test_nested_break() {
 // def test_nested_continue():
 void test_nested_continue() {
     // # Continue only affects innermost loop
-    // count: Int32 = 0
+    // count: int32 = 0
     int32_t count = 0;
     // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {

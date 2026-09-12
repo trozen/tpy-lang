@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def eq(o: Char | None) -> bool:
+// def eq(o: char | None) -> bool:
 bool eq(std::optional<char> o) {
     // return o == "a"
     return (o == 'a');
@@ -12,7 +12,7 @@ bool eq(std::optional<char> o) {
 
 // def main() -> None:
 void main() {
-    // print(eq(Char("a")), eq(Char("b")), eq(None))
+    // print(eq(char("a")), eq(char("b")), eq(None))
     std::cout << ::tpy::print_bool(eq(::tpy::char_from_str("a"))) << " " << ::tpy::print_bool(eq(::tpy::char_from_str("b"))) << " " << ::tpy::print_bool(eq(std::nullopt)) << "\n";
 }
 

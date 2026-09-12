@@ -2,21 +2,21 @@
 # moved into Box[P] (dynamic type is provably its static type); a field mutation
 # before boxing does not disqualify it.
 from typing import Protocol
-from tpy import dynamic, nocopy, Int32
+from tpy import dynamic, nocopy, int32
 from tplib import Box
 
 
 @dynamic
 class Conn(Protocol):
-    def port(self) -> Int32: ...
+    def port(self) -> int32: ...
 
 
 @nocopy
 class HttpConn(Conn):
-    _port: Int32
-    def __init__(self, p: Int32) -> None:
+    _port: int32
+    def __init__(self, p: int32) -> None:
         self._port = p
-    def port(self) -> Int32:
+    def port(self) -> int32:
         return self._port
 
 

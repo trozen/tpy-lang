@@ -1,11 +1,11 @@
 # Own[T] params use T&& for non-value types, T by value for value types.
 # Generic Own[T] uses std::type_identity_t<T>&& to prevent forwarding-ref deduction.
 # Tests: last-use auto-move, non-last-use copy-temp, value-type by-value, and generic path.
-from tpy import Int32, Own, copy
+from tpy import int32, Own, copy
 
 class Box:
-    value: Int32
-    def __init__(self, value: Int32) -> None:
+    value: int32
+    def __init__(self, value: int32) -> None:
         self.value = value
 
 class Container[T]:
@@ -15,10 +15,10 @@ class Container[T]:
     def push(self, item: Own[T]) -> None:
         self.items.append(item)
 
-def consume(b: Own[Box]) -> Int32:
+def consume(b: Own[Box]) -> int32:
     return b.value
 
-def use_int(x: Own[Int32]) -> Int32:
+def use_int(x: Own[int32]) -> int32:
     return x
 
 def main() -> None:
@@ -31,8 +31,8 @@ def main() -> None:
     print(consume(copy(b2)))
     print(b2.value)
 
-    # Value type Own[Int32] -- passed by value (no T&&), std::move is harmless
-    n: Int32 = 7
+    # Value type Own[int32] -- passed by value (no T&&), std::move is harmless
+    n: int32 = 7
     print(use_int(n))
 
     # Generic Own[T] -- uses std::type_identity_t<T>&& in C++

@@ -3,17 +3,17 @@
 # reference member, so the bare name read is already the borrow the slot wants.
 import asyncio
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
 class P:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
-def each(xs: list[Int32]) -> Iterator[list[Int32]]:
+def each(xs: list[int32]) -> Iterator[list[int32]]:
     yield xs  # the list param handed out by reference, twice
     yield xs
 
@@ -23,17 +23,17 @@ def rep(b: P) -> Iterator[P]:
     yield b
 
 
-def pairs(d: dict[str, Int32]) -> Iterator[dict[str, Int32]]:
+def pairs(d: dict[str, int32]) -> Iterator[dict[str, int32]]:
     yield d
     yield d
 
 
-async def step(n: Int32) -> Int32:
+async def step(n: int32) -> int32:
     return n + 1
 
 
-async def late() -> Int32:
-    x: Int32  # annotation only: the frame already declares the field
+async def late() -> int32:
+    x: int32  # annotation only: the frame already declares the field
     s: str  # same for a str slot -- no default-construct line either
     await step(0)
     x = 1
@@ -41,8 +41,8 @@ async def late() -> Int32:
     return x + len(s)
 
 
-def late_gen() -> Iterator[Int32]:
-    n: Int32  # the generator flavor of the same annotation-only decl
+def late_gen() -> Iterator[int32]:
+    n: int32  # the generator flavor of the same annotation-only decl
     yield 0
     n = 5
     yield n

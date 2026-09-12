@@ -22,7 +22,7 @@ struct Item {
     // self.v = v
     int32_t v;
 
-    // def __init__(self, v: Int32):
+    // def __init__(self, v: int32):
     Item() = default;
     explicit Item(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Item";
@@ -37,14 +37,14 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
 struct Pair {
     // item: Item
     Item item;
-    // tag: Int32
+    // tag: int32
     int32_t tag;
 
-    // def __init__(self, v: Int32):
+    // def __init__(self, v: int32):
     Pair() = default;
     explicit Pair(int32_t v);
 
-    // def __enter__(self) -> tuple[Item, Int32]:
+    // def __enter__(self) -> tuple[Item, int32]:
     std::tuple<Item*, int32_t> __enter__();
 
     // def __exit__(self, et, ev, tb) -> None:
@@ -86,13 +86,13 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
 };
 
 
-// def __init__(self, v: Int32):
+// def __init__(self, v: int32):
 inline Item::Item(int32_t v) : v(v) {}
 
-// def __init__(self, v: Int32):
+// def __init__(self, v: int32):
 inline Pair::Pair(int32_t v) : item(Item(v)), tag(v) {}
 
-// def __enter__(self) -> tuple[Item, Int32]:
+// def __enter__(self) -> tuple[Item, int32]:
 inline std::tuple<Item*, int32_t> Pair::__enter__() {
     // return (self.item, self.tag)
     return std::tuple<Item*, int32_t>{&(this->item), this->tag};

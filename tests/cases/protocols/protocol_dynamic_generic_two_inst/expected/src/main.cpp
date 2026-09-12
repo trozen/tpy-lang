@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def show_int(c: Container[Int32]) -> None:
+// def show_int(c: Container[int32]) -> None:
 void show_int(Container<int32_t>& c) {
     // print(c.get())
     std::cout << c.get() << "\n";

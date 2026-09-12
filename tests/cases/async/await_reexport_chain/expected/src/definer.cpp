@@ -4,7 +4,7 @@
 namespace tpyapp::definer {
 
 
-// async def deep() -> Int32:
+// async def deep() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_deep::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -29,7 +29,7 @@ namespace tpyapp::definer {
 }
 
 
-// async def deep() -> Int32:
+// async def deep() -> int32:
 __coro_deep deep() {
     return __coro_deep();
 }

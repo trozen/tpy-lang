@@ -1,10 +1,10 @@
 # async sibling of the missing-return error: non-None coroutine return
 # type with a reachable end of body.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
-async def f(n: Int32) -> Int32:  # tpyc: error(/'f' can reach the end of the function without returning/)
+async def f(n: int32) -> int32:  # tpyc: error(/'f' can reach the end of the function without returning/)
     await asyncio.sleep(0)
     if n > 0:
         return 1

@@ -16,10 +16,10 @@ void main();
 
 // class Cell:
 struct Cell {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Cell() = default;
     explicit Cell(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cell";
@@ -32,14 +32,14 @@ inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
 
 // class Grid:
 struct Grid {
-    // n: Int32
+    // n: int32
     int32_t n;
-    // cells: list[Int32]
+    // cells: list[int32]
     std::vector<int32_t> cells;
     // boxes: list[Cell]
     std::vector<Cell> boxes;
 
-    // def __init__(self, xs: list[Int32]) -> None:
+    // def __init__(self, xs: list[int32]) -> None:
     Grid() = default;
     explicit Grid(const std::vector<int32_t>& xs);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Grid";
@@ -51,17 +51,17 @@ inline std::ostream& operator<<(std::ostream& os, const Grid& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Cell::Cell(int32_t v) : v(v) {}
 
-// def __init__(self, xs: list[Int32]) -> None:
+// def __init__(self, xs: list[int32]) -> None:
 inline Grid::Grid(const std::vector<int32_t>& xs) {
     // m = len(xs) + 1  # breaks the chain: everything below runs in the body
     int32_t m = (::tpy::add_check<int32_t>(::tpy::__len__(xs), 1));
     // self.n = m
     this->n = m;
     // # The subject: both read `self.n`, written by the body init above.
-    // self.cells = [self.n, Int32(1)]  # tpyc: ok
+    // self.cells = [self.n, int32(1)]  # tpyc: ok
     this->cells = {this->n, 1};
     // self.boxes = [Cell(self.n)]  # tpyc: ok
     this->boxes = {Cell(this->n)};

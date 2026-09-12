@@ -1,5 +1,5 @@
 from b import bee
-from tpy import Int32
+from tpy import int32
 
-def aye() -> Int32:
+def aye() -> int32:
     return bee()

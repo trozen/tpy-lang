@@ -5,18 +5,18 @@ namespace tpyapp::main {
 
 // s = "world"
 std::string s;
-// # Char
-// c: Char = "A"
+// # char
+// c: char = "A"
 char c{};
 // # Containers
 // items: list[int] = [1, 2, 3]
 std::vector<::tpy::BigInt>* items{};
-// arr: Array[Int32, 3] = [10, 20, 30]
+// arr: Array[int32, 3] = [10, 20, 30]
 std::array<int32_t, 3>* arr{};
-// al = ArrayList[Int32, 4]()
+// al = ArrayList[int32, 4]()
 ::tpystd::tplib::array_list::ArrayList<int32_t, 4>* al{};
 // # Optional values
-// x: Int32 | None = Int32(10)
+// x: int32 | None = int32(10)
 std::optional<int32_t> x;
 // y: bool | None = True
 std::optional<bool> y;
@@ -44,7 +44,7 @@ void __tpy_init() {
     // # Numeric types
     // print(42)
     std::cout << 42 << "\n";
-    // print(Int32(7))
+    // print(int32(7))
     std::cout << 7 << "\n";
     // print(3.14)
     std::cout << ::tpy::print_float(3.14) << "\n";
@@ -59,8 +59,8 @@ void __tpy_init() {
     s = "world";
     // print(s)
     std::cout << s << "\n";
-    // # Char
-    // c: Char = "A"
+    // # char
+    // c: char = "A"
     c = 'A';
     // print(c)
     std::cout << c << "\n";
@@ -70,12 +70,12 @@ void __tpy_init() {
     items = &__global_slot_1;
     // print(items)
     std::cout << ::tpy::ListPrinter((*items)) << "\n";
-    // arr: Array[Int32, 3] = [10, 20, 30]
+    // arr: Array[int32, 3] = [10, 20, 30]
     static std::array<int32_t, 3> __global_slot_2 = {10, 20, 30};
     arr = &__global_slot_2;
     // print(arr)
     std::cout << ::tpy::ListPrinter((*arr)) << "\n";
-    // al = ArrayList[Int32, 4]()
+    // al = ArrayList[int32, 4]()
     static ::tpystd::tplib::array_list::ArrayList<int32_t, 4> __global_slot_3 = ::tpystd::tplib::array_list::ArrayList<int32_t, 4>();
     al = &__global_slot_3;
     // al.append(5)
@@ -97,7 +97,7 @@ void __tpy_init() {
     // print("x:", 42, True, 3.14)
     std::cout << "x:" << " " << 42 << " " << ::tpy::print_bool(true) << " " << ::tpy::print_float(3.14) << "\n";
     // # Optional values
-    // x: Int32 | None = Int32(10)
+    // x: int32 | None = int32(10)
     x = 10;
     // print(x)
     std::cout << ::tpy::print_optional_val(x) << "\n";

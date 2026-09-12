@@ -16,7 +16,7 @@ std::expected<Box, Bad> decode(bool ok) {
     return ::tpy::make_unexpected(Bad{});
 }
 
-// def run(ok: bool) -> Int32:
+// def run(ok: bool) -> int32:
 int32_t run(bool ok) {
     std::optional<Box> __slot_1;
     // b: Box | None = None

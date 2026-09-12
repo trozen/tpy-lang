@@ -13,7 +13,7 @@ namespace tpyapp::main {
 // # A fixed-int ctor wrapper around a >int32 literal must also pin its width at
 // # BOTH default sites -- the free-func param and the field member-init (which
 // # used to fall through to the parser's bare string for this spelling).
-// def w(x: int = Int64(90000000000)) -> int:
+// def w(x: int = int64(90000000000)) -> int:
 ::tpy::BigInt w(const ::tpy::BigInt& x) {
     // return x
     return x;
@@ -41,7 +41,7 @@ void __tpy_init() {
     // # A >int32 int literal used as a DEFAULT value (function param, dataclass field
     // # member-init, and the generated ctor param) must render the ambiguity-safe
     // # BigInt ctor, not a bare C++ `long` (which converts to BigInt ambiguously on
-    // # macOS). Small defaults stay small; a fixed-width Int64 default must not wrap.
+    // # macOS). Small defaults stay small; a fixed-width int64 default must not wrap.
     // from dataclasses import dataclass
     // main()
     main();

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def append_then_return(m: Mutex[list[Int32]]) -> None:
+// def append_then_return(m: Mutex[list[int32]]) -> None:
 void append_then_return(const ::tpystd::tpy::sync::Mutex<std::vector<int32_t>>& m) {
     // with m.lock() as g:
     auto __ctx_1 = m.lock();
@@ -28,7 +28,7 @@ void append_then_return(const ::tpystd::tpy::sync::Mutex<std::vector<int32_t>>& 
     }
 }
 
-// def append_then_raise(m: Mutex[list[Int32]]) -> None:
+// def append_then_raise(m: Mutex[list[int32]]) -> None:
 void append_then_raise(const ::tpystd::tpy::sync::Mutex<std::vector<int32_t>>& m) {
     // try:
     {

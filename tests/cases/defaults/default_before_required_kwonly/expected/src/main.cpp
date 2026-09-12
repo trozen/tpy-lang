@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def f(a: Int64, b: Int64 = 10, *, c: Int64) -> Int64:
+// def f(a: int64, b: int64 = 10, *, c: int64) -> int64:
 int64_t f(int64_t a, int64_t b, int64_t c) {
     // return a * 100 + b * 10 + c
     return (::tpy::add_check<int64_t>((::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(a, 100)), (::tpy::mul_check<int64_t>(b, 10)))), c));
 }
 
-// def g(a: Int64, b: Int64 = 1, c: Int64 = 2, *, d: Int64, e: Int64 = 5) -> Int64:
+// def g(a: int64, b: int64 = 1, c: int64 = 2, *, d: int64, e: int64 = 5) -> int64:
 int64_t g(int64_t a, int64_t b, int64_t c, int64_t d, int64_t e) {
     // return a * 10000 + b * 1000 + c * 100 + d * 10 + e
     return (::tpy::add_check<int64_t>((::tpy::add_check<int64_t>((::tpy::add_check<int64_t>((::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(a, 10000)), (::tpy::mul_check<int64_t>(b, 1000)))), (::tpy::mul_check<int64_t>(c, 100)))), (::tpy::mul_check<int64_t>(d, 10)))), e));

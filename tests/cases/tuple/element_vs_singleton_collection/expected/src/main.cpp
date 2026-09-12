@@ -10,7 +10,7 @@ std::tuple<Box*, Box*> make_borrow(Box& b) {
     return std::tuple<Box*, Box*>{&(b), &(b)};
 }
 
-// def singleton_append(b: Box) -> Int32:
+// def singleton_append(b: Box) -> int32:
 int32_t singleton_append(const Box& b) {
     // xs: list[Box] = []
     std::vector<Box> xs = std::vector<Box>{};
@@ -22,7 +22,7 @@ int32_t singleton_append(const Box& b) {
     return b.n;
 }
 
-// def tuple_append(b: Box) -> Int32:
+// def tuple_append(b: Box) -> int32:
 int32_t tuple_append(Box& b) {
     // xs: list[tuple[Box, Box]] = []
     std::vector<std::tuple<Box, Box>> xs = std::vector<std::tuple<Box, Box>>{};
@@ -34,9 +34,9 @@ int32_t tuple_append(Box& b) {
     return b.n;
 }
 
-// def singleton_dict(b: Box) -> Int32:
+// def singleton_dict(b: Box) -> int32:
 int32_t singleton_dict(const Box& b) {
-    // d: dict[Int32, Box] = {}
+    // d: dict[int32, Box] = {}
     ::tpy::ordered_map<int32_t, Box> d = ::tpy::ordered_map<int32_t, Box>();
     // d[1] = b  # tpyc: warning(/copies Box into container/)
     ::tpy::__setitem__(d, 1, b);
@@ -46,9 +46,9 @@ int32_t singleton_dict(const Box& b) {
     return b.n;
 }
 
-// def tuple_dict(b: Box) -> Int32:
+// def tuple_dict(b: Box) -> int32:
 int32_t tuple_dict(Box& b) {
-    // d: dict[Int32, tuple[Box, Box]] = {}
+    // d: dict[int32, tuple[Box, Box]] = {}
     ::tpy::ordered_map<int32_t, std::tuple<Box, Box>> d = ::tpy::ordered_map<int32_t, std::tuple<Box, Box>>();
     // d[1] = make_borrow(b)  # tpyc: warning(/copies Box into container/) warning(/copies Box into container/)
     ::tpy::__setitem__(d, 1, ::tpy::tuple_to_storage<std::tuple<Box, Box>>(make_borrow(b)));

@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def main() -> Int32:
+// def main() -> int32:
 int32_t main() {
     // print(__name__)
     std::cout << __name__ << "\n";
     // print(get_name())
     std::cout << ::tpyapp::utils::get_name() << "\n";
-    // return Int32(0)
+    // return int32(0)
     return 0;
 }
 

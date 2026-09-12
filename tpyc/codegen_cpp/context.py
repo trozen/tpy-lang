@@ -269,7 +269,7 @@ def bigint_index_narrow_type(container_type, analyzer) -> "TpyType | None":
     receiver's declared key/index type. None means the declared key type is
     itself BigInt, so the index passes through unnarrowed (the container's
     C++ key type IS tpy::BigInt); a fixed-int key narrows to its declared
-    width (dict[Int64] -> Int64, a user __getitem__(key: Int32) -> Int32);
+    width (dict[int64] -> int64, a user __getitem__(key: int32) -> int32);
     everything else keeps the int32-indexed sequence domain
     (list/str/bytes/tuple/Span/Array)."""
     t = unwrap_qualifiers(container_type)

@@ -88,7 +88,7 @@ void test_for_call_iterable_warns() {
 void test_for_call_iterable_readonly_ok() {
     // items = [Point(1, 2), Point(3, 4)]
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
-    // total = Int32(0)
+    // total = int32(0)
     int32_t total = 0;
     // for p in get_list(items):   # tpyc: ok
     auto& __obj_0 = get_list(items);

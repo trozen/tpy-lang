@@ -5,13 +5,13 @@
 # marshal-from-PyObject expression has no fallback value to substitute
 # either, so this would otherwise fail deep in the C++ build instead.
 # tpy: ext_module
-from tpy import Int64
+from tpy import int64
 from tpy.extern import export
 
 
 @export
 class C:
-    def __init__(self, a: Int64):
+    def __init__(self, a: int64):
         self.a = a
 
     # The operand is nullable so `None` is a WELL-TYPED default: an ill-typed

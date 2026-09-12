@@ -3,7 +3,7 @@
 
 namespace tpyapp::main {
 
-// total: Int32 = 0
+// total: int32 = 0
 int32_t total{};
 
 // async def main_coro() -> None:
@@ -56,7 +56,7 @@ void main() {
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
-// async def add(self, n: Int32) -> None:
+// async def add(self, n: int32) -> None:
 ::tpystd::tpy::Poll<::std::monostate> __coro_Worker_add::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -93,7 +93,7 @@ void __tpy_init() {
     // # post-suspension (resume-state) write that the free-function test omits.
     // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // total: Int32 = 0
+    // total: int32 = 0
     total = 0;
     // main()
     main();

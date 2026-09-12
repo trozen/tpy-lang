@@ -1,10 +1,10 @@
 # Recursive generator delegation embeds the generator's own struct by value
 # in its frame (infinite size) -- rejected with a clean diagnostic.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
-def cycle() -> Iterator[Int32]:  # tpyc: error(/recursive generator delegation/)
+def cycle() -> Iterator[int32]:  # tpyc: error(/recursive generator delegation/)
     yield 0
     for x in cycle():
         yield x

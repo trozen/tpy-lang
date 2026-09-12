@@ -6,41 +6,41 @@ namespace tpyapp::main {
 
 // def forward() -> None:
 void forward() {
-    // print(10.0 + Int8(5))
+    // print(10.0 + int8(5))
     std::cout << ::tpy::print_float(((10.0) + static_cast<double>(5))) << "\n";
-    // print(10.0 - Int16(3))
+    // print(10.0 - int16(3))
     std::cout << ::tpy::print_float(((10.0) - static_cast<double>(3))) << "\n";
-    // print(4.0 * Int32(3))
+    // print(4.0 * int32(3))
     std::cout << ::tpy::print_float(((4.0) * static_cast<double>(3))) << "\n";
-    // print(12.0 / Int64(4))
+    // print(12.0 / int64(4))
     std::cout << ::tpy::print_float((::tpy::truediv(12.0, static_cast<double>(4)))) << "\n";
-    // print(13.0 // UInt8(5))
+    // print(13.0 // uint8(5))
     std::cout << ::tpy::print_float((::tpy::floordiv(13.0, static_cast<double>(5)))) << "\n";
-    // print(13.0 % UInt16(5))
+    // print(13.0 % uint16(5))
     std::cout << ::tpy::print_float((::tpy::fmod(13.0, static_cast<double>(5)))) << "\n";
-    // print(2.0 ** UInt32(3))
+    // print(2.0 ** uint32(3))
     std::cout << ::tpy::print_float((std::pow(2.0, static_cast<double>(3)))) << "\n";
-    // print(10.0 + UInt64(5))
+    // print(10.0 + uint64(5))
     std::cout << ::tpy::print_float(((10.0) + static_cast<double>(5))) << "\n";
 }
 
 // def reverse() -> None:
 void reverse() {
-    // print(Int8(5) + 10.0)
+    // print(int8(5) + 10.0)
     std::cout << ::tpy::print_float((static_cast<double>(5) + (10.0))) << "\n";
-    // print(Int16(3) - 10.0)
+    // print(int16(3) - 10.0)
     std::cout << ::tpy::print_float((static_cast<double>(3) - (10.0))) << "\n";
-    // print(Int32(3) * 4.0)
+    // print(int32(3) * 4.0)
     std::cout << ::tpy::print_float((static_cast<double>(3) * (4.0))) << "\n";
-    // print(Int64(12) / 4.0)
+    // print(int64(12) / 4.0)
     std::cout << ::tpy::print_float((::tpy::truediv(static_cast<double>(12), 4.0))) << "\n";
-    // print(UInt8(13) // 5.0)
+    // print(uint8(13) // 5.0)
     std::cout << ::tpy::print_float((::tpy::floordiv(static_cast<double>(13), 5.0))) << "\n";
-    // print(UInt16(13) % 5.0)
+    // print(uint16(13) % 5.0)
     std::cout << ::tpy::print_float((::tpy::fmod(static_cast<double>(13), 5.0))) << "\n";
-    // print(UInt32(2) ** 3.0)
+    // print(uint32(2) ** 3.0)
     std::cout << ::tpy::print_float((std::pow(static_cast<double>(2), 3.0))) << "\n";
-    // print(UInt64(5) + 10.0)
+    // print(uint64(5) + 10.0)
     std::cout << ::tpy::print_float((static_cast<double>(5) + (10.0))) << "\n";
 }
 

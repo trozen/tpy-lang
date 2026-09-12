@@ -2,7 +2,7 @@
 #
 # Pure-TPy port of the upstream MT19937 reference (Matsumoto & Nishimura)
 # and CPython's `_randommodule.c` seeding + CPython's `random.Random`
-# distribution methods. For a non-negative Int32 seed that fits in one
+# distribution methods. For a non-negative int32 seed that fits in one
 # uint32 word, getrandbits(32) / random() return byte-identical output to
 # CPython after the same seed. Distributions (gauss, gammavariate,
 # normalvariate, etc.) are straight ports of CPython's Lib/random.py so the
@@ -30,7 +30,7 @@
 #
 # TODO -- Tier 2 (should work, haven't pressure-tested):
 #   - `getstate()` / `setstate(state)`: TPy can't easily synthesize a
-#     625-tuple to match CPython's state type. A `list[UInt32]`-based
+#     625-tuple to match CPython's state type. A `list[uint32]`-based
 #     shape works but is not CPython-compat.
 #
 # TODO -- Tier 3 (genuinely blocked on language work or missing
@@ -50,9 +50,9 @@
 #     demand surfaces.
 #
 # User-visible caveats (limitations of the currently-shipped API):
-#   - `seed(n)` takes any Int32 (negatives are mapped to abs()); BigInt /
+#   - `seed(n)` takes any int32 (negatives are mapped to abs()); BigInt /
 #     bytes / str seeds are not accepted (see Tier 3 above).
-#   - `randint(a, b)` requires `b - a + 1` to fit in Int32. `randint(0,
+#   - `randint(a, b)` requires `b - a + 1` to fit in int32. `randint(0,
 #     INT32_MAX)` panics on the width computation. Use explicit `Random`
 #     instances with custom code for wider ranges today.
 #   - `randbytes(n)` produces byte-identical output to CPython's
@@ -64,7 +64,7 @@
 #     and is rarely used. Match CPython if a real workload needs it.
 #   - `choice([])` raises `IndexError`, matching CPython.
 #
-# Uses `UInt32.add_wrap / sub_wrap / mul_wrap / shl_wrap` for the modular
+# Uses `uint32.add_wrap / sub_wrap / mul_wrap / shl_wrap` for the modular
 # arithmetic MT needs (TPy's +/-/*/<< on fixed-width ints are
 # overflow-checked).
 #
@@ -103,19 +103,19 @@
 #     decision, affects all code).
 # tpy: cpp_namespace("tpystd::random")
 # tpy: include("<tpy/stdlib/random.hpp>")
-from tpy import Int32, UInt8, UInt32, Array, copy, dispatch
+from tpy import int32, uint8, uint32, Array, copy, dispatch
 from tpy.extern import native
 import math
 
 
 @native("tpy::stdlib::random::os_entropy_uint32")
-def _os_entropy_uint32() -> UInt32: ...
+def _os_entropy_uint32() -> uint32: ...
 
-_N: Int32 = 624
-_M: Int32 = 397
-_MATRIX_A: UInt32 = 0x9908b0df
-_UPPER_MASK: UInt32 = 0x80000000
-_LOWER_MASK: UInt32 = 0x7fffffff
+_N: int32 = 624
+_M: int32 = 397
+_MATRIX_A: uint32 = 0x9908b0df
+_UPPER_MASK: uint32 = 0x80000000
+_LOWER_MASK: uint32 = 0x7fffffff
 
 # Constants for distributions, mirroring CPython's Lib/random.py.
 _TWOPI: float = 2.0 * math.pi
@@ -127,17 +127,17 @@ class Random:
     # Inline fixed-size state (std::array<uint32_t, 624>). Stack-allocated,
     # compile-time size enables bounds-check elision in __getitem__, and
     # loop unrolling / auto-vectorization in the twist. Measured ~3x
-    # speedup vs list[UInt32] on MT hot path.
-    _state: Array[UInt32, 624]
-    _index: Int32
+    # speedup vs list[uint32] on MT hot path.
+    _state: Array[uint32, 624]
+    _index: int32
     # Cached second value from gauss()'s Box-Muller pair. Matches CPython's
     # self.gauss_next using a bool flag instead of float|None sentinel.
     _gauss_next: float
     _has_gauss_next: bool
 
-    def __init__(self, seed_value: UInt32 | None = None) -> None:
+    def __init__(self, seed_value: uint32 | None = None) -> None:
         # std::array<uint32_t, 624>{} zero-inits every slot.
-        self._state = Array[UInt32, 624]()
+        self._state = Array[uint32, 624]()
         self._index = _N
         self._gauss_next = 0.0
         self._has_gauss_next = False
@@ -146,34 +146,34 @@ class Random:
         else:
             self._seed(seed_value)
 
-    def _init_genrand(self, s: UInt32) -> None:
+    def _init_genrand(self, s: uint32) -> None:
         self._state[0] = s
-        mti: Int32 = 1
+        mti: int32 = 1
         while mti < _N:
-            prev: UInt32 = self._state[mti - 1]
-            self._state[mti] = UInt32.add_wrap(
-                UInt32.mul_wrap(1812433253, prev ^ (prev >> 30)),
-                UInt32(mti),
+            prev: uint32 = self._state[mti - 1]
+            self._state[mti] = uint32.add_wrap(
+                uint32.mul_wrap(1812433253, prev ^ (prev >> 30)),
+                uint32(mti),
             )
             mti += 1
         self._index = _N
 
-    def _seed(self, s: UInt32) -> None:
+    def _seed(self, s: uint32) -> None:
         # CPython's init_by_array specialised for a single-uint32 key [s].
         self._init_genrand(19650218)
-        key0: UInt32 = s
-        key_length: Int32 = 1
-        i: Int32 = 1
-        j: Int32 = 0
-        k: Int32 = _N
+        key0: uint32 = s
+        key_length: int32 = 1
+        i: int32 = 1
+        j: int32 = 0
+        k: int32 = _N
         if k < key_length:
             k = key_length
         while k > 0:
-            prev: UInt32 = self._state[i - 1]
-            mixed: UInt32 = UInt32.mul_wrap(prev ^ (prev >> 30), 1664525)
-            self._state[i] = UInt32.add_wrap(
-                UInt32.add_wrap(self._state[i] ^ mixed, key0),
-                UInt32(j),
+            prev: uint32 = self._state[i - 1]
+            mixed: uint32 = uint32.mul_wrap(prev ^ (prev >> 30), 1664525)
+            self._state[i] = uint32.add_wrap(
+                uint32.add_wrap(self._state[i] ^ mixed, key0),
+                uint32(j),
             )
             i += 1
             j += 1
@@ -185,9 +185,9 @@ class Random:
             k -= 1
         k = _N - 1
         while k > 0:
-            prev2: UInt32 = self._state[i - 1]
-            mixed2: UInt32 = UInt32.mul_wrap(prev2 ^ (prev2 >> 30), 1566083941)
-            self._state[i] = UInt32.sub_wrap(self._state[i] ^ mixed2, UInt32(i))
+            prev2: uint32 = self._state[i - 1]
+            mixed2: uint32 = uint32.mul_wrap(prev2 ^ (prev2 >> 30), 1566083941)
+            self._state[i] = uint32.sub_wrap(self._state[i] ^ mixed2, uint32(i))
             i += 1
             if i >= _N:
                 self._state[0] = self._state[_N - 1]
@@ -201,52 +201,52 @@ class Random:
         self._has_gauss_next = False
 
     def _generate(self) -> None:
-        kk: Int32 = 0
+        kk: int32 = 0
         while kk < _N - _M:
-            y: UInt32 = (self._state[kk] & _UPPER_MASK) | (self._state[kk + 1] & _LOWER_MASK)
-            mag: UInt32 = 0
+            y: uint32 = (self._state[kk] & _UPPER_MASK) | (self._state[kk + 1] & _LOWER_MASK)
+            mag: uint32 = 0
             if (y & 1) != 0:
                 mag = _MATRIX_A
             self._state[kk] = self._state[kk + _M] ^ (y >> 1) ^ mag
             kk += 1
         while kk < _N - 1:
-            y2: UInt32 = (self._state[kk] & _UPPER_MASK) | (self._state[kk + 1] & _LOWER_MASK)
-            mag2: UInt32 = 0
+            y2: uint32 = (self._state[kk] & _UPPER_MASK) | (self._state[kk + 1] & _LOWER_MASK)
+            mag2: uint32 = 0
             if (y2 & 1) != 0:
                 mag2 = _MATRIX_A
             self._state[kk] = self._state[kk + _M - _N] ^ (y2 >> 1) ^ mag2
             kk += 1
-        y3: UInt32 = (self._state[_N - 1] & _UPPER_MASK) | (self._state[0] & _LOWER_MASK)
-        mag3: UInt32 = 0
+        y3: uint32 = (self._state[_N - 1] & _UPPER_MASK) | (self._state[0] & _LOWER_MASK)
+        mag3: uint32 = 0
         if (y3 & 1) != 0:
             mag3 = _MATRIX_A
         self._state[_N - 1] = self._state[_M - 1] ^ (y3 >> 1) ^ mag3
         self._index = 0
 
-    def _genrand_uint32(self) -> UInt32:
+    def _genrand_uint32(self) -> uint32:
         if self._index >= _N:
             self._generate()
-        y: UInt32 = self._state[self._index]
+        y: uint32 = self._state[self._index]
         self._index += 1
         # Tempering.
         y = y ^ (y >> 11)
-        y = y ^ (UInt32.shl_wrap(y, 7) & 0x9d2c5680)
-        y = y ^ (UInt32.shl_wrap(y, 15) & 0xefc60000)
+        y = y ^ (uint32.shl_wrap(y, 7) & 0x9d2c5680)
+        y = y ^ (uint32.shl_wrap(y, 15) & 0xefc60000)
         y = y ^ (y >> 18)
         return y
 
     def random(self) -> float:
         # genrand_res53 -- 53-bit uniform in [0, 1), matches CPython.
-        a: UInt32 = self._genrand_uint32() >> 5   # top 27 bits
-        b: UInt32 = self._genrand_uint32() >> 6   # top 26 bits
+        a: uint32 = self._genrand_uint32() >> 5   # top 27 bits
+        b: uint32 = self._genrand_uint32() >> 6   # top 26 bits
         return (float(a) * 67108864.0 + float(b)) * (1.0 / 9007199254740992.0)
 
-    def _genrand_top_bits(self, k: Int32) -> UInt32:
+    def _genrand_top_bits(self, k: int32) -> uint32:
         # k in [1, 32]. Avoids the BigInt promotion that public
         # getrandbits does, so _randbelow's rejection loop stays uint32.
-        return self._genrand_uint32() >> UInt32(32 - k)
+        return self._genrand_uint32() >> uint32(32 - k)
 
-    def getrandbits(self, k: Int32) -> int:
+    def getrandbits(self, k: int32) -> int:
         # CPython-compatible: returns an int (BigInt) of k random bits.
         # k in [1, 32] uses one MT word; k > 32 concatenates ceil(k/32)
         # words little-endian (word[0] = low 32 bits), matching CPython.
@@ -254,20 +254,20 @@ class Random:
             raise ValueError("number of bits must be greater than zero")
         if k <= 32:
             return int(self._genrand_top_bits(k))
-        numwords: Int32 = (k + 31) // 32
+        numwords: int32 = (k + 31) // 32
         result: int = int(0)
-        i: Int32 = 0
+        i: int32 = 0
         while i < numwords - 1:
             result = result | (int(self._genrand_uint32()) << (32 * i))
             i += 1
-        last_k: Int32 = k - 32 * i
-        last_word: UInt32 = self._genrand_uint32() >> UInt32(32 - last_k)
+        last_k: int32 = k - 32 * i
+        last_word: uint32 = self._genrand_uint32() >> uint32(32 - last_k)
         result = result | (int(last_word) << (32 * i))
         return result
 
     # ---------- Integer helpers ----------
 
-    def _randbelow(self, n: UInt32) -> UInt32:
+    def _randbelow(self, n: uint32) -> uint32:
         # Uniform int in [0, n) via rejection sampling over a top-bits
         # slice where k = bit_length(n). Matches CPython's
         # _randbelow_with_getrandbits. Using bit_length(n-1) would agree
@@ -277,41 +277,41 @@ class Random:
             raise ValueError("_randbelow requires positive n")
         if n == 1:
             return 0
-        m: UInt32 = n
-        k: Int32 = 0
+        m: uint32 = n
+        k: int32 = 0
         while m > 0:
             k += 1
             m = m >> 1
-        r: UInt32 = self._genrand_top_bits(k)
+        r: uint32 = self._genrand_top_bits(k)
         while r >= n:
             r = self._genrand_top_bits(k)
         return r
 
-    def randint(self, a: Int32, b: Int32) -> Int32:
-        # Inclusive [a, b]. v1 constraint: b - a + 1 must fit in Int32
+    def randint(self, a: int32, b: int32) -> int32:
+        # Inclusive [a, b]. v1 constraint: b - a + 1 must fit in int32
         # (i.e. b - a <= INT32_MAX - 1). CPython handles arbitrary ints.
         if b < a:
             raise ValueError("empty range for randint()")
-        width: Int32 = b - a + 1
-        return a + Int32(self._randbelow(UInt32(width)))
+        width: int32 = b - a + 1
+        return a + int32(self._randbelow(uint32(width)))
 
     @dispatch
-    def randrange(self, stop: Int32) -> Int32:
+    def randrange(self, stop: int32) -> int32:
         if stop <= 0:
             raise ValueError("empty range for randrange()")
-        return Int32(self._randbelow(UInt32(stop)))
+        return int32(self._randbelow(uint32(stop)))
 
     @dispatch
-    def randrange(self, start: Int32, stop: Int32) -> Int32:
+    def randrange(self, start: int32, stop: int32) -> int32:
         if stop <= start:
             raise ValueError("empty range for randrange()")
-        return start + Int32(self._randbelow(UInt32(stop - start)))
+        return start + int32(self._randbelow(uint32(stop - start)))
 
     @dispatch
-    def randrange(self, start: Int32, stop: Int32, step: Int32) -> Int32:
+    def randrange(self, start: int32, stop: int32, step: int32) -> int32:
         if step == 0:
             raise ValueError("zero step for randrange()")
-        width: Int32 = 0
+        width: int32 = 0
         if step > 0:
             if stop <= start:
                 raise ValueError("empty range for randrange()")
@@ -320,11 +320,11 @@ class Random:
         else:
             if stop >= start:
                 raise ValueError("empty range for randrange()")
-            neg_step: Int32 = -step
+            neg_step: int32 = -step
             width = (start - stop + neg_step - 1) // neg_step
-        return start + step * Int32(self._randbelow(UInt32(width)))
+        return start + step * int32(self._randbelow(uint32(width)))
 
-    def randbytes(self, n: Int32) -> bytes:
+    def randbytes(self, n: int32) -> bytes:
         # Matches CPython's `self.getrandbits(n * 8).to_bytes(n, 'little')`.
         # Full uint32 chunks yield their 4 bytes low-to-high (little-endian).
         # The last partial word uses its TOP `rem*8` bits (CPython's
@@ -334,40 +334,40 @@ class Random:
         if n < 0:
             raise ValueError("n must be non-negative")
         out: bytearray = bytearray()
-        i: Int32 = 0
-        full: Int32 = n // 4
+        i: int32 = 0
+        full: int32 = n // 4
         while i < full:
-            v: UInt32 = self._genrand_uint32()
-            out.append(UInt8(v & 0xFF))
-            out.append(UInt8((v >> 8) & 0xFF))
-            out.append(UInt8((v >> 16) & 0xFF))
-            out.append(UInt8((v >> 24) & 0xFF))
+            v: uint32 = self._genrand_uint32()
+            out.append(uint8(v & 0xFF))
+            out.append(uint8((v >> 8) & 0xFF))
+            out.append(uint8((v >> 16) & 0xFF))
+            out.append(uint8((v >> 24) & 0xFF))
             i += 1
-        rem: Int32 = n - full * 4
+        rem: int32 = n - full * 4
         if rem > 0:
-            w: UInt32 = self._genrand_uint32()
-            shift_base: Int32 = 32 - rem * 8
-            j: Int32 = 0
+            w: uint32 = self._genrand_uint32()
+            shift_base: int32 = 32 - rem * 8
+            j: int32 = 0
             while j < rem:
-                out.append(UInt8((w >> UInt32(shift_base + j * 8)) & 0xFF))
+                out.append(uint8((w >> uint32(shift_base + j * 8)) & 0xFF))
                 j += 1
         return bytes(out)
 
     # ---------- Sequence helpers ----------
 
     def choice[T](self, seq: list[T]) -> T:
-        n: Int32 = Int32(len(seq))
+        n: int32 = int32(len(seq))
         if n == 0:
             raise IndexError("Cannot choose from an empty sequence")
-        return copy(seq[Int32(self._randbelow(UInt32(n)))])
+        return copy(seq[int32(self._randbelow(uint32(n)))])
 
     def shuffle[T](self, seq: list[T]) -> None:
         # Fisher-Yates / Durstenfeld in place. Matches CPython's
         # random.shuffle MT call sequence (one _randbelow(i+1) per step,
         # i from len-1 down to 1).
-        i: Int32 = Int32(len(seq)) - 1
+        i: int32 = int32(len(seq)) - 1
         while i > 0:
-            j: Int32 = Int32(self._randbelow(UInt32(i + 1)))
+            j: int32 = int32(self._randbelow(uint32(i + 1)))
             tmp: T = copy(seq[i])
             seq[i] = copy(seq[j])
             seq[j] = tmp
@@ -523,19 +523,19 @@ def seed() -> None:
     _inst._seed(_os_entropy_uint32())
 
 @dispatch
-def seed(n: Int32) -> None:
+def seed(n: int32) -> None:
     # CPython treats negative seeds as their absolute value. For
-    # INT32_MIN the mathematical abs doesn't fit in Int32, but
-    # `0 - n` in UInt32 (mod 2^32) equals abs(n) for any negative n.
+    # INT32_MIN the mathematical abs doesn't fit in int32, but
+    # `0 - n` in uint32 (mod 2^32) equals abs(n) for any negative n.
     if n < 0:
-        _inst._seed(UInt32.sub_wrap(UInt32(0), UInt32.trunc(n)))
+        _inst._seed(uint32.sub_wrap(uint32(0), uint32.trunc(n)))
     else:
-        _inst._seed(UInt32(n))
+        _inst._seed(uint32(n))
 
-def getrandbits(k: Int32) -> int:
+def getrandbits(k: int32) -> int:
     return _inst.getrandbits(k)
 
-def randint(a: Int32, b: Int32) -> Int32:
+def randint(a: int32, b: int32) -> int32:
     return _inst.randint(a, b)
 
 def choice[T](seq: list[T]) -> T:
@@ -545,18 +545,18 @@ def shuffle[T](seq: list[T]) -> None:
     _inst.shuffle(seq)
 
 @dispatch
-def randrange(stop: Int32) -> Int32:
+def randrange(stop: int32) -> int32:
     return _inst.randrange(stop)
 
 @dispatch
-def randrange(start: Int32, stop: Int32) -> Int32:
+def randrange(start: int32, stop: int32) -> int32:
     return _inst.randrange(start, stop)
 
 @dispatch
-def randrange(start: Int32, stop: Int32, step: Int32) -> Int32:
+def randrange(start: int32, stop: int32, step: int32) -> int32:
     return _inst.randrange(start, stop, step)
 
-def randbytes(n: Int32) -> bytes:
+def randbytes(n: int32) -> bytes:
     return _inst.randbytes(n)
 
 def uniform(a: float, b: float) -> float:

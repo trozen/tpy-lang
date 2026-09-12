@@ -9,7 +9,7 @@ void connect(const Config& kwargs) {
     // # "key" in kwargs
     // host = kwargs.get("host", "localhost")
     std::string host = kwargs.host.value_or(std::string("localhost"));
-    // port = kwargs.get("port", Int32(3000))
+    // port = kwargs.get("port", int32(3000))
     int32_t port = kwargs.port.value_or(3000);
     // if "verbose" in kwargs:
     if (kwargs.verbose.has_value()) {
@@ -46,7 +46,7 @@ void show_config(const Config& kwargs) {
 
 // def main() -> None:
 void main() {
-    // connect(host="example.com", port=Int32(8080), verbose=True)
+    // connect(host="example.com", port=int32(8080), verbose=True)
     Config __tmp_1 = Config("example.com", 8080, true);
     connect(__tmp_1);
     // connect()

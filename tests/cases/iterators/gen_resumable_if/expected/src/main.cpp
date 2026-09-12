@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def sign_stream(n: Int32) -> Iterator[Int32]:
+// def sign_stream(n: int32) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_sign_stream::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -51,7 +51,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_sign_stream::__next__() {
 }
 
 
-// def sign_stream(n: Int32) -> Iterator[Int32]:
+// def sign_stream(n: int32) -> Iterator[int32]:
 __gen_sign_stream sign_stream(int32_t n) {
     return __gen_sign_stream(n);
 }

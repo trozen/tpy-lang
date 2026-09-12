@@ -5,13 +5,13 @@
 # element read below is the class witness that would otherwise emit
 # `push(::tpy::__getitem__(src, i))` into a `T&&` slot.
 # The admitting direction is pinned by calls/method_own_slot_insert_lvalue.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Item:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 
@@ -24,7 +24,7 @@ class Bag[T]:
     def push(self, x: Own[T]) -> None:
         self.held.append(x)
 
-    def echo(self, src: list[T], i: Int32) -> None:
+    def echo(self, src: list[T], i: int32) -> None:
         # An element read -- an lvalue -- at the record method's Own[T] slot.
         self.push(src[i])  # tpyc: error(/method\.arg_shape/)
 

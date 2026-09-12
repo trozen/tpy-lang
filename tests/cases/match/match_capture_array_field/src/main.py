@@ -1,16 +1,16 @@
 # A match class-pattern keyword capture binds an `auto&` alias into the
 # subject's field, and the family it admits is the reference axis -- so an
 # Array field joins the list and dict fields that already bound.
-from tpy import Int32, Array
+from tpy import int32, Array
 
 
 class H:
-    arr: Array[Int32, 2]
-    xs: list[Int32]
-    d: dict[str, Int32]
+    arr: Array[int32, 2]
+    xs: list[int32]
+    d: dict[str, int32]
 
     def __init__(self) -> None:
-        self.arr = Array[Int32, 2]()
+        self.arr = Array[int32, 2]()
         self.xs = [1]
         self.d = {"a": 1}
 

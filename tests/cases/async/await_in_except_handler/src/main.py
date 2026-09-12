@@ -1,19 +1,19 @@
 # Await inside an except handler body.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
-async def value(n: Int32) -> Int32:
+async def value(n: int32) -> int32:
     return n
 
-async def fail() -> Int32:
+async def fail() -> int32:
     raise ValueError("oops")
 
-async def go() -> Int32:
+async def go() -> int32:
     try:
         x = await fail()
         return x
     except ValueError:
-        y = await value(Int32(123))
+        y = await value(int32(123))
         return y
 
 def main() -> None:

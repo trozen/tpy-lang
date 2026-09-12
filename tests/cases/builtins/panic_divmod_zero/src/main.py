@@ -1,9 +1,9 @@
 # divmod() panics on division by zero
-from tpy import Int32
+from tpy import int32
 
 def main() -> None:
-    a: Int32 = Int32(10)
-    b: Int32 = Int32(0)
+    a: int32 = int32(10)
+    b: int32 = int32(0)
     q, r = divmod(a, b)
     print(q)
 

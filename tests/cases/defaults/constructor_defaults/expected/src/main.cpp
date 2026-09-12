@@ -12,13 +12,13 @@ void main() {
     std::cout << p1.x << "\n";
     // print(p1.y)
     std::cout << p1.y << "\n";
-    // p2 = Point(Int32(3))
+    // p2 = Point(int32(3))
     Point p2 = Point(3);
     // print(p2.x)
     std::cout << p2.x << "\n";
     // print(p2.y)
     std::cout << p2.y << "\n";
-    // p3 = Point(Int32(3), Int32(4))
+    // p3 = Point(int32(3), int32(4))
     Point p3 = Point(3, 4);
     // print(p3.x)
     std::cout << p3.x << "\n";
@@ -30,7 +30,7 @@ void main() {
     std::cout << n1.name << "\n";
     // print(n1.value)
     std::cout << n1.value << "\n";
-    // n2 = Named("test", Int32(99))
+    // n2 = Named("test", int32(99))
     Named n2 = Named("test", 99);
     // print(n2.name)
     std::cout << n2.name << "\n";

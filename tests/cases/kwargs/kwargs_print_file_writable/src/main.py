@@ -1,6 +1,6 @@
 # print(..., file=user_writable) wraps the target in a streambuf adapter
 # (WritableOstream) that routes operator<< through write() / flush().
-from tpy import Int32
+from tpy import int32
 
 class Sink:
     parts: list[str]
@@ -8,9 +8,9 @@ class Sink:
     def __init__(self) -> None:
         self.parts = []
 
-    def write(self, text: str) -> Int32:
+    def write(self, text: str) -> int32:
         self.parts.append(text)
-        return Int32(len(text))
+        return int32(len(text))
 
     def flush(self) -> None:
         pass

@@ -14,7 +14,7 @@ void connect(const Options& kwargs) {
 
 // def main() -> None:
 void main() {
-    // opts = Options(host="example.com", port=Int32(443))
+    // opts = Options(host="example.com", port=int32(443))
     Options opts = Options("example.com", 443);
     // connect(**opts)
     connect(opts);

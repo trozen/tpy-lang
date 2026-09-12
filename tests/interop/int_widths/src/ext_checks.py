@@ -34,7 +34,7 @@ assert expect(OverflowError, lambda: m.u32(-1)) == "ok"
 assert expect(OverflowError, lambda: m.u64(2**64)) == "ok"
 assert expect(OverflowError, lambda: m.u64(-1)) == "ok"
 
-# A non-integer has no __index__ -> TypeError, same as the Int64 rung.
+# A non-integer has no __index__ -> TypeError, same as the int64 rung.
 assert expect(TypeError, lambda: m.i32(1.5)) == "ok"
 assert expect(TypeError, lambda: m.u64("x")) == "ok"
 

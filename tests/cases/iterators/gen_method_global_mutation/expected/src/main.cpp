@@ -3,7 +3,7 @@
 
 namespace tpyapp::main {
 
-// emitted: Int32 = 0
+// emitted: int32 = 0
 int32_t emitted{};
 
 // def main() -> None:
@@ -24,7 +24,7 @@ void main() {
     }
 }
 
-// def values(self) -> Iterator[Int32]:
+// def values(self) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_Source_values::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -64,7 +64,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // emitted: Int32 = 0
+    // emitted: int32 = 0
     emitted = 0;
     // main()
     main();

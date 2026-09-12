@@ -24,10 +24,10 @@ void main();
 
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
 
-    // def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: int32) -> None:
     Point() = default;
     explicit Point(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
@@ -65,7 +65,7 @@ struct __gen_bump : public ::tpy::next_iter_mixin<__gen_bump<T_items>, int32_t> 
         return os << "<generator bump>";
     }
 };
-// def bump(items: Iterable[Point]) -> Iterator[Int32]:
+// def bump(items: Iterable[Point]) -> Iterator[int32]:
 template <::tpystd::typing::Iterable<Point> T_items>
 std::expected<int32_t, ::tpy::StopIteration> __gen_bump<T_items>::__next__() {
     while (true) switch (__state) {
@@ -102,7 +102,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_bump<T_items>::__next__() {
 }
 
 
-// def bump(items: Iterable[Point]) -> Iterator[Int32]:
+// def bump(items: Iterable[Point]) -> Iterator[int32]:
 template <::tpystd::typing::Iterable<Point> T_items>
 __gen_bump<T_items> bump(T_items&& items) {
     return __gen_bump<T_items>(std::forward<T_items>(items));
@@ -135,7 +135,7 @@ struct __gen_doubled : public ::tpy::next_iter_mixin<__gen_doubled<T_nums>, int3
         return os << "<generator doubled>";
     }
 };
-// def doubled(nums: Iterable[Int32]) -> Iterator[Int32]:
+// def doubled(nums: Iterable[int32]) -> Iterator[int32]:
 template <::tpystd::typing::Iterable<int32_t> T_nums>
 std::expected<int32_t, ::tpy::StopIteration> __gen_doubled<T_nums>::__next__() {
     while (true) switch (__state) {
@@ -172,14 +172,14 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_doubled<T_nums>::__next__() {
 }
 
 
-// def doubled(nums: Iterable[Int32]) -> Iterator[Int32]:
+// def doubled(nums: Iterable[int32]) -> Iterator[int32]:
 template <::tpystd::typing::Iterable<int32_t> T_nums>
 __gen_doubled<T_nums> doubled(T_nums&& nums) {
     return __gen_doubled<T_nums>(std::forward<T_nums>(nums));
 }
 
 
-// def __init__(self, x: Int32) -> None:
+// def __init__(self, x: int32) -> None:
 inline Point::Point(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -15,7 +15,7 @@ void main();
 
 // class Config:
 struct Config {
-    // value: Int32
+    // value: int32
     int32_t value;
 
     // def __init__(self, flag: bool):

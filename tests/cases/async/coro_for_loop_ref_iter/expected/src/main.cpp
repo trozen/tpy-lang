@@ -36,11 +36,11 @@ __coro_driver driver() {
     return __coro_driver();
 }
 
-// async def total(self) -> Int32:
+// async def total(self) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_Container_total::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // s: Int32 = 0
+        // s: int32 = 0
         s = 0;
         // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));

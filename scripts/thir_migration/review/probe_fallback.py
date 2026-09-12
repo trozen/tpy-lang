@@ -1,6 +1,6 @@
 """Probe one TPy program through both codegen paths and report THIR fallback.
 
-usage: uv run python probe_fallback.py FILE.py [--default-int Int32|Int64|BigInt]
+usage: uv run python probe_fallback.py FILE.py [--default-int int32|int64|BigInt]
 
 Prints, per run: AST outcome (EMITS / REFUSES <error>), THIR outcome
 (EMITS / RAISES <type: msg>), the fallback dict {component:reason -> count}
@@ -13,7 +13,7 @@ sys.path.insert(0, ".")
 from tpyc.thir.testutil import _compile, _entry
 from tpyc.codegen_cpp.context import CodeGenOptions
 
-ap = argparse.ArgumentParser(); ap.add_argument("file"); ap.add_argument("--default-int", default="Int32")
+ap = argparse.ArgumentParser(); ap.add_argument("file"); ap.add_argument("--default-int", default="int32")
 a = ap.parse_args()
 src = open(a.file).read()
 

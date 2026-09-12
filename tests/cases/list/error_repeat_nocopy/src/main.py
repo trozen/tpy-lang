@@ -1,13 +1,13 @@
 # Repetition copies the element into every slot, so a @nocopy element must be
 # rejected in sema (previously a raw C++ template error).
-from tpy import Int32, nocopy
+from tpy import int32, nocopy
 
 
 @nocopy
 class Handle:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 

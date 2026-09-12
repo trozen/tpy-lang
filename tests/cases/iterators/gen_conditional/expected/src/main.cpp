@@ -4,11 +4,11 @@
 namespace tpyapp::main {
 
 
-// def evens(n: Int32) -> Iterator[Int32]:
+// def evens(n: int32) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_evens::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i: Int32 = 0
+        // i: int32 = 0
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -44,7 +44,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_evens::__next__() {
 }
 
 
-// def evens(n: Int32) -> Iterator[Int32]:
+// def evens(n: int32) -> Iterator[int32]:
 __gen_evens evens(int32_t n) {
     return __gen_evens(n);
 }

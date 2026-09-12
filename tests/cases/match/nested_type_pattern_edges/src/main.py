@@ -1,5 +1,5 @@
 # Edge cases for nested type sub-patterns in match/case
-from tpy import Int32, Own
+from tpy import int32, Own
 from dataclasses import dataclass
 
 
@@ -54,20 +54,20 @@ def or_nested(x: Wrapper | Tag) -> str:
 
 
 # --- 3 levels deep (type-param disambiguation) ---
-def deep3(x: Box[Box[Box[str]]] | Box[Box[Box[Int32]]]) -> str:
+def deep3(x: Box[Box[Box[str]]] | Box[Box[Box[int32]]]) -> str:
     match x:
         case Box(value=Box(value=Box(value=str() as v))):
             return "string: " + v
-        case Box(value=Box(value=Box(value=Int32() as n))):
+        case Box(value=Box(value=Box(value=int32() as n))):
             return "number: " + str(n)
 
 
 # --- Positional nested patterns ---
-def positional_nested(x: Box[str] | Box[Int32]) -> str:
+def positional_nested(x: Box[str] | Box[int32]) -> str:
     match x:
         case Box(str() as v):
             return "string: " + v
-        case Box(Int32() as n):
+        case Box(int32() as n):
             return "number: " + str(n)
 
 
@@ -148,14 +148,14 @@ def main() -> None:
     print(or_nested(f))
 
     # 3-deep
-    g: Box[Box[Box[str]]] | Box[Box[Box[Int32]]] = Box(Box(Box("abc")))
-    h: Box[Box[Box[str]]] | Box[Box[Box[Int32]]] = Box(Box(Box(Int32(99))))
+    g: Box[Box[Box[str]]] | Box[Box[Box[int32]]] = Box(Box(Box("abc")))
+    h: Box[Box[Box[str]]] | Box[Box[Box[int32]]] = Box(Box(Box(int32(99))))
     print(deep3(g))
     print(deep3(h))
 
     # Positional
-    i: Box[str] | Box[Int32] = Box("pos")
-    j: Box[str] | Box[Int32] = Box(Int32(7))
+    i: Box[str] | Box[int32] = Box("pos")
+    j: Box[str] | Box[int32] = Box(int32(7))
     print(positional_nested(i))
     print(positional_nested(j))
 

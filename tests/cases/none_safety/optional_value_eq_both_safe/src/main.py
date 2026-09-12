@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 
 
-def eq_both(a: Int32 | None, b: Int32 | None) -> bool:
+def eq_both(a: int32 | None, b: int32 | None) -> bool:
     return a == b  # tpyc: ok
 
 

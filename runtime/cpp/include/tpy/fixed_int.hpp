@@ -2,7 +2,7 @@
  * TurboPython Runtime - Fixed-Width Integer Checked Arithmetic
  *
  * Template-based overflow-checked operations for all fixed-width integer types.
- * Supports Int8/16/32/64 and UInt8/16/32/64 with Python semantics.
+ * Supports int8/16/32/64 and uint8/16/32/64 with Python semantics.
  *
  * The checked-arith helpers are marked constexpr so that `Final[IntN]`
  * initializers that reference other Finals can be constant-evaluated. The
@@ -10,7 +10,7 @@
  * helpers (`raise_fixedint_overflow`, `raise<ZeroDivisionError>`,
  * `raise<ValueError>`); this is permitted under C++23 P2448 as long as those
  * branches are not reached during constant evaluation. When they are reached
- * (e.g. `Final[Int32] = -INT32_MIN`), the compiler rejects the call, turning
+ * (e.g. `Final[int32] = -INT32_MIN`), the compiler rejects the call, turning
  * a would-be runtime panic into a compile-time error.
  */
 
@@ -58,14 +58,14 @@ constexpr bool try_pow(T base, T exp, T& result) {
 // --- Type name helper for error messages ---
 
 template<typename T> constexpr const char* fixed_int_name() { return "FixedInt"; }
-template<> constexpr const char* fixed_int_name<int8_t>() { return "Int8"; }
-template<> constexpr const char* fixed_int_name<int16_t>() { return "Int16"; }
-template<> constexpr const char* fixed_int_name<int32_t>() { return "Int32"; }
-template<> constexpr const char* fixed_int_name<int64_t>() { return "Int64"; }
-template<> constexpr const char* fixed_int_name<uint8_t>() { return "UInt8"; }
-template<> constexpr const char* fixed_int_name<uint16_t>() { return "UInt16"; }
-template<> constexpr const char* fixed_int_name<uint32_t>() { return "UInt32"; }
-template<> constexpr const char* fixed_int_name<uint64_t>() { return "UInt64"; }
+template<> constexpr const char* fixed_int_name<int8_t>() { return "int8"; }
+template<> constexpr const char* fixed_int_name<int16_t>() { return "int16"; }
+template<> constexpr const char* fixed_int_name<int32_t>() { return "int32"; }
+template<> constexpr const char* fixed_int_name<int64_t>() { return "int64"; }
+template<> constexpr const char* fixed_int_name<uint8_t>() { return "uint8"; }
+template<> constexpr const char* fixed_int_name<uint16_t>() { return "uint16"; }
+template<> constexpr const char* fixed_int_name<uint32_t>() { return "uint32"; }
+template<> constexpr const char* fixed_int_name<uint64_t>() { return "uint64"; }
 
 // --- Checked arithmetic ---
 

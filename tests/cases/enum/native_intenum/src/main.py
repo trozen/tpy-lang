@@ -1,12 +1,12 @@
-# @native IntEnum with explicit underlying type (Int8) matching the C++ side.
+# @native IntEnum with explicit underlying type (int8) matching the C++ side.
 # tpy: include("native_types.hpp")
 from enum import Enum, auto
-from tpy import Int8
+from tpy import int8
 from tpy.extern import native
 
 
 @native("ns::dir_t")
-class Direction(Int8, Enum):
+class Direction(int8, Enum):
     UP = auto()
     DOWN = auto()
 

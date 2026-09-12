@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def producer() -> Int32:
+// async def producer() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_producer::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -18,7 +18,7 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // return Int32(42)
+        // return int32(42)
         __state = S_DONE;
         int32_t __tpy_async_ret = 42;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -29,7 +29,7 @@ namespace tpyapp::main {
 }
 
 
-// async def producer() -> Int32:
+// async def producer() -> int32:
 __coro_producer producer() {
     return __coro_producer();
 }
@@ -38,7 +38,7 @@ __coro_producer producer() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // tasks: list[asyncio.Task[Int32]] = []
+        // tasks: list[asyncio.Task[int32]] = []
         tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<int32_t>>{});
         // tasks.append(asyncio.create_task(producer()))
         (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(producer())));

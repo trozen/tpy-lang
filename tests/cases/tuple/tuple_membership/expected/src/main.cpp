@@ -3,12 +3,12 @@
 
 namespace tpyapp::main {
 
-// call_count: Int32 = 0
+// call_count: int32 = 0
 int32_t call_count{};
 
 // def test_int_membership() -> None:
 void test_int_membership() {
-    // x: Int32 = 17
+    // x: int32 = 17
     int32_t x = 17;
     // if x in (1, 17, 42):
     if (((x == 1) || (x == 17) || (x == 42))) {
@@ -45,7 +45,7 @@ void test_str_membership() {
 
 // def test_single_element() -> None:
 void test_single_element() {
-    // x: Int32 = 5
+    // x: int32 = 5
     int32_t x = 5;
     // if x in (5,):
     if (((x == 5))) {
@@ -59,12 +59,12 @@ void test_single_element() {
     }
 }
 
-// def get_val() -> Int32:
+// def get_val() -> int32:
 int32_t get_val() {
     // global call_count
     // call_count = call_count + 1
     call_count = (::tpy::add_check<int32_t>(call_count, 1));
-    // return Int32(17)
+    // return int32(17)
     return 17;
 }
 
@@ -99,7 +99,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // call_count: Int32 = 0
+    // call_count: int32 = 0
     call_count = 0;
     // main()
     main();

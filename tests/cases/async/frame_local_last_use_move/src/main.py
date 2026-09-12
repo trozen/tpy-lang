@@ -4,17 +4,17 @@
 # materialized temporary, or the last-use move is silently dropped. The second
 # append is the contrast: `bytearray` and `bytes` are distinct types, so an
 # owning `bytes` sink refuses a bytearray outright and the copy is WRITTEN --
-# `bytes(ba)`, which is never a move. The moved local is a `list[Int32]` rather
+# `bytes(ba)`, which is never a move. The moved local is a `list[int32]` rather
 # than the bytearray it used to be for the same reason: that pair no longer
 # reaches the move arm at all. What the written copy does to the two objects is
 # pinned in tests/cases/bytes/bytearray_copy_into_bytes_sink.
 import asyncio
 
-from tpy import Int32
+from tpy import int32
 
 
 async def collect(n: int) -> int:
-    out: list[list[Int32]] = []
+    out: list[list[int32]] = []
     seen: list[bytes] = []
     buf = [1, 2, 3, 4]
     ba = bytearray(b"abcd")

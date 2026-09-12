@@ -1,1 +1,1 @@
-main.py:13: error: @dispatch variants of 'convert' have identical parameter types (Int32) (first defined at line 8); overloads must differ in at least one parameter type, not just the return type
+main.py:13: error: @dispatch variants of 'convert' have identical parameter types (int32) (first defined at line 8); overloads must differ in at least one parameter type, not just the return type

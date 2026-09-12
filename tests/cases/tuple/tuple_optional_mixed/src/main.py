@@ -1,20 +1,20 @@
 # Mixed tuple: some elements are reference Optional (T | None), others
 # are value types or plain reference types. Pointer-form rules apply only
 # to T | None slots; value slots stay as values, plain T slots stay as &.
-from tpy import Int32
+from tpy import int32
 
 
 class T:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
-def f(a: T, b: T) -> tuple[T | None, Int32, T | None]:
+def f(a: T, b: T) -> tuple[T | None, int32, T | None]:
     return (a, 42, b)
 
 
-def show(p: tuple[T | None, Int32, T | None]) -> None:
+def show(p: tuple[T | None, int32, T | None]) -> None:
     a, n, b = p
     if a is not None:
         print(a.x)

@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // # Transform with range
-    // squares: list[Int32] = [x * x for x in range(5)]
+    // squares: list[int32] = [x * x for x in range(5)]
     std::vector<int32_t> squares = ({
         std::vector<int32_t> __result;
         const int32_t __stop_0 = 5;
@@ -20,7 +20,7 @@ void main() {
     // print(squares)
     std::cout << ::tpy::ListPrinter(squares) << "\n";
     // # Identity comprehension from list
-    // items: list[Int32] = [10, 20, 30]
+    // items: list[int32] = [10, 20, 30]
     std::vector<int32_t> items = {10, 20, 30};
     // copy = [x for x in items]
     std::vector<int32_t> copy = ({
@@ -38,7 +38,7 @@ void main() {
     // print(copy)
     std::cout << ::tpy::ListPrinter(copy) << "\n";
     // # Two-arg range (non-literal stop to stay on list path)
-    // stop: Int32 = 7
+    // stop: int32 = 7
     int32_t stop = 7;
     // shifted = [x for x in range(3, stop)]
     std::vector<int32_t> shifted = ({
@@ -99,7 +99,7 @@ void main() {
     // print(make_list(4))
     std::cout << ::tpy::ListPrinter(make_list(4)) << "\n";
     // # Three-arg range (non-literal step to stay on list path)
-    // step: Int32 = 3
+    // step: int32 = 3
     int32_t step = 3;
     // stepped = [x for x in range(0, 10, step)]
     std::vector<int32_t> stepped = ({
@@ -117,7 +117,7 @@ void main() {
     std::cout << ::tpy::ListPrinter(stepped) << "\n";
 }
 
-// def make_list(n: Int32) -> Own[list[Int32]]:
+// def make_list(n: int32) -> Own[list[int32]]:
 std::vector<int32_t> make_list(int32_t n) {
     // return [x * 10 for x in range(n)]
     return ({

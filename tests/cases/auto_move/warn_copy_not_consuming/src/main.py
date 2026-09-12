@@ -1,10 +1,10 @@
 # Copy warning is preserved when consuming doesn't activate
 # (container lives past the loop).
-from tpy import Int32
+from tpy import int32
 
 class Item:
-    value: Int32
-    def __init__(self, v: Int32) -> None:
+    value: int32
+    def __init__(self, v: int32) -> None:
         self.value = v
 
 def main() -> None:

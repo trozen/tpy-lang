@@ -2,35 +2,35 @@
 # (self.store[k] in a readonly method, rows[i] off a const param) must spell
 # const element pointers; bump() is the mutation inverse (receiver demoted,
 # write observed through the field -- the reads alias, they don't copy).
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    val: Int32
-    def __init__(self, v: Int32) -> None:
+    val: int32
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 
-def weight_of(t: tuple[Int32, Box]) -> Int32:
+def weight_of(t: tuple[int32, Box]) -> int32:
     return t[0]
 
 
 class Holder:
-    store: dict[str, tuple[Int32, Box]]
+    store: dict[str, tuple[int32, Box]]
     def __init__(self, a: Box, b: Box) -> None:
         self.store = {"a": (40, a), "b": (41, b)}  # tpyc: warning(/copies Box into owned storage/) warning(/copies Box into owned storage/)
 
-    def get_weight(self, k: str) -> Int32:
+    def get_weight(self, k: str) -> int32:
         pair = self.store[k]
         if pair[0] < 0:
             pair = self.store["a"]
         return pair[0]
 
-    def peek(self) -> Int32:
+    def peek(self) -> int32:
         pair = self.store["a"]
         return pair[0]
 
-    def arg_weight(self, k: str) -> Int32:
+    def arg_weight(self, k: str) -> int32:
         return weight_of(self.store[k])
 
     def bump(self, k: str) -> None:
@@ -38,7 +38,7 @@ class Holder:
         pair[1].val = pair[1].val + 1
 
 
-def first_weight(rows: list[tuple[Int32, Box]], again: bool) -> Int32:
+def first_weight(rows: list[tuple[int32, Box]], again: bool) -> int32:
     p = rows[0]
     if again:
         p = rows[1]

@@ -4,16 +4,16 @@
 namespace tpyapp::main {
 
 
-// def depth(t: Tree) -> Int32:
+// def depth(t: Tree) -> int32:
 int32_t depth(const Tree& t) {
-    // if isinstance(t, Int32):
+    // if isinstance(t, int32):
     if (std::holds_alternative<int32_t>(t.value)) {
         const auto& __t = std::get<int32_t>(t.value);
         // return 0
         return 0;
     }
     const auto& __t = std::get<std::vector<Tree>>(t.value);
-    // m: Int32 = 0
+    // m: int32 = 0
     int32_t m = 0;
     // for child in t:
     auto& __src_0 = __t;
@@ -34,16 +34,16 @@ int32_t depth(const Tree& t) {
     return (::tpy::add_check<int32_t>(m, 1));
 }
 
-// def count(t: Tree) -> Int32:
+// def count(t: Tree) -> int32:
 int32_t count(const Tree& t) {
-    // if isinstance(t, Int32):
+    // if isinstance(t, int32):
     if (std::holds_alternative<int32_t>(t.value)) {
         const auto& __t = std::get<int32_t>(t.value);
         // return 1
         return 1;
     }
     const auto& __t = std::get<std::vector<Tree>>(t.value);
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for child in t:
     auto& __src_0 = __t;
@@ -59,16 +59,16 @@ int32_t count(const Tree& t) {
     return total;
 }
 
-// def leaf_sum(t: Tree) -> Int32:
+// def leaf_sum(t: Tree) -> int32:
 int32_t leaf_sum(const Tree& t) {
-    // if isinstance(t, Int32):
+    // if isinstance(t, int32):
     if (std::holds_alternative<int32_t>(t.value)) {
         const auto& __t = std::get<int32_t>(t.value);
         // return t
         return __t;
     }
     const auto& __t = std::get<std::vector<Tree>>(t.value);
-    // s: Int32 = 0
+    // s: int32 = 0
     int32_t s = 0;
     // for child in t:
     auto& __src_0 = __t;
@@ -84,9 +84,9 @@ int32_t leaf_sum(const Tree& t) {
     return s;
 }
 
-// def child_count(t: Tree) -> Int32:
+// def child_count(t: Tree) -> int32:
 int32_t child_count(const Tree& t) {
-    // if isinstance(t, Int32):
+    // if isinstance(t, int32):
     if (std::holds_alternative<int32_t>(t.value)) {
         const auto& __t = std::get<int32_t>(t.value);
         // return 0
@@ -98,7 +98,7 @@ int32_t child_count(const Tree& t) {
 }
 
 // # isinstance guard inside an else block
-// def depth_nested(t: Tree, offset: Int32) -> Int32:
+// def depth_nested(t: Tree, offset: int32) -> int32:
 int32_t depth_nested(const Tree& t, int32_t offset) {
     // if offset < 0:
     if ((offset < 0)) {
@@ -106,14 +106,14 @@ int32_t depth_nested(const Tree& t, int32_t offset) {
         return 0;
     // else:
     } else {
-        // if isinstance(t, Int32):
+        // if isinstance(t, int32):
         if (std::holds_alternative<int32_t>(t.value)) {
             const auto& __t = std::get<int32_t>(t.value);
             // return offset
             return offset;
         }
         const auto& __t = std::get<std::vector<Tree>>(t.value);
-        // m: Int32 = 0
+        // m: int32 = 0
         int32_t m = 0;
         // for child in t:
         auto& __src_0 = __t;
@@ -137,7 +137,7 @@ int32_t depth_nested(const Tree& t, int32_t offset) {
 
 // def eval_expr(e: Expr) -> str:
 std::string eval_expr(const Expr& e) {
-    // if isinstance(e, Int32):
+    // if isinstance(e, int32):
     if (std::holds_alternative<int32_t>(e.value)) {
         const auto& __e = std::get<int32_t>(e.value);
         // return str(e)

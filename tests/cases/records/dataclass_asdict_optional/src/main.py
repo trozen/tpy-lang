@@ -1,12 +1,12 @@
 # Test asdict()/astuple() with Optional[Dataclass] fields and nested containers
 from dataclasses import dataclass, asdict, astuple
 from typing import Optional
-from tpy import Int32
+from tpy import int32
 
 @dataclass
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 # Direct Optional[DC] field
 @dataclass

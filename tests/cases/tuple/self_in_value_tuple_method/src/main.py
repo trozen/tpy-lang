@@ -1,15 +1,15 @@
 # `self` stored into a tuple inside a sync method: it passes bare into the
 # pointer slot, so the element aliases the receiver.
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    val: Int32
+    val: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.val = v
 
-    def bump(self) -> Int32:
+    def bump(self) -> int32:
         # The tuple's second element is `self` itself.
         t = (1, self)
         t[1].val += 1

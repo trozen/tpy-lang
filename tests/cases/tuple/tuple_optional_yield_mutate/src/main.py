@@ -3,12 +3,12 @@
 # through the yielded tuple flow back to the iterable. Parallel to gen_ref
 # / gen_ref_while but for the pointer-repr-Optional tuple shape.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
 class P:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 

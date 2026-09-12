@@ -1,18 +1,18 @@
 # Property borrow tracking: property getter borrows via return_borrows_from
-from tpy import Int32
+from tpy import int32
 
 class Container:
-    _items: list[Int32]
+    _items: list[int32]
 
     def __init__(self) -> None:
         self._items = [1, 2, 3]
 
     @property
-    def items(self) -> list[Int32]:
+    def items(self) -> list[int32]:
         return self._items
 
     @items.setter
-    def items(self, v: list[Int32]) -> None:
+    def items(self, v: list[int32]) -> None:
         self._items = v
 
 def test_borrow_via_property() -> None:

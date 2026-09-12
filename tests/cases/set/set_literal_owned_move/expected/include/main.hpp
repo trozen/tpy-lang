@@ -16,7 +16,7 @@ void main();
 // @dataclass(frozen=True)
 // class P:
 struct P {
-    // x: Int32
+    // x: int32
     int32_t x;
 
     P() = default;

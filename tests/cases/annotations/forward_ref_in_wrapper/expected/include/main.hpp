@@ -16,14 +16,14 @@ void main();
 
 // class Tree:
 struct Tree {
-    // value: Int32
+    // value: int32
     int32_t value;
-    // parent_value: Optional["Int32"]
+    // parent_value: Optional["int32"]
     std::optional<int32_t> parent_value;
     // children: list["Tree"]
     std::vector<Tree> children;
 
-    // def __init__(self, value: Int32, parent_value: Optional["Int32"]) -> None:
+    // def __init__(self, value: int32, parent_value: Optional["int32"]) -> None:
     Tree() = default;
     explicit Tree(int32_t value, std::optional<int32_t> parent_value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Tree";
@@ -35,7 +35,7 @@ inline std::ostream& operator<<(std::ostream& os, const Tree& obj) {
 }
 
 
-// def __init__(self, value: Int32, parent_value: Optional["Int32"]) -> None:
+// def __init__(self, value: int32, parent_value: Optional["int32"]) -> None:
 inline Tree::Tree(int32_t value, std::optional<int32_t> parent_value) : value(value), parent_value(parent_value), children(std::vector<Tree>{}) {}
 void __tpy_init();
 } // namespace tpyapp::main

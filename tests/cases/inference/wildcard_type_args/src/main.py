@@ -1,5 +1,5 @@
 # _ wildcard type arguments: partial explicit + inference in functions, constructors, methods
-from tpy import Int32, Int64
+from tpy import int32, int64
 
 def identity[T](x: T) -> T:
     return x
@@ -40,45 +40,45 @@ class Mapper[T]:
     def transform[U, V](self, u: U, v: V) -> V:
         return v
 
-def take_box(b: Box[Int32]) -> None:
+def take_box(b: Box[int32]) -> None:
     print(b.get())
 
 def main() -> None:
     # Function calls: _ is equivalent to omitting (full inference)
-    r1 = identity[_](Int32(10))  # tpyc: type(Int32)
+    r1 = identity[_](int32(10))  # tpyc: type(int32)
     print(r1)
 
     # Function calls: partial explicit + wildcard
-    r2 = pair_func[_, Int64](Int32(5), Int64(20))  # tpyc: type(Int32)
+    r2 = pair_func[_, int64](int32(5), int64(20))  # tpyc: type(int32)
     print(r2)
 
-    r3 = pair_func[Int32, _](Int32(5), Int64(20))  # tpyc: type(Int32)
+    r3 = pair_func[int32, _](int32(5), int64(20))  # tpyc: type(int32)
     print(r3)
 
     # Triple: wildcard in middle position
-    r4 = triple[Int32, _, Int64](Int32(1), Int64(2), Int64(3))  # tpyc: type(Int64)
+    r4 = triple[int32, _, int64](int32(1), int64(2), int64(3))  # tpyc: type(int64)
     print(r4)
 
     # Constructor: wildcard with init args
-    b1 = Box[_](Int32(42))  # tpyc: type(/Box\[Int32\]/)
+    b1 = Box[_](int32(42))  # tpyc: type(/Box\[int32\]/)
     print(b1.get())
 
     # Constructor: multi-param wildcard
-    p1 = Pair[_, Int64](Int32(10), Int64(20))  # tpyc: type(/Pair\[Int32, Int64\]/)
+    p1 = Pair[_, int64](int32(10), int64(20))  # tpyc: type(/Pair\[int32, int64\]/)
     print(p1.a)
     print(p1.b)
 
     # Constructor: no-init, full explicit (baseline)
-    c = Container[Int32]()
-    c.set(Int32(99))
+    c = Container[int32]()
+    c.set(int32(99))
     print(c.get())
 
     # Inline constructor with wildcard, resolved from param type
-    take_box(Box[_](Int32(7)))
+    take_box(Box[_](int32(7)))
 
     # Method call: wildcard on method-level type params
-    m = Mapper[Int32](Int32(5))
-    r5 = m.transform[_, Int64](Int32(1), Int64(100))  # tpyc: type(Int64)
+    m = Mapper[int32](int32(5))
+    r5 = m.transform[_, int64](int32(1), int64(100))  # tpyc: type(int64)
     print(r5)
 
     # String literal: wildcard should produce str (same as full inference)

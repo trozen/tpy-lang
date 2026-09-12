@@ -6,19 +6,19 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // c = Container[Int32]()
+    // c = Container[int32]()
     Container<int32_t> c = Container<int32_t>();
-    // c.add(Int32(10))
+    // c.add(int32(10))
     c.add(10);
-    // c.add(Int32(20))
+    // c.add(int32(20))
     c.add(20);
-    // c.add(Int32(30))
+    // c.add(int32(30))
     c.add(30);
     // # Index
-    // print(c[Int32(1)])
+    // print(c[int32(1)])
     std::cout << c[1] << "\n";
     // # Slice
-    // sp = c[Int32(0):Int32(2)]
+    // sp = c[int32(0):int32(2)]
     std::span<const int32_t> sp = c.__getitem__(::tpy::BasicSlice{0, 2});
     // for x in sp:
     auto& __obj_0 = sp;
@@ -36,7 +36,7 @@ void main() {
     s.add("hello");
     // s.add("world")
     s.add("world");
-    // print(s[Int32(0)])
+    // print(s[int32(0)])
     std::cout << s[0] << "\n";
 }
 

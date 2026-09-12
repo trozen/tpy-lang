@@ -16,7 +16,7 @@ void test_string_basic() {
 
 // def test_string_from_int() -> None:
 void test_string_from_int() {
-    // s: String = String(Int32(42))
+    // s: String = String(int32(42))
     ::tpy::String s = ::tpy::fixed_to_str<int32_t>(42);
     // print(s)  # 42
     std::cout << s << "\n";

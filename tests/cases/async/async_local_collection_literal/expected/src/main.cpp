@@ -14,7 +14,7 @@ namespace tpyapp::main {
         d.emplace(::tpy::ordered_map<int32_t, int32_t>({{1, 10}, {2, 20}}));
         // s = {7, 8}
         s.emplace(::tpy::ordered_set<int32_t>({7, 8}));
-        // empty: list[Int32] = []
+        // empty: list[int32] = []
         empty.emplace(std::vector<int32_t>{});
         // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));

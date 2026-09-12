@@ -1,9 +1,9 @@
 # Stepped slice assigned to a local: list_stepped_slice returns
 # std::vector<T> by value (rvalue), must not bind to lvalue reference.
-from tpy import Int32
+from tpy import int32
 
 def test_stepped() -> None:
-    items: list[Int32] = [1, 2, 3, 4, 5, 6, 7, 8]
+    items: list[int32] = [1, 2, 3, 4, 5, 6, 7, 8]
     every_other = items[::2]
     print(every_other)
 

@@ -4,18 +4,18 @@
 # param, and a generator held across statements.
 
 from typing import Iterator
-from tpy import Int32, readonly
+from tpy import int32, readonly
 
 
 class Rec:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32):
+    def __init__(self, v: int32):
         self.v = v
 
 
 class Lim:
-    def first(self, items: list[Int32], cap: Int32) -> Iterator[Int32]:
+    def first(self, items: list[int32], cap: int32) -> Iterator[int32]:
         n = 0
         for x in items:
             if n >= cap:
@@ -23,21 +23,21 @@ class Lim:
             yield x
             n += 1
 
-    def ro_pair(self, xs: readonly[list[Int32]]) -> Iterator[Int32]:
+    def ro_pair(self, xs: readonly[list[int32]]) -> Iterator[int32]:
         yield 0
         for x in xs:
             yield x
 
-    def rec_val(self, r: readonly[Rec]) -> Iterator[Int32]:
+    def rec_val(self, r: readonly[Rec]) -> Iterator[int32]:
         yield r.v
         yield r.v + 1
 
-    def dvals(self, d: readonly[dict[str, Int32]]) -> Iterator[Int32]:
+    def dvals(self, d: readonly[dict[str, int32]]) -> Iterator[int32]:
         yield len(d)
         for k in d:
             yield d[k]
 
-    def echo(self, xs: list[Int32]) -> Iterator[Int32]:
+    def echo(self, xs: list[int32]) -> Iterator[int32]:
         yield xs[0]
         yield xs[0]
 
@@ -55,8 +55,8 @@ def main() -> None:
     print(total)
     # The frame borrows the caller's list, no copy: a mutation between
     # pulls is visible to the generator.
-    data: list[Int32] = [5, 6]
-    got: list[Int32] = []
+    data: list[int32] = [5, 6]
+    got: list[int32] = []
     for v in lim.echo(data):
         got.append(v)
         data[0] = 50

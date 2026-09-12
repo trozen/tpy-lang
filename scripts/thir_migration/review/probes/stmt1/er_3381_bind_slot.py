@@ -1,13 +1,13 @@
-from tpy import Int32, Own, error_return, ReturnException
+from tpy import int32, Own, error_return, ReturnException
 class Err(Exception, ReturnException):
     pass
 @error_return(Err)
-def items(n: Int32) -> Own[list[Int32]]:
+def items(n: int32) -> Own[list[int32]]:
     if n < 0:
         raise Err
     return [n]
 @error_return(Err)
-def caller(n: Int32) -> Int32:
+def caller(n: int32) -> int32:
     xs = items(n)
     print(len(xs))
     return n

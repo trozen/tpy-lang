@@ -4,17 +4,17 @@
 namespace tpyapp::main {
 
 
-// def get_pair() -> tuple[Int32, Int32]:
+// def get_pair() -> tuple[int32, int32]:
 std::tuple<int32_t, int32_t> get_pair() {
-    // return (Int32(10), Int32(20))
+    // return (int32(10), int32(20))
     return std::tuple<int32_t, int32_t>{10, 20};
 }
 
 // def main() -> None:
 void main() {
-    // a: Int32 = 0
+    // a: int32 = 0
     int32_t a = 0;
-    // b: Int32 = 0
+    // b: int32 = 0
     int32_t b = 0;
     // print(a)
     std::cout << a << "\n";

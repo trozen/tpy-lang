@@ -2,31 +2,31 @@
 # it runs in the constructor BODY in source order -- and there a read of a
 # field an earlier body init already wrote is in place. The ordering rule is
 # about where an init actually runs, not about where it was written.
-from tpy import Int32
+from tpy import int32
 
 
 class Cell:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 
 class Grid:
-    n: Int32
-    cells: list[Int32]
+    n: int32
+    cells: list[int32]
     boxes: list[Cell]
 
-    def __init__(self, xs: list[Int32]) -> None:
+    def __init__(self, xs: list[int32]) -> None:
         m = len(xs) + 1  # breaks the chain: everything below runs in the body
         self.n = m
         # The subject: both read `self.n`, written by the body init above.
-        self.cells = [self.n, Int32(1)]  # tpyc: ok
+        self.cells = [self.n, int32(1)]  # tpyc: ok
         self.boxes = [Cell(self.n)]  # tpyc: ok
 
 
 def main() -> None:
-    g = Grid([Int32(7)])
+    g = Grid([int32(7)])
     print(g.n, g.cells[0], g.cells[1])
     # Mutating through the field proves the element is stored in place.
     g.boxes[0].v = 9

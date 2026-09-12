@@ -18,7 +18,7 @@
 #
 # tpy: cpp_namespace("tpystd::collections")
 from typing import Iterable
-from tpy import Own, Int32, Hashable, copy
+from tpy import Own, int32, Hashable, copy
 
 
 class Counter[T: Hashable]:
@@ -37,7 +37,7 @@ class Counter[T: Hashable]:
     def __setitem__(self, key: T, count: int) -> None:
         self._data[key] = count
 
-    def __len__(self) -> Int32:
+    def __len__(self) -> int32:
         return len(self._data)
 
     def __contains__(self, key: T) -> bool:
@@ -49,7 +49,7 @@ class Counter[T: Hashable]:
             s = s + self._data[k]
         return s
 
-    def most_common(self, n: Int32) -> Own[list[tuple[T, int]]]:
+    def most_common(self, n: int32) -> Own[list[tuple[T, int]]]:
         pairs: list[tuple[T, int]] = []
         for k in self._data:
             pairs.append((copy(k), self._data[k]))

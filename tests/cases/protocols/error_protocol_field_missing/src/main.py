@@ -1,19 +1,19 @@
-from tpy import Int32
+from tpy import int32
 from typing import Protocol
 
 
 class HasValue(Protocol):
-    value: Int32
+    value: int32
 
 
 class NoValue:
-    other: Int32
+    other: int32
 
-    def __init__(self, x: Int32):
+    def __init__(self, x: int32):
         self.other = x
 
 
-def get_value[T: HasValue](item: T) -> Int32:
+def get_value[T: HasValue](item: T) -> int32:
     return item.value
 
 

@@ -23,9 +23,9 @@ void test_quote_expr();
 // @builder
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
-    // y: Int32
+    // y: int32
     int32_t y;
 
     Point() = default;
@@ -65,7 +65,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 struct Person {
     // name: str
     std::string name;
-    // age: Int32
+    // age: int32
     int32_t age;
 
     Person() = default;
@@ -110,21 +110,21 @@ inline bool Point::__eq__(const Point& other) const {
 // # Test quote/add_method_from_source macro APIs.
 inline void Point::set_x(int32_t value) {
     // # Test quote/add_method_from_source macro APIs.
-    // from tpy import Int32
+    // from tpy import int32
     this->x = value;
 }
 
 // # Test quote/add_method_from_source macro APIs.
 inline void Point::set_y(int32_t value) {
     // # Test quote/add_method_from_source macro APIs.
-    // from tpy import Int32
+    // from tpy import int32
     this->y = value;
 }
 
 // # Test quote/add_method_from_source macro APIs.
 inline std::string Point::describe() const {
     // # Test quote/add_method_from_source macro APIs.
-    // from tpy import Int32
+    // from tpy import int32
     return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("x=", ::tpy::fixed_to_str<int32_t>(this->x))), ", ")), "y=")), ::tpy::fixed_to_str<int32_t>(this->y)));
 }
 
@@ -142,7 +142,7 @@ inline int32_t Point::default_first() const {
 // # Test quote/add_method_from_source macro APIs.
 inline int32_t Point::field_count() {
     // # Test quote/add_method_from_source macro APIs.
-    // from tpy import Int32
+    // from tpy import int32
     return 2;
 }
 
@@ -155,21 +155,21 @@ inline bool Person::__eq__(const Person& other) const {
 // # Test quote/add_method_from_source macro APIs.
 inline void Person::set_name(std::string_view value) {
     // # Test quote/add_method_from_source macro APIs.
-    // from tpy import Int32
+    // from tpy import int32
     this->name = value;
 }
 
 // # Test quote/add_method_from_source macro APIs.
 inline void Person::set_age(int32_t value) {
     // # Test quote/add_method_from_source macro APIs.
-    // from tpy import Int32
+    // from tpy import int32
     this->age = value;
 }
 
 // # Test quote/add_method_from_source macro APIs.
 inline std::string Person::describe() const {
     // # Test quote/add_method_from_source macro APIs.
-    // from tpy import Int32
+    // from tpy import int32
     return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("name=", std::string(this->name))), ", ")), "age=")), ::tpy::fixed_to_str<int32_t>(this->age)));
 }
 
@@ -187,7 +187,7 @@ inline std::string Person::default_first() const {
 // # Test quote/add_method_from_source macro APIs.
 inline int32_t Person::field_count() {
     // # Test quote/add_method_from_source macro APIs.
-    // from tpy import Int32
+    // from tpy import int32
     return 2;
 }
 void __tpy_init();

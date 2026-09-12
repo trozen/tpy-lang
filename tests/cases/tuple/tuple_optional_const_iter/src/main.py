@@ -7,12 +7,12 @@
 # list.append takes per-element ownership (Own[T] with T = tuple), so each
 # literal element is moved at last use -- explicit copy() preserves the
 # source for further appends.
-from tpy import Int32, copy
+from tpy import int32, copy
 
 
 class T:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 

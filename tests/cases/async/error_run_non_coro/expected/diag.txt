@@ -1,1 +1,1 @@
-main.py:11: error: asyncio.run() expects a coroutine (the result of calling an `async def`), got 'Future[Int32]'. CPython raises ValueError for non-coroutine awaitables; await the value directly instead
+main.py:11: error: asyncio.run() expects a coroutine (the result of calling an `async def`), got 'Future[int32]'. CPython raises ValueError for non-coroutine awaitables; await the value directly instead

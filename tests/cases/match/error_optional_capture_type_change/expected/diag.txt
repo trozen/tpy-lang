@@ -1,1 +1,1 @@
-main.py:10: error: match capture 'x' binds the full Optional subject ('Int32 | None') but 'x' already has type 'Int32'; add a 'case None:' arm before it or use a fresh name
+main.py:10: error: match capture 'x' binds the full Optional subject ('int32 | None') but 'x' already has type 'int32'; add a 'case None:' arm before it or use a fresh name

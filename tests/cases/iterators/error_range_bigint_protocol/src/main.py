@@ -1,8 +1,8 @@
-# BigInt range does not conform to Iterator[Int32]
+# BigInt range does not conform to Iterator[int32]
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
-def f(it: Iterator[Int32]) -> Int32:
+def f(it: Iterator[int32]) -> int32:
     return 0
 
 base = 1 << 100

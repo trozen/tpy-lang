@@ -4,24 +4,24 @@
 # would surface as a wrong value instead of reading clean.
 from typing import ClassVar
 
-from tpy import Int32
+from tpy import int32
 
 
 class Registry:
-    code: ClassVar[Int32] = 999
+    code: ClassVar[int32] = 999
 
 
 class Item:
-    def __init__(self, code: Int32):
+    def __init__(self, code: int32):
         self.code = code
 
 
 class Other:
-    def __init__(self, tag: Int32):
+    def __init__(self, tag: int32):
         self.tag = tag
 
 
-def pick(v: Item | Other) -> Int32:
+def pick(v: Item | Other) -> int32:
     match v:
         case Item() as Registry:  # tpyc: ok
             Registry.code += 1

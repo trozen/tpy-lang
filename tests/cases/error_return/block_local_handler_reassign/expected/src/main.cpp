@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // @error_return(ParseError)
-// def parse_digit(s: str) -> Int32:
+// def parse_digit(s: str) -> int32:
 std::expected<int32_t, ParseError> parse_digit(std::string_view s) {
     // if s == "0":
     if ((s == "0")) {
@@ -21,7 +21,7 @@ std::expected<int32_t, ParseError> parse_digit(std::string_view s) {
     return ::tpy::make_unexpected(ParseError{});
 }
 
-// def handler_declares(s: str) -> Int32:
+// def handler_declares(s: str) -> int32:
 int32_t handler_declares(std::string_view s) {
     // try:
     int32_t d;
@@ -50,7 +50,7 @@ int32_t handler_declares(std::string_view s) {
     return n;
 }
 
-// def handler_binding_declares(s: str) -> Int32:
+// def handler_binding_declares(s: str) -> int32:
 int32_t handler_binding_declares(std::string_view s) {
     // # Same shape through the `as e` binding arm, which emits the handler body
     // # inside an extra brace block.
@@ -85,7 +85,7 @@ int32_t handler_binding_declares(std::string_view s) {
     return n;
 }
 
-// def try_body_declares(s: str) -> Int32:
+// def try_body_declares(s: str) -> int32:
 int32_t try_body_declares(std::string_view s) {
     // # The try body is the sibling block; its declaration must not reach the
     // # post-try assignment either.

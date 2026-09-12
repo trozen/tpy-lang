@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // pet: Pet = Dog()
 Pet* pet{};
 // # Global reassign inside loop
-// i: Int32 = 0
+// i: int32 = 0
 int32_t i{};
 
 void __tpy_init() {
@@ -40,7 +40,7 @@ void __tpy_init() {
     // print(pet.name())
     std::cout << pet->name() << "\n";
     // # Global reassign inside loop
-    // i: Int32 = 0
+    // i: int32 = 0
     i = 0;
     // while i < 2:
     while ((i < 2)) {

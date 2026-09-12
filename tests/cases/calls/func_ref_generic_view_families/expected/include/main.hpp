@@ -38,13 +38,13 @@ std::string apply_str(__F0&& f, std::string_view s) {
     // return f(s)
     return f(s);
 }
-// def apply_bytes(f: Fn[[bytes], bytes], b: bytes) -> Int32:
+// def apply_bytes(f: Fn[[bytes], bytes], b: bytes) -> int32:
 template<typename __F0>
   requires requires(__F0& __fn, ::tpy::BytesView __a0) {
       { __fn(__a0) } -> std::convertible_to<::tpy::Bytes>;
   }
 int32_t apply_bytes(__F0&& f, ::tpy::BytesView b) {
-    // return Int32(len(f(b)))
+    // return int32(len(f(b)))
     return ::tpy::__len__(f(b));
 }
 

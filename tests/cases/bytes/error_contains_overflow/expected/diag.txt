@@ -1,1 +1,1 @@
-main.py:4: error: Integer literal 256 is outside UInt8 range [0, 255] in membership test (expected UInt8)
+main.py:4: error: Integer literal 256 is outside uint8 range [0, 255] in membership test (expected uint8)

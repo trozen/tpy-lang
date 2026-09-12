@@ -42,17 +42,17 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
 // class Child[T](Container[list[T]]):
 template<typename T>
 struct Child : Container<std::vector<T>> {
-    // extra: Int32
+    // extra: int32
     int32_t extra;
 
-    // def __init__(self, value: list[T], extra: Int32) -> None:
+    // def __init__(self, value: list[T], extra: int32) -> None:
     Child() = default;
     explicit Child(const std::vector<T>& value, int32_t extra) : extra(extra) {
         // self.value = value
         this->value = value;
     }
 
-    // def get_extra(self) -> Int32:
+    // def get_extra(self) -> int32:
     int32_t get_extra() const {
         // return self.extra
         return this->extra;

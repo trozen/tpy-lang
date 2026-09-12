@@ -2,10 +2,10 @@
 # Array (aggregate construction handles the nocopy elements) and the Own
 # element collapses to storage form, so the await-loop borrows each Task.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
-async def work(n: Int32) -> Int32:
+async def work(n: int32) -> int32:
     return n
 
 

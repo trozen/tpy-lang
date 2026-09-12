@@ -1,10 +1,10 @@
-from tpy import Int32, Own
+from tpy import int32, Own
 class A:
-    n: Int32
-    def __init__(self, n: Int32) -> None:
+    n: int32
+    def __init__(self, n: int32) -> None:
         self.n = n
 
-def use[T](xs: list[T]) -> Int32:
+def use[T](xs: list[T]) -> int32:
     return len(xs)
 def main() -> None:
     a = A(1)

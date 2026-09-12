@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def sum_ro(items: Span[readonly[Int32]]) -> Int32:
+// def sum_ro(items: Span[readonly[int32]]) -> int32:
 int32_t sum_ro(std::span<const int32_t> items) {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for x in items:
     auto& __obj_0 = items;

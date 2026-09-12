@@ -1,9 +1,9 @@
 # ArrayList.append_default() appends a default-constructed element
-from tpy import Int32
+from tpy import int32
 from tplib.array_list import ArrayList
 
 def main() -> None:
-    a = ArrayList[Int32, 4]()
+    a = ArrayList[int32, 4]()
     a.append(10)
     a.append_default()
     a.append(30)

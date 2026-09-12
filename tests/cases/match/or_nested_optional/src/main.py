@@ -1,10 +1,10 @@
 # Parenthesized or-pattern groups on an Optional subject, with `None` inside
 # the group: the flatten puts the None alternative in the same list the flat
 # spelling would produce.
-from tpy import Int32
+from tpy import int32
 
 
-def classify(v: Int32 | None) -> str:
+def classify(v: int32 | None) -> str:
     match v:
         # Same alternatives as the flat `case None | 1 | 2:`.
         case (None | 1) | 2:

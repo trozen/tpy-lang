@@ -5,7 +5,7 @@
 namespace tpyapp::modb {
 
 
-// def pong(n: Int32) -> Int32:
+// def pong(n: int32) -> int32:
 int32_t pong(int32_t n) {
     // if n <= 0:
     if ((n <= 0)) {

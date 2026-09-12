@@ -1,12 +1,12 @@
 # Alias dead before move -- auto-move still works (no regression).
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Point:
-    x: Int32
+    x: int32
 
 
-def consume(p: Own[Point]) -> Int32:
+def consume(p: Own[Point]) -> int32:
     return p.x
 
 

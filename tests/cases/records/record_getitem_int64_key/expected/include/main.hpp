@@ -15,16 +15,16 @@ void main();
 
 // class WidePages:
 struct WidePages {
-    // data: dict[Int64, Int32]
+    // data: dict[int64, int32]
     ::tpy::ordered_map<int64_t, int32_t> data;
 
     // def __init__(self):
     WidePages();
 
-    // def __getitem__(self, key: Int64) -> Int32:
+    // def __getitem__(self, key: int64) -> int32:
     int32_t __getitem__(int64_t key) const;
 
-    // def __setitem__(self, key: Int64, value: Int32) -> None:
+    // def __setitem__(self, key: int64, value: int32) -> None:
     void __setitem__(int64_t key, int32_t value);
 
     int32_t operator[](int64_t key) const {
@@ -42,13 +42,13 @@ inline std::ostream& operator<<(std::ostream& os, const WidePages& obj) {
 // def __init__(self):
 inline WidePages::WidePages() : data(::tpy::ordered_map<int64_t, int32_t>()) {}
 
-// def __getitem__(self, key: Int64) -> Int32:
+// def __getitem__(self, key: int64) -> int32:
 inline int32_t WidePages::__getitem__(int64_t key) const {
     // return self.data.get(key, 0)
     return ::tpy::dict_get_default(this->data, key, 0);
 }
 
-// def __setitem__(self, key: Int64, value: Int32) -> None:
+// def __setitem__(self, key: int64, value: int32) -> None:
 inline void WidePages::__setitem__(int64_t key, int32_t value) {
     // self.data[key] = value
     ::tpy::__setitem__(this->data, key, value);

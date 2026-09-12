@@ -3,13 +3,13 @@
 # (bare class / capture / as / no-None-arm shapes, param and local subjects).
 # Captures alias the subject's target: the write through the subject is
 # observed through the capture and by the caller (reference semantics).
-from tpy import Int32
+from tpy import int32
 
 
 class Leaf:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
 
@@ -37,7 +37,7 @@ def bump_and_peek(x: Leaf | None) -> None:
             print(v.n)
 
 
-def label(x: Leaf | None) -> Int32:
+def label(x: Leaf | None) -> int32:
     match x:
         case None:
             return -1

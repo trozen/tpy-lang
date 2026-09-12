@@ -65,13 +65,13 @@ void nested_branches(bool a, bool b) {
     std::cout << pet->name() << "\n";
 }
 
-// def loop_reassign(n: Int32) -> None:
+// def loop_reassign(n: int32) -> None:
 void loop_reassign(int32_t n) {
     std::optional<::tpy::Adapter<Pet, Cat>> __slot_2;
     // pet: Pet = Dog()
     Dog __slot_1{Dog()};
     Pet* pet = &__slot_1;
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < n:
     while ((i < n)) {
@@ -85,14 +85,14 @@ void loop_reassign(int32_t n) {
     std::cout << pet->name() << "\n";
 }
 
-// def branch_in_loop(n: Int32) -> None:
+// def branch_in_loop(n: int32) -> None:
 void branch_in_loop(int32_t n) {
     std::optional<::tpy::Adapter<Pet, Cat>> __slot_2;
     std::optional<::tpy::Adapter<Pet, Parrot>> __slot_3;
     // pet: Pet = Dog()
     Dog __slot_1{Dog()};
     Pet* pet = &__slot_1;
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < n:
     while ((i < n)) {

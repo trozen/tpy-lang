@@ -25,15 +25,15 @@ SHA256 sha256(::tpy::BytesView data = {});
 
 // class SHA256:
 struct SHA256 {
-    // h: list[UInt32]
+    // h: list[uint32]
     std::vector<uint32_t> h;
     // buffer: bytearray
     ::tpy::ByteArray buffer;
-    // length: UInt64
+    // length: uint64
     uint64_t length;
-    // digest_size: Int32
+    // digest_size: int32
     int32_t digest_size;
-    // block_size: Int32
+    // block_size: int32
     int32_t block_size;
     // name: str
     std::string name;
@@ -47,7 +47,7 @@ struct SHA256 {
     // def _drain_blocks(self) -> None:
     void _drain_blocks();
 
-    // def _process_block(self, data: bytes, off: Int32) -> None:
+    // def _process_block(self, data: bytes, off: int32) -> None:
     void _process_block(::tpy::BytesView data, int32_t off);
 
     // def digest(self) -> bytes:
@@ -69,11 +69,11 @@ inline std::ostream& operator<<(std::ostream& os, const SHA256& obj) {
 
 // def update(self, data: bytes) -> None:
 inline void SHA256::update(::tpy::BytesView data) {
-    // n: Int32 = Int32(len(data))
+    // n: int32 = int32(len(data))
     int32_t n = ::tpy::__len__(data);
-    // self.length = UInt64.add_wrap(self.length, UInt64(n))
+    // self.length = uint64.add_wrap(self.length, uint64(n))
     this->length = static_cast<uint64_t>(this->length + ::tpy::int_cast_check<uint64_t>(n));
-    // k: Int32 = 0
+    // k: int32 = 0
     int32_t k = 0;
     // while k < n:
     while ((k < n)) {

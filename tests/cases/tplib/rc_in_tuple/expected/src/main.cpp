@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def both(t: tuple[Rc[Node], Rc[Node]]) -> Int32:
+// def both(t: tuple[Rc[Node], Rc[Node]]) -> int32:
 int32_t both(const std::tuple<const ::tpystd::tplib::rc::Rc<Node>*, const ::tpystd::tplib::rc::Rc<Node>*>& t) {
     // # Borrow form: tuple of Rc[T] borrows.
     // return t[0].get().value + t[1].get().value
@@ -13,21 +13,21 @@ int32_t both(const std::tuple<const ::tpystd::tplib::rc::Rc<Node>*, const ::tpys
 
 // def main() -> None:
 void main() {
-    // a = Rc.new(Node(Int32(10)))
+    // a = Rc.new(Node(int32(10)))
     ::tpystd::tplib::rc::Rc<Node> a = Rc<Node>::new_<Node>(Node(10));
-    // b = Rc.new(Node(Int32(20)))
+    // b = Rc.new(Node(int32(20)))
     ::tpystd::tplib::rc::Rc<Node> b = Rc<Node>::new_<Node>(Node(20));
     // pair: tuple[Rc[Node], Rc[Node]] = (a.clone(), b.clone())
     auto pair = std::tuple<::tpystd::tplib::rc::Rc<Node>, ::tpystd::tplib::rc::Rc<Node>>{a.clone(), b.clone()};
     // print(both(pair))  # 30
     std::cout << both(::tpy::tuple_to_pointer<std::tuple<const ::tpystd::tplib::rc::Rc<Node>*, const ::tpystd::tplib::rc::Rc<Node>*>>(pair)) << "\n";
     // # Mutate through one slot; the original handle sees it.
-    // pair[0].get().value = Int32(100)
+    // pair[0].get().value = int32(100)
     std::get<0>(pair).get().value = 100;
     // print(a.get().value)  # 100 -- shared
     std::cout << a.get().value << "\n";
     // # Mutate through the original; the tuple slot sees it.
-    // b.get().value = Int32(200)
+    // b.get().value = int32(200)
     b.get().value = 200;
     // print(pair[1].get().value)  # 200 -- shared
     std::cout << std::get<1>(pair).get().value << "\n";

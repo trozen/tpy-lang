@@ -6,8 +6,8 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // # Int32 divmod
-    // q1, r1 = divmod(Int32(17), Int32(5))
+    // # int32 divmod
+    // q1, r1 = divmod(int32(17), int32(5))
     auto __tup_1 = ::tpy::divmod_fixed<int32_t>(17, 5);
     int32_t q1 = std::get<0>(__tup_1);
     int32_t r1 = std::get<1>(__tup_1);
@@ -15,8 +15,8 @@ void main() {
     std::cout << q1 << "\n";
     // print(r1)
     std::cout << r1 << "\n";
-    // # Int32 divmod with negative (Python floor semantics)
-    // q2, r2 = divmod(Int32(-17), Int32(5))
+    // # int32 divmod with negative (Python floor semantics)
+    // q2, r2 = divmod(int32(-17), int32(5))
     auto __tup_2 = ::tpy::divmod_fixed<int32_t>(-17, 5);
     int32_t q2 = std::get<0>(__tup_2);
     int32_t r2 = std::get<1>(__tup_2);

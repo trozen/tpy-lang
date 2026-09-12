@@ -2,7 +2,7 @@
 # in-class initializer (Color tint = Color::RED;), explicit defaults too,
 # and a cross-module enum default qualifies correctly.
 from enum import Enum
-from tpy import Int32
+from tpy import int32
 
 from sidemod import Remote, RemoteState
 
@@ -15,7 +15,7 @@ class Color(Enum):
 
 class Shape:
     tint: Color = Color.RED
-    count: Int32 = 0
+    count: int32 = 0
 
 
 class Tagged:

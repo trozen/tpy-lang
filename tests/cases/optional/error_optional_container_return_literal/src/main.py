@@ -2,10 +2,10 @@
 # container LITERAL source. The slot's rows take a None literal, an owning call
 # rvalue and a borrow pointer local; a literal would need a typed-brace render
 # the slot does not spell.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
-def opt(flag: bool) -> Own[list[Int32]] | None:
+def opt(flag: bool) -> Own[list[int32]] | None:
     if flag:
         return [1, 2]  # tpyc: error(/not yet supported/)
     return None

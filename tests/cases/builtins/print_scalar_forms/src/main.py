@@ -2,10 +2,10 @@
 # int (cast so it prints as a number, not a char) -- plus an empty print and a
 # bare free-function call statement (evaluated for its side effect). Value-only,
 # so the output byte-compare against CPython is a full parity check.
-from tpy import Int32, UInt8
+from tpy import int32, uint8
 
 
-def show(n: Int32, ok: bool, ratio: float, small: UInt8) -> None:
+def show(n: int32, ok: bool, ratio: float, small: uint8) -> None:
     print("n =", n)
     print(n, ok, ratio)
     print(small)          # 8-bit -> static_cast<int>, prints as a number

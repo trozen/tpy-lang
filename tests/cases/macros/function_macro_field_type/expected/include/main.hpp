@@ -17,7 +17,7 @@ void main();
 
 // class GateBase:
 struct GateBase {
-    // tag: Int32
+    // tag: int32
     int32_t tag;
 
     // def __init__(self) -> None:

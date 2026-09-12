@@ -3,7 +3,7 @@
 
 namespace tpyapp::main {
 
-// span_src: list[Int32] = [Int32(10), Int32(20), Int32(30), Int32(40)]
+// span_src: list[int32] = [int32(10), int32(20), int32(30), int32(40)]
 std::vector<int32_t>* span_src{};
 
 // def test_basic() -> None:
@@ -60,9 +60,9 @@ void test_empty() {
 
 // def test_type_inference() -> None:
 void test_type_inference() {
-    // items: list[Int32] = [Int32(1), Int32(2), Int32(3)]
+    // items: list[int32] = [int32(1), int32(2), int32(3)]
     std::vector<int32_t> items = {1, 2, 3};
-    // sub = items[0:2]  # tpyc: type(Span[Int32])
+    // sub = items[0:2]  # tpyc: type(Span[int32])
     std::span<int32_t> sub = ::tpy::list_slice(items, ::tpy::BasicSlice{0, 2});
     // print(sub)
     std::cout << ::tpy::ListPrinter(sub) << "\n";
@@ -70,34 +70,34 @@ void test_type_inference() {
 
 // def test_array() -> None:
 void test_array() {
-    // arr: Array[Int32, 5] = [Int32(1), Int32(2), Int32(3), Int32(4), Int32(5)]
+    // arr: Array[int32, 5] = [int32(1), int32(2), int32(3), int32(4), int32(5)]
     std::array<int32_t, 5> arr = {1, 2, 3, 4, 5};
-    // sub = arr[1:4]  # tpyc: type(Span[Int32])
+    // sub = arr[1:4]  # tpyc: type(Span[int32])
     std::span<int32_t> sub = ::tpy::list_slice(arr, ::tpy::BasicSlice{1, 4});
     // print(sub)
     std::cout << ::tpy::ListPrinter(sub) << "\n";
 }
 
-// def test_span(s: Span[Int32]) -> None:
+// def test_span(s: Span[int32]) -> None:
 void test_span(std::span<int32_t> s) {
-    // sub = s[1:3]  # tpyc: type(Span[Int32])
+    // sub = s[1:3]  # tpyc: type(Span[int32])
     std::span<int32_t> sub = ::tpy::list_slice(s, ::tpy::BasicSlice{1, 3});
     // print(sub)
     std::cout << ::tpy::ListPrinter(sub) << "\n";
 }
 
 // @readonly
-// def test_readonly_list(items: list[Int32]) -> None:
+// def test_readonly_list(items: list[int32]) -> None:
 void test_readonly_list(const std::vector<int32_t>& items) {
-    // sub = items[0:2]  # tpyc: type(Span[readonly[Int32]])
+    // sub = items[0:2]  # tpyc: type(Span[readonly[int32]])
     std::span<const int32_t> sub = ::tpy::list_slice(items, ::tpy::BasicSlice{0, 2});
     // print(sub)
     std::cout << ::tpy::ListPrinter(sub) << "\n";
 }
 
-// def test_readonly_span_param(s: Span[readonly[Int32]]) -> None:
+// def test_readonly_span_param(s: Span[readonly[int32]]) -> None:
 void test_readonly_span_param(std::span<const int32_t> s) {
-    // sub = s[0:2]  # tpyc: type(Span[readonly[Int32]])
+    // sub = s[0:2]  # tpyc: type(Span[readonly[int32]])
     std::span<const int32_t> sub = ::tpy::list_slice(s, ::tpy::BasicSlice{0, 2});
     // print(sub)
     std::cout << ::tpy::ListPrinter(sub) << "\n";
@@ -142,19 +142,19 @@ void __tpy_init() {
     test_array();
     // print("---")
     std::cout << "---" << "\n";
-    // span_src: list[Int32] = [Int32(10), Int32(20), Int32(30), Int32(40)]
+    // span_src: list[int32] = [int32(10), int32(20), int32(30), int32(40)]
     static std::vector<int32_t> __global_slot_1 = {10, 20, 30, 40};
     span_src = &__global_slot_1;
     // test_span(span_src)
     test_span(::tpy::as_mut_span((*span_src)));
     // print("---")
     std::cout << "---" << "\n";
-    // test_readonly_list([Int32(10), Int32(20), Int32(30)])
+    // test_readonly_list([int32(10), int32(20), int32(30)])
     std::vector<int32_t> __tmp_1 = {10, 20, 30};
     test_readonly_list(__tmp_1);
     // print("---")
     std::cout << "---" << "\n";
-    // test_readonly_span_param([Int32(10), Int32(20), Int32(30), Int32(40)])
+    // test_readonly_span_param([int32(10), int32(20), int32(30), int32(40)])
     test_readonly_span_param(::tpy::as_span(std::array<int32_t, 4>{10, 20, 30, 40}));
     // print("---")
     std::cout << "---" << "\n";

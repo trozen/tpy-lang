@@ -3,9 +3,9 @@
 # imports) catches this and produces a structured diagnostic before
 # the C++ build hits a complete-type error.
 from a import A
-from tpy import Int32
+from tpy import int32
 
-def main() -> Int32:
+def main() -> int32:
     return 0
 
 main()

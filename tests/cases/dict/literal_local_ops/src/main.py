@@ -4,10 +4,10 @@
 # iteration. Local-only value semantics (scalar keys/values), no aliasing.
 # Iteration results are SUMMED so the assertions stay order-independent
 # (CPython set order is hash-based; TPy's ordered_set is insertion-ordered).
-from tpy import Int32
+from tpy import int32
 
 
-def dict_ops() -> Int32:
+def dict_ops() -> int32:
     d = {1: 100, 2: 200, 3: 300}
     total = d[1]
     total = total + d.pop(2)
@@ -17,13 +17,13 @@ def dict_ops() -> Int32:
     return total + len(d)
 
 
-def empty_dict(k: Int32, v: Int32) -> Int32:
-    e: dict[Int32, Int32] = {}
+def empty_dict(k: int32, v: int32) -> int32:
+    e: dict[int32, int32] = {}
     print(len(e))
     return e.pop(k, v)
 
 
-def set_ops() -> Int32:
+def set_ops() -> int32:
     s = {5, 6, 7}
     total = len(s)
     for v in s:

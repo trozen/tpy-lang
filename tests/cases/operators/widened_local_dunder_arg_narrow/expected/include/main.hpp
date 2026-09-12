@@ -19,19 +19,19 @@ void main();
 
 // class Bag:
 struct Bag {
-    // xs: list[Int32]
+    // xs: list[int32]
     std::vector<int32_t> xs;
 
     // def __init__(self) -> None:
     Bag();
 
-    // def __contains__(self, k: Int32) -> bool:
+    // def __contains__(self, k: int32) -> bool:
     bool __contains__(int32_t k) const;
 
-    // def __add__(self, k: Int32) -> Int32:
+    // def __add__(self, k: int32) -> int32:
     int32_t __add__(int32_t k) const;
 
-    // def __radd__(self, k: Int32) -> Int32:
+    // def __radd__(self, k: int32) -> int32:
     int32_t __radd__(int32_t k) const;
 
     friend int32_t operator+(const Bag& lhs, int32_t k) {
@@ -53,19 +53,19 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 // def __init__(self) -> None:
 inline Bag::Bag() : xs(std::vector<int32_t>{1, 2, 3}) {}
 
-// def __contains__(self, k: Int32) -> bool:
+// def __contains__(self, k: int32) -> bool:
 inline bool Bag::__contains__(int32_t k) const {
     // return k == 1
     return (k == 1);
 }
 
-// def __add__(self, k: Int32) -> Int32:
+// def __add__(self, k: int32) -> int32:
 inline int32_t Bag::__add__(int32_t k) const {
     // return k + 1
     return (::tpy::add_check<int32_t>(k, 1));
 }
 
-// def __radd__(self, k: Int32) -> Int32:
+// def __radd__(self, k: int32) -> int32:
 inline int32_t Bag::__radd__(int32_t k) const {
     // return k + 2
     return (::tpy::add_check<int32_t>(k, 2));

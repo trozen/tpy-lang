@@ -1,27 +1,27 @@
 # User protocol with @readonly methods -- correct implementation passes
 # and concept uses const T&.
-from tpy import Int32, readonly
+from tpy import int32, readonly
 from typing import Protocol
 
 
 class Readable(Protocol):
     @readonly
-    def read(self) -> Int32:
+    def read(self) -> int32:
         ...
 
 
 class GoodReader:
-    value: Int32
+    value: int32
 
-    def __init__(self, value: Int32) -> None:
+    def __init__(self, value: int32) -> None:
         self.value = value
 
     @readonly
-    def read(self) -> Int32:
+    def read(self) -> int32:
         return self.value
 
 
-def use_readable(r: Readable) -> Int32:
+def use_readable(r: Readable) -> int32:
     return r.read()
 
 

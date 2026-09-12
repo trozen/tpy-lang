@@ -1,8 +1,8 @@
 # @property combined with @staticmethod should error
-from tpy import Int32
+from tpy import int32
 
 class Foo:
     @staticmethod
     @property
-    def x() -> Int32:  # tpyc: error(/cannot be combined/)
+    def x() -> int32:  # tpyc: error(/cannot be combined/)
         return 0

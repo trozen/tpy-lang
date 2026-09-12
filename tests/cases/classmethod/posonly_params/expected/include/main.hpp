@@ -18,7 +18,7 @@ struct Calc {
 
 
     // @classmethod
-    // def add(cls, a: Int32, /, b: Int32) -> Int32:
+    // def add(cls, a: int32, /, b: int32) -> int32:
     static int32_t add(int32_t a, int32_t b);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Calc";
 };
@@ -30,7 +30,7 @@ inline std::ostream& operator<<(std::ostream& os, const Calc& obj) {
 
 
 // @classmethod
-// def add(cls, a: Int32, /, b: Int32) -> Int32:
+// def add(cls, a: int32, /, b: int32) -> int32:
 inline int32_t Calc::add(int32_t a, int32_t b) {
     // return a + b
     return (::tpy::add_check<int32_t>(a, b));

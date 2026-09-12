@@ -2,10 +2,10 @@
 # through obj.__repr__()), while direct print(rec) keeps using __str__.
 # Records without __repr__ get the default `<Class object at 0xADDR>` form
 # inside containers, even when __str__ is defined.
-from tpy import Int32
+from tpy import int32
 
 class Both:
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
     def __str__(self) -> str:
         return f"Both_str({self.n})"
@@ -13,19 +13,19 @@ class Both:
         return f"Both_repr({self.n})"
 
 class StrOnly:
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
     def __str__(self) -> str:
         return f"StrOnly_str({self.n})"
 
 class ReprOnly:
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
     def __repr__(self) -> str:
         return f"ReprOnly_repr({self.n})"
 
 class Neither:
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 class ChildOfRepr(ReprOnly):

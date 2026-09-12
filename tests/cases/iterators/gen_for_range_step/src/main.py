@@ -1,8 +1,8 @@
 # Complex generator with range(start, stop, step) for-loop
-from tpy import Int32
+from tpy import int32
 from typing import Iterator
 
-def countdown(start: Int32) -> Iterator[Int32]:
+def countdown(start: int32) -> Iterator[int32]:
     yield 999
     for i in range(start, 0, -1):
         yield i

@@ -4,30 +4,30 @@
 namespace tpyapp::main {
 
 
-// def make_pair(i: Int32) -> tuple[Int32, str]:
+// def make_pair(i: int32) -> tuple[int32, str]:
 std::tuple<int32_t, std::string> make_pair(int32_t i) {
     // if i == 0:
     if ((i == 0)) {
-        // return (Int32(10), "ten")
+        // return (int32(10), "ten")
         return std::tuple<int32_t, std::string>{10, "ten"};
     // elif i == 1:
     } else if ((i == 1)) {
-        // return (Int32(20), "twenty")
+        // return (int32(20), "twenty")
         return std::tuple<int32_t, std::string>{20, "twenty"};
     // else:
     } else {
-        // return (Int32(30), "thirty")
+        // return (int32(30), "thirty")
         return std::tuple<int32_t, std::string>{30, "thirty"};
     }
 }
 
 // def main() -> None:
 void main() {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // n, s = make_pair(Int32(i))
+        // n, s = make_pair(int32(i))
         auto __tup_1 = make_pair(i);
         int32_t n = std::get<0>(__tup_1);
         std::string_view s = std::get<1>(__tup_1);

@@ -27,7 +27,7 @@ std::string describe(::tpy::Union<std::monostate, const Circle*, const Rect*> s)
 
 // def main() -> None:
 void main() {
-    // a: MaybeShape = Circle(Int32(1))
+    // a: MaybeShape = Circle(int32(1))
     MaybeShape __slot_1 = Circle(1);
     ::tpy::Union<std::monostate, Circle*, Rect*> a = ::tpy::to_ptr_variant(__slot_1);
     // b: MaybeShape = None

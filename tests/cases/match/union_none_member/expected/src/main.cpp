@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def pick(x: A | B | None) -> Int32:
+// def pick(x: A | B | None) -> int32:
 int32_t pick(::tpy::Union<std::monostate, const A*, const B*> x) {
     // match x:
     auto& __match_subject_1 = x;

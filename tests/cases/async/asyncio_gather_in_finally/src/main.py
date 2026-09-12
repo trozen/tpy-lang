@@ -8,13 +8,13 @@
 # tasks), the inner RuntimeError re-propagates and is caught by the
 # outer handler.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
-async def cleanup_task(label: str) -> Int32:
+async def cleanup_task(label: str) -> int32:
     await asyncio.sleep(0.001)
     print("cleanup", label)
-    return Int32(0)
+    return int32(0)
 
 
 async def main_coro() -> None:
@@ -23,7 +23,7 @@ async def main_coro() -> None:
             print("inner-try")
             raise RuntimeError("inner-fail")
         finally:
-            tasks: list[asyncio.Task[Int32]] = []
+            tasks: list[asyncio.Task[int32]] = []
             tasks.append(asyncio.create_task(cleanup_task("a")))
             tasks.append(asyncio.create_task(cleanup_task("b")))
             await asyncio.gather_list(tasks)

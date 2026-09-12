@@ -1,16 +1,16 @@
 # Optional subject with only a None arm: the missing value side must be
 # reported (an only-None match is NOT exhaustive).
-from tpy import Int32
+from tpy import int32
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
-def f(p: Point | None) -> Int32:
+def f(p: Point | None) -> int32:
     match p:  # tpyc: warning(/non-exhaustive match.*missing: Point/)
         case None:
             return -1

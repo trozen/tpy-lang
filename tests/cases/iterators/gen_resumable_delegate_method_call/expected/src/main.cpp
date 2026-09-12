@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def bump_all(h: Holder) -> Iterator[Int32]:
+// def bump_all(h: Holder) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_bump_all::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -44,7 +44,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_bump_all::__next__() {
 }
 
 
-// def bump_all(h: Holder) -> Iterator[Int32]:
+// def bump_all(h: Holder) -> Iterator[int32]:
 __gen_bump_all bump_all(Holder& h) {
     return __gen_bump_all(h);
 }

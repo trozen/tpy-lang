@@ -41,7 +41,7 @@ assert docstrings.__doc__.startswith("Documented extension module.\n\nMulti-line
 # A plain annotated field carries no docstring in Python either, so its getset
 # must carry none. Pinned because the byte-diff cannot catch a wrong doc here
 # (the snapshot is regenerated from whatever is emitted) and the parity driver
-# cannot either -- under CPython the source's bare `value: Int64` annotation
+# cannot either -- under CPython the source's bare `value: int64` annotation
 # means Counter.value does not exist at all. A regression that emitted the
 # rendered "nullptr" as TEXT would show up here as __doc__ == "nullptr".
 assert docstrings.Counter.value.__doc__ is None, (

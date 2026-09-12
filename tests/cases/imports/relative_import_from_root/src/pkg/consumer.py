@@ -1,5 +1,5 @@
 from .. import utils
-from tpy import Int32
+from tpy import int32
 
-def compute() -> Int32:
+def compute() -> int32:
     return utils.root_func()

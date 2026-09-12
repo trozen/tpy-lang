@@ -18,7 +18,7 @@ emitter, so both are pinned here.
 """
 from enum import IntEnum
 
-from tpy import Int64
+from tpy import int64
 from tpy.extern import export
 
 
@@ -43,13 +43,13 @@ class Bare(IntEnum):
 class Counter:
     """A counter with a documented surface."""
 
-    value: Int64
+    value: int64
 
-    def __init__(self, value: Int64):
+    def __init__(self, value: int64):
         """Start at `value`."""
         self.value = value
 
-    def incr(self, by: Int64) -> None:
+    def incr(self, by: int64) -> None:
         """Add `by` to the counter.
 
         The second line survives too, minus the block's common indent --
@@ -57,11 +57,11 @@ class Counter:
         """
         self.value += by
 
-    def undocumented_method(self) -> Int64:
+    def undocumented_method(self) -> int64:
         return self.value
 
     @property
-    def doubled(self) -> Int64:
+    def doubled(self) -> int64:
         """Twice the current value."""
         return self.value * 2
 
@@ -70,12 +70,12 @@ class Counter:
 class Base:
     """A documented base class."""
 
-    n: Int64
+    n: int64
 
-    def __init__(self, n: Int64):
+    def __init__(self, n: int64):
         self.n = n
 
-    def described(self) -> Int64:
+    def described(self) -> int64:
         """Documented on the base, reached through the subclass."""
         return self.n
 
@@ -86,25 +86,25 @@ class Derived(Base):
 
 
 @export
-def documented(x: Int64) -> Int64:
+def documented(x: int64) -> int64:
     """Return `x` unchanged."""
     return x
 
 
 @export
-def unicode_doc(x: Int64) -> Int64:
+def unicode_doc(x: int64) -> int64:
     """Non-ASCII: naïve résumé, 10°, 中文."""
     return x
 
 
 @export
-def empty_doc(x: Int64) -> Int64:
+def empty_doc(x: int64) -> int64:
     """"""
     return x
 
 
 @export
-def indented_doc(x: Int64) -> Int64:
+def indented_doc(x: int64) -> int64:
     """   Leading whitespace on the first line always goes.
 
         Relative depth between the remaining lines survives:
@@ -114,7 +114,7 @@ def indented_doc(x: Int64) -> Int64:
 
 
 @export
-def undocumented(x: Int64) -> Int64:
+def undocumented(x: int64) -> int64:
     return x
 
 

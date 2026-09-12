@@ -3,18 +3,18 @@
 # tpy::frame_slot<T> (deleted operator=), so _emit_with_enter must bind it via
 # .emplace(...) rather than a plain `=`. Regression guard for that dispatch.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
 class Item:
-    val: Int32
-    def __init__(self, val: Int32) -> None:
+    val: int32
+    def __init__(self, val: int32) -> None:
         self.val = val
 
 
 class Resource:
     item: Item
-    def __init__(self, seed: Int32) -> None:
+    def __init__(self, seed: int32) -> None:
         self.item = Item(seed)
 
     def __enter__(self) -> Item:
@@ -24,9 +24,9 @@ class Resource:
         print("exit")
 
 
-def gen(n: Int32) -> Iterator[Int32]:
+def gen(n: int32) -> Iterator[int32]:
     with Resource(7) as v:
-        i: Int32 = 0
+        i: int32 = 0
         while i < n:
             yield i
             i += 1

@@ -3,9 +3,9 @@
 
 namespace tpyapp::main {
 
-// t1 = (Int32(1), "hello")
+// t1 = (int32(1), "hello")
 std::tuple<int32_t, std::string> t1;
-// t2 = (Int32(42), True)
+// t2 = (int32(42), True)
 std::tuple<int32_t, bool> t2;
 
 // def main() -> None:
@@ -25,9 +25,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // t1 = (Int32(1), "hello")
+    // t1 = (int32(1), "hello")
     t1 = std::tuple<int32_t, std::string>{1, "hello"};
-    // t2 = (Int32(42), True)
+    // t2 = (int32(42), True)
     t2 = std::tuple<int32_t, bool>{42, true};
     // main()
     main();

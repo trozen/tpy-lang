@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def sum_tail(*items: Box) -> Int32:  # tpyc: ok
+// def sum_tail(*items: Box) -> int32:  # tpyc: ok
 int32_t sum_tail(::tpy::varargs<const Box> items) {
-    // n: Int32 = 0
+    // n: int32 = 0
     int32_t n = 0;
     // for b in items[1:]:
     auto __obj_0 = ::tpy::list_slice(items, ::tpy::BasicSlice{1, std::nullopt});

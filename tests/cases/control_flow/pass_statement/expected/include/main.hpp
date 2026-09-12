@@ -19,17 +19,17 @@ void test_class_with_pass();
 
 // class Counter:
 struct Counter {
-    // value: Int32
+    // value: int32
     int32_t value;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Counter() = default;
     explicit Counter(int32_t v);
 
     // def do_nothing(self) -> None:
     void do_nothing() const;
 
-    // def maybe_increment(self, flag: Int32) -> None:
+    // def maybe_increment(self, flag: int32) -> None:
     void maybe_increment(int32_t flag);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
@@ -40,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Counter::Counter(int32_t v) : value(v) {}
 
 // def do_nothing(self) -> None:
@@ -48,7 +48,7 @@ inline void Counter::do_nothing() const {
     // pass
 }
 
-// def maybe_increment(self, flag: Int32) -> None:
+// def maybe_increment(self, flag: int32) -> None:
 inline void Counter::maybe_increment(int32_t flag) {
     // if flag > 0:
     if ((flag > 0)) {

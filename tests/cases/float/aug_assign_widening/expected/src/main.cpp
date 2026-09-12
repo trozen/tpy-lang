@@ -47,10 +47,10 @@ double use_after_widen() {
     return (static_cast<double>(x) + (1.0));
 }
 
-// def float32_stays() -> Float32:
+// def float32_stays() -> float32:
 float float32_stays() {
-    // # Float32 variable stays Float32 when multiplied by a float literal (2.0 adapts to context)
-    // x = Float32(1.5)   # tpyc: type(Float32) -- stays Float32 because 2.0 is a literal that adapts
+    // # float32 variable stays float32 when multiplied by a float literal (2.0 adapts to context)
+    // x = float32(1.5)   # tpyc: type(float32) -- stays float32 because 2.0 is a literal that adapts
     float x = 1.5f;
     // x *= 2.0
     x = (x) * (2.0f);

@@ -3,14 +3,14 @@
 # default (`scale()`) is then rejected with "'scale' expects 1 argument(s), got
 # 0" -- a defect, not the design (BUGS.md#nested-def-default-ignored). This case
 # pins the warning plus the calls that pass every argument.
-from tpy import Int32
+from tpy import int32
 
 
 def main() -> None:
-    def scale(x: Int32 = 1) -> Int32:  # tpyc: warning(/default value for parameter 'x'.*is ignored/)
+    def scale(x: int32 = 1) -> int32:  # tpyc: warning(/default value for parameter 'x'.*is ignored/)
         return x * 3
 
-    def label(prefix: str, n: Int32 = 0) -> str:  # tpyc: warning(/default value for parameter 'n'.*is ignored/)
+    def label(prefix: str, n: int32 = 0) -> str:  # tpyc: warning(/default value for parameter 'n'.*is ignored/)
         return prefix + str(n)
 
     print(scale(4))

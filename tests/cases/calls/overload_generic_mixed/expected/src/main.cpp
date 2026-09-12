@@ -7,7 +7,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // nums: list[Int32] = [3, 1, 2]
+    // nums: list[int32] = [3, 1, 2]
     std::vector<int32_t> nums = {3, 1, 2};
     // print(pick(nums))     # tpyc: ok  -- generic overload
     std::cout << pick<int32_t>(nums) << "\n";

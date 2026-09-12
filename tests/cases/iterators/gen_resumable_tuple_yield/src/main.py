@@ -4,18 +4,18 @@
 # elements. Distinct from tuple_optional_yield_prev (for-loop +
 # sentinel reset + trailing yield).
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
 class P:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
 def pairs(items: list[P]) -> Iterator[tuple[P | None, P | None]]:
-    n = Int32(len(items))
-    i: Int32 = 0
+    n = int32(len(items))
+    i: int32 = 0
     while i < n:
         if i + 1 < n:
             yield (items[i], items[i + 1])

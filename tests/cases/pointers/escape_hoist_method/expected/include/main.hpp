@@ -15,12 +15,12 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
-    // y: Int32
+    // y: int32
     int32_t y;
 
-    // def __init__(self, x: Int32, y: Int32):
+    // def __init__(self, x: int32, y: int32):
     Point() = default;
     explicit Point(int32_t x, int32_t y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
@@ -39,7 +39,7 @@ struct Finder {
     // def __init__(self) -> None:
     Finder();
 
-    // def find_last(self, n: Int32) -> None:
+    // def find_last(self, n: int32) -> None:
     void find_last(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Finder";
 };
@@ -50,13 +50,13 @@ inline std::ostream& operator<<(std::ostream& os, const Finder& obj) {
 }
 
 
-// def __init__(self, x: Int32, y: Int32):
+// def __init__(self, x: int32, y: int32):
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __init__(self) -> None:
 inline Finder::Finder() : result(Point(0, 0)) {}
 
-// def find_last(self, n: Int32) -> None:
+// def find_last(self, n: int32) -> None:
 inline void Finder::find_last(int32_t n) {
     std::optional<Point> __slot_2;
     // saved: Point = Point(0, 0)

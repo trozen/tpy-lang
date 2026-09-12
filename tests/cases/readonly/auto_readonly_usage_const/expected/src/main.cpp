@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def read_through_get(o: Outer) -> Int32:   # const Outer&
+// def read_through_get(o: Outer) -> int32:   # const Outer&
 int32_t read_through_get(const Outer& o) {
     // return o.b.get().v
     return o.b.get().v;
@@ -28,7 +28,7 @@ void aug_through_get(Outer& o) {
     o.b.get().v = ::tpy::add_check<int32_t>(o.b.get().v, 1);
 }
 
-// def alias_read(o: Outer) -> Int32:         # Outer&: non-const local alias needs a
+// def alias_read(o: Outer) -> int32:         # Outer&: non-const local alias needs a
 int32_t alias_read(Outer& o) {
     // x = o.b.get()                          # mutable source, so the receiver stays mutable
     Inner& x = o.b.get();
@@ -52,7 +52,7 @@ void elem_alias_write(Outer& o) {
     e.v = 3;
 }
 
-// def read_user_accessor(c: Cell) -> Int32:  # const Cell&
+// def read_user_accessor(c: Cell) -> int32:  # const Cell&
 int32_t read_user_accessor(const Cell& c) {
     // return c.get().v
     return c.get().v;
@@ -64,13 +64,13 @@ void write_user_accessor(Cell& c) {
     c.get().v = 8;
 }
 
-// def peek_user_accessor(c: Cell) -> Int32:  # const Cell&: value return, only read
+// def peek_user_accessor(c: Cell) -> int32:  # const Cell&: value return, only read
 int32_t peek_user_accessor(const Cell& c) {
     // return c.peek()
     return c.peek();
 }
 
-// def sum_boxes(boxes: list[Box[Inner]]) -> Int32:   # const list&: loop var read through accessor
+// def sum_boxes(boxes: list[Box[Inner]]) -> int32:   # const list&: loop var read through accessor
 int32_t sum_boxes(const std::vector<::tpystd::tplib::box::Box<Inner>>& boxes) {
     // total = 0
     int32_t total = 0;

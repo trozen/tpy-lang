@@ -1,7 +1,7 @@
-from tpy import Int32
-def a[T](xs: list[tuple[T, Int32]]) -> tuple[T, Int32]:
+from tpy import int32
+def a[T](xs: list[tuple[T, int32]]) -> tuple[T, int32]:
     return xs[0]
 def main() -> None:
-    xs: list[tuple[Int32, Int32]] = [(1, 2)]
+    xs: list[tuple[int32, int32]] = [(1, 2)]
     print(a(xs)[1])
 main()

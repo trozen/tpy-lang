@@ -1,5 +1,5 @@
 """Test error when wrong number of type arguments provided."""
-from tpy import Int32
+from tpy import int32
 
 
 def first[T](items: list[T]) -> T:
@@ -7,4 +7,4 @@ def first[T](items: list[T]) -> T:
 
 
 nums = [1, 2, 3]
-first[Int32, str](nums)  # tpyc: error(/expects 1 type argument/)
+first[int32, str](nums)  # tpyc: error(/expects 1 type argument/)

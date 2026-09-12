@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def f(a: T, b: T) -> tuple[T | None, Int32, T | None]:
+// def f(a: T, b: T) -> tuple[T | None, int32, T | None]:
 std::tuple<T*, int32_t, T*> f(T& a, T& b) {
     // return (a, 42, b)
     return std::tuple<T*, int32_t, T*>{&(a), 42, &(b)};
 }
 
-// def show(p: tuple[T | None, Int32, T | None]) -> None:
+// def show(p: tuple[T | None, int32, T | None]) -> None:
 void show(const std::tuple<const T*, int32_t, const T*>& p) {
     // a, n, b = p
     auto& __tup_1 = p;

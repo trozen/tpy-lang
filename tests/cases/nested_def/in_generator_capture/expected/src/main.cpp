@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def gen() -> Iterator[Int32]:
+// def gen() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         // total = 0
         total = 0;
-        // def add(x: Int32) -> None:
+        // def add(x: int32) -> None:
         // def add: frame member
         // add(5)
         add(5);
@@ -44,7 +44,7 @@ void __gen_gen::add(int32_t x) {
     total = ::tpy::add_check<int32_t>(total, x);
 }
 
-// def gen() -> Iterator[Int32]:
+// def gen() -> Iterator[int32]:
 __gen_gen gen() {
     return __gen_gen();
 }

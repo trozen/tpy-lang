@@ -50,7 +50,7 @@ void main();
 
 // class Box:
 struct Box {
-    // n: Int32 = 3
+    // n: int32 = 3
     int32_t n = 3;
     // label: str = "b"
     std::string label = "b";
@@ -58,10 +58,10 @@ struct Box {
     // def __init__(self) -> None:
     Box();
 
-    // def scale(self, by: Int32 = 2) -> Int32:
+    // def scale(self, by: int32 = 2) -> int32:
     int32_t scale(int32_t by = 2) const;
 
-    // def stepped(self, by: Int64 = STEP) -> Int64:
+    // def stepped(self, by: int64 = STEP) -> int64:
     int64_t stepped(int64_t by = STEP) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
@@ -77,18 +77,18 @@ inline Box::Box() {
     // pass
 }
 
-// def scale(self, by: Int32 = 2) -> Int32:
+// def scale(self, by: int32 = 2) -> int32:
 inline int32_t Box::scale(int32_t by) const {
     // return self.n * by
     return (::tpy::mul_check<int32_t>(this->n, by));
 }
 
-// def stepped(self, by: Int64 = STEP) -> Int64:
+// def stepped(self, by: int64 = STEP) -> int64:
 inline int64_t Box::stepped(int64_t by) const {
     // # A Final default on a METHOD: `self` occupies a parameter slot but no
     // # default slot, so a misaligned check would compare STEP against the
     // # receiver's type and reject this.
-    // return Int64(self.n) + by
+    // return int64(self.n) + by
     return (::tpy::add_check<int64_t>(::tpy::int_cast_check<int64_t>(this->n), by));
 }
 void __tpy_init();

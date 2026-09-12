@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def ret_unsigned() -> UInt64:
+// def ret_unsigned() -> uint64:
 uint64_t ret_unsigned() {
     // x = 0
     uint64_t x = 0;
@@ -12,19 +12,19 @@ uint64_t ret_unsigned() {
     return x;
 }
 
-// def init_typed_local() -> UInt64:
+// def init_typed_local() -> uint64:
 uint64_t init_typed_local() {
     // x = 5
     uint64_t x = 5;
-    // y: UInt64 = x
+    // y: uint64 = x
     uint64_t y = x;
     // return y
     return y;
 }
 
-// def reassign_existing_typed() -> UInt64:
+// def reassign_existing_typed() -> uint64:
 uint64_t reassign_existing_typed() {
-    // y: UInt64 = 100
+    // y: uint64 = 100
     uint64_t y = 100;
     // x = 7
     uint64_t x = 7;
@@ -34,9 +34,9 @@ uint64_t reassign_existing_typed() {
     return y;
 }
 
-// def setitem_typed_list() -> UInt64:
+// def setitem_typed_list() -> uint64:
 uint64_t setitem_typed_list() {
-    // xs: list[UInt64] = [0, 0, 0]
+    // xs: list[uint64] = [0, 0, 0]
     std::vector<uint64_t> xs = {0, 0, 0};
     // n = 9
     uint64_t n = 9;
@@ -46,7 +46,7 @@ uint64_t setitem_typed_list() {
     return ::tpy::__getitem__(xs, 1);
 }
 
-// def field_assign_typed() -> UInt64:
+// def field_assign_typed() -> uint64:
 uint64_t field_assign_typed() {
     // h = Holder()
     Holder h = Holder();
@@ -60,7 +60,7 @@ uint64_t field_assign_typed() {
 
 // def dict_key_typed() -> str:
 std::string dict_key_typed() {
-    // d: dict[UInt64, str] = {}
+    // d: dict[uint64, str] = {}
     ::tpy::ordered_map<uint64_t, std::string> d = ::tpy::ordered_map<uint64_t, std::string>();
     // k = 13
     uint64_t k = 13;
@@ -70,9 +70,9 @@ std::string dict_key_typed() {
     return ::tpy::__getitem__(d, k);
 }
 
-// def method_arg_with_own_param() -> UInt64:
+// def method_arg_with_own_param() -> uint64:
 uint64_t method_arg_with_own_param() {
-    // xs: list[UInt64] = []
+    // xs: list[uint64] = []
     std::vector<uint64_t> xs = std::vector<uint64_t>{};
     // n = 19
     uint64_t n = 19;

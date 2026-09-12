@@ -1,5 +1,5 @@
 # Static method with its own type parameter
-from tpy import Int32
+from tpy import int32
 
 class Utils:
     def __init__(self):
@@ -11,7 +11,7 @@ class Utils:
 
 def main() -> None:
     # Explicit type arg on non-generic class
-    print(Utils.identity[Int32](Int32(42)))
+    print(Utils.identity[int32](int32(42)))
     print(Utils.identity[bool](True))
 
 main()

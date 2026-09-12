@@ -16,10 +16,10 @@ void main();
 
 // class Reg:
 struct Reg {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32):
+    // def __init__(self, n: int32):
     Reg() = default;
     explicit Reg(int32_t n);
 
@@ -37,7 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const Reg& obj) {
 }
 
 
-// def __init__(self, n: Int32):
+// def __init__(self, n: int32):
 inline Reg::Reg(int32_t n) : n(n) {}
 
 // def __enter__(self) -> "Reg":

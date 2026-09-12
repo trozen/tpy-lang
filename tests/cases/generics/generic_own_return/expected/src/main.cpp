@@ -6,17 +6,17 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // # Test 1: Own[T] with value type (Int32) - same behavior as T
-    // box_int: Box[Int32] = Box[Int32](42)
+    // # Test 1: Own[T] with value type (int32) - same behavior as T
+    // box_int: Box[int32] = Box[int32](42)
     Box<int32_t> box_int = Box<int32_t>(42);
-    // val: Int32 = box_int.take()
+    // val: int32 = box_int.take()
     int32_t val = box_int.take();
     // print(val)
     std::cout << val << "\n";
     // # Test 2: Own[T] with object type returns by value
-    // box_list: Box[list[Int32]] = Box[list[Int32]]([1, 2, 3])
+    // box_list: Box[list[int32]] = Box[list[int32]]([1, 2, 3])
     Box<std::vector<int32_t>> box_list = Box<std::vector<int32_t>>({1, 2, 3});
-    // taken: list[Int32] = box_list.take()
+    // taken: list[int32] = box_list.take()
     std::vector<int32_t> taken = box_list.take();
     // for x in taken:
     auto& __obj_0 = taken;

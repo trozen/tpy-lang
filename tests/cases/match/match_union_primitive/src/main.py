@@ -1,5 +1,5 @@
 # match/case on unions with primitive, container, and generic record patterns
-from tpy import Int32
+from tpy import int32
 
 
 class Cat:
@@ -15,9 +15,9 @@ class Dog:
 
 
 # Primitive + record members
-def describe(x: Int32 | str | Cat | Dog) -> str:
+def describe(x: int32 | str | Cat | Dog) -> str:
     match x:
-        case Int32() as n:
+        case int32() as n:
             return "number: " + str(n)
         case str() as s:
             return "string: " + s
@@ -28,15 +28,15 @@ def describe(x: Int32 | str | Cat | Dog) -> str:
 
 
 # Recursive union with list() pattern
-type Tree = Int32 | list[Tree]
+type Tree = int32 | list[Tree]
 
 
-def depth(t: Tree) -> Int32:
+def depth(t: Tree) -> int32:
     match t:
-        case Int32():
+        case int32():
             return 0
         case list() as children:
-            m: Int32 = 0
+            m: int32 = 0
             for child in children:
                 d = depth(child)
                 if d > m:
@@ -54,19 +54,19 @@ class Box[T]:
         self.value = value
 
 
-def unbox(x: Int32 | Box[str]) -> str:
+def unbox(x: int32 | Box[str]) -> str:
     match x:
-        case Int32() as n:
+        case int32() as n:
             return str(n)
         case Box() as b:
             return b.value
 
 
 def main() -> None:
-    a: Int32 | str | Cat | Dog = 42
-    b: Int32 | str | Cat | Dog = "hello"
-    c: Int32 | str | Cat | Dog = Cat("Whiskers")
-    d: Int32 | str | Cat | Dog = Dog("Rex")
+    a: int32 | str | Cat | Dog = 42
+    b: int32 | str | Cat | Dog = "hello"
+    c: int32 | str | Cat | Dog = Cat("Whiskers")
+    d: int32 | str | Cat | Dog = Dog("Rex")
     print(describe(a))
     print(describe(b))
     print(describe(c))
@@ -79,8 +79,8 @@ def main() -> None:
     print(depth(branch))
     print(depth(nested))
 
-    e: Int32 | Box[str] = 99
-    f: Int32 | Box[str] = Box("hello")
+    e: int32 | Box[str] = 99
+    f: int32 | Box[str] = Box("hello")
     print(unbox(e))
     print(unbox(f))
 

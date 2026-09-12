@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 from typing import Protocol
 
 # Define a custom protocol
@@ -10,9 +10,9 @@ class Printable(Protocol):
 # Class that explicitly implements Printable
 class Person(Printable):
     name: str
-    age: Int32
+    age: int32
 
-    def __init__(self, name: str, age: Int32) -> None:
+    def __init__(self, name: str, age: int32) -> None:
         self.name = name
         self.age = age
 

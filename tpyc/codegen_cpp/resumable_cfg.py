@@ -382,7 +382,7 @@ def frame_struct_qualname(
             # owner's args were not bound to concrete types -- compute_mro_
             # ancestors records each base with the defining class's own type
             # params, so a generic subclass of a generic base (Child[U](Box[U]))
-            # or a multi-level chain (C(B[Int32]) where B[U](A[U])) leaves them
+            # or a multi-level chain (C(B[int32]) where B[U](A[U])) leaves them
             # unbound. Emit a clean diagnostic rather than ill-formed C++.
             if any(isinstance(ta, TypeParamRef) for ta in owner.type_args):
                 raise CodeGenError(

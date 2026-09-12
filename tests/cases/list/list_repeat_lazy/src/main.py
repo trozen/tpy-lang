@@ -1,21 +1,21 @@
 # Test lazy list repeat with variable count -- stays as repeat_range
-from tpy import Int32
+from tpy import int32
 from typing import Iterable
 
-def consume(items: Iterable[Int32]) -> None:
-    total: Int32 = 0
+def consume(items: Iterable[int32]) -> None:
+    total: int32 = 0
     for v in items:
         total += v
     print(total)
 
 def test_lazy_variable_count() -> None:
-    n: Int32 = 5
+    n: int32 = 5
     x = [7] * n  # tpyc: type(/repeat\[/)
     print(len(x))
     consume(x)
 
 def test_lazy_for_loop() -> None:
-    n: Int32 = 3
+    n: int32 = 3
     r = [10] * n  # tpyc: type(/repeat\[/)
     for v in r:
         print(v)
@@ -26,7 +26,7 @@ def test_direct_iterable_arg() -> None:
 
 def test_print_lazy_repeat() -> None:
     # Print on lazy repeat uses ListPrinter
-    n: Int32 = 4
+    n: int32 = 4
     r = [5] * n  # tpyc: type(/repeat\[/)
     print(r)
 

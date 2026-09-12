@@ -1,10 +1,10 @@
 # copy() on @nocopy type is a compile error
-from tpy import Int32, Own, nocopy, copy
+from tpy import int32, Own, nocopy, copy
 
 
 @nocopy
 class Handle:
-    fd: Int32
+    fd: int32
 
 
 def main():

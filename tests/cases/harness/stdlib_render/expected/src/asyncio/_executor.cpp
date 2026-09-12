@@ -11,8 +11,8 @@ namespace tpystd::asyncio::_executor {
 Executor* _current_executor{};
 
 // # --- Awaker-side helpers (call sites inside Executor) -------------------
-// def _make_waker(handle: Awaker, task_id: Int32,
-// generation: Int32) -> Waker:
+// def _make_waker(handle: Awaker, task_id: int32,
+// generation: int32) -> Waker:
 ::tpystd::coro::Waker _make_waker(::tpystd::coro::Awaker& handle, int32_t task_id, int32_t generation) {
     // return Waker(handle, task_id, generation)
     return ::tpystd::coro::Waker(&handle, task_id, generation);
@@ -39,7 +39,7 @@ void _clear_current_executor() {
 }
 
 
-// def poll(self, timeout_ms: Int32) -> None:
+// def poll(self, timeout_ms: int32) -> None:
 void EpollReactor::poll(int32_t timeout_ms) {
     // if len(self._waiters) == 0:
     if ((::tpy::__len__(this->_waiters) == 0)) {
@@ -50,11 +50,11 @@ void EpollReactor::poll(int32_t timeout_ms) {
     // unsafe_ptr(self._out_events),
     // _REACTOR_BATCH, timeout_ms)
     int32_t n = ::tpy_epoll_wait(this->_epfd, this->_out_fds.data(), this->_out_events.data(), _REACTOR_BATCH, timeout_ms);
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < n:
     while ((i < n)) {
-        // fd = unsafe_load(unsafe_ptr(self._out_fds), UInt32(i))
+        // fd = unsafe_load(unsafe_ptr(self._out_fds), uint32(i))
         int32_t fd = this->_out_fds.data()[::tpy::int_cast_check<uint32_t>(i)];
         // # Disarm before waking (one-shot): the awaitable re-registers
         // # on its next would-block.
@@ -76,9 +76,9 @@ void EpollReactor::poll(int32_t timeout_ms) {
 
 // # Milliseconds until the nearest timer fires (the epoll_wait timeout):
 // # -1 (block forever) when no timer is pending, 0 when one is already
-// # due, else the rounded-up delta. Capped to keep the Int32 from
+// # due, else the rounded-up delta. Capped to keep the int32 from
 // # overflowing on far-future deadlines.
-// def _next_timer_timeout_ms(self) -> Int32:
+// def _next_timer_timeout_ms(self) -> int32:
 int32_t Executor::_next_timer_timeout_ms() const {
     // if len(self.timer_heap) == 0:
     if ((::tpy::__len__(this->timer_heap) == 0)) {
@@ -99,11 +99,11 @@ int32_t Executor::_next_timer_timeout_ms() const {
         // return 2000000000
         return 2000000000;
     }
-    // return Int32(ms) + 1
+    // return int32(ms) + 1
     return (::tpy::add_check<int32_t>(::tpy::from_float_check<int32_t>(ms), 1));
 }
 
-// def poll_slot(self, slot_id: Int32) -> bool:
+// def poll_slot(self, slot_id: int32) -> bool:
 bool Executor::poll_slot(int32_t slot_id) {
     // if slot_id >= len(self.slots):
     if ((slot_id >= ::tpy::__len__(this->slots))) {
@@ -149,7 +149,7 @@ bool Executor::wait_for_event() {
     bool has_timer = (::tpy::__len__(this->timer_heap) > 0);
     // reactor = self.reactor
     EpollReactor* reactor = ::tpy::optional_to_ptr(this->reactor);
-    // fd_count: Int32 = 0
+    // fd_count: int32 = 0
     int32_t fd_count = 0;
     // if reactor is not None:
     if ((reactor != nullptr)) {
@@ -189,7 +189,7 @@ bool Executor::wait_for_event() {
 
 // # Returns True if a SIGINT interrupted the run (root cancelled for graceful
 // # shutdown), False on normal completion.
-// def run_until(self, main_id: Int32) -> bool:
+// def run_until(self, main_id: int32) -> bool:
 bool Executor::run_until(int32_t main_id) {
     // interrupted = False
     bool interrupted = false;
@@ -225,12 +225,12 @@ bool Executor::run_until(int32_t main_id) {
     }
 }
 
-// def drain_spawned_with_cancel(self, skip_id: Int32,
-// max_polls: Int32 = 8) -> None:
+// def drain_spawned_with_cancel(self, skip_id: int32,
+// max_polls: int32 = 8) -> None:
 void Executor::drain_spawned_with_cancel(int32_t skip_id, int32_t max_polls) {
     // n = len(self.slots)
     int32_t n = ::tpy::__len__(this->slots);
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < n:
     while ((i < n)) {
@@ -247,11 +247,11 @@ void Executor::drain_spawned_with_cancel(int32_t skip_id, int32_t max_polls) {
         // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    // attempt: Int32 = 0
+    // attempt: int32 = 0
     int32_t attempt = 0;
     // while attempt < max_polls and self.has_live_tasks(skip_id):
     while (((attempt < max_polls) && this->has_live_tasks(skip_id))) {
-        // j: Int32 = 0
+        // j: int32 = 0
         int32_t j = 0;
         // n2 = len(self.slots)
         int32_t n2 = ::tpy::__len__(this->slots);

@@ -2,23 +2,23 @@
 # indirecting in tpyc/cycle_detection.py, this would fail to compile
 # (Node would have infinite size in C++).
 from __future__ import annotations
-from tpy import Int32
+from tpy import int32
 from tplib import Rc
 
 
 class Node:
-    value: Int32
+    value: int32
     next: Rc[Node] | None
 
-    def __init__(self, value: Int32) -> None:
+    def __init__(self, value: int32) -> None:
         self.value = value
         self.next = None
 
 
 def main() -> None:
-    a = Rc.new(Node(Int32(1)))
-    b = Rc.new(Node(Int32(2)))
-    c = Rc.new(Node(Int32(3)))
+    a = Rc.new(Node(int32(1)))
+    b = Rc.new(Node(int32(2)))
+    c = Rc.new(Node(int32(3)))
 
     a.get().next = b.clone()
     b.get().next = c.clone()

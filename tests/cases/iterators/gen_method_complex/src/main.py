@@ -1,25 +1,25 @@
 # Generator method: complex path (multiple yields, struct codegen)
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 class Range:
-    start: Int32
-    stop: Int32
-    def __init__(self, start: Int32, stop: Int32) -> None:
+    start: int32
+    stop: int32
+    def __init__(self, start: int32, stop: int32) -> None:
         self.start = start
         self.stop = stop
 
-    def total(self) -> Int32:
+    def total(self) -> int32:
         return self.stop - self.start
 
-    def __iter__(self) -> Iterator[Int32]:
+    def __iter__(self) -> Iterator[int32]:
         yield -1
         i = self.start
         while i < self.stop:
             yield i
             i += 1
 
-    def pairs(self) -> Iterator[Int32]:
+    def pairs(self) -> Iterator[int32]:
         i = self.start
         while i < self.stop:
             yield i * 10

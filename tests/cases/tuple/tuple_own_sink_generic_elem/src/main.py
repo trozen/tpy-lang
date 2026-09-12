@@ -1,15 +1,15 @@
-# A tuple literal appended into a `list[tuple[T, Int32]]` from a generic
+# A tuple literal appended into a `list[tuple[T, int32]]` from a generic
 # method. `list.append` takes `Own[tuple[...]]`, so the slot owns the tuple
 # past the call and its elements must be built in STORAGE form -- a borrow-form
 # lift there would store element addresses that are valid only through the
 # call, and at a reference-type T it does not even type-check.
-from tpy import Int32, Own, copy
+from tpy import int32, Own, copy
 
 
 class Item:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
@@ -22,14 +22,14 @@ class Tally[T]:
     def add(self, x: Own[T]) -> None:
         self._items.append(x)
 
-    def get(self, i: Int32) -> T:
+    def get(self, i: int32) -> T:
         return self._items[i]
 
-    def pairs(self) -> Own[list[tuple[T, Int32]]]:
-        out: list[tuple[T, Int32]] = []
+    def pairs(self) -> Own[list[tuple[T, int32]]]:
+        out: list[tuple[T, int32]] = []
         i = 0
         for it in self._items:
-            # Subject: the tuple literal at append's Own[tuple[T, Int32]] slot.
+            # Subject: the tuple literal at append's Own[tuple[T, int32]] slot.
             out.append((copy(it), i))
             i += 1
         return out

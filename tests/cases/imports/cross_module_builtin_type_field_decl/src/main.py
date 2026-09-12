@@ -9,14 +9,14 @@
 # that precedence, sema would fire "Type mismatch in assignment:
 # expected Poll, got Poll" with differing `_module_qname`.
 from tpy.coro import Poll
-from tpy import Int32
+from tpy import int32
 
 
 class Holder:
-    last: Poll[Int32]
+    last: Poll[int32]
 
     def __init__(self) -> None:
-        self.last = Poll[Int32].pending()  # tpyc: ok
+        self.last = Poll[int32].pending()  # tpyc: ok
 
 
 def main() -> None:

@@ -1,10 +1,10 @@
 # @nocopy auto-moved through record method and generic ctor at last use.
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 
 
 @nocopy
 class Handle:
-    fd: Int32
+    fd: int32
 
 
 class Holder:

@@ -23,7 +23,7 @@ template<typename T>
 struct MyIter {
     // items: list[T]
     std::vector<T> items;
-    // pos: Int32
+    // pos: int32
     int32_t pos;
 
     // def __init__(self, items: list[T]) -> None:
@@ -87,10 +87,10 @@ inline std::ostream& operator<<(std::ostream& os, const MyList<T>& obj) {
     return os;
 }
 
-// def length[T](xs: Iterable[T]) -> Int32:
+// def length[T](xs: Iterable[T]) -> int32:
 template<typename T, ::tpystd::typing::Iterable<T> T_xs>
 int32_t length(T_xs& xs) {
-    // n: Int32 = 0
+    // n: int32 = 0
     int32_t n = 0;
     // for _ in xs:
     auto& __src_0 = xs;
@@ -105,7 +105,7 @@ int32_t length(T_xs& xs) {
     // return n
     return n;
 }
-// def total_of[T](xs: MyList[T]) -> Int32:
+// def total_of[T](xs: MyList[T]) -> int32:
 template<typename T>
 int32_t total_of(MyList<T>& xs) {
     // # Generic outer T -- forces Ref[MyList[T]] at the call site.

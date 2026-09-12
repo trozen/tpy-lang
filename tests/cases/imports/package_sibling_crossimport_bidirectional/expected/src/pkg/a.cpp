@@ -5,7 +5,7 @@
 namespace tpyapp::pkg::a {
 
 
-// def with_b() -> Int32:
+// def with_b() -> int32:
 int32_t with_b() {
     // b = B()
     ::tpyapp::pkg::b::B b = ::tpyapp::pkg::b::B();
@@ -14,9 +14,9 @@ int32_t with_b() {
 }
 
 
-// def kind(self) -> Int32:
+// def kind(self) -> int32:
 int32_t A::kind() const {
-    // return Int32(1)
+    // return int32(1)
     return 1;
 }
 void __tpy_init() {

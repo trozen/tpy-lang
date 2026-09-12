@@ -4,14 +4,14 @@
 namespace tpyapp::main {
 
 
-// async def background(done: Future[Int32]) -> None:
+// async def background(done: Future[int32]) -> None:
 ::tpystd::tpy::Poll<::std::monostate> __coro_background::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
         // print("background ran")
         std::cout << "background ran" << "\n";
-        // done.set_result(Int32(0))  # sentinel; only the wake matters
+        // done.set_result(int32(0))  # sentinel; only the wake matters
         done.set_result(0);
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -22,7 +22,7 @@ namespace tpyapp::main {
 }
 
 
-// async def background(done: Future[Int32]) -> None:
+// async def background(done: Future[int32]) -> None:
 __coro_background background(::tpystd::asyncio::Future<int32_t>& done) {
     return __coro_background(done);
 }
@@ -31,7 +31,7 @@ __coro_background background(::tpystd::asyncio::Future<int32_t>& done) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // done: Future[Int32] = Future[Int32]()
+        // done: Future[int32] = Future[int32]()
         done.emplace(::tpystd::asyncio::Future<int32_t>());
         // t: Task[None] = asyncio.create_task(background(done))
         t.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(background((*done)))));

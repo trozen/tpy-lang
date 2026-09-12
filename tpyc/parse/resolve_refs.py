@@ -72,7 +72,7 @@ def _infer_field_type_from_default(
 
     Handles:
       - int / float / str literals -> BIGINT / FLOAT / STR.
-      - Fixed-int constructor calls (`Int32(...)`, ...) -> the matching
+      - Fixed-int constructor calls (`int32(...)`, ...) -> the matching
         singleton.
       - `int()` / `float()` -> BIGINT / FLOAT.
       - Calls to a resolvable record / protocol / enum name (same-module

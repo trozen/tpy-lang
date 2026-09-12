@@ -1,8 +1,8 @@
 # Test error: generic function ref rejected when inferred type violates bound
-from tpy import Fn, Int32, Comparable
+from tpy import Fn, int32, Comparable
 
 class Blob:
-    x: Int32
+    x: int32
 
 def max_val[T: Comparable](a: T, b: T) -> T:
     if a > b:

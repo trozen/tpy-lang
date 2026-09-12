@@ -8,9 +8,9 @@ namespace tpyapp::main {
 void main() {
     // xs: list[Shape] = []
     std::vector<Shape> xs = std::vector<Shape>{};
-    // xs.append(Circle(Int32(1)))
+    // xs.append(Circle(int32(1)))
     xs.push_back(::tpyapp::shapes::Circle(1));
-    // xs.append(Rect(Int32(2)))
+    // xs.append(Rect(int32(2)))
     xs.push_back(::tpyapp::shapes::Rect(2));
     // print(len(xs))
     std::cout << ::tpy::__len__(xs) << "\n";

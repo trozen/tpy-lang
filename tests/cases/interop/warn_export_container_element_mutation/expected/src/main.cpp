@@ -19,9 +19,9 @@ void bump_all(std::vector<Counter>& cs) {
 }
 
 // @export
-// def total(cs: list[Counter]) -> Int64:  # tpyc: ok
+// def total(cs: list[Counter]) -> int64:  # tpyc: ok
 int64_t total(const std::vector<Counter>& cs) {
-    // t: Int64 = 0
+    // t: int64 = 0
     int64_t t = 0;
     // for c in cs:
     auto& __obj_0 = cs;

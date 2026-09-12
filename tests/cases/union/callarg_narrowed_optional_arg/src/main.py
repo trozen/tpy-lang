@@ -3,24 +3,24 @@
 # statement-alias and compound-condition (inline get) forms. bump_opt
 # mutates through the pointer and the caller observes it, pinning
 # alias-not-copy at the boundary.
-from tpy import Int32
+from tpy import int32
 
 
 class A:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32):
+    def __init__(self, x: int32):
         self.x = x
 
 
 class B:
-    y: Int32
+    y: int32
 
-    def __init__(self, y: Int32):
+    def __init__(self, y: int32):
         self.y = y
 
 
-def take_opt(o: A | None) -> Int32:
+def take_opt(o: A | None) -> int32:
     if o is None:
         return 0
     return o.x
@@ -31,20 +31,20 @@ def bump_opt(o: A | None) -> None:
         o.x += 10
 
 
-def read_narrowed(u: A | B) -> Int32:
+def read_narrowed(u: A | B) -> int32:
     if isinstance(u, A):
         return take_opt(u)
     return -1
 
 
-def mutate_narrowed(u: A | B) -> Int32:
+def mutate_narrowed(u: A | B) -> int32:
     if isinstance(u, A):
         bump_opt(u)
         return u.x
     return -1
 
 
-def inline_narrowed(u: A | B) -> Int32:
+def inline_narrowed(u: A | B) -> int32:
     if isinstance(u, A) and take_opt(u) > 2:
         return 1
     return 0

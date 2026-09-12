@@ -537,7 +537,7 @@ def _emit_literal(lit: THIRLiteral) -> str:
         return "std::nullopt" if lit.form is Form.STORAGE else "nullptr"
     if isinstance(v, float):
         # repr() is the shortest round-tripping form and a valid C++
-        # double literal; a Float32-typed
+        # double literal; a float32-typed
         # literal (retyped at lowering from its float_literal_to_float32
         # coerce) takes the `f` suffix.
         rendered = repr(v)
@@ -1265,7 +1265,7 @@ def _emit_subscript(e: THIRSubscript, state: _EmitState) -> str:
         return f"{recv}[static_cast<std::size_t>({idx})]"
     rt = unwrap_qualifiers(e.receiver.result_type)
     if is_bytes_type(rt) or is_bytes_view_type(rt) or is_bytearray_type(rt):
-        # bytes' `__getitem__(Int32)` is a @native free-function dunder, not
+        # bytes' `__getitem__(int32)` is a @native free-function dunder, not
         # the containers' checked `::tpy::__getitem__` template.
         # bytearray shares that dunder (its own natives are the WRITE side).
         return f"::tpy::bytes_getitem({recv}, {idx})"
@@ -1494,8 +1494,8 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
     if isinstance(e, THIRFString):
         return _emit_fstring(e, state)
     if isinstance(e, THIRCharLiteral):
-        # A Char-targeted str literal (compare operand opposite a Char, a
-        # Char-annotated decl init, a Char-slot call arg).
+        # A char-targeted str literal (compare operand opposite a char, a
+        # char-annotated decl init, a char-slot call arg).
         return f"'{escape_cpp_char(e.value)}'"
     if isinstance(e, THIRWalrus):
         # The per-class walrus render (see the node doc); the first binding

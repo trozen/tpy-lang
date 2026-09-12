@@ -91,7 +91,7 @@ under "As-built gaps (revision 4)" near the end of this doc.
   list[Tree[T]]; type Tree[T] = T | Forest[T]`) and emit a distinct
   "mutual recursion across generic aliases not supported in v1"
   diagnostic.
-- **Parameterized `isinstance`** (`isinstance(x, Tree[Int32])`). Bare
+- **Parameterized `isinstance`** (`isinstance(x, Tree[int32])`). Bare
   alias name only.
 - **Conflicting type args at recursive positions** (`type Bad[T] = T |
   list[Bad[int]]`). Rejected at sema. Framed honestly: v1 only
@@ -154,7 +154,7 @@ Lives in `typesys.py` because it's a type-system concept used by sema
 type info (no new codegen dependency on a sema-internal shape).
 
 `defining_module` resolves Codex review point E: when module B uses
-`Pair[Int32, Str]` (defined in A), the body's `TypeParamRef`s and
+`Pair[int32, Str]` (defined in A), the body's `TypeParamRef`s and
 internal `NominalType` references are resolved in A's context at A's
 parse/sema time, before export. By the time B sees `TypeAliasInfo`,
 the body is fully qualified -- B substitutes args by walking and
@@ -221,7 +221,7 @@ assignment syntax has no type-param surface.
 
 ### Sema substitution at use sites
 
-When sema encounters `Pair[Int32, Str]` (a `NominalType("Pair", [Int32,
+When sema encounters `Pair[int32, Str]` (a `NominalType("Pair", [int32,
 Str])` resolved against the alias registry):
 
 1. Look up `Pair` in `module.type_aliases` (or imported `ModuleInfo`).
@@ -271,17 +271,17 @@ New cases under `tests/cases/union/`:
   function, return, unpack.
 - `generic_result`: `type Result[T, E] = T | E`; narrow via
   `isinstance` on the expanded members (not on `Result` itself).
-- `generic_alias_arity_error`: `Pair[Int32]` when `Pair` takes two
+- `generic_alias_arity_error`: `Pair[int32]` when `Pair` takes two
   params -- arity error.
 - `generic_alias_in_alias`: `type A[T] = Pair[T, T]` -- composition
   through substitution.
 - `generic_alias_cross_module`: alias defined in module A, used in
   module B with concrete type args.
-- `generic_alias_in_container`: `list[Pair[Int32, Str]]` -- field /
+- `generic_alias_in_container`: `list[Pair[int32, Str]]` -- field /
   param / return positions.
 - `error_isinstance_bare_generic_alias`: `isinstance(x, Pair)` --
   expect "no runtime identity" error.
-- `error_isinstance_parameterized`: `isinstance(x, Pair[Int32, Str])`
+- `error_isinstance_parameterized`: `isinstance(x, Pair[int32, Str])`
   -- expect "use the bare alias name" error (existing recursive-form
   diagnostic).
 - `error_alias_bound_syntax`: `type Tree[T: Hashable] = ...` -- expect
@@ -381,7 +381,7 @@ self-references go through a container. Phase 2 extends:
 ### Carrier: `RecursiveAliasInstanceType` (revision 3)
 
 The resolved semantic type for a generic recursive alias use site
-(`Tree[Int32]`) is a **dedicated frozen type**, not a plain
+(`Tree[int32]`) is a **dedicated frozen type**, not a plain
 `NominalType`. As-built shape (`tpyc/typesys.py`):
 
 ```python
@@ -541,7 +541,7 @@ supported in v1 -- type-param-as-class-pattern doesn't have a clear
 semantics. Match through a recursive generic alias uses:
 
 ```python
-def walk[T](t: Tree[T]) -> Int32:
+def walk[T](t: Tree[T]) -> int32:
     match t:
         case list() as branches:
             return sum(walk(b) for b in branches)
@@ -672,8 +672,8 @@ Error cases:
   form").
 
 **Dropped / deferred from the rev-3 list:**
-- `generic_recursive_tree_nested` (`Tree[list[Int32]]`) -- *both*
-  alternatives are list-shaped (`list[Int32]` leaf, `list[Tree[...]]`
+- `generic_recursive_tree_nested` (`Tree[list[int32]]`) -- *both*
+  alternatives are list-shaped (`list[int32]` leaf, `list[Tree[...]]`
   branch), so construction/dispatch is inherently ambiguous; needs a
   multi-list-alternative disambiguation design.
 - `generic_recursive_non_eq_t` -- the constrained `operator==` is emitted,
@@ -704,8 +704,8 @@ All existing non-generic recursive alias tests keep passing unchanged.
 3. **Sema substitution at use sites (done)** -- substitution happens at
    parse-resolution (mirrors how non-generic aliases already worked), via
    `substitute_type_params_structural` from `typesys.py` (correct layering --
-   sema doesn't depend on codegen). `Pair[Int32, Str]` substitutes to
-   `tuple[Int32, Str]`.
+   sema doesn't depend on codegen). `Pair[int32, Str]` substitutes to
+   `tuple[int32, Str]`.
 4. **Reach + container + field support (done)** -- generic non-recursive
    aliases work as field types, param types, return types, container element
    types. `_lookup_generic_alias_info` unifies local / short-import /
@@ -817,7 +817,7 @@ What shipped vs. the v1 plan, for the next person:
 - **`isinstance(x, Tree)` on the recursive form** (Goal, line ~48): not
   built -- still rejected with the generic-alias "no runtime identity"
   diagnostic. Low value (trivially true).
-- **`tree_nested` (`Tree[list[Int32]]`)**: not supported -- both
+- **`tree_nested` (`Tree[list[int32]]`)**: not supported -- both
   alternatives are list-shaped, so literal construction / `case list()`
   dispatch is ambiguous. Needs a multi-container-alternative disambiguation
   design (annotate which alternative, or forbid).
@@ -845,7 +845,7 @@ What shipped vs. the v1 plan, for the next person:
   bind the `T` leaf value (`case _` only); leaf extraction needs a concrete
   leaf type + class pattern (`case int()`). Bare `isinstance(x, list)` is
   unsupported (pre-existing). **A UNION leaf is narrower still: no member of
-  it is nameable.** `Tree[Int32 | str]` rejects `case Int32():` and
+  it is nameable.** `Tree[int32 | str]` rejects `case int32():` and
   `case str():` alike, because the wrapper's variant carries one slot for the
   whole leaf and a member has no slot of its own to dispatch on. Sema owns
   that rejection (it reads the same member list codegen does); the residual

@@ -1,8 +1,8 @@
 # @error_return with builtin StopIteration type (emits ::tpy::StopIteration in C++)
-from tpy import Int32, error_return
+from tpy import int32, error_return
 
 @error_return(StopIteration)
-def parse_positive(s: str) -> Int32:
+def parse_positive(s: str) -> int32:
     if s == "two":
         return 2
     raise StopIteration

@@ -3,13 +3,13 @@
 # bytes' C++ repr but is a mutable reference type, so it stays inadmissible
 # (containers now cross at the method boundary; bytearray still doesn't).
 # tpy: ext_module
-from tpy import Int64
+from tpy import int64
 from tpy.extern import export
 
 
 @export
 class Bad:
-    def __init__(self, n: Int64):
+    def __init__(self, n: int64):
         self.n = n
 
     def frob(self, items: bytearray) -> None:  # tpyc: error(/method 'frob'.*parameter 'items'.*cannot cross the CPython boundary/)

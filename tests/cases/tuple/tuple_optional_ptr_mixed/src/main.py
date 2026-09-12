@@ -4,18 +4,18 @@
 # to std::optional. Regression for the
 # "tuple_to_storage / tuple_to_pointer overload mis-converts Ptr[T]
 # mixed with Optional[T]" bug.
-from tpy import Int32, Ptr
+from tpy import int32, Ptr
 
 
 class Point:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
 class Tag:
-    name: Int32
-    def __init__(self, name: Int32) -> None:
+    name: int32
+    def __init__(self, name: int32) -> None:
         self.name = name
 
 

@@ -4,13 +4,13 @@
 # existing mutated-param tracking already traces the loop variable back to the
 # param, so the same warning fires. A read-only element access stays quiet.
 # tpy: ext_module
-from tpy import Int64
+from tpy import int64
 from tpy.extern import export
 
 
 @export
 class Counter:
-    def __init__(self, v: Int64):
+    def __init__(self, v: int64):
         self.value = v
 
     def bump(self) -> None:
@@ -24,8 +24,8 @@ def bump_all(cs: list[Counter]) -> None:  # tpyc: warning(/list parameter 'cs' i
 
 
 @export
-def total(cs: list[Counter]) -> Int64:  # tpyc: ok
-    t: Int64 = 0
+def total(cs: list[Counter]) -> int64:  # tpyc: ok
+    t: int64 = 0
     for c in cs:
         t += c.value
     return t

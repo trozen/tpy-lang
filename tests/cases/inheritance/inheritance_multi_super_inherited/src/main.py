@@ -1,6 +1,6 @@
 # `foo` is defined on A and inherited by B; super().foo() skips past B in D's
 # MRO and resolves to A directly. `bar` is owned by C, so super().bar() picks C.
-from tpy import Int32
+from tpy import int32
 
 
 class A:

@@ -68,7 +68,7 @@ No known semantic gaps. Non-value unions use a two-layer representation:
 
 This enables zero-copy returns. Conversion between layers uses `::tpy::to_ptr_variant()`.
 A union whose members are all `Ptr[T]` has no second layer: its alternatives are already borrowed references, so the one spelling `::tpy::Union<A*, B*>` is both its storage and its borrow form, and it compares through the pointee like any other pointer pack. No carve-out in the renderer -- the alternatives carry the fact.
-Value-type unions (`Int32 | str`) use `::tpy::Union<int32_t, std::string>` everywhere.
+Value-type unions (`int32 | str`) use `::tpy::Union<int32_t, std::string>` everywhere.
 
 ## Design Principles
 

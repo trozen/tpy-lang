@@ -1,10 +1,10 @@
 # A view-family (str/bytes) for-loop variable in a resumable generator used to
 # crash: its pending view type wasn't resolved before the frame-local hoist.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
-def words_gen(words: list[str]) -> Iterator[Int32]:
+def words_gen(words: list[str]) -> Iterator[int32]:
     i = 0
     while i < 2:
         yield i
@@ -14,7 +14,7 @@ def words_gen(words: list[str]) -> Iterator[Int32]:
         i += 1
 
 
-def blobs_gen(blobs: list[bytes]) -> Iterator[Int32]:
+def blobs_gen(blobs: list[bytes]) -> Iterator[int32]:
     i = 0
     while i < 2:
         yield i
@@ -25,7 +25,7 @@ def blobs_gen(blobs: list[bytes]) -> Iterator[Int32]:
 
 
 # tuple-unpack loop var: the str element `name` is the pending-view target.
-def pairs_gen(pairs: list[tuple[str, Int32]]) -> Iterator[Int32]:
+def pairs_gen(pairs: list[tuple[str, int32]]) -> Iterator[int32]:
     i = 0
     while i < 2:
         yield i
@@ -53,7 +53,7 @@ def main() -> None:
         if seen >= 4:
             break
 
-    ps: list[tuple[str, Int32]] = []
+    ps: list[tuple[str, int32]] = []
     ps.append(("k", 9))
     seen = 0
     for v in pairs_gen(ps):

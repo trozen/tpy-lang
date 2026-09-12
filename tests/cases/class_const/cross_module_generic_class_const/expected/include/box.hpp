@@ -14,7 +14,7 @@ inline constexpr std::string_view __name__ = "box";
 // class Box[T]:
 template<typename T>
 struct Box {
-    // CAPACITY: Final[Int32] = 16
+    // CAPACITY: Final[int32] = 16
     static constexpr int32_t CAPACITY = 16;
 
     // def __init__(self) -> None:

@@ -1,10 +1,10 @@
 # `print(self)` inside a method: the receiver is a value position, so it is
 # dereferenced and streamed raw through the record's own printer.
-from tpy import Int32
+from tpy import int32
 
 
 class W:
-    n: Int32
+    n: int32
 
     def __init__(self) -> None:
         self.n = 1

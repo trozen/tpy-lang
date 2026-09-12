@@ -7,13 +7,13 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // # C aggregate init is positional; the rename only affects field access.
-    // a = SockAddr(UInt16(2), UInt16(443))
+    // a = SockAddr(uint16(2), uint16(443))
     ::sockaddr_like a = ::sockaddr_like{2, 443};
     // print(a.family)
     std::cout << a.sin_family << "\n";
     // print(a.port)
     std::cout << a.sin_port << "\n";
-    // a.port = UInt16(8080)
+    // a.port = uint16(8080)
     a.sin_port = 8080;
     // print(a.port)
     std::cout << a.sin_port << "\n";

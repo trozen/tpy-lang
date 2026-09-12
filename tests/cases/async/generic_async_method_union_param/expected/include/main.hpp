@@ -29,7 +29,7 @@ void main();
 
 // class A:
 struct A {
-    // x: Int32
+    // x: int32
     int32_t x;
 
     // def __init__(self) -> None:
@@ -44,7 +44,7 @@ inline std::ostream& operator<<(std::ostream& os, const A& obj) {
 
 // class B:
 struct B {
-    // y: Int32
+    // y: int32
     int32_t y;
 
     // def __init__(self) -> None:
@@ -79,10 +79,10 @@ inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
 
 // class PlainHolder:
 struct PlainHolder {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     PlainHolder() = default;
     explicit PlainHolder(int32_t v);
 
@@ -121,7 +121,7 @@ struct __coro_Holder_show {
     }
 };
 
-// async def show(self, u: A | B) -> Int32:
+// async def show(self, u: A | B) -> int32:
 template <typename T>
 ::tpystd::tpy::Poll<int32_t> __coro_Holder_show<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
@@ -253,7 +253,7 @@ inline A::A() : x(1) {}
 // def __init__(self) -> None:
 inline B::B() : y(2) {}
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline PlainHolder::PlainHolder(int32_t v) : v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

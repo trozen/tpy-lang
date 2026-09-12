@@ -2,17 +2,17 @@
 # goes to the child's own subobject, which is legal but usually a mistake;
 # the compiler surfaces this as a warning and nudges the user toward
 # BaseN.field to access the ancestor's version instead.
-from tpy import Int32
+from tpy import int32
 
 
 class Parent:
-    token: Int32
+    token: int32
 
 
 class Child(Parent):
-    token: Int32  # tpyc: warning(/shadows inherited field from 'Parent'/)
+    token: int32  # tpyc: warning(/shadows inherited field from 'Parent'/)
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.token = n
         Parent.token = n + 1
 

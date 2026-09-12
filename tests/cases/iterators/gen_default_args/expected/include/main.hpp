@@ -53,10 +53,10 @@ void main();
 
 // class Rec:
 struct Rec {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Rec() = default;
     explicit Rec(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Rec";
@@ -69,15 +69,15 @@ inline std::ostream& operator<<(std::ostream& os, const Rec& obj) {
 
 // class Box:
 struct Box {
-    // base: Int32
+    // base: int32
     int32_t base;
 
     // def __init__(self) -> None:
     Box();
 
-    // def upto_m(self, stop: Int32 = 2) -> Iterator[Int32]:
+    // def upto_m(self, stop: int32 = 2) -> Iterator[int32]:
     auto upto_m(int32_t stop = 2) const {
-        // i: Int32 = 0
+        // i: int32 = 0
         int32_t i = 0;
         return ::tpy::make_generator<int32_t>(
             [this, stop, i]() mutable -> std::optional<int32_t> {
@@ -177,12 +177,12 @@ struct __gen_head : public ::tpy::next_iter_mixin<__gen_head<T, T_it>, T> {
         return os << "<generator head>";
     }
 };
-// def head[T](it: Iterable[T], n: Int32 = 2) -> Iterator[T]:
+// def head[T](it: Iterable[T], n: int32 = 2) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 std::expected<T, ::tpy::StopIteration> __gen_head<T, T_it>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // c: Int32 = 0
+        // c: int32 = 0
         c = 0;
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
@@ -220,7 +220,7 @@ std::expected<T, ::tpy::StopIteration> __gen_head<T, T_it>::__next__() {
 }
 
 
-// def head[T](it: Iterable[T], n: Int32 = 2) -> Iterator[T]:
+// def head[T](it: Iterable[T], n: int32 = 2) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 __gen_head<T, T_it> head(T_it&& it, int32_t n) {
     return __gen_head<T, T_it>(std::forward<T_it>(it), n);
@@ -322,12 +322,12 @@ struct __gen_Box2_take : public ::tpy::next_iter_mixin<__gen_Box2_take<T>, T> {
     }
 };
 
-// def take(self, n: Int32 = 2) -> Iterator[T]:
+// def take(self, n: int32 = 2) -> Iterator[T]:
 template <typename T>
 std::expected<T, ::tpy::StopIteration> __gen_Box2_take<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // c: Int32 = 0
+        // c: int32 = 0
         c = 0;
         __for_it_0.emplace((__self.items).begin());
         __for_end_0.emplace((__self.items).end());
@@ -376,13 +376,13 @@ inline __gen_Box2_take<T> Box2<T>::take(int32_t n) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Rec::Rec(int32_t v) : v(v) {}
 
 // def __init__(self) -> None:
 inline Box::Box() : base(0) {}
 inline auto upto(int32_t stop = 3, int32_t step = 1) {
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     return ::tpy::make_generator<int32_t>(
         [stop, step, i]() mutable -> std::optional<int32_t> {
@@ -398,7 +398,7 @@ inline auto upto(int32_t stop = 3, int32_t step = 1) {
 }
 
 inline auto upto_final(int32_t stop = DEFAULT_STOP) {
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     return ::tpy::make_generator<int32_t>(
         [stop, i]() mutable -> std::optional<int32_t> {

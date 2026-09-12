@@ -1,6 +1,6 @@
-from tpy import Ptr, Int32, take_ptr
+from tpy import Ptr, int32, take_ptr
 
-def bad_via_var() -> Ptr[Int32]:
-    x: Int32 = Int32(1)
-    p: Ptr[Int32] = take_ptr(x)
+def bad_via_var() -> Ptr[int32]:
+    x: int32 = int32(1)
+    p: Ptr[int32] = take_ptr(x)
     return p  # tpyc: error(/returned pointer would dangle/)

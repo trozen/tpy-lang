@@ -75,18 +75,18 @@ This document describes TurboPython's `T | None` safety behavior, current limita
 Example:
 
 ```python
-def f(p: Point | None) -> Int32:
+def f(p: Point | None) -> int32:
     return p.mag()   # warning + runtime null check
 ```
 
 ```python
-def g(p: Point | None) -> Int32:
+def g(p: Point | None) -> int32:
     if p is not None:
         return p.mag()  # no warning, no extra null check
     return -1
 ```
 
-### Value optionals (`Int32 | None`, `Bool | None`, `float | None`)
+### Value optionals (`int32 | None`, `Bool | None`, `float | None`)
 
 - `is None` / `is not None` checks work.
 - `== None` / `!= None` on optionals is rejected; use `is None` / `is not None`.

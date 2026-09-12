@@ -1,9 +1,9 @@
 # Multi-handler try/except: a var assigned in the try body AND in every handler
 # is definitely-assigned on all paths, so it hoists and reads after the block.
-from tpy import Int32
+from tpy import int32
 
 
-def risky(n: Int32) -> Int32:
+def risky(n: int32) -> int32:
     if n == 1:
         raise ValueError("v")
     if n == 2:
@@ -11,7 +11,7 @@ def risky(n: Int32) -> Int32:
     return 10
 
 
-def run(n: Int32) -> Int32:
+def run(n: int32) -> int32:
     try:
         x = risky(n)
     except ValueError:

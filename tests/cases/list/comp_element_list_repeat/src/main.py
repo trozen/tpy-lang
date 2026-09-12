@@ -3,7 +3,7 @@
 # than the lazy repeat_range. Value elements only: a reference element is
 # copied per slot here as in every other repeat sink
 # (BUGS.md#list-repeat-reference-elem-copy).
-from tpy import Int32
+from tpy import int32
 
 
 def main() -> None:
@@ -12,7 +12,7 @@ def main() -> None:
     rows[0][0] = 1.0
     print(len(rows), len(rows[0]), rows[0][0], rows[1][0])
     # The dict-VALUE twin of the same element slot.
-    table: dict[Int32, list[Int32]] = {i: ([0] * 2) for i in range(2)}  # tpyc: ok
+    table: dict[int32, list[int32]] = {i: ([0] * 2) for i in range(2)}  # tpyc: ok
     table[0][1] = 5
     print(len(table), len(table[0]), table[0][1], table[1][1])
 

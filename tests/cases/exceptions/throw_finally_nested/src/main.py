@@ -1,7 +1,7 @@
 # nested try/finally: both finally blocks run in correct order
-from tpy import Int32
+from tpy import int32
 
-def nested_return() -> Int32:
+def nested_return() -> int32:
     """Return propagates through nested finally blocks."""
     try:
         try:

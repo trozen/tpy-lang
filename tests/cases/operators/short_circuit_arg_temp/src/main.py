@@ -2,20 +2,20 @@
 # not run when the branch is skipped: the temp materializes at the operand,
 # not at the enclosing statement. Covers and/or RHS, both ternary arms, and
 # nested chains.
-from tpy import Int32
+from tpy import int32
 
 
 class Counter:
-    n: Int32
+    n: int32
 
     def __init__(self) -> None:
         self.n = 0
 
 
 class Probe:
-    tag: Int32
+    tag: int32
 
-    def __init__(self, c: Counter, tag: Int32) -> None:
+    def __init__(self, c: Counter, tag: int32) -> None:
         # Counted mutation through a shared reference: proves whether this
         # operand was evaluated at all.
         c.n += 1

@@ -18,7 +18,7 @@
   "reason": "\"const.tuple_slot\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "Probe verdict BREAKS_AT_CUTOVER with fallback {'final_global:const.tuple_slot': 1}; site attribution confirms constants.py:136. A Final tuple global with a union element ('Final[tuple[Int32, Int32 | float]]') is rejected by _value_tuple_global. NOTE: this is a NON-BODY position (the Final-global initializer); its AST fallback is codegen_cpp gen_expr, so it only survives the cutover if the constant expression emitter is kept.",
+  "evidence": "Probe verdict BREAKS_AT_CUTOVER with fallback {'final_global:const.tuple_slot': 1}; site attribution confirms constants.py:136. A Final tuple global with a union element ('Final[tuple[int32, int32 | float]]') is rejected by _value_tuple_global. NOTE: this is a NON-BODY position (the Final-global initializer); its AST fallback is codegen_cpp gen_expr, so it only survives the cutover if the constant expression emitter is kept.",
   "probe": "scripts/thir_migration/review/probes/rest/const_union_tuple.py",
   "plain_raise": false,
   "known_shape": null
@@ -66,7 +66,7 @@
   "reason": "\"genexpr.iterable_shape\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "BREAKS_AT_CUTOVER, fallback body:genexpr.iterable_shape, site comprehensions.py:1186. A genexpr over a NARROWED name ('list[Int32] | str' narrowed by isinstance) -- the name is in lc.narrow.narrowed.",
+  "evidence": "BREAKS_AT_CUTOVER, fallback body:genexpr.iterable_shape, site comprehensions.py:1186. A genexpr over a NARROWED name ('list[int32] | str' narrowed by isinstance) -- the name is in lc.narrow.narrowed.",
   "probe": "scripts/thir_migration/review/probes/rest/genexpr_1186_union.py",
   "plain_raise": false,
   "known_shape": null
@@ -150,7 +150,7 @@
   "reason": "\"genexpr.binding_shape\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "BREAKS_AT_CUTOVER x4, site comprehensions.py:1262. A non-unpack genexpr loop var outside scalar/Char/str/F1-record -- an Optional element, a tuple element, a nested container, and (round 2) a generic 'list[T]' param in 'def total[T]'.",
+  "evidence": "BREAKS_AT_CUTOVER x4, site comprehensions.py:1262. A non-unpack genexpr loop var outside scalar/char/str/F1-record -- an Optional element, a tuple element, a nested container, and (round 2) a generic 'list[T]' param in 'def total[T]'.",
   "probe": "scripts/thir_migration/review/probes/rest/genexpr_binding_opt.py",
   "plain_raise": false,
   "known_shape": null
@@ -162,7 +162,7 @@
   "reason": "\"genexpr.range\"",
   "bin": "DEAD",
   "confidence": "medium",
-  "evidence": "Both legs are refused earlier by sema: unpack_vars over range() gives 'Cannot unpack non-tuple type Int32' (probe genexpr_range_unpack.py) and a 4-arg range gives 'Type IntLiteral(1) does not satisfy AnyFixedInt required by range' (probe rest2/c1346_range4.py); a 0-arg range has no overload either.",
+  "evidence": "Both legs are refused earlier by sema: unpack_vars over range() gives 'Cannot unpack non-tuple type int32' (probe genexpr_range_unpack.py) and a 4-arg range gives 'Type IntLiteral(1) does not satisfy AnyFixedInt required by range' (probe rest2/c1346_range4.py); a 0-arg range has no overload either.",
   "probe": null,
   "plain_raise": false,
   "known_shape": null
@@ -582,7 +582,7 @@
   "reason": "\"stmt.decl.no_init\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "BREAKS_AT_CUTOVER, fallback resumable:stmt.decl.no_init, site resumable.py:1830. A bare annotated declaration ('x: Int32') for a frame field in an async body.",
+  "evidence": "BREAKS_AT_CUTOVER, fallback resumable:stmt.decl.no_init, site resumable.py:1830. A bare annotated declaration ('x: int32') for a frame field in an async body.",
   "probe": "scripts/thir_migration/review/probes/rest/res_decl_no_init.py",
   "plain_raise": false,
   "known_shape": null
@@ -714,7 +714,7 @@
   "reason": "stmt_reject_reason(ys)",
   "bin": "DEAD",
   "confidence": "high",
-  "evidence": "Needs a str literal yielded at a Char yield slot; sema refuses it first -- 'Type mismatch in yield value: expected Char, got str' (probe res_char_yield.py, verdict BOTH_REFUSE from the front end).",
+  "evidence": "Needs a str literal yielded at a char yield slot; sema refuses it first -- 'Type mismatch in yield value: expected char, got str' (probe res_char_yield.py, verdict BOTH_REFUSE from the front end).",
   "probe": null,
   "plain_raise": false,
   "known_shape": null
@@ -870,7 +870,7 @@
   "reason": "\"sgen.tuple_yield_source\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "BREAKS_AT_CUTOVER, fallback body:sgen.tuple_yield_source, site simple_gen.py:463. A simple generator yielding a storage-form tuple loop var (list[tuple[Int32, C]]) that is neither a storage name, an element lift, nor a tuple literal.",
+  "evidence": "BREAKS_AT_CUTOVER, fallback body:sgen.tuple_yield_source, site simple_gen.py:463. A simple generator yielding a storage-form tuple loop var (list[tuple[int32, C]]) that is neither a storage name, an element lift, nor a tuple literal.",
   "probe": "scripts/thir_migration/review/probes/rest/sgen_tuple_storage.py",
   "plain_raise": false,
   "known_shape": null

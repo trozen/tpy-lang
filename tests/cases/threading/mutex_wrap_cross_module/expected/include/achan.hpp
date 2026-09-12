@@ -28,10 +28,10 @@ template<typename T>
 struct Cell {
     // _buf: UninitHeapStorage[T]
     ::tpy::UninitHeapStorage<T> _buf;
-    // _cap: UInt32
+    // _cap: uint32
     uint32_t _cap;
 
-    // def __init__(self, cap: UInt32) -> None:
+    // def __init__(self, cap: uint32) -> None:
     Cell() = default;
     explicit Cell(uint32_t cap) : _buf(::tpy::UninitHeapStorage<T>(cap)), _cap(cap) {}
     // non-copyable (@nocopy)
@@ -89,7 +89,7 @@ struct Producer {
     Producer(Producer&&) = default;
     Producer& operator=(Producer&&) = default;
 
-    // def capacity(self) -> UInt32:
+    // def capacity(self) -> uint32:
     uint32_t capacity() {
         // chan = self.c.get()
         Chan<T>& chan = this->c.get();

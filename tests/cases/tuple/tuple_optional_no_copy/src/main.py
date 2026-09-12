@@ -3,12 +3,12 @@
 # / passed-along references reach the original. The mutation pattern is
 # the load-bearing assertion -- if codegen accidentally copied an element
 # on read, t1.x would not reflect the bump.
-from tpy import Int32
+from tpy import int32
 
 
 class T:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 

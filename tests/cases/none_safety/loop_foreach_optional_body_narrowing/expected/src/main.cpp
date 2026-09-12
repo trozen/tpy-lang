@@ -3,12 +3,12 @@
 
 namespace tpyapp::main {
 
-// vals: list[Int32 | None] = list()
+// vals: list[int32 | None] = list()
 std::vector<std::optional<int32_t>>* vals{};
 
-// def sum_non_none(items: list[Int32 | None]) -> Int32:
+// def sum_non_none(items: list[int32 | None]) -> int32:
 int32_t sum_non_none(const std::vector<std::optional<int32_t>>& items) {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for item in items:
     auto& __obj_0 = items;
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // vals: list[Int32 | None] = list()
+    // vals: list[int32 | None] = list()
     static std::vector<std::optional<int32_t>> __global_slot_1 = std::vector<std::optional<int32_t>>();
     vals = &__global_slot_1;
     // vals.append(3)

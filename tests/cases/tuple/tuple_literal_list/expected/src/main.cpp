@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // # Int literal tuples
-    // pairs: list[tuple[str, Int32]] = [("a", 1), ("b", 2), ("c", 3)]
+    // pairs: list[tuple[str, int32]] = [("a", 1), ("b", 2), ("c", 3)]
     std::vector<std::tuple<std::string, int32_t>> pairs = {std::tuple<std::string, int32_t>{"a", 1}, std::tuple<std::string, int32_t>{"b", 2}, std::tuple<std::string, int32_t>{"c", 3}};
     // print(pairs[0], pairs[1])
     std::cout << ::tpy::TuplePrinter(::tpy::__getitem__(pairs, 0)) << " " << ::tpy::TuplePrinter(::tpy::__getitem__(pairs, 1)) << "\n";
@@ -17,14 +17,14 @@ void main() {
     // print(points[0])
     std::cout << ::tpy::TuplePrinter(::tpy::__getitem__(points, 0)) << "\n";
     // # Dict from annotated list of tuples via constructor
-    // d = dict[str, Int32](pairs)
+    // d = dict[str, int32](pairs)
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_construct<std::string, int32_t>(::tpy::own_iter(std::move(pairs)));
     // print(d["a"], d["c"])
     std::cout << ::tpy::__getitem__(d, "a") << " " << ::tpy::__getitem__(d, "c") << "\n";
     // # Unannotated list of tuples (IntLiteralType resolved inside tuples)
     // raw = [("x", 10), ("y", 20)]
     std::array<std::tuple<std::string, int32_t>, 2> raw = {std::tuple<std::string, int32_t>{"x", 10}, std::tuple<std::string, int32_t>{"y", 20}};
-    // d2 = dict[str, Int32]((k, v) for k, v in raw)
+    // d2 = dict[str, int32]((k, v) for k, v in raw)
     ::tpy::ordered_map<std::string, int32_t> d2 = ::tpy::dict_construct<std::string, int32_t>([&raw]() {
         auto& __src = raw;
         return ::tpy::make_generator<std::tuple<std::string, int32_t>>(

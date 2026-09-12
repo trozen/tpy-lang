@@ -6,9 +6,9 @@ namespace tpyapp::main {
 
 // def test_int_widen() -> None:
 void test_int_widen() {
-    // a = Int32(1)  # tpyc: type(Int64)
+    // a = int32(1)  # tpyc: type(int64)
     int64_t a = 1;
-    // a = Int64(2)  # tpyc: type(Int64)
+    // a = int64(2)  # tpyc: type(int64)
     a = 2;
     // print(a)
     std::cout << a << "\n";
@@ -16,7 +16,7 @@ void test_int_widen() {
 
 // def test_float_absorbs_int() -> None:
 void test_float_absorbs_int() {
-    // b = Int32(1)  # tpyc: type(float)
+    // b = int32(1)  # tpyc: type(float)
     double b = 1;
     // b = 1.5  # tpyc: type(float)
     b = 1.5;
@@ -28,7 +28,7 @@ void test_float_absorbs_int() {
 void test_float_stays_float() {
     // c = 1.5  # tpyc: type(float)
     double c = 1.5;
-    // c = Int32(1)  # tpyc: type(float)
+    // c = int32(1)  # tpyc: type(float)
     c = static_cast<double>(1);
     // print(c)
     std::cout << ::tpy::print_float(c) << "\n";
@@ -36,7 +36,7 @@ void test_float_stays_float() {
 
 // def test_bigint_absorbs_fixedint() -> None:
 void test_bigint_absorbs_fixedint() {
-    // d = Int32(1)  # tpyc: type(int)
+    // d = int32(1)  # tpyc: type(int)
     ::tpy::BigInt d = 1;
     // d = int(2)  # tpyc: type(int)
     d = ::tpy::BigInt(2);
@@ -46,9 +46,9 @@ void test_bigint_absorbs_fixedint() {
 
 // def test_unsigned_to_wider_signed() -> None:
 void test_unsigned_to_wider_signed() {
-    // e = UInt8(1)  # tpyc: type(Int32)
+    // e = uint8(1)  # tpyc: type(int32)
     int32_t e = 1;
-    // e = Int32(2)  # tpyc: type(Int32)
+    // e = int32(2)  # tpyc: type(int32)
     e = 2;
     // print(e)
     std::cout << e << "\n";
@@ -56,9 +56,9 @@ void test_unsigned_to_wider_signed() {
 
 // def test_uint32_to_int64() -> None:
 void test_uint32_to_int64() {
-    // g = UInt32(1)  # tpyc: type(Int64)
+    // g = uint32(1)  # tpyc: type(int64)
     int64_t g = 1;
-    // g = Int64(2)  # tpyc: type(Int64)
+    // g = int64(2)  # tpyc: type(int64)
     g = 2;
     // print(g)
     std::cout << g << "\n";

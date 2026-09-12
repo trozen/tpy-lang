@@ -10,7 +10,7 @@
 # pre-validates against `max(len(f.type_params) for f in generic)`
 # before dispatching to the overload resolver, mirroring the builtin
 # path at calls.py:3815.
-from tpy import Int32, dispatch
+from tpy import int32, dispatch
 
 
 @dispatch
@@ -25,7 +25,7 @@ def f[U, V](x: U, y: V) -> U:
 
 def main() -> None:
     # 3 explicit type-args; max type-params across overloads is 2.
-    r: Int32 = f[Int32, Int32, Int32](Int32(5))  # tpyc: error(/expects 2 type argument.*got 3/)
+    r: int32 = f[int32, int32, int32](int32(5))  # tpyc: error(/expects 2 type argument.*got 3/)
     print(r)
 
 

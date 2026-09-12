@@ -2,13 +2,13 @@
 # means an INDEPENDENT value -- a later write through one name is
 # invisible through the other. The sharing alternative is in
 # escape_explicit_rc.
-from tpy import Int32, copy
+from tpy import int32, copy
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32):
+    def __init__(self, x: int32):
         self.x = x
 
 

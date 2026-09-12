@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def build(x: Int32) -> Int32:
+// def build(x: int32) -> int32:
 int32_t build(int32_t x) {
     // r: R | None  # declared with no initializer -- a non-value no-init slot
     R* r = nullptr;

@@ -1,18 +1,18 @@
 # Positional-only params: declared before '/', bind positionally
 # with correctly aligned defaults; keyword use of later params works.
-from tpy import Int32
+from tpy import int32
 
 
-def f(a: Int32, /, b: Int32 = 5) -> Int32:
+def f(a: int32, /, b: int32 = 5) -> int32:
     return a * 100 + b
 
 
-def g(a: Int32, b: Int32, /, c: Int32 = 7) -> Int32:
+def g(a: int32, b: int32, /, c: int32 = 7) -> int32:
     return a + b + c
 
 
 class Calc:
-    def scale(self, a: Int32, /, k: Int32 = 2) -> Int32:
+    def scale(self, a: int32, /, k: int32 = 2) -> int32:
         return a * k
 
 

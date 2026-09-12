@@ -12,7 +12,7 @@ Box& first(std::vector<Box>& xs) {
 
 // def main() -> None:
 void main() {
-    // items = [Box(Int32(1)), Box(Int32(2))]
+    // items = [Box(int32(1)), Box(int32(2))]
     std::vector<Box> items = {Box(1), Box(2)};
     // head = first(items)  # element borrow into items
     Box& head = first(items);

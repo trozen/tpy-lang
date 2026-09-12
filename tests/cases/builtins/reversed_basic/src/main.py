@@ -1,8 +1,8 @@
 # reversed() builtin over sequences
-from tpy import Int32
+from tpy import int32
 
 def main() -> None:
-    items: list[Int32] = [1, 2, 3, 4, 5]
+    items: list[int32] = [1, 2, 3, 4, 5]
     for x in reversed(items):
         print(x)
 
@@ -12,12 +12,12 @@ def main() -> None:
         print(s)
 
     # single element
-    one: list[Int32] = [42]
+    one: list[int32] = [42]
     for x in reversed(one):
         print(x)
 
     # empty
-    empty: list[Int32] = []
+    empty: list[int32] = []
     for x in reversed(empty):
         print(x)
 

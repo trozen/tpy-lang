@@ -1,8 +1,8 @@
-from tpy import Int32, Ptr
+from tpy import int32, Ptr
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 def identity_ptr(p: Ptr[Point]) -> Ptr[Point]:
     return p  # tpyc: ok (pointer value is copied)

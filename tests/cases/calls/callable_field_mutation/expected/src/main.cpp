@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def add_one(xs: list[Int32]) -> None:
+// def add_one(xs: list[int32]) -> None:
 void add_one(std::vector<int32_t>& xs) {
     // xs.append(1)
     xs.push_back(1);

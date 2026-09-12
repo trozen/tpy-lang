@@ -16,10 +16,10 @@ void main();
 
 // class Base(ValueType):
 struct Base {
-    // x: Int32
+    // x: int32
     int32_t x;
 
-    // def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: int32) -> None:
     Base() = default;
     explicit Base(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
@@ -41,7 +41,7 @@ struct Derived : Base {
 
     using Base::Base;
 
-    // def double(self) -> Int32:
+    // def double(self) -> int32:
     int32_t double_() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Derived";
 };
@@ -58,10 +58,10 @@ namespace tpyapp::main {
 
 
 
-// def __init__(self, x: Int32) -> None:
+// def __init__(self, x: int32) -> None:
 inline Base::Base(int32_t x) : x(x) {}
 
-// def double(self) -> Int32:
+// def double(self) -> int32:
 inline int32_t Derived::double_() const {
     // return self.x + self.x
     return (::tpy::add_check<int32_t>(this->x, this->x));

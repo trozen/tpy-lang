@@ -1,8 +1,8 @@
-from tpy import Int32, Array
+from tpy import int32, Array
 from tplib import ArrayList
 
 def test_list_aug_assign() -> None:
-    nums: list[Int32] = [1, 2, 3]
+    nums: list[int32] = [1, 2, 3]
     nums[0] += 10
     print(nums[0])  # 11
     nums[1] *= 5
@@ -11,7 +11,7 @@ def test_list_aug_assign() -> None:
     print(nums[2])  # 2
 
 def test_arraylist_aug_assign() -> None:
-    items = ArrayList[Int32, 4]()
+    items = ArrayList[int32, 4]()
     items.append(100)
     items.append(200)
     items[0] += 5
@@ -20,14 +20,14 @@ def test_arraylist_aug_assign() -> None:
     print(items[1])  # 150
 
 def test_negative_index_aug_assign() -> None:
-    nums: list[Int32] = [10, 20, 30]
+    nums: list[int32] = [10, 20, 30]
     nums[-1] += 5
     print(nums[-1])  # 35
     nums[-2] *= 2
     print(nums[-2])  # 40
 
 def test_array_aug_assign() -> None:
-    arr: Array[Int32, 3] = [10, 20, 30]
+    arr: Array[int32, 3] = [10, 20, 30]
     arr[0] += 5
     print(arr[0])  # 15
     arr[-1] *= 2

@@ -10,7 +10,7 @@ namespace tpyapp::main {
     case S_INITIAL: {
         // r = Runner()
         r.emplace(Runner());
-        // data: list[Int32] = [9]
+        // data: list[int32] = [9]
         data.emplace(std::vector<int32_t>{9});
         // await r.go(data)
         __sub_0.emplace((*r), (*data));

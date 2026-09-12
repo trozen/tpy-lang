@@ -1,18 +1,18 @@
 # Exception types with data fields and except...as e binding
-from tpy import Int32, error_return, ReturnException
+from tpy import int32, error_return, ReturnException
 
 class ParseError(Exception, ReturnException):
-    line: Int32
-    column: Int32
+    line: int32
+    column: int32
     detail: str
 
-    def __init__(self, line: Int32, column: Int32, detail: str) -> None:
+    def __init__(self, line: int32, column: int32, detail: str) -> None:
         self.line = line
         self.column = column
         self.detail = detail
 
 @error_return(ParseError)
-def parse(s: str) -> Int32:
+def parse(s: str) -> int32:
     if s == "ok":
         return 42
     raise ParseError(10, 5, "unexpected token")

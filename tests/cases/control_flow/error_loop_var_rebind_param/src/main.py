@@ -1,12 +1,12 @@
 # Rebinding a reference-type PARAM via a for-loop is rejected (a hoisted
 # assignment would write through the reference into the caller's object).
-from tpy import Int32
+from tpy import int32
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 

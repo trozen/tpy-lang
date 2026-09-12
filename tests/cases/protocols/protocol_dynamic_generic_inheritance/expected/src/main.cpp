@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def show_source(s: Source[Int32]) -> None:
+// def show_source(s: Source[int32]) -> None:
 void show_source(Source<int32_t>& s) {
     // print(s.get())
     std::cout << s.get() << "\n";
@@ -12,7 +12,7 @@ void show_source(Source<int32_t>& s) {
 
 // def main() -> None:
 void main() {
-    // c: Counter[Int32] = IntCounter()
+    // c: Counter[int32] = IntCounter()
     ::tpy::Adapter<Counter<int32_t>, IntCounter> __slot_1{IntCounter()};
     Counter<int32_t>* c = &__slot_1;
     // c.bump()
@@ -23,9 +23,9 @@ void main() {
     c->bump();
     // print(c.get())
     std::cout << c->get() << "\n";
-    // show_source(c)  # Counter[Int32] -> Source[Int32] via implicit upcast
+    // show_source(c)  # Counter[int32] -> Source[int32] via implicit upcast
     show_source((*c));
-    // s: Source[Int32] = IntCounter()
+    // s: Source[int32] = IntCounter()
     ::tpy::Adapter<Source<int32_t>, IntCounter> __slot_2{IntCounter()};
     Source<int32_t>* s = &__slot_2;
     // print(s.get())

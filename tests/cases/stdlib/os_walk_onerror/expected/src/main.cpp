@@ -17,7 +17,7 @@ void boom(const ::tpy::OSError& e) {
     throw ::tpy::RuntimeError("stop");
 }
 
-// def yields(top: str, cb: Callable[[readonly[OSError]], None] | None) -> Int32:
+// def yields(top: str, cb: Callable[[readonly[OSError]], None] | None) -> int32:
 int32_t yields(std::string_view top, std::optional<std::function<void(const ::tpy::OSError&)>> cb) {
     // n = 0
     int32_t n = 0;

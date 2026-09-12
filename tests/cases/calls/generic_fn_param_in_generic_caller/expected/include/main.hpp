@@ -80,7 +80,7 @@ std::vector<std::string> names(const std::vector<std::tuple<T, std::string>>& pa
     // return map_keys(pairs, lambda p: p[1])  # tpyc: ok
     return map_keys<std::tuple<T, std::string>, std::string>(pairs, [](const std::tuple<::tpy::val_or_ptr_t<T>, std::string>& p) -> std::string { return std::get<1>(p); });
 }
-// def keep[T](pairs: list[tuple[T, Int32]]) -> Own[list[tuple[T, Int32]]]:
+// def keep[T](pairs: list[tuple[T, int32]]) -> Own[list[tuple[T, int32]]]:
 template<typename T>
 std::vector<std::tuple<T, int32_t>> keep(const std::vector<std::tuple<T, int32_t>>& pairs) {
     // return above_first(pairs, lambda p: p[1])

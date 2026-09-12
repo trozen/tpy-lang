@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main():
 void main() {
-    // data: list[Int32] = [1, 2, 3]
+    // data: list[int32] = [1, 2, 3]
     std::vector<int32_t> data = {1, 2, 3};
     // print(count(data))
     std::cout << count(data) << "\n";

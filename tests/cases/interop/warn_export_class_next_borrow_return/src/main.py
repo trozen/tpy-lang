@@ -6,22 +6,22 @@
 # and warn. Own[...] moves a fresh instance out (the quiet form). Runtime
 # aliasing is pinned in tests/interop/next_borrow.
 # tpy: ext_module
-from tpy import Int32, Own, readonly
+from tpy import int32, Own, readonly
 from tpy.extern import export
 
 
 @export
 class Node:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32):
+    def __init__(self, v: int32):
         self.v = v
 
 
 @export
 class Repeat:
     _cur: Node
-    _n: Int32
+    _n: int32
 
     def __init__(self):
         self._cur = Node(0)
@@ -39,14 +39,14 @@ class Repeat:
 
 @export
 class Rows:
-    _row: list[Int32]
-    _n: Int32
+    _row: list[int32]
+    _n: int32
 
     def __init__(self):
         self._row = [1, 2]
         self._n = 0
 
-    def __next__(self) -> list[Int32]:
+    def __next__(self) -> list[int32]:
         if self._n >= 2:
             raise StopIteration
         self._n += 1
@@ -56,7 +56,7 @@ class Rows:
 @export
 class Peek:
     _cur: Node
-    _n: Int32
+    _n: int32
 
     def __init__(self):
         self._cur = Node(0)
@@ -72,7 +72,7 @@ class Peek:
 @export
 class Swapping:
     _cur: Node
-    _n: Int32
+    _n: int32
 
     def __init__(self):
         self._cur = Node(0)
@@ -90,7 +90,7 @@ class Swapping:
 
 @export
 class Fresh:
-    _n: Int32
+    _n: int32
 
     def __init__(self):
         self._n = 0

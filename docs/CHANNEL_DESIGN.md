@@ -85,7 +85,7 @@ ships several channel flavors. Out of scope for Phase 4.
 from tpy.channel import channel, Sender, Receiver, ChannelClosed
 
 class Counter(Send):
-    count: Int32
+    count: int32
 
 class SharedCache:
     data: Ptr[Buffer]            # raw pointer -> not Send
@@ -100,12 +100,12 @@ def main() -> None:
 Async producer/consumer with explicit shutdown:
 
 ```python
-async def producer(tx: Own[Sender[Int32]]) -> None:
+async def producer(tx: Own[Sender[int32]]) -> None:
     for i in range(5):
         await tx.send(i)             # suspends if the buffer is full
     tx.close()                       # signal end-of-stream
 
-async def consumer(rx: Own[Receiver[Int32]]) -> None:
+async def consumer(rx: Own[Receiver[int32]]) -> None:
     while True:
         try:
             print(await rx.recv())   # suspends if empty
@@ -113,7 +113,7 @@ async def consumer(rx: Own[Receiver[Int32]]) -> None:
             break                    # closed and drained
 
 async def main_co() -> None:
-    tx, rx = channel[Int32](2)
+    tx, rx = channel[int32](2)
     p = create_task(producer(tx))
     c = create_task(consumer(rx))
     await p
@@ -135,16 +135,16 @@ async def main_co() -> None:
 |--------|-----------|----------|
 | `recv` | `async recv(self) -> T` | suspends while empty; raises `ChannelClosed` once the buffer is empty **and** the channel is closed (or all senders gone) |
 
-`channel[T: Send](capacity: Int32) -> tuple[Own[Sender[T]], Own[Receiver[T]]]`
+`channel[T: Send](capacity: int32) -> tuple[Own[Sender[T]], Own[Receiver[T]]]`
 -- factory. `capacity >= 1`; `capacity < 1` raises at runtime (no
 compile-time const-capacity check). The tuple-of-`Own[nocopy]` return and
 `tx, rx = channel[...]()` unpacking work via the owned-tuple-unpack move-out
 feature (landed on master): each `Own` handle is moved out of the consumed
 factory-result tuple into its own movable local.
 
-**`T` must be written explicitly** (`channel[Int32](4)`): `capacity` gives
+**`T` must be written explicitly** (`channel[int32](4)`): `capacity` gives
 no inference source for `T`, so a bare `channel(4)` is a "cannot infer"
-error. The explicit `channel[Int32](...)` subscript is a tpyc-only spelling --
+error. The explicit `channel[int32](...)` subscript is a tpyc-only spelling --
 a generic *function* is not subscriptable in CPython (`TypeError`), unlike a
 generic *type* like `list[int]` -- which is why these runtime cases are
 `no_cpython` (see also the `spawn[R, T]` note in `docs/THREADING_DESIGN.md`).
@@ -196,9 +196,9 @@ one. Suspension reuses the executor's `Waker` / `Poll` surface
 @nocopy
 class _ChanState[T: Send]:
     _buf: UninitHeapStorage[T]
-    _cap: Int32
-    _head: Int32          # index of the oldest buffered element
-    _count: Int32         # number of buffered elements (0.._cap)
+    _cap: int32
+    _head: int32          # index of the oldest buffered element
+    _count: int32         # number of buffered elements (0.._cap)
     _closed: bool         # set by Sender.close() (or last-sender teardown)
 
     # SPSC: at most one parked waiter per side.
@@ -359,7 +359,7 @@ together on the `fix-channel-prereqs` branch):
   `tests/cases/iterators/cross_module_iter`);
 - an `Arc[Mutex[...]]` reached from a separate module no longer fails to
   compile inside `tpy.sync` when the builtin registry is finalized in an
-  order that leaves `Ptr`/`UInt32` unindexed (post-finalize builtin re-index;
+  order that leaves `Ptr`/`uint32` unindexed (post-finalize builtin re-index;
   `tests/cases/threading/mutex_wrap_cross_module`).
 
 `Condvar` (the other prerequisite) shipped independently. Nothing compiler-side

@@ -5,25 +5,25 @@
 # channel and ends `for item in rx:`. The @nocopy Item payload forces
 # move-through -- a silent copy at send/recv would be a compile error -- so
 # this proves the value MOVES across the thread boundary, not copies.
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 from tpy.thread import spawn
 from tplib.channel import channel, Sender, Receiver
 
 
 @nocopy
 class Item:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 
 @nocopy
 class Producer:
     tx: Sender[Item]
-    base: Int32
+    base: int32
 
-    def __init__(self, tx: Own[Sender[Item]], base: Int32) -> None:
+    def __init__(self, tx: Own[Sender[Item]], base: int32) -> None:
         self.tx = tx
         self.base = base
 

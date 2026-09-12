@@ -42,7 +42,7 @@ void literal_set() {
 
 // def annotated_list() -> None:
 void annotated_list() {
-    // xs: list[Int32] = [1, 2]  # already resolved: the inverse of the literal case
+    // xs: list[int32] = [1, 2]  # already resolved: the inverse of the literal case
     std::vector<int32_t> xs = {1, 2};
     // ys = copy(xs)
     std::vector<int32_t> ys = std::vector<int32_t>(xs);

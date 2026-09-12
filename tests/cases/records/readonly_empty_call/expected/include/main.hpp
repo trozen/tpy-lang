@@ -15,15 +15,15 @@ void main();
 
 // class Foo:
 struct Foo {
-    // x: Int32
+    // x: int32
     int32_t x;
 
-    // def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: int32) -> None:
     Foo() = default;
     explicit Foo(int32_t x);
 
     // @readonly()
-    // def get_x(self) -> Int32:
+    // def get_x(self) -> int32:
     int32_t get_x() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Foo";
 };
@@ -34,11 +34,11 @@ inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {
 }
 
 
-// def __init__(self, x: Int32) -> None:
+// def __init__(self, x: int32) -> None:
 inline Foo::Foo(int32_t x) : x(x) {}
 
 // @readonly()
-// def get_x(self) -> Int32:
+// def get_x(self) -> int32:
 inline int32_t Foo::get_x() const {
     // return self.x
     return this->x;

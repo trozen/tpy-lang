@@ -15,12 +15,12 @@ void main();
 
 // class Vec2(ValueType):
 struct Vec2 {
-    // x: Int32
+    // x: int32
     int32_t x;
-    // y: Int32
+    // y: int32
     int32_t y;
 
-    // def __init__(self, x: Int32, y: Int32):
+    // def __init__(self, x: int32, y: int32):
     Vec2() = default;
     explicit Vec2(int32_t x, int32_t y);
 
@@ -29,7 +29,7 @@ struct Vec2 {
     static Vec2 zero();
 
     // @classmethod
-    // def diagonal(cls, n: Int32) -> Self:
+    // def diagonal(cls, n: int32) -> Self:
     static Vec2 diagonal(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Vec2";
 };
@@ -46,7 +46,7 @@ namespace tpyapp::main {
 
 
 
-// def __init__(self, x: Int32, y: Int32):
+// def __init__(self, x: int32, y: int32):
 inline Vec2::Vec2(int32_t x, int32_t y) : x(x), y(y) {}
 
 // @classmethod
@@ -57,7 +57,7 @@ inline Vec2 Vec2::zero() {
 }
 
 // @classmethod
-// def diagonal(cls, n: Int32) -> Self:
+// def diagonal(cls, n: int32) -> Self:
 inline Vec2 Vec2::diagonal(int32_t n) {
     // return cls(n, n)
     return Vec2(n, n);

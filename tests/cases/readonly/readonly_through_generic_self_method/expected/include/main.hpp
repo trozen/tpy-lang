@@ -31,7 +31,7 @@ struct Holder {
         return ::tpy::param_to_return<U>(key);
     }
 
-    // def lookup(self, x: Int32) -> Int32:
+    // def lookup(self, x: int32) -> int32:
     int32_t lookup(int32_t x) const {
         // return self.identity(x)
         return this->identity<int32_t>(x);
@@ -53,7 +53,7 @@ struct SubHolder : Holder<T> {
     SubHolder() = default;
     explicit SubHolder(::tpy::readonly_form_t<T> val) : Holder<T>(val) {}
 
-    // def super_lookup(self, x: Int32) -> Int32:
+    // def super_lookup(self, x: int32) -> int32:
     int32_t super_lookup(int32_t x) const {
         // return super().identity(x)
         return this->Holder<T>::template identity<int32_t>(x);

@@ -3,13 +3,13 @@
 # side (the iterator's yielded Own[T]) as well as the expected side -- not
 # just the expected. Covers value and reference T. copy() makes owned
 # copies, so copy semantics are intended in every section here.
-from tpy import Int32, Comparable, Own, copy
+from tpy import int32, Comparable, Own, copy
 from typing import Iterator, Iterable
 
 class Item:
-    key: Int32
-    tag: Int32
-    def __init__(self, key: Int32, tag: Int32) -> None:
+    key: int32
+    tag: int32
+    def __init__(self, key: int32, tag: int32) -> None:
         self.key = key
         self.tag = tag
     def __lt__(self, other: 'Item') -> bool:
@@ -28,14 +28,14 @@ def each_twice[T: Comparable](xs: list[T]) -> Iterator[Own[T]]:
 
 # A user sink typed Iterable[Own[T]] fed an Iterator[Own[T]] -- the same
 # conformance path as list(), beyond the builtin.
-def total(xs: Iterable[Own[Int32]]) -> Int32:
-    s: Int32 = 0
+def total(xs: Iterable[Own[int32]]) -> int32:
+    s: int32 = 0
     for x in xs:
         s += x
     return s
 
 def main() -> None:
-    nums: list[Int32] = [3, 1, 2]
+    nums: list[int32] = [3, 1, 2]
     print(list(each(nums)))
     print(total(each(nums)))
 

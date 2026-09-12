@@ -5,17 +5,17 @@ The compiler generates temp variables for these cases.
 """
 from __future__ import annotations
 from typing import Protocol
-from tpy import Int32, auto_readonly
+from tpy import int32, auto_readonly
 
 # Protocol that accepts various types
 class HasValue(Protocol):
-    def get(self) -> Int32: ...
+    def get(self) -> int32: ...
 
 class IntBox:
-    v: Int32
-    def __init__(self, v: Int32) -> None:
+    v: int32
+    def __init__(self, v: int32) -> None:
         self.v = v
-    def get(self) -> Int32:
+    def get(self) -> int32:
         return self.v
 
 # Container of boxes for subscript test
@@ -24,7 +24,7 @@ class BoxContainer:
     def __init__(self) -> None:
         self.items = [IntBox(10), IntBox(20), IntBox(30)]
     @auto_readonly
-    def __getitem__(self, i: Int32) -> IntBox:
+    def __getitem__(self, i: int32) -> IntBox:
         return self.items[i]
 
 def show(h: HasValue) -> None:
@@ -39,7 +39,7 @@ def main() -> None:
     # Tested via constructor which is similar
 
     # Test 3: Builtin function result
-    # len() returns Int32, not a HasValue, so can't test directly
+    # len() returns int32, not a HasValue, so can't test directly
     # But we test builtin in method args via protocol_method_coercion
 
     # Test 4: Record subscript (rvalue - __getitem__ returns by value)

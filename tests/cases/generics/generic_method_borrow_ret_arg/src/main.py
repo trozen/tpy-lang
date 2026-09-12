@@ -15,7 +15,7 @@
 # BUGS.md#generic-method-inferred-readonly-return-binding.
 from __future__ import annotations
 from typing import Protocol
-from tpy import Int32
+from tpy import int32
 
 
 class Bump(Protocol):
@@ -23,9 +23,9 @@ class Bump(Protocol):
 
 
 class Cell:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def bump(self) -> None:
@@ -35,7 +35,7 @@ class Cell:
 class Holder:
     c: Cell
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.c = Cell(n)
 
     def borrow(self) -> Cell:

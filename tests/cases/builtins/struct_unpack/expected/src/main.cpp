@@ -30,7 +30,7 @@ void main() {
     // print(b)  # 2
     std::cout << b << "\n";
     // # unpack_from with int16 at offset
-    // c, d = unpack_from('<hh', data, Int32(4))
+    // c, d = unpack_from('<hh', data, int32(4))
     auto __tup_2 = std::tuple<int16_t, int16_t>{*reinterpret_cast<const int16_t*>(data.data() + 4), *reinterpret_cast<const int16_t*>(data.data() + (::tpy::add_check<int32_t>(4, 2)))};
     int16_t c = std::get<0>(__tup_2);
     int16_t d = std::get<1>(__tup_2);

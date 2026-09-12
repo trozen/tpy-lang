@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def relay(h: Holder) -> tuple[Box, Int32]:
+// def relay(h: Holder) -> tuple[Box, int32]:
 std::tuple<Box*, int32_t> relay(Holder& h) {
     // return h.get_pair()
     return h.get_pair();

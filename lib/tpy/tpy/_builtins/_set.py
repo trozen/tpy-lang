@@ -2,7 +2,7 @@
 # tpy: cpp_namespace("tpystd::builtins")
 from .._typing import Self, Iterator, Iterable
 from .._bootstrap._decorators import readonly, pure, Own, dispatch
-from .._core._types import Int32, NativeIterable
+from .._core._types import int32, NativeIterable
 from .._bootstrap._extern import native, cpp_template, builtin_type
 
 
@@ -27,7 +27,7 @@ class set[T](Iterable[T], NativeIterable[T]):
     @native("tpy::__len__", function=True)
     @pure
     @readonly
-    def __len__(self) -> Int32: ...
+    def __len__(self) -> int32: ...
 
     @native("contains")
     @pure

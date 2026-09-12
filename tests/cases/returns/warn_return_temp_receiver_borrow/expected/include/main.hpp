@@ -22,10 +22,10 @@ void main();
 
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
 
-    // def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: int32) -> None:
     Point() = default;
     explicit Point(int32_t x);
 
@@ -41,10 +41,10 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 // class Factory:
 struct Factory {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Factory() = default;
     explicit Factory(int32_t n);
 
@@ -59,7 +59,7 @@ inline std::ostream& operator<<(std::ostream& os, const Factory& obj) {
 }
 
 
-// def __init__(self, x: Int32) -> None:
+// def __init__(self, x: int32) -> None:
 inline Point::Point(int32_t x) : x(x) {}
 
 // def updated(self) -> 'Point':
@@ -70,7 +70,7 @@ inline Point& Point::updated() {
     return (*this);
 }
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Factory::Factory(int32_t n) : n(n) {}
 
 // def make(self) -> Own[Point]:

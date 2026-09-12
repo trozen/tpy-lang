@@ -1,5 +1,5 @@
 # Test bool() conversion function
-from tpy import Int32
+from tpy import int32
 
 # Default value
 b0: bool = bool()
@@ -11,12 +11,12 @@ print(b1)  # True
 b2: bool = bool(False)
 print(b2)  # False
 
-# From Int32
-b3: bool = bool(Int32(0))
+# From int32
+b3: bool = bool(int32(0))
 print(b3)  # False
-b4: bool = bool(Int32(1))
+b4: bool = bool(int32(1))
 print(b4)  # True
-b5: bool = bool(Int32(-5))
+b5: bool = bool(int32(-5))
 print(b5)  # True
 
 # From int (BigInt)

@@ -1,11 +1,11 @@
 # @property needs an instance receiver, so it cannot be a classmethod.
-from tpy import Int32
+from tpy import int32
 
 
 class P:
     @property
     @classmethod
-    def value(cls) -> Int32:  # tpyc: error(/@property cannot be combined with @classmethod/)
+    def value(cls) -> int32:  # tpyc: error(/@property cannot be combined with @classmethod/)
         return 1
 
 

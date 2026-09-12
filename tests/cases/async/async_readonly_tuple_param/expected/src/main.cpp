@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def asum(pair: readonly[tuple[Tag, Tag]]) -> Int32:
+// async def asum(pair: readonly[tuple[Tag, Tag]]) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_asum::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -29,12 +29,12 @@ namespace tpyapp::main {
 }
 
 
-// async def asum(pair: readonly[tuple[Tag, Tag]]) -> Int32:
+// async def asum(pair: readonly[tuple[Tag, Tag]]) -> int32:
 __coro_asum asum(std::tuple<const Tag*, const Tag*> pair) {
     return __coro_asum(pair);
 }
 
-// def gsum(pair: readonly[tuple[Tag, Tag]]) -> Iterator[Int32]:
+// def gsum(pair: readonly[tuple[Tag, Tag]]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_gsum::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -57,13 +57,13 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gsum::__next__() {
 }
 
 
-// def gsum(pair: readonly[tuple[Tag, Tag]]) -> Iterator[Int32]:
+// def gsum(pair: readonly[tuple[Tag, Tag]]) -> Iterator[int32]:
 __gen_gsum gsum(std::tuple<const Tag*, const Tag*> pair) {
     return __gen_gsum(pair);
 }
 
 // def pick(p1: readonly[tuple[Tag, Tag]], p2: readonly[tuple[Tag, Tag]],
-// c: bool) -> Int32:
+// c: bool) -> int32:
 int32_t pick(const std::tuple<const Tag*, const Tag*>& p1, const std::tuple<const Tag*, const Tag*>& p2, bool c) {
     // t = p1 if c else p2
     auto t = ((c) ? (p1) : (p2));

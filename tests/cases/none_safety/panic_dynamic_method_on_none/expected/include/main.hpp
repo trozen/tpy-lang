@@ -37,7 +37,7 @@ void main();
 struct Dog : Pet {
 
 
-    // def sound(self) -> Int32:
+    // def sound(self) -> int32:
     int32_t sound() override;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
 };
@@ -67,7 +67,7 @@ struct tpy::RefAdapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
 namespace tpyapp::main {
 
 
-// def sound(self) -> Int32:
+// def sound(self) -> int32:
 inline int32_t Dog::sound() {
     // return 7
     return 7;

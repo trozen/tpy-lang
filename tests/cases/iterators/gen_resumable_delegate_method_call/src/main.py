@@ -3,13 +3,13 @@
 # borrows alias the holder's fields -- mutations must persist (CPython
 # aliasing).
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
 class Node:
-    val: Int32
+    val: int32
 
-    def __init__(self, val: Int32) -> None:
+    def __init__(self, val: int32) -> None:
         self.val = val
 
 
@@ -26,7 +26,7 @@ class Holder:
         yield self.b
 
 
-def bump_all(h: Holder) -> Iterator[Int32]:
+def bump_all(h: Holder) -> Iterator[int32]:
     yield 0
     total = 0
     for n in h.nodes_gen():  # tpyc: ok

@@ -2,22 +2,22 @@
 # both arms: a mutable `W` param narrowed to a readonly Ptr, and a
 # readonly[W] param to a readonly Ptr (distinct coercion paths).
 from typing import Protocol
-from tpy import Ptr, readonly, Int32
+from tpy import Ptr, readonly, int32
 
 
 class Reads(Protocol):
     @readonly
-    def value(self) -> Int32: ...
+    def value(self) -> int32: ...
 
 
 class Counter(Reads):
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     @readonly
-    def value(self) -> Int32:
+    def value(self) -> int32:
         return self.n
 
 
@@ -30,7 +30,7 @@ class RWView[W: Reads]:
     def __init__(self, src: W) -> None:
         self._src = src
 
-    def read(self) -> Int32:
+    def read(self) -> int32:
         return self._src.value()
 
 
@@ -42,7 +42,7 @@ class ROView[W: Reads]:
     def __init__(self, src: readonly[W]) -> None:
         self._src = src
 
-    def read(self) -> Int32:
+    def read(self) -> int32:
         return self._src.value()
 
 

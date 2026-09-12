@@ -1,5 +1,5 @@
 # Deferred generic inference: multiple type params resolved from method calls
-from tpy import Int32, Int64
+from tpy import int32, int64
 
 class Pair[T, U]:
     a: T
@@ -20,15 +20,15 @@ class Pair[T, U]:
 
 def main() -> None:
     # Incremental resolution: set_a then set_b
-    p1 = Pair()  # tpyc: type(/Pair\[Int32, Int64\]/)
-    p1.set_a(Int32(10))   # T = Int32, U still unknown
-    p1.set_b(Int64(20))   # U = Int64, all resolved -> Pair[Int32, Int64]
+    p1 = Pair()  # tpyc: type(/Pair\[int32, int64\]/)
+    p1.set_a(int32(10))   # T = int32, U still unknown
+    p1.set_b(int64(20))   # U = int64, all resolved -> Pair[int32, int64]
     print(p1.get_a())
     print(p1.get_b())
 
     # Single-call resolution: set_both resolves T and U at once
-    p2 = Pair()  # tpyc: type(/Pair\[Int32, Int64\]/)
-    p2.set_both(Int32(1), Int64(2))
+    p2 = Pair()  # tpyc: type(/Pair\[int32, int64\]/)
+    p2.set_both(int32(1), int64(2))
     print(p2.get_a())
     print(p2.get_b())
 

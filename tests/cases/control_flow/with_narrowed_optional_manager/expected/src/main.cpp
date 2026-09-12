@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def value_enter(c: Counter | None) -> Int32:
+// def value_enter(c: Counter | None) -> int32:
 int32_t value_enter(Counter* c) {
     // if c is None:
     if ((c == nullptr)) {
@@ -33,7 +33,7 @@ int32_t value_enter(Counter* c) {
     }
 }
 
-// def record_enter(h: Holder | None) -> Int32:
+// def record_enter(h: Holder | None) -> int32:
 int32_t record_enter(Holder* h) {
     // assert h is not None
     if (!((h != nullptr))) ::tpy::raise_assertion_error();

@@ -1,22 +1,22 @@
 # Non-value types declared inside branches use std::optional<T> for hoisting
 # (no unnecessary default construction or pointer indirection).
 from typing import Optional
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Point:
-    def __init__(self, x: Int32, y: Int32) -> None:
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 
 
-def make_list() -> Own[list[Int32]]:
+def make_list() -> Own[list[int32]]:
     return [1, 2, 3]
 
 
 def test_list_one_branch(flag: bool) -> None:
     if flag:
-        items: list[Int32] = [10, 20, 30]
+        items: list[int32] = [10, 20, 30]
     else:
         return
     print(items)
@@ -31,9 +31,9 @@ def test_own_list_both_branches(flag: bool) -> None:
 
 
 def test_list_reassigned_mixed(flag: bool) -> None:
-    base: list[Int32] = [10, 20]
+    base: list[int32] = [10, 20]
     if flag:
-        items: list[Int32] = [1, 2, 3]
+        items: list[int32] = [1, 2, 3]
     else:
         items = base
     items.append(99)

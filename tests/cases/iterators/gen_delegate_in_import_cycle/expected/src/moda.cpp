@@ -5,7 +5,7 @@
 namespace tpyapp::moda {
 
 
-// def local_walk() -> Iterator[Int32]:
+// def local_walk() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_local_walk::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -28,12 +28,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_local_walk::__next__() {
 }
 
 
-// def local_walk() -> Iterator[Int32]:
+// def local_walk() -> Iterator[int32]:
 __gen_local_walk local_walk() {
     return __gen_local_walk();
 }
 
-// def free_delegator() -> Iterator[Int32]:
+// def free_delegator() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_free_delegator::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -67,12 +67,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_free_delegator::__next__() {
 }
 
 
-// def free_delegator() -> Iterator[Int32]:
+// def free_delegator() -> Iterator[int32]:
 __gen_free_delegator free_delegator() {
     return __gen_free_delegator();
 }
 
-// def method_delegator(s: Src) -> Iterator[Int32]:
+// def method_delegator(s: Src) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_method_delegator::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -106,13 +106,13 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_method_delegator::__next__() 
 }
 
 
-// def method_delegator(s: Src) -> Iterator[Int32]:
+// def method_delegator(s: Src) -> Iterator[int32]:
 __gen_method_delegator method_delegator(Src& s) {
     return __gen_method_delegator(s);
 }
 
 // # the ordinary call that closes the import cycle
-// def ping(n: Int32) -> Int32:
+// def ping(n: int32) -> int32:
 int32_t ping(int32_t n) {
     // if n <= 0:
     if ((n <= 0)) {
@@ -123,7 +123,7 @@ int32_t ping(int32_t n) {
     return ::tpyapp::modb::pong((::tpy::sub_check<int32_t>(n, 1)));
 }
 
-// def steps(self) -> Iterator[Int32]:
+// def steps(self) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_Src_steps::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -147,7 +147,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Src_steps::__next__() {
 
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 Src::Src(int32_t n) : n(n) {}
 void __tpy_init() {
     static bool initialized = false;

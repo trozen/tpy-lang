@@ -4,11 +4,11 @@
 # enforcement happens inside the sub's parse fn, while the top-level
 # field type accepts None for the case where a different sub was
 # chosen and the field wasn't set.
-from tpy import Int32
+from tpy import int32
 from argparse import ArgumentParser
 
 
-def main() -> Int32:
+def main() -> int32:
     parser = ArgumentParser(prog="prog")
     sub = parser.add_subparsers(dest="cmd", required=True)
 

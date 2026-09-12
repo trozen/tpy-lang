@@ -6,15 +6,15 @@ namespace tpyapp::main {
 
 // def test_list_ptr() -> None:
 void test_list_ptr() {
-    // items: list[Int32] = [Int32(10), Int32(20), Int32(30)]
+    // items: list[int32] = [int32(10), int32(20), int32(30)]
     std::vector<int32_t> items = {10, 20, 30};
-    // p: Ptr[Int32] = unsafe_ptr(items)
+    // p: Ptr[int32] = unsafe_ptr(items)
     int32_t* p = items.data();
-    // print(unsafe_load(p, UInt32(0)))
+    // print(unsafe_load(p, uint32(0)))
     std::cout << p[0] << "\n";
-    // print(unsafe_load(p, UInt32(1)))
+    // print(unsafe_load(p, uint32(1)))
     std::cout << p[1] << "\n";
-    // print(unsafe_load(p, UInt32(2)))
+    // print(unsafe_load(p, uint32(2)))
     std::cout << p[2] << "\n";
 }
 

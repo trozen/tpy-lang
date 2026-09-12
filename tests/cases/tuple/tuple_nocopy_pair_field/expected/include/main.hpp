@@ -17,10 +17,10 @@ void main();
 // @nocopy
 // class Handle:
 struct Handle {
-    // fd: Int32
+    // fd: int32
     int32_t fd;
 
-    // def __init__(self, fd: Int32) -> None:
+    // def __init__(self, fd: int32) -> None:
     Handle() = default;
     explicit Handle(int32_t fd);
     // non-copyable (@nocopy)
@@ -57,14 +57,14 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
 }
 
 
-// def __init__(self, fd: Int32) -> None:
+// def __init__(self, fd: int32) -> None:
 inline Handle::Handle(int32_t fd) : fd(fd) {}
 
 // def __init__(self) -> None:
 inline Container::Container() {
-    // a = Handle(Int32(1))
+    // a = Handle(int32(1))
     Handle a = Handle(1);
-    // b = Handle(Int32(2))
+    // b = Handle(int32(2))
     Handle b = Handle(2);
     // self.pair = (a, b)
     this->pair = ::tpy::tuple_to_storage<std::tuple<Handle, Handle>>(std::tuple<Handle, Handle>{std::move(a), std::move(b)});

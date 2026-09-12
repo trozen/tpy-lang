@@ -46,7 +46,7 @@ std::optional<::tpyapp::colors::Color> EnumUtil<::tpyapp::colors::Color>::try_pa
 namespace tpyapp::colors {
 
 
-// def color_value(c: Color) -> Int32:
+// def color_value(c: Color) -> int32:
 int32_t color_value(Color c) {
     // return c.value
     return static_cast<int32_t>(c);

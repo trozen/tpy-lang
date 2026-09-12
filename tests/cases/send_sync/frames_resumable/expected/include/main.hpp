@@ -35,10 +35,10 @@ void main();
 
 // class Counter:
 struct Counter {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Counter() = default;
     explicit Counter(int32_t n);
 
@@ -261,7 +261,7 @@ struct __gen_gen_own : public ::tpy::next_iter_mixin<__gen_gen_own, int32_t> {
 };
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Counter::Counter(int32_t n) : n(n) {}
 inline auto gen_while(int32_t n) {
     // i = 0

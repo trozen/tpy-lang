@@ -2,13 +2,13 @@
 # terminate. Sema rejects an un-try-guarded raise; the accepted counterpart, a
 # raise a local handler catches, is pinned by
 # tests/cases/movability/pool_custom_move.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Holder:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
     def __del__(self) -> None:

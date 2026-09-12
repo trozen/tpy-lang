@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 
 class Container[T]:
     value: T
@@ -11,16 +11,16 @@ class Container[T]:
 
 
 class Wrapper[T](Container[T]):
-    extra: Int32
+    extra: int32
 
-    def __init__(self, value: T, extra: Int32) -> None:
+    def __init__(self, value: T, extra: int32) -> None:
         self.value = value
         self.extra = extra
 
-    def get_extra(self) -> Int32:
+    def get_extra(self) -> int32:
         return self.extra
 
 
-w: Wrapper[str] = Wrapper[str]("hello", Int32(42))
+w: Wrapper[str] = Wrapper[str]("hello", int32(42))
 print(w.get_value())
 print(w.get_extra())

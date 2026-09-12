@@ -2,10 +2,10 @@
 # The CFG models break-vs-normal-exit, so `break` skips the else (which would
 # otherwise yield -1) while normal loop exit runs it. Both arms exercised.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
-def gen(n: Int32, brk: Int32) -> Iterator[Int32]:
+def gen(n: int32, brk: int32) -> Iterator[int32]:
     i = 0
     while i < n:
         if i == brk:

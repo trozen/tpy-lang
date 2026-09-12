@@ -2,11 +2,11 @@
 # must (a) find the inherited methods and (b) name their coro structs after
 # the defining base. Mutate-and-observe on the shared manager.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
 class BaseCM:
-    n: Int32
+    n: int32
 
     def __init__(self) -> None:
         self.n = 0

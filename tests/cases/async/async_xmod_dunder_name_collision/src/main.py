@@ -6,12 +6,12 @@
 # phantom self-edge and rejecting valid code as a recursive embedding.
 import asyncio
 import svc
-from tpy import Int32
+from tpy import int32
 
 
 class Gate:
     # `async with` embeds __aenter__/__aexit__; the manager is svc.Gate.
-    async def __aenter__(self) -> Int32:
+    async def __aenter__(self) -> int32:
         async with svc.Gate() as v:
             return v + 1
 
@@ -20,13 +20,13 @@ class Gate:
 
 
 class Ticker:
-    total: Int32
+    total: int32
 
     def __init__(self) -> None:
         self.total = 0
 
     # `async for` embeds the source's __anext__ coro; the source is svc.Ticker.
-    async def __anext__(self) -> Int32:
+    async def __anext__(self) -> int32:
         async for v in svc.Ticker(3):
             self.total += v
         return self.total
@@ -34,7 +34,7 @@ class Ticker:
 
 class Svc:
     # An owner-typed inline await embeds the callee coro; the owner is svc.Svc.
-    async def fetch(self) -> Int32:
+    async def fetch(self) -> int32:
         h = svc.Svc()
         return await h.fetch()
 

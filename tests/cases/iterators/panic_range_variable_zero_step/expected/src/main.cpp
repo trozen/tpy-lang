@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 // # Variable zero-step should panic, same as literal zero-step
-// step: Int32 = 0
+// step: int32 = 0
 int32_t step{};
 
 void __tpy_init() {
@@ -13,7 +13,7 @@ void __tpy_init() {
     initialized = true;
 
     // # Variable zero-step should panic, same as literal zero-step
-    // step: Int32 = 0
+    // step: int32 = 0
     step = 0;
     // for i in range(1, 5, step):
     int32_t __step_0 = step;

@@ -19,7 +19,7 @@ struct Negate {
 
 
     // @readonly
-    // def __call__(self, x: Int32) -> Int32:
+    // def __call__(self, x: int32) -> int32:
     int32_t __call__(int32_t x) const;
 
     int32_t operator()(int32_t x) const {
@@ -35,15 +35,15 @@ inline std::ostream& operator<<(std::ostream& os, const Negate& obj) {
 
 // class ScaleBy:
 struct ScaleBy {
-    // factor: Int32
+    // factor: int32
     int32_t factor;
 
-    // def __init__(self, factor: Int32):
+    // def __init__(self, factor: int32):
     ScaleBy() = default;
     explicit ScaleBy(int32_t factor);
 
     // @readonly
-    // def __call__(self, x: Int32) -> Int32:
+    // def __call__(self, x: int32) -> int32:
     int32_t __call__(int32_t x) const;
 
     int32_t operator()(int32_t x) const {
@@ -59,17 +59,17 @@ inline std::ostream& operator<<(std::ostream& os, const ScaleBy& obj) {
 
 
 // @readonly
-// def __call__(self, x: Int32) -> Int32:
+// def __call__(self, x: int32) -> int32:
 inline int32_t Negate::__call__(int32_t x) const {
     // return -x
     return ::tpy::neg_check<int32_t>(x);
 }
 
-// def __init__(self, factor: Int32):
+// def __init__(self, factor: int32):
 inline ScaleBy::ScaleBy(int32_t factor) : factor(factor) {}
 
 // @readonly
-// def __call__(self, x: Int32) -> Int32:
+// def __call__(self, x: int32) -> int32:
 inline int32_t ScaleBy::__call__(int32_t x) const {
     // return x * self.factor
     return (::tpy::mul_check<int32_t>(x, this->factor));

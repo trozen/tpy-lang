@@ -3,18 +3,18 @@
 
 namespace tpyapp::main {
 
-// items_for_find: list[Point] = [Point(Int32(5), Int32(6))]
+// items_for_find: list[Point] = [Point(int32(5), int32(6))]
 std::vector<Point>* items_for_find{};
-// result = find_point(items_for_find, Int32(5))
+// result = find_point(items_for_find, int32(5))
 Point* result{};
 
 // def mutate_point(p: Point) -> None:
 void mutate_point(Point& p) {
-    // p.x = Int32(0)
+    // p.x = int32(0)
     p.x = 0;
 }
 
-// def read_point(p: readonly[Point]) -> Int32:
+// def read_point(p: readonly[Point]) -> int32:
 int32_t read_point(const Point& p) {
     // return p.x
     return p.x;
@@ -22,9 +22,9 @@ int32_t read_point(const Point& p) {
 
 // def test_read_only_loop() -> None:
 void test_read_only_loop() {
-    // items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
+    // items: list[Point] = [Point(int32(1), int32(2)), Point(int32(3), int32(4))]
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
-    // total: Int32 = Int32(0)
+    // total: int32 = int32(0)
     int32_t total = 0;
     // for p in items:
     auto& __obj_0 = items;
@@ -41,7 +41,7 @@ void test_read_only_loop() {
 
 // def test_non_readonly_method_loop() -> None:
 void test_non_readonly_method_loop() {
-    // items: list[list[Int32]] = [[Int32(1)], [Int32(2)]]
+    // items: list[list[int32]] = [[int32(1)], [int32(2)]]
     std::vector<std::vector<int32_t>> items = {{1}, {2}};
     // for lst in items:
     auto& __obj_0 = items;
@@ -49,16 +49,16 @@ void test_non_readonly_method_loop() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& lst = *__beg_0;
-        // lst.append(Int32(99))
+        // lst.append(int32(99))
         lst.push_back(99);
     }
-    // print(len(items[Int32(0)]))
+    // print(len(items[int32(0)]))
     std::cout << ::tpy::__len__(::tpy::__getitem__(items, 0)) << "\n";
 }
 
 // def test_field_mutate_loop() -> None:
 void test_field_mutate_loop() {
-    // items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
+    // items: list[Point] = [Point(int32(1), int32(2)), Point(int32(3), int32(4))]
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
     // for p in items:
     auto& __obj_0 = items;
@@ -66,10 +66,10 @@ void test_field_mutate_loop() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& p = *__beg_0;
-        // p.x = Int32(99)
+        // p.x = int32(99)
         p.x = 99;
     }
-    // print(items[Int32(0)].x)
+    // print(items[int32(0)].x)
     std::cout << ::tpy::__getitem__(items, 0).x << "\n";
 }
 
@@ -83,18 +83,18 @@ void test_nested_field_mutate_loop() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& c = *__beg_0;
-        // c.items.append(Int32(99))
+        // c.items.append(int32(99))
         c.items.push_back(99);
     }
-    // print(len(items[Int32(0)].items))
+    // print(len(items[int32(0)].items))
     std::cout << ::tpy::__len__(::tpy::__getitem__(items, 0).items) << "\n";
 }
 
 // def test_assign_to_local_loop() -> None:
 void test_assign_to_local_loop() {
-    // items: list[Point] = [Point(Int32(1), Int32(2))]
+    // items: list[Point] = [Point(int32(1), int32(2))]
     std::vector<Point> items = {Point(1, 2)};
-    // saved: Point = Point(Int32(0), Int32(0))
+    // saved: Point = Point(int32(0), int32(0))
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
     // for p in items:
@@ -110,7 +110,7 @@ void test_assign_to_local_loop() {
     std::cout << saved->x << " " << saved->y << "\n";
 }
 
-// def find_point(items: list[Point], target: Int32) -> Point | None:
+// def find_point(items: list[Point], target: int32) -> Point | None:
 Point* find_point(std::vector<Point>& items, int32_t target) {
     // for p in items:
     auto& __obj_0 = items;
@@ -130,7 +130,7 @@ Point* find_point(std::vector<Point>& items, int32_t target) {
 
 // def test_pass_to_mutating_func() -> None:
 void test_pass_to_mutating_func() {
-    // items: list[Point] = [Point(Int32(1), Int32(2))]
+    // items: list[Point] = [Point(int32(1), int32(2))]
     std::vector<Point> items = {Point(1, 2)};
     // for p in items:
     auto& __obj_0 = items;
@@ -141,15 +141,15 @@ void test_pass_to_mutating_func() {
         // mutate_point(p)
         mutate_point(p);
     }
-    // print(items[Int32(0)].x)
+    // print(items[int32(0)].x)
     std::cout << ::tpy::__getitem__(items, 0).x << "\n";
 }
 
 // def test_pass_to_readonly_func() -> None:
 void test_pass_to_readonly_func() {
-    // items: list[Point] = [Point(Int32(7), Int32(8))]
+    // items: list[Point] = [Point(int32(7), int32(8))]
     std::vector<Point> items = {Point(7, 8)};
-    // total: Int32 = Int32(0)
+    // total: int32 = int32(0)
     int32_t total = 0;
     // for p in items:
     auto& __obj_0 = items;
@@ -166,7 +166,7 @@ void test_pass_to_readonly_func() {
 
 // def test_ptr_from_loop_var() -> None:
 void test_ptr_from_loop_var() {
-    // items: list[Point] = [Point(Int32(3), Int32(4))]
+    // items: list[Point] = [Point(int32(3), int32(4))]
     std::vector<Point> items = {Point(3, 4)};
     // for p in items:
     auto& __obj_0 = items;
@@ -176,18 +176,18 @@ void test_ptr_from_loop_var() {
         auto&& p = *__beg_0;
         // ptr: Ptr[Point] = p
         Point* ptr = &p;
-        // ptr.x = Int32(42)
+        // ptr.x = int32(42)
         ptr->x = 42;
     }
-    // print(items[Int32(0)].x)
+    // print(items[int32(0)].x)
     std::cout << ::tpy::__getitem__(items, 0).x << "\n";
 }
 
 // def test_value_type_loop() -> None:
 void test_value_type_loop() {
-    // items: list[Int32] = [Int32(10), Int32(20), Int32(30)]
+    // items: list[int32] = [int32(10), int32(20), int32(30)]
     std::vector<int32_t> items = {10, 20, 30};
-    // total: Int32 = Int32(0)
+    // total: int32 = int32(0)
     int32_t total = 0;
     // for n in items:
     auto& __obj_0 = items;
@@ -204,7 +204,7 @@ void test_value_type_loop() {
 
 // def test_sequential_loops_same_var() -> None:
 void test_sequential_loops_same_var() {
-    // items: list[Point] = [Point(Int32(1), Int32(2))]
+    // items: list[Point] = [Point(int32(1), int32(2))]
     std::vector<Point> items = {Point(1, 2)};
     // for p in items:
     auto& __obj_0 = items;
@@ -212,10 +212,10 @@ void test_sequential_loops_same_var() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& p = *__beg_0;
-        // p.x = Int32(99)
+        // p.x = int32(99)
         p.x = 99;
     }
-    // total: Int32 = Int32(0)
+    // total: int32 = int32(0)
     int32_t total = 0;
     // for p in items:
     auto& __obj_1 = items;
@@ -289,10 +289,10 @@ void __tpy_init() {
     test_nested_field_mutate_loop();
     // test_assign_to_local_loop()
     test_assign_to_local_loop();
-    // items_for_find: list[Point] = [Point(Int32(5), Int32(6))]
+    // items_for_find: list[Point] = [Point(int32(5), int32(6))]
     static std::vector<Point> __global_slot_1 = {Point(5, 6)};
     items_for_find = &__global_slot_1;
-    // result = find_point(items_for_find, Int32(5))
+    // result = find_point(items_for_find, int32(5))
     result = find_point((*items_for_find), 5);
     // if result is not None:
     if ((result != nullptr)) {

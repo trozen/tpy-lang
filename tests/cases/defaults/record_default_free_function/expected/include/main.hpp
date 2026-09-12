@@ -20,10 +20,10 @@ void main();
 
 // class Fixed(ValueType):
 struct Fixed {
-    // off: Int64
+    // off: int64
     int64_t off;
 
-    // def __init__(self, off: Int64) -> None:
+    // def __init__(self, off: int64) -> None:
     Fixed() = default;
     explicit Fixed(int64_t off);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Fixed";
@@ -42,10 +42,10 @@ namespace tpyapp::main {
 
 // class Wide(ValueType):
 struct Wide {
-    // span: Int64
+    // span: int64
     int64_t span;
 
-    // def __init__(self, span: Int64) -> None:
+    // def __init__(self, span: int64) -> None:
     Wide() = default;
     explicit Wide(int64_t span);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wide";
@@ -64,10 +64,10 @@ namespace tpyapp::main {
 
 // class Dog:
 struct Dog {
-    // barks: Int64
+    // barks: int64
     int64_t barks;
 
-    // def __init__(self, barks: Int64) -> None:
+    // def __init__(self, barks: int64) -> None:
     Dog() = default;
     explicit Dog(int64_t barks);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
@@ -79,13 +79,13 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 }
 
 
-// def __init__(self, off: Int64) -> None:
+// def __init__(self, off: int64) -> None:
 inline Fixed::Fixed(int64_t off) : off(off) {}
 
-// def __init__(self, span: Int64) -> None:
+// def __init__(self, span: int64) -> None:
 inline Wide::Wide(int64_t span) : span(span) {}
 
-// def __init__(self, barks: Int64) -> None:
+// def __init__(self, barks: int64) -> None:
 inline Dog::Dog(int64_t barks) : barks(barks) {}
 void __tpy_init();
 } // namespace tpyapp::main

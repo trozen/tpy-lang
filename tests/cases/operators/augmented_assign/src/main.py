@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 
 def test_aug_assign():
-    x: Int32 = 10
+    x: int32 = 10
 
     # Addition
     x += 5

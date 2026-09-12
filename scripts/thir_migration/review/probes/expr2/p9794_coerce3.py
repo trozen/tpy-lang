@@ -1,12 +1,12 @@
-from tpy import Int32, StrView, Char, BytesView
+from tpy import int32, StrView, char, BytesView
 from tplib import Box
 class Node:
-    v: Int32
-    def __init__(self, v: Int32) -> None:
+    v: int32
+    def __init__(self, v: int32) -> None:
         self.v = v
 def a1(o: StrView | None) -> str | None:
     return o
-def a2(c: Char) -> None:
+def a2(c: char) -> None:
     s: str = c
     print(s)
 def a3() -> None:
@@ -17,6 +17,6 @@ def a4() -> None:
     b = Box(Node(1))
     n: Node = b
     print(n.v)
-def a5(c: Char) -> str:
+def a5(c: char) -> str:
     return c
-a1("x"); a2(Char("y")); a3(); a4(); print(a5(Char("z")))
+a1("x"); a2(char("y")); a3(); a4(); print(a5(char("z")))

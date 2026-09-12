@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def pick(v: Item | Other) -> Int32:
+// def pick(v: Item | Other) -> int32:
 int32_t pick(::tpy::Union<Item*, Other*> v) {
     // match v:
     auto& __match_subject_1 = v;

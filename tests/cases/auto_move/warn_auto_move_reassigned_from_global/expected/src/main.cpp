@@ -6,13 +6,13 @@ namespace tpyapp::main {
 // g = Point()
 Point* g{};
 
-// def consume(p: Own[Point]) -> Int32:
+// def consume(p: Own[Point]) -> int32:
 int32_t consume(Point&& p) {
     // return p.x
     return p.x;
 }
 
-// def test() -> Int32:
+// def test() -> int32:
 int32_t test() {
     // p = Point()
     Point __slot_1 = Point();

@@ -1,8 +1,8 @@
 # Error: generator expression source must be iterable
-from tpy import Int32
+from tpy import int32
 
 def main() -> None:
-    x: Int32 = 5
+    x: int32 = 5
     result = (i for i in x)  # tpyc: error(/[Cc]annot iterate/)
 
 main()

@@ -1,6 +1,6 @@
 # A TERNARY of two rvalues at an open `Own[T]` slot: a conditional binds as
 # an lvalue reference, which the slot's move parameter cannot take.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Wrap[T]:

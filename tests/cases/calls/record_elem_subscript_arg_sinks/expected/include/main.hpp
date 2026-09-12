@@ -29,7 +29,7 @@ struct Thing {
     // x: float
     double x;
 
-    // def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: int32) -> None:
     Thing() = default;
     explicit Thing(int32_t x);
 
@@ -129,11 +129,11 @@ struct Map {
 
     // # The doom shape: a field write in the constructor body, off a field
     // # container a method filled; the second write mutates the element.
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Map() = default;
     explicit Map(int32_t n);
 
-    // def fill(self, n: Int32) -> None:
+    // def fill(self, n: int32) -> None:
     void fill(int32_t n);
 
     // # Method body, field write, mutating the element.
@@ -148,7 +148,7 @@ inline std::ostream& operator<<(std::ostream& os, const Map& obj) {
 }
 
 
-// def __init__(self, x: Int32) -> None:
+// def __init__(self, x: int32) -> None:
 inline Thing::Thing(int32_t x) : x(static_cast<double>(x)) {}
 
 // def __eq__(self, o: Thing) -> bool:
@@ -193,7 +193,7 @@ inline double Bag::peek(Thing& t) {
 
 // # The doom shape: a field write in the constructor body, off a field
 // # container a method filled; the second write mutates the element.
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Map::Map(int32_t n) : things(std::vector<Thing>{}) {
     // self.fill(n)
     this->fill(n);
@@ -203,7 +203,7 @@ inline Map::Map(int32_t n) : things(std::vector<Thing>{}) {
     this->bumped = Bump(::tpy::__getitem__(this->things, 0));
 }
 
-// def fill(self, n: Int32) -> None:
+// def fill(self, n: int32) -> None:
 inline void Map::fill(int32_t n) {
     // for i in range(n):
     int32_t __stop_0 = n;

@@ -1,17 +1,17 @@
 # Inverse guard: a comprehension of default-constructible, copyable elements
 # keeps the stack Array optimization (must not be forced to list).
-from tpy import Int32
+from tpy import int32
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
 def main() -> None:
-    nums = [i for i in range(4)]  # tpyc: type(/Array\[Int32, 4\]/)
+    nums = [i for i in range(4)]  # tpyc: type(/Array\[int32, 4\]/)
     pts = [Point(i) for i in range(4)]  # tpyc: type(/Array\[Point, 4\]/)
     print(len(nums) + len(pts))
 

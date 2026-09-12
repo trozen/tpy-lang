@@ -1,10 +1,10 @@
-from tpy import Int32
+from tpy import int32
 class Box:
-    n: Int32
-    def __init__(self, n: Int32) -> None:
+    n: int32
+    def __init__(self, n: int32) -> None:
         self.n = n
-def f(pairs: list[tuple[Box, Int32]]) -> Int32:
-    t = Int32(0)
+def f(pairs: list[tuple[Box, int32]]) -> int32:
+    t = int32(0)
     for b, n in pairs:
         t += n
     return t + b.n

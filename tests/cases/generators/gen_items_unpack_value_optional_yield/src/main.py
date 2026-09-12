@@ -1,10 +1,10 @@
 # An `items()` unpack whose value target is a value-Optional, narrowed and
 # then yielded: the yield derefs the narrowed target.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
-def g_items(d: dict[str, Int32 | None]) -> Iterator[Int32]:
+def g_items(d: dict[str, int32 | None]) -> Iterator[int32]:
     for k, v in d.items():
         # `v` is a value-optional unpack target narrowed before the yield.
         if v is not None and len(k) > 0:

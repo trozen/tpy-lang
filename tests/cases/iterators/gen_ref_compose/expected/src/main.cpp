@@ -10,7 +10,7 @@ Point& identity(Point& p) {
     return p;
 }
 
-// def double(v: Int32) -> Int32:
+// def double(v: int32) -> int32:
 int32_t double_(int32_t v) {
     // return v * 2
     return (::tpy::mul_check<int32_t>(v, 2));
@@ -20,7 +20,7 @@ int32_t double_(int32_t v) {
 void main() {
     // pts: list[Point] = [Point(1, 2), Point(3, 4)]
     std::vector<Point> pts = {Point(1, 2), Point(3, 4)};
-    // vals: list[Int32] = [10, 20]
+    // vals: list[int32] = [10, 20]
     std::vector<int32_t> vals = {10, 20};
     // # my_map: non-value type
     // for p in my_map(identity, pts):

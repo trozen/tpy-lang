@@ -4,7 +4,7 @@
 namespace tpyapp::itersrc {
 
 
-// def walk() -> Iterator[Int32]:
+// def walk() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_walk::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -27,7 +27,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_walk::__next__() {
 }
 
 
-// def walk() -> Iterator[Int32]:
+// def walk() -> Iterator[int32]:
 __gen_walk walk() {
     return __gen_walk();
 }

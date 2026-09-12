@@ -86,7 +86,7 @@ TODO -- v2 feature follow-ups. New scope, not compiler-blocked:
     DNS APIs; low priority.
 
   * **Typed address record.** A typed record (`InetAddress(host: str,
-    port: Int32)`) would read better than a bare tuple. Tabled until we
+    port: int32)`) would read better than a bare tuple. Tabled until we
     decide on the module's record shapes overall.
 
   * **struct hostent / addrinfo accessors.** We only expose the flat
@@ -98,7 +98,7 @@ TODO -- v2 feature follow-ups. New scope, not compiler-blocked:
 from __future__ import annotations
 from typing import Final
 from tpy import (
-    Int32, Int64, UInt8, UInt16, UInt32, UInt64, Ptr, readonly, Own,
+    int32, int64, uint8, uint16, uint32, uint64, Ptr, readonly, Own,
     take_ptr, nocopy,
 )
 from tpy.extern import native_global
@@ -122,28 +122,28 @@ from io import FileIO, BufferedReader, DEFAULT_BUFFER_SIZE
 # either platform. Sourced from `<sys/socket.h>`, `<netinet/in.h>`,
 # `<netinet/tcp.h>`.
 
-AF_INET:     Final[Int32] = 2
-AF_UNIX:     Final[Int32] = 1    # Not yet usable (no sockaddr_un binding).
+AF_INET:     Final[int32] = 2
+AF_UNIX:     Final[int32] = 1    # Not yet usable (no sockaddr_un binding).
 # Linux 10, macOS/BSD 30. Not yet usable (no sockaddr_in6 binding).
-AF_INET6:    Final[Int32] = native_global("tpy_const_af_inet6", binding="C")
+AF_INET6:    Final[int32] = native_global("tpy_const_af_inet6", binding="C")
 
-SOCK_STREAM: Final[Int32] = 1
-SOCK_DGRAM:  Final[Int32] = 2
+SOCK_STREAM: Final[int32] = 1
+SOCK_DGRAM:  Final[int32] = 2
 
 # Linux 1, BSD/macOS 0xffff.
-SOL_SOCKET:   Final[Int32] = native_global("tpy_const_sol_socket", binding="C")
-SO_REUSEADDR: Final[Int32] = native_global("tpy_const_so_reuseaddr", binding="C")
-SO_KEEPALIVE: Final[Int32] = native_global("tpy_const_so_keepalive", binding="C")
-SO_ERROR:     Final[Int32] = native_global("tpy_const_so_error", binding="C")
+SOL_SOCKET:   Final[int32] = native_global("tpy_const_sol_socket", binding="C")
+SO_REUSEADDR: Final[int32] = native_global("tpy_const_so_reuseaddr", binding="C")
+SO_KEEPALIVE: Final[int32] = native_global("tpy_const_so_keepalive", binding="C")
+SO_ERROR:     Final[int32] = native_global("tpy_const_so_error", binding="C")
 
-IPPROTO_TCP: Final[Int32] = 6
-IPPROTO_UDP: Final[Int32] = 17
+IPPROTO_TCP: Final[int32] = 6
+IPPROTO_UDP: Final[int32] = 17
 
-TCP_NODELAY: Final[Int32] = 1
+TCP_NODELAY: Final[int32] = 1
 
-SHUT_RD:   Final[Int32] = 0
-SHUT_WR:   Final[Int32] = 1
-SHUT_RDWR: Final[Int32] = 2
+SHUT_RD:   Final[int32] = 0
+SHUT_WR:   Final[int32] = 1
+SHUT_RDWR: Final[int32] = 2
 
 
 # ---------- SocketError ----------
@@ -160,7 +160,7 @@ class SocketError(OSError):
     """
     # Single (errno, strerror) __init__: user classes cannot mirror the
     # base's message-only overload (no user-class ctor overloads; BUGS.md).
-    def __init__(self, err: Int32, strerror: str) -> None:
+    def __init__(self, err: int32, strerror: str) -> None:
         super().__init__(err, strerror)
 
 
@@ -169,7 +169,7 @@ class gaierror(OSError):
     EAI_* code (not a POSIX errno) and `.strerror` the gai_strerror message,
     like CPython's socket.gaierror. Subclasses `OSError` directly, matching
     CPython's hierarchy."""
-    def __init__(self, err: Int32, strerror: str) -> None:
+    def __init__(self, err: int32, strerror: str) -> None:
         super().__init__(err, strerror)
 
 
@@ -177,20 +177,20 @@ class gaierror(OSError):
 # macOS 35 / 36), so source them from <errno.h> via native globals. EAGAIN ==
 # EWOULDBLOCK on both Linux and macOS; EINPROGRESS is a non-blocking connect's
 # "in progress" result.
-_EAGAIN: Final[Int32] = native_global("tpy_const_eagain", binding="C")
-_EINPROGRESS: Final[Int32] = native_global("tpy_const_einprogress", binding="C")
+_EAGAIN: Final[int32] = native_global("tpy_const_eagain", binding="C")
+_EINPROGRESS: Final[int32] = native_global("tpy_const_einprogress", binding="C")
 # Connection-error errno values, also platform-divergent (see socket_impl.cpp).
-_EPIPE: Final[Int32] = native_global("tpy_const_epipe", binding="C")
-_ECONNRESET: Final[Int32] = native_global("tpy_const_econnreset", binding="C")
-_ECONNREFUSED: Final[Int32] = native_global("tpy_const_econnrefused", binding="C")
-_ECONNABORTED: Final[Int32] = native_global("tpy_const_econnaborted", binding="C")
+_EPIPE: Final[int32] = native_global("tpy_const_epipe", binding="C")
+_ECONNRESET: Final[int32] = native_global("tpy_const_econnreset", binding="C")
+_ECONNREFUSED: Final[int32] = native_global("tpy_const_econnrefused", binding="C")
+_ECONNABORTED: Final[int32] = native_global("tpy_const_econnaborted", binding="C")
 
 
-def _strerror(err: Int32) -> str:
+def _strerror(err: int32) -> str:
     return unsafe_str_from_cstr(posix_socket.strerror(err))
 
 
-def _maybe_raise_connection_error(err: Int32, strerr: str) -> None:
+def _maybe_raise_connection_error(err: int32, strerr: str) -> None:
     """Raise the PEP 3151 ConnectionError subclass for a connection-related
     errno; return if `err` is none of them, so the caller falls back to the
     generic SocketError. Mirrors CPython, which raises these subclasses (all
@@ -231,23 +231,23 @@ def _raise_resolve_error() -> None:
 
 def gethostbyname(hostname: str) -> str:
     """Resolve a hostname to the first IPv4 dotted-quad string."""
-    host_ptr: Ptr[readonly[UInt8]] = unsafe_cast(unsafe_ptr(hostname))
-    out = UninitArrayStorage[UInt8, 4]()
-    rc = posix_socket.tpy_resolve_ipv4(host_ptr, UInt64(len(hostname)), out.ptr())
+    host_ptr: Ptr[readonly[uint8]] = unsafe_cast(unsafe_ptr(hostname))
+    out = UninitArrayStorage[uint8, 4]()
+    rc = posix_socket.tpy_resolve_ipv4(host_ptr, uint64(len(hostname)), out.ptr())
     if rc != 0:
         _raise_resolve_error()
     return _ipv4_to_str(out.ptr())
 
 
-def _ipv4_to_str(addr_bytes: Ptr[UInt8]) -> str:
+def _ipv4_to_str(addr_bytes: Ptr[uint8]) -> str:
     # INET_ADDRSTRLEN = 16 ("255.255.255.255\0").
-    buf = UninitArrayStorage[UInt8, 16]()
+    buf = UninitArrayStorage[uint8, 16]()
     if posix_socket.inet_ntop(AF_INET, addr_bytes, buf.ptr(), 16) is None:
         _raise_errno()
     return unsafe_str_from_cstr(unsafe_cast(buf.ptr()))
 
 
-def _build_sockaddr_in(host: str, port: Int32) -> Own[SockaddrIn]:
+def _build_sockaddr_in(host: str, port: int32) -> Own[SockaddrIn]:
     """Pack (host, port) into a sockaddr_in for bind/connect.
 
     Empty `host` means INADDR_ANY; otherwise tried as a dotted-quad
@@ -259,21 +259,21 @@ def _build_sockaddr_in(host: str, port: Int32) -> Own[SockaddrIn]:
     un-zeroed padding can make bind return EINVAL. Do not switch to an
     init style that skips zero-fill.
     """
-    port_no = posix_socket.htons(UInt16.trunc(port))
+    port_no = posix_socket.htons(uint16.trunc(port))
     if len(hostname := host) == 0:
-        return SockaddrIn(UInt16.trunc(AF_INET), port_no, 0)
+        return SockaddrIn(uint16.trunc(AF_INET), port_no, 0)
 
-    addr_bytes = UninitArrayStorage[UInt8, 4]()
-    host_ptr: Ptr[readonly[UInt8]] = unsafe_cast(unsafe_ptr(hostname))
+    addr_bytes = UninitArrayStorage[uint8, 4]()
+    host_ptr: Ptr[readonly[uint8]] = unsafe_cast(unsafe_ptr(hostname))
     rc = posix_socket.inet_pton(AF_INET, host_ptr, addr_bytes.ptr())
     if rc != 1:
-        rc2 = posix_socket.tpy_resolve_ipv4(host_ptr, UInt64(len(hostname)),
+        rc2 = posix_socket.tpy_resolve_ipv4(host_ptr, uint64(len(hostname)),
                                 addr_bytes.ptr())
         if rc2 != 0:
             _raise_resolve_error()
 
-    addr_u32_ptr: Ptr[UInt32] = unsafe_cast(addr_bytes.ptr())
-    return SockaddrIn(UInt16.trunc(AF_INET), port_no,
+    addr_u32_ptr: Ptr[uint32] = unsafe_cast(addr_bytes.ptr())
+    return SockaddrIn(uint16.trunc(AF_INET), port_no,
                       unsafe_load(addr_u32_ptr, 0))
 
 
@@ -282,7 +282,7 @@ def _build_sockaddr_in(host: str, port: Int32) -> Own[SockaddrIn]:
 # exactly, so user code (and the asyncio reactor's sock_* helpers) ports to
 # CPython unchanged and the test cpy phase can run on CPython's real socket.
 
-_SOCKADDR_IN_LEN: Final[UInt32] = 16
+_SOCKADDR_IN_LEN: Final[uint32] = 16
 
 
 @nocopy
@@ -297,7 +297,7 @@ class socket:
 
     # Field default silences a sema "not initialized before ctor body"
     # warning (the if/else below sets fd on every path, sema can't prove it).
-    fd: Int32 = Int32(-1)
+    fd: int32 = int32(-1)
 
     # Socket mode, mirroring CPython's three states: -1.0 = blocking (None
     # timeout), 0.0 = non-blocking, > 0 = timeout mode. recv/send read this to
@@ -305,35 +305,35 @@ class socket:
     # "would block" (BlockingIOError, which the asyncio reactor parks on).
     _timeout: float = -1.0
 
-    def __init__(self, family: Int32, type_: Int32, proto: Int32 = Int32(0),
-                 fileno: Int32 = Int32(-1)) -> None:
+    def __init__(self, family: int32, type_: int32, proto: int32 = int32(0),
+                 fileno: int32 = int32(-1)) -> None:
         """`fileno >= 0` wraps an existing fd (from accept); family/type/
         proto are ignored in that case. Otherwise a new socket is created
         and SocketError is raised on libc failure -- the constructor then
         throws and __del__ is not called."""
-        if fileno >= Int32(0):
+        if fileno >= int32(0):
             self.fd = fileno
         else:
             new_fd = posix_socket.socket(family, type_, proto)
-            if new_fd < Int32(0):
+            if new_fd < int32(0):
                 _raise_errno()
             self.fd = new_fd
 
     def __del__(self) -> None:
-        if self.fd >= Int32(0):
+        if self.fd >= int32(0):
             posix_socket.close(self.fd)
-            self.fd = Int32(-1)
+            self.fd = int32(-1)
 
-    def fileno(self) -> Int32:
+    def fileno(self) -> int32:
         return self.fd
 
     def close(self) -> None:
-        if self.fd >= Int32(0):
+        if self.fd >= int32(0):
             posix_socket.close(self.fd)
-            self.fd = Int32(-1)
+            self.fd = int32(-1)
 
-    def shutdown(self, how: Int32) -> None:
-        if posix_socket.shutdown(self.fd, how) < Int32(0):
+    def shutdown(self, how: int32) -> None:
+        if posix_socket.shutdown(self.fd, how) < int32(0):
             _raise_errno()
 
     def _raise_io(self) -> None:
@@ -378,9 +378,9 @@ class socket:
         (see connect()). A negative value is a ValueError."""
         if value is None:
             self._timeout = -1.0
-            if posix_socket.tpy_set_nonblocking(self.fd, Int32(0)) < Int32(0):
+            if posix_socket.tpy_set_nonblocking(self.fd, int32(0)) < int32(0):
                 _raise_errno()
-            if posix_socket.tpy_set_timeout(self.fd, 0.0) < Int32(0):
+            if posix_socket.tpy_set_timeout(self.fd, 0.0) < int32(0):
                 _raise_errno()
             return
         # Reject non-finite before the C helper casts to time_t / int (a NaN
@@ -394,17 +394,17 @@ class socket:
             raise ValueError("Timeout value out of range")
         if value == 0.0:
             self._timeout = 0.0
-            if posix_socket.tpy_set_nonblocking(self.fd, Int32(1)) < Int32(0):
+            if posix_socket.tpy_set_nonblocking(self.fd, int32(1)) < int32(0):
                 _raise_errno()
-            if posix_socket.tpy_set_timeout(self.fd, 0.0) < Int32(0):
+            if posix_socket.tpy_set_timeout(self.fd, 0.0) < int32(0):
                 _raise_errno()
             return
         self._timeout = value
         # Timeout mode stays blocking at the OS level (SO_*TIMEO enforce the
         # window); getblocking() therefore reports True, as in CPython.
-        if posix_socket.tpy_set_nonblocking(self.fd, Int32(0)) < Int32(0):
+        if posix_socket.tpy_set_nonblocking(self.fd, int32(0)) < int32(0):
             _raise_errno()
-        if posix_socket.tpy_set_timeout(self.fd, value) < Int32(0):
+        if posix_socket.tpy_set_timeout(self.fd, value) < int32(0):
             _raise_errno()
 
     def gettimeout(self) -> float | None:
@@ -414,13 +414,13 @@ class socket:
             return None
         return self._timeout
 
-    def bind(self, address: tuple[str, Int32]) -> None:
+    def bind(self, address: tuple[str, int32]) -> None:
         host, port = address
         addr = _build_sockaddr_in(host, port)
-        if posix_socket.bind(self.fd, take_ptr(addr), _SOCKADDR_IN_LEN) < Int32(0):
+        if posix_socket.bind(self.fd, take_ptr(addr), _SOCKADDR_IN_LEN) < int32(0):
             _raise_errno()
 
-    def connect(self, address: tuple[str, Int32]) -> None:
+    def connect(self, address: tuple[str, int32]) -> None:
         host, port = address
         addr = _build_sockaddr_in(host, port)
         # SO_*TIMEO does not cover connect(), so timeout mode routes through the
@@ -429,16 +429,16 @@ class socket:
         if self._timeout > 0.0:
             rc = posix_socket.tpy_connect_timeout(self.fd, take_ptr(addr),
                                                   _SOCKADDR_IN_LEN, self._timeout)
-            if rc == Int32(-2):
+            if rc == int32(-2):
                 raise TimeoutError("timed out")
-            if rc != Int32(0):
+            if rc != int32(0):
                 self._raise_io()
-        elif posix_socket.connect(self.fd, take_ptr(addr), _SOCKADDR_IN_LEN) < Int32(0):
+        elif posix_socket.connect(self.fd, take_ptr(addr), _SOCKADDR_IN_LEN) < int32(0):
             self._raise_io()
 
     # Literal 128 = SOMAXCONN; named-Final-as-default rejected by sema.
-    def listen(self, backlog: Int32 = Int32(128)) -> None:
-        if posix_socket.listen(self.fd, backlog) < Int32(0):
+    def listen(self, backlog: int32 = int32(128)) -> None:
+        if posix_socket.listen(self.fd, backlog) < int32(0):
             _raise_errno()
 
     # Returns the raw accepted fd + peer address as value types (no Own
@@ -448,40 +448,40 @@ class socket:
     # Peer resolution (`_ipv4_to_str` -> `inet_ntop`) can raise while `new_fd`
     # is still naked (not yet owned by a `socket`), so close it on failure to
     # avoid leaking the accepted descriptor.
-    def _accept_fd(self) -> tuple[Int32, tuple[str, Int32]]:
+    def _accept_fd(self) -> tuple[int32, tuple[str, int32]]:
         addr = SockaddrIn(0, 0, 0)
-        addrlen: UInt32 = _SOCKADDR_IN_LEN
+        addrlen: uint32 = _SOCKADDR_IN_LEN
         new_fd = posix_socket.accept(self.fd, take_ptr(addr), take_ptr(addrlen))
-        if new_fd < Int32(0):
+        if new_fd < int32(0):
             _raise_errno()
         try:
             peer = (_ipv4_to_str(unsafe_cast(take_ptr(addr.sin_addr))),
-                    Int32.trunc(posix_socket.ntohs(addr.sin_port)))
+                    int32.trunc(posix_socket.ntohs(addr.sin_port)))
         except OSError:
             posix_socket.close(new_fd)
             raise
         return (new_fd, peer)
 
-    def accept(self) -> tuple[Own[socket], tuple[str, Int32]]:
+    def accept(self) -> tuple[Own[socket], tuple[str, int32]]:
         """Block until a client connects, return `(conn, (host, port))`
         matching CPython's `socket.accept()` shape."""
         fd, peer = self._accept_fd()
-        return (socket(Int32(0), Int32(0), Int32(0), fileno=fd), peer)
+        return (socket(int32(0), int32(0), int32(0), fileno=fd), peer)
 
-    def _accept_nonblocking(self) -> tuple[Own[socket], tuple[str, Int32]]:
+    def _accept_nonblocking(self) -> tuple[Own[socket], tuple[str, int32]]:
         """`accept()` with the returned connection set non-blocking, for the
         asyncio reactor (accepted sockets do NOT inherit O_NONBLOCK on Linux).
         Underscore-private: not part of CPython's socket surface (the facade is
         otherwise CPython-faithful), so the reactor's `_SockAccept` calls it
         instead of `accept()`."""
         fd, peer = self._accept_fd()
-        conn = socket(Int32(0), Int32(0), Int32(0), fileno=fd)
+        conn = socket(int32(0), int32(0), int32(0), fileno=fd)
         conn.setblocking(False)
         return (conn, peer)
 
-    def send(self, data: bytes) -> Int32:
+    def send(self, data: bytes) -> int32:
         """Send (some of) `data`; returns bytes actually sent. Use
-        `sendall` for full-buffer delivery. Return truncated to Int32
+        `sendall` for full-buffer delivery. Return truncated to int32
         from libc's ssize_t -- see module TODO."""
         return self._send_from(data, 0)
 
@@ -489,80 +489,80 @@ class socket:
     # `_SockSendAll` advances `offset` across parks, so slicing a fresh
     # `bytes` per park would be O(n^2) (CPython tracks a memoryview offset).
     # Underscore-private: not part of CPython's socket surface.
-    def _send_from(self, data: bytes, offset: UInt64) -> Int32:
-        data_ptr: Ptr[readonly[UInt8]] = unsafe_ptr(data)
+    def _send_from(self, data: bytes, offset: uint64) -> int32:
+        data_ptr: Ptr[readonly[uint8]] = unsafe_ptr(data)
         n = posix_socket.send(self.fd,
-                              unsafe_ptr_add(data_ptr, Int64.trunc(offset)),
-                              UInt64(len(data)) - offset, Int32(0))
-        if n < Int64(0):
+                              unsafe_ptr_add(data_ptr, int64.trunc(offset)),
+                              uint64(len(data)) - offset, int32(0))
+        if n < int64(0):
             self._raise_io()
-        return Int32.trunc(n)
+        return int32.trunc(n)
 
     def sendall(self, data: bytes) -> None:
         """Send every byte in `data` (loops over send)."""
-        total: UInt64 = UInt64(len(data))
-        sent: UInt64 = 0
-        data_ptr: Ptr[readonly[UInt8]] = unsafe_ptr(data)
+        total: uint64 = uint64(len(data))
+        sent: uint64 = 0
+        data_ptr: Ptr[readonly[uint8]] = unsafe_ptr(data)
         while sent < total:
             chunk = posix_socket.send(self.fd,
-                              unsafe_ptr_add(data_ptr, Int64.trunc(sent)),
-                              total - sent, Int32(0))
-            if chunk < Int64(0):
+                              unsafe_ptr_add(data_ptr, int64.trunc(sent)),
+                              total - sent, int32(0))
+            if chunk < int64(0):
                 self._raise_io()
-            if chunk == Int64(0):
+            if chunk == int64(0):
                 # A zero-byte send means the peer went away; CPython's next
                 # send() would fail with EPIPE, so surface the same class.
                 raise BrokenPipeError(_EPIPE, _strerror(_EPIPE))
-            sent = sent + UInt64(chunk)
+            sent = sent + uint64(chunk)
 
-    def recv(self, bufsize: Int32) -> bytes:
+    def recv(self, bufsize: int32) -> bytes:
         """Receive up to `bufsize` bytes. Empty bytes means peer closed."""
-        if bufsize < Int32(0):
+        if bufsize < int32(0):
             # Matches CPython's sock.recv(n): negative size is an error, not
             # a zero-length read. The asyncio sock_recv path relies on this.
             raise ValueError("negative buffersize in recv")
-        if bufsize == Int32(0):
+        if bufsize == int32(0):
             return bytes()
-        buf = UninitHeapStorage[UInt8](UInt32.trunc(bufsize))
-        n = posix_socket.recv(self.fd, buf.ptr(), UInt64(bufsize), Int32(0))
-        if n < Int64(0):
+        buf = UninitHeapStorage[uint8](uint32.trunc(bufsize))
+        n = posix_socket.recv(self.fd, buf.ptr(), uint64(bufsize), int32(0))
+        if n < int64(0):
             self._raise_io()
-        return unsafe_bytes_from_buf(buf.ptr(), UInt64(n))
+        return unsafe_bytes_from_buf(buf.ptr(), uint64(n))
 
-    def setsockopt_int(self, level: Int32, optname: Int32, value: Int32) -> None:
+    def setsockopt_int(self, level: int32, optname: int32, value: int32) -> None:
         """Set an int-valued socket option. Struct options deferred."""
         v = value
-        if posix_socket.setsockopt(self.fd, level, optname, take_ptr(v), 4) < Int32(0):
+        if posix_socket.setsockopt(self.fd, level, optname, take_ptr(v), 4) < int32(0):
             _raise_errno()
 
-    def getsockopt_int(self, level: Int32, optname: Int32) -> Int32:
+    def getsockopt_int(self, level: int32, optname: int32) -> int32:
         """Read an int-valued socket option (e.g. SO_ERROR after a
         non-blocking connect). Struct options deferred."""
-        out: Int32 = 0
-        optlen: UInt32 = 4
+        out: int32 = 0
+        optlen: uint32 = 4
         if posix_socket.getsockopt(self.fd, level, optname,
-                                   take_ptr(out), take_ptr(optlen)) < Int32(0):
+                                   take_ptr(out), take_ptr(optlen)) < int32(0):
             _raise_errno()
         return out
 
-    def getsockname(self) -> tuple[str, Int32]:
+    def getsockname(self) -> tuple[str, int32]:
         addr = SockaddrIn(0, 0, 0)
-        addrlen: UInt32 = _SOCKADDR_IN_LEN
-        if posix_socket.getsockname(self.fd, take_ptr(addr), take_ptr(addrlen)) < Int32(0):
+        addrlen: uint32 = _SOCKADDR_IN_LEN
+        if posix_socket.getsockname(self.fd, take_ptr(addr), take_ptr(addrlen)) < int32(0):
             _raise_errno()
         return (_ipv4_to_str(unsafe_cast(take_ptr(addr.sin_addr))),
-                Int32.trunc(posix_socket.ntohs(addr.sin_port)))
+                int32.trunc(posix_socket.ntohs(addr.sin_port)))
 
-    def getpeername(self) -> tuple[str, Int32]:
+    def getpeername(self) -> tuple[str, int32]:
         addr = SockaddrIn(0, 0, 0)
-        addrlen: UInt32 = _SOCKADDR_IN_LEN
-        if posix_socket.getpeername(self.fd, take_ptr(addr), take_ptr(addrlen)) < Int32(0):
+        addrlen: uint32 = _SOCKADDR_IN_LEN
+        if posix_socket.getpeername(self.fd, take_ptr(addr), take_ptr(addrlen)) < int32(0):
             _raise_errno()
         return (_ipv4_to_str(unsafe_cast(take_ptr(addr.sin_addr))),
-                Int32.trunc(posix_socket.ntohs(addr.sin_port)))
+                int32.trunc(posix_socket.ntohs(addr.sin_port)))
 
     def makefile(self, mode: str = "r",
-                 buffering: Int32 = -1) -> Own[BufferedReader]:
+                 buffering: int32 = -1) -> Own[BufferedReader]:
         """Return a buffered binary reader over a *dup* of this socket's fd.
 
         Signature mirrors CPython (default mode "r"), but v1 implements only
@@ -583,7 +583,7 @@ class socket:
         size = DEFAULT_BUFFER_SIZE if buffering < 0 else buffering
         # Propagate timeout mode so a recv-timeout on the dup'd fd (SO_RCVTIMEO
         # is shared across the dup) surfaces as TimeoutError, not a raw EAGAIN.
-        return BufferedReader(FileIO(os.dup(Int64(self.fd)),
+        return BufferedReader(FileIO(os.dup(int64(self.fd)),
                                      timeout_mode=self._timeout > 0.0), size)
 
     def __enter__(self) -> socket:
@@ -596,40 +596,40 @@ class socket:
 # ---------- Module-level factories ----------
 
 
-def socketpair(family: Int32 = AF_UNIX, type_: Int32 = SOCK_STREAM,
-               proto: Int32 = Int32(0)) -> tuple[Own[socket], Own[socket]]:
+def socketpair(family: int32 = AF_UNIX, type_: int32 = SOCK_STREAM,
+               proto: int32 = int32(0)) -> tuple[Own[socket], Own[socket]]:
     """Create a pair of connected sockets via `::socketpair`.
 
     Defaults match CPython: AF_UNIX + SOCK_STREAM. Useful for in-process
     full-duplex pipes; AF_UNIX is POSIX-only (no Windows support yet)."""
-    sv = UninitArrayStorage[Int32, 2]()
-    if posix_socket.socketpair(family, type_, proto, sv.ptr()) < Int32(0):
+    sv = UninitArrayStorage[int32, 2]()
+    if posix_socket.socketpair(family, type_, proto, sv.ptr()) < int32(0):
         _raise_errno()
-    a = socket(Int32(0), Int32(0), Int32(0), fileno=unsafe_load(sv.ptr(), 0))
-    b = socket(Int32(0), Int32(0), Int32(0), fileno=unsafe_load(sv.ptr(), 1))
+    a = socket(int32(0), int32(0), int32(0), fileno=unsafe_load(sv.ptr(), 0))
+    b = socket(int32(0), int32(0), int32(0), fileno=unsafe_load(sv.ptr(), 1))
     return (a, b)
 
 
-def create_connection(address: tuple[str, Int32],
+def create_connection(address: tuple[str, int32],
                       timeout: float | None = None) -> Own[socket]:
     """TCP client convenience: socket + connect. A `timeout` (seconds) is
     applied before connect so connect/recv/send all honor it (CPython parity);
     None leaves the socket blocking."""
-    s = socket(AF_INET, SOCK_STREAM, Int32(0))
+    s = socket(AF_INET, SOCK_STREAM, int32(0))
     if timeout is not None:
         s.settimeout(timeout)
     s.connect(address)
     return s
 
 
-def create_server(address: tuple[str, Int32],
-                  backlog: Int32 = Int32(128),
+def create_server(address: tuple[str, int32],
+                  backlog: int32 = int32(128),
                   reuse_addr: bool = True) -> Own[socket]:
     """TCP server convenience: socket + SO_REUSEADDR + bind + listen.
     Caller loops on accept() to serve connections."""
-    s = socket(AF_INET, SOCK_STREAM, Int32(0))
+    s = socket(AF_INET, SOCK_STREAM, int32(0))
     if reuse_addr:
-        s.setsockopt_int(SOL_SOCKET, SO_REUSEADDR, Int32(1))
+        s.setsockopt_int(SOL_SOCKET, SO_REUSEADDR, int32(1))
     s.bind(address)
     s.listen(backlog)
     return s

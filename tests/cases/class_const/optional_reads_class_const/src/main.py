@@ -5,11 +5,11 @@
 # (assignment of a non-None value, or `if x is not None` guard), both the
 # warning and the runtime check are elided.
 from typing import Final, Optional
-from tpy import Int32
+from tpy import int32
 
 
 class C:
-    LIMIT: Final[Int32] = 10
+    LIMIT: Final[int32] = 10
 
     def __init__(self) -> None:
         pass

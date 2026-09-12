@@ -3,29 +3,29 @@
 # record declared BEFORE the manager, which is the order the method-first seed
 # cannot satisfy on its own -- a free-function awaiter is always already ordered.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
 class Runner:
-    total: Int32
+    total: int32
 
     def __init__(self) -> None:
         self.total = 0
 
     # Declared before Gate, and embeds Gate's two dunder coro frames.
-    async def go(self) -> Int32:
+    async def go(self) -> int32:
         async with Gate(7) as v:
             self.total += v
         return self.total
 
 
 class Gate:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
-    async def __aenter__(self) -> Int32:
+    async def __aenter__(self) -> int32:
         await asyncio.sleep(0)
         return self.n
 

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def pick_list(a: list[Tag], b: list[Tag]) -> Int32:
+// def pick_list(a: list[Tag], b: list[Tag]) -> int32:
 int32_t pick_list(std::vector<Tag>& a, std::vector<Tag>& b) {
     // v = a or b  # tpyc: ok
     std::vector<Tag>& v = ((::tpy::__len__(a) != 0) ? a : b);
@@ -12,7 +12,7 @@ int32_t pick_list(std::vector<Tag>& a, std::vector<Tag>& b) {
     return ::tpy::__len__(v);
 }
 
-// def pick_dict(a: dict[str, Tag], b: dict[str, Tag]) -> Int32:
+// def pick_dict(a: dict[str, Tag], b: dict[str, Tag]) -> int32:
 int32_t pick_dict(::tpy::ordered_map<std::string, Tag>& a, ::tpy::ordered_map<std::string, Tag>& b) {
     // v = a or b  # tpyc: ok
     ::tpy::ordered_map<std::string, Tag>& v = ((::tpy::__len__(a) != 0) ? a : b);
@@ -20,7 +20,7 @@ int32_t pick_dict(::tpy::ordered_map<std::string, Tag>& a, ::tpy::ordered_map<st
     return ::tpy::__len__(v);
 }
 
-// def pick_set(a: set[Int32], b: set[Int32]) -> Int32:
+// def pick_set(a: set[int32], b: set[int32]) -> int32:
 int32_t pick_set(::tpy::ordered_set<int32_t>& a, ::tpy::ordered_set<int32_t>& b) {
     // v = a or b  # tpyc: ok
     ::tpy::ordered_set<int32_t>& v = ((::tpy::__len__(a) != 0) ? a : b);
@@ -30,7 +30,7 @@ int32_t pick_set(::tpy::ordered_set<int32_t>& a, ::tpy::ordered_set<int32_t>& b)
     return ::tpy::__len__(v);
 }
 
-// def pick_bytearray(a: bytearray, b: bytearray) -> Int32:
+// def pick_bytearray(a: bytearray, b: bytearray) -> int32:
 int32_t pick_bytearray(::tpy::ByteArray& a, ::tpy::ByteArray& b) {
     // v = a or b  # tpyc: ok
     ::tpy::ByteArray& v = ((!a.empty()) ? a : b);
@@ -40,7 +40,7 @@ int32_t pick_bytearray(::tpy::ByteArray& a, ::tpy::ByteArray& b) {
     return ::tpy::__len__(v);
 }
 
-// def pick_array(a: Array[Int32, 2], b: Array[Int32, 2]) -> Int32:
+// def pick_array(a: Array[int32, 2], b: Array[int32, 2]) -> int32:
 int32_t pick_array(std::array<int32_t, 2>& a, std::array<int32_t, 2>& b) {
     // # An Array is never empty, so `or` always yields the left operand; the
     // # write through the result is what proves which one it aliases.
@@ -66,7 +66,7 @@ void main() {
     ::tpy::ordered_map<std::string, Tag> d1 = ::tpy::make_ordered_map<std::string, Tag>("a", Tag(1));
     // print(pick_dict(de, d1))
     std::cout << pick_dict(de, d1) << "\n";
-    // se: set[Int32] = set()
+    // se: set[int32] = set()
     ::tpy::ordered_set<int32_t> se = ::tpy::ordered_set<int32_t>();
     // s1 = {1, 2}
     ::tpy::ordered_set<int32_t> s1 = ::tpy::ordered_set<int32_t>({1, 2});
@@ -82,9 +82,9 @@ void main() {
     std::cout << pick_bytearray(be, b1) << "\n";
     // print(len(b1), len(be))
     std::cout << ::tpy::__len__(b1) << " " << ::tpy::__len__(be) << "\n";
-    // a1 = Array[Int32, 2]([7, 8])
+    // a1 = Array[int32, 2]([7, 8])
     std::array<int32_t, 2> a1 = std::array<int32_t, 2>({7, 8});
-    // a2 = Array[Int32, 2]([1, 2])
+    // a2 = Array[int32, 2]([1, 2])
     std::array<int32_t, 2> a2 = std::array<int32_t, 2>({1, 2});
     // print(pick_array(a1, a2))
     std::cout << pick_array(a1, a2) << "\n";

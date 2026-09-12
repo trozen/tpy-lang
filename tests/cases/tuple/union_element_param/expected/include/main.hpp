@@ -19,10 +19,10 @@ void main();
 // @nocopy
 // class Dog:
 struct Dog {
-    // bark: Int32
+    // bark: int32
     int32_t bark;
 
-    // def __init__(self, b: Int32) -> None:
+    // def __init__(self, b: int32) -> None:
     Dog() = default;
     explicit Dog(int32_t b);
     // non-copyable (@nocopy)
@@ -41,10 +41,10 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 // @nocopy
 // class Cat:
 struct Cat {
-    // meow: Int32
+    // meow: int32
     int32_t meow;
 
-    // def __init__(self, m: Int32) -> None:
+    // def __init__(self, m: int32) -> None:
     Cat() = default;
     explicit Cat(int32_t m);
     // non-copyable (@nocopy)
@@ -61,10 +61,10 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 }
 
 
-// def __init__(self, b: Int32) -> None:
+// def __init__(self, b: int32) -> None:
 inline Dog::Dog(int32_t b) : bark(b) {}
 
-// def __init__(self, m: Int32) -> None:
+// def __init__(self, m: int32) -> None:
 inline Cat::Cat(int32_t m) : meow(m) {}
 void __tpy_init();
 } // namespace tpyapp::main

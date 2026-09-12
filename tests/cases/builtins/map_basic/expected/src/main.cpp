@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def double(x: Int32) -> Int32:
+// def double(x: int32) -> int32:
 int32_t double_(int32_t x) {
     // return x * 2
     return (::tpy::mul_check<int32_t>(x, 2));
 }
 
-// def to_str(x: Int32) -> str:
+// def to_str(x: int32) -> str:
 std::string to_str(int32_t x) {
     // return "v:" + str(x)
     return (::tpy::str_concat("v:", ::tpy::fixed_to_str<int32_t>(x)));
@@ -46,7 +46,7 @@ void main() {
         std::cout << x << "\n";
         }
     }
-    // # type-changing map (Int32 -> str)
+    // # type-changing map (int32 -> str)
     // for s in map(to_str, nums):
     {
         auto __src_4 = ::tpy::builtin_map<int32_t, std::string>(to_str, nums);
@@ -60,7 +60,7 @@ void main() {
         }
     }
     // # map over empty list
-    // empty: list[Int32] = []
+    // empty: list[int32] = []
     std::vector<int32_t> empty = std::vector<int32_t>{};
     // for x in map(double, empty):
     {

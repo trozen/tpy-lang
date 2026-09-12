@@ -16,19 +16,19 @@ void main();
 
 // class Counter:
 struct Counter {
-    // n: Int32
+    // n: int32
     int32_t n;
 
     // def __init__(self):
     Counter();
 
     // @probe
-    // def bump(self) -> Int32:  # tpyc: warning(/method macro on Counter.bump: field n is Int32/)
+    // def bump(self) -> int32:  # tpyc: warning(/method macro on Counter.bump: field n is int32/)
     int32_t bump();
 
     // @staticmethod
     // @probe
-    // def seed() -> Int32:  # tpyc: warning(/macro on seed: no self \(is_method=True\)/)
+    // def seed() -> int32:  # tpyc: warning(/macro on seed: no self \(is_method=True\)/)
     static int32_t seed();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
@@ -43,7 +43,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 inline Counter::Counter() : n(0) {}
 
 // @probe
-// def bump(self) -> Int32:  # tpyc: warning(/method macro on Counter.bump: field n is Int32/)
+// def bump(self) -> int32:  # tpyc: warning(/method macro on Counter.bump: field n is int32/)
 inline int32_t Counter::bump() {
     // doubled = self.n + self.n
     int32_t doubled = (::tpy::add_check<int32_t>(this->n, this->n));
@@ -55,7 +55,7 @@ inline int32_t Counter::bump() {
 
 // @staticmethod
 // @probe
-// def seed() -> Int32:  # tpyc: warning(/macro on seed: no self \(is_method=True\)/)
+// def seed() -> int32:  # tpyc: warning(/macro on seed: no self \(is_method=True\)/)
 inline int32_t Counter::seed() {
     // return 3
     return 3;

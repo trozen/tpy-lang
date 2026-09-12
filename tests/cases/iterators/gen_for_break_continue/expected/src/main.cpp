@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def filtered(items: list[Int32], limit: Int32) -> Iterator[Int32]:
+// def filtered(items: list[int32], limit: int32) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_filtered::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -52,7 +52,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_filtered::__next__() {
 }
 
 
-// def filtered(items: list[Int32], limit: Int32) -> Iterator[Int32]:
+// def filtered(items: list[int32], limit: int32) -> Iterator[int32]:
 __gen_filtered filtered(std::vector<int32_t>& items, int32_t limit) {
     return __gen_filtered(items, limit);
 }

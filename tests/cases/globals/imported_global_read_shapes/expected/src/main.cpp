@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def read_g() -> Int32:
+// def read_g() -> int32:
 int32_t read_g() {
     // return G + 1
     return (::tpy::add_check<int32_t>(::tpyapp::helper::G, 1));
 }
 
-// def read_final() -> Int32:
+// def read_final() -> int32:
 int32_t read_final() {
     // return BIG
     return ::tpyapp::helper::BIG;
@@ -22,13 +22,13 @@ std::string label_owned() {
     return std::string(::tpyapp::helper::label);
 }
 
-// def read_items() -> Int32:
+// def read_items() -> int32:
 int32_t read_items() {
     // return items[0]
     return ::tpy::__getitem__((*::tpyapp::helper::items), 0);
 }
 
-// def shadow() -> Int32:
+// def shadow() -> int32:
 int32_t shadow() {
     // G = 7  # a local of the same name -- the import is not seeded in this body
     int32_t G = 7;

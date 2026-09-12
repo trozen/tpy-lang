@@ -4,7 +4,7 @@ This tests that protocol type parameters (e.g., T in Container[T]) are
 properly substituted when the protocol is used as a bound.
 """
 from typing import Protocol
-from tpy import Int32
+from tpy import int32
 
 
 class Container[T](Protocol):
@@ -13,15 +13,15 @@ class Container[T](Protocol):
 
 
 class IntBox:
-    value: Int32
+    value: int32
 
-    def __init__(self, v: Int32):
+    def __init__(self, v: int32):
         self.value = v
 
-    def get(self) -> Int32:
+    def get(self) -> int32:
         return self.value
 
-    def set(self, value: Int32) -> None:
+    def set(self, value: int32) -> None:
         self.value = value
 
 
@@ -38,11 +38,11 @@ class StrBox:
         self.value = value
 
 
-def extract[C: Container[Int32]](c: C) -> Int32:
+def extract[C: Container[int32]](c: C) -> int32:
     return c.get()
 
 
-def update[C: Container[Int32]](c: C, v: Int32) -> None:
+def update[C: Container[int32]](c: C, v: int32) -> None:
     c.set(v)
 
 

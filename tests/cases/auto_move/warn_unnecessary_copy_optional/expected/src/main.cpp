@@ -4,17 +4,17 @@
 namespace tpyapp::main {
 
 
-// def consume_own(b: Own[Box]) -> Int32:
+// def consume_own(b: Own[Box]) -> int32:
 int32_t consume_own(Box&& b) {
     // return b.value
     return b.value;
 }
 
-// def consume_optional(b: Own[Box] | None) -> Int32:
+// def consume_optional(b: Own[Box] | None) -> int32:
 int32_t consume_optional(std::optional<Box> b) {
     // if b is None:
     if ((!b.has_value())) {
-        // return Int32(-1)
+        // return int32(-1)
         return -1;
     }
     // return consume_own(b)

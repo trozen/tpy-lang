@@ -15,7 +15,7 @@
 # bytes, where CPython substitutes U+FFFD (errors='replace'); matching that needs
 # a lossy UTF-8 decode the runtime does not yet expose.
 # tpy: cpp_namespace("tpystd::urllib::parse")
-from tpy import Int32, UInt8, Char, Own
+from tpy import int32, uint8, char, Own
 
 _HEX: bytes = b"0123456789ABCDEF"
 
@@ -52,17 +52,17 @@ def _scheme_uses_params(scheme: str) -> bool:
 
 # ---------- byte / char classifiers ----------
 
-def _is_alpha(c: Char) -> bool:
+def _is_alpha(c: char) -> bool:
     o = ord(c)
     return (o >= 65 and o <= 90) or (o >= 97 and o <= 122)
 
 
-def _is_alnum(c: Char) -> bool:
+def _is_alnum(c: char) -> bool:
     o = ord(c)
     return _is_alpha(c) or (o >= 48 and o <= 57)
 
 
-def _byte_unreserved(c: Int32) -> bool:
+def _byte_unreserved(c: int32) -> bool:
     # RFC 3986 unreserved set -- always safe, never percent-encoded.
     # ALPHA / DIGIT / '-' / '.' / '_' / '~'.
     if c >= 65 and c <= 90:
@@ -74,14 +74,14 @@ def _byte_unreserved(c: Int32) -> bool:
     return c == 45 or c == 46 or c == 95 or c == 126
 
 
-def _byte_in(c: Int32, chars: str) -> bool:
+def _byte_in(c: int32, chars: str) -> bool:
     for ch in chars:
         if ord(ch) == c:
             return True
     return False
 
 
-def _hex_val(c: Int32) -> Int32:
+def _hex_val(c: int32) -> int32:
     if c >= 48 and c <= 57:
         return c - 48
     if c >= 65 and c <= 70:
@@ -99,13 +99,13 @@ def _quote_impl(s: str, safe: str, plus: bool) -> str:
     n = len(data)
     i = 0
     while i < n:
-        c = Int32(data[i])
+        c = int32(data[i])
         if _byte_unreserved(c) or _byte_in(c, safe):
-            out.append(UInt8(c))
+            out.append(uint8(c))
         elif plus and c == 32:
-            out.append(UInt8(43))
+            out.append(uint8(43))
         else:
-            out.append(UInt8(37))
+            out.append(uint8(37))
             out.append(_HEX[c >> 4])
             out.append(_HEX[c & 0xF])
         i += 1
@@ -128,21 +128,21 @@ def _unquote_impl(s: str, plus: bool) -> str:
     n = len(data)
     i = 0
     while i < n:
-        c = Int32(data[i])
+        c = int32(data[i])
         if c == 37 and i + 2 < n:
-            hi = _hex_val(Int32(data[i + 1]))
-            lo = _hex_val(Int32(data[i + 2]))
+            hi = _hex_val(int32(data[i + 1]))
+            lo = _hex_val(int32(data[i + 2]))
             if hi >= 0 and lo >= 0:
-                out.append(UInt8((hi << 4) | lo))
+                out.append(uint8((hi << 4) | lo))
                 i += 3
                 continue
-            out.append(UInt8(c))
+            out.append(uint8(c))
             i += 1
         elif plus and c == 43:
-            out.append(UInt8(32))
+            out.append(uint8(32))
             i += 1
         else:
-            out.append(UInt8(c))
+            out.append(uint8(c))
             i += 1
     return out.decode()
 
@@ -381,7 +381,7 @@ def _clean(url: str) -> str:
     return cleaned
 
 
-def _netloc_end(s: str) -> Int32:
+def _netloc_end(s: str) -> int32:
     n = len(s)
     i = 0
     while i < n:

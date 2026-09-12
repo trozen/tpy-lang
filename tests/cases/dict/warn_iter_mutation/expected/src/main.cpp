@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def test_pop() -> None:
 void test_pop() {
-    // d: dict[str, Int32] = {"a": Int32(1)}
+    // d: dict[str, int32] = {"a": int32(1)}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
     // for k in d:
     auto& __obj_0 = d;
@@ -21,7 +21,7 @@ void test_pop() {
 
 // def test_clear() -> None:
 void test_clear() {
-    // d: dict[str, Int32] = {"a": Int32(1)}
+    // d: dict[str, int32] = {"a": int32(1)}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
     // for k in d:
     auto& __obj_0 = d;
@@ -36,9 +36,9 @@ void test_clear() {
 
 // def test_update() -> None:
 void test_update() {
-    // d: dict[str, Int32] = {"a": Int32(1)}
+    // d: dict[str, int32] = {"a": int32(1)}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
-    // other: dict[str, Int32] = {"b": Int32(2)}
+    // other: dict[str, int32] = {"b": int32(2)}
     ::tpy::ordered_map<std::string, int32_t> other = ::tpy::ordered_map<std::string, int32_t>({{"b", 2}});
     // for k in d:
     auto& __obj_0 = d;
@@ -53,7 +53,7 @@ void test_update() {
 
 // def test_setdefault() -> None:
 void test_setdefault() {
-    // d: dict[str, Int32] = {"a": Int32(1)}
+    // d: dict[str, int32] = {"a": int32(1)}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
     // for k in d:
     auto& __obj_0 = d;
@@ -61,14 +61,14 @@ void test_setdefault() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        // d.setdefault(k, Int32(0))  # tpyc: warning(/Mutation of 'd'.*'setdefault'/)
+        // d.setdefault(k, int32(0))  # tpyc: warning(/Mutation of 'd'.*'setdefault'/)
         ::tpy::dict_setdefault(d, k, 0);
     }
 }
 
 // def test_del() -> None:
 void test_del() {
-    // d: dict[str, Int32] = {"a": Int32(1)}
+    // d: dict[str, int32] = {"a": int32(1)}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
     // for k in d:
     auto& __obj_0 = d;
@@ -83,7 +83,7 @@ void test_del() {
 
 // def test_conditional_mutation() -> None:
 void test_conditional_mutation() {
-    // d: dict[str, Int32] = {"a": Int32(1), "b": Int32(2)}
+    // d: dict[str, int32] = {"a": int32(1), "b": int32(2)}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
     // for k in d:
     auto& __obj_0 = d;
@@ -101,7 +101,7 @@ void test_conditional_mutation() {
 
 // def test_no_warn_after_loop() -> None:
 void test_no_warn_after_loop() {
-    // d: dict[str, Int32] = {"a": Int32(1)}
+    // d: dict[str, int32] = {"a": int32(1)}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
     // for k in d:
     auto& __obj_0 = d;
@@ -111,15 +111,15 @@ void test_no_warn_after_loop() {
         std::string_view k = *__beg_0;
         // pass
     }
-    // d["b"] = Int32(2)  # tpyc: ok
+    // d["b"] = int32(2)  # tpyc: ok
     ::tpy::__setitem__(d, "b", 2);
 }
 
 // def test_read_only_ok() -> None:
 void test_read_only_ok() {
-    // d: dict[str, Int32] = {"a": Int32(1), "b": Int32(2)}
+    // d: dict[str, int32] = {"a": int32(1), "b": int32(2)}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
-    // total: Int32 = Int32(0)
+    // total: int32 = int32(0)
     int32_t total = 0;
     // for k in d:
     auto& __obj_0 = d;

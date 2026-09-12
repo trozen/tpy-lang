@@ -1,1 +1,1 @@
-main.py:7: error: Invalid enum mixin type 'Foo'; expected int, Int8..Int64, or UInt8..UInt64
+main.py:7: error: Invalid enum mixin type 'Foo'; expected int, int8..int64, or uint8..uint64

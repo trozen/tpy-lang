@@ -21,7 +21,7 @@ void test_body_var() {
     // for i in range(3):
     int32_t x;
     for (int32_t i = 0; i < 3; ++i) {
-        // x: Int32 = i * 10
+        // x: int32 = i * 10
         x = (::tpy::mul_check<int32_t>(i, 10));
     }
     // print(x)

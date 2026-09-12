@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 
-def inc(x: Int32) -> Int32:
-    return x + Int32(1)
+def inc(x: int32) -> int32:
+    return x + int32(1)

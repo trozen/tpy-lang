@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def get_tuple() -> tuple[Int32, str]:
+// def get_tuple() -> tuple[int32, str]:
 std::tuple<int32_t, std::string> get_tuple() {
-    // return (Int32(1), "temp")
+    // return (int32(1), "temp")
     return std::tuple<int32_t, std::string>{1, "temp"};
 }
 

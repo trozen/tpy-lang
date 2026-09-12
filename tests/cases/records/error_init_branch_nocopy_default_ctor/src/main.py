@@ -1,12 +1,12 @@
 # @nocopy field that IS default-constructible still errors when assigned in a branch.
 # The split-point check warns (default ctor exists), then walk_body errors on branch assign.
-from tpy import nocopy, Int32
+from tpy import nocopy, int32
 
 @nocopy
 class Token:
-    id: Int32
+    id: int32
     def __init__(self):
-        self.id = Int32(0)
+        self.id = int32(0)
 
 class Parser:
     tok: Token

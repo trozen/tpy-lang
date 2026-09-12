@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def fresh_array() -> Own[Array[Int32, 3]]:
+// def fresh_array() -> Own[Array[int32, 3]]:
 std::array<int32_t, 3> fresh_array() {
-    // a: Array[Int32, 3] = [1, 2, 3]
+    // a: Array[int32, 3] = [1, 2, 3]
     std::array<int32_t, 3> a = {1, 2, 3};
     // a[0] = 7
     ::tpy::__setitem__(a, 0, 7);
@@ -14,7 +14,7 @@ std::array<int32_t, 3> fresh_array() {
     return a;
 }
 
-// def grow_bytes(n: Int32) -> Own[bytearray]:
+// def grow_bytes(n: int32) -> Own[bytearray]:
 ::tpy::ByteArray grow_bytes(int32_t n) {
     std::optional<::tpy::ByteArray> __slot_2;
     // buf = bytearray(b"ab")
@@ -29,7 +29,7 @@ std::array<int32_t, 3> fresh_array() {
     return std::move((*buf));
 }
 
-// def grow_list(n: Int32) -> Own[list[Int32]]:
+// def grow_list(n: int32) -> Own[list[int32]]:
 std::vector<int32_t> grow_list(int32_t n) {
     std::optional<std::vector<int32_t>> __slot_2;
     // xs = [1, 2]
@@ -44,10 +44,10 @@ std::vector<int32_t> grow_list(int32_t n) {
     return std::move((*xs));
 }
 
-// def grow_boxes(n: Int32) -> Own[list[Box[Int32]]]:
+// def grow_boxes(n: int32) -> Own[list[Box[int32]]]:
 std::vector<::tpystd::tplib::box::Box<int32_t>> grow_boxes(int32_t n) {
     std::optional<std::vector<::tpystd::tplib::box::Box<int32_t>>> __slot_2;
-    // bs: list[Box[Int32]] = [Box(1)]
+    // bs: list[Box[int32]] = [Box(1)]
     std::vector<::tpystd::tplib::box::Box<int32_t>> __slot_1 = ::tpy::make_vector<::tpystd::tplib::box::Box<int32_t>>(::tpystd::tplib::box::Box<int32_t>(1));
     std::vector<::tpystd::tplib::box::Box<int32_t>>* bs = &__slot_1;
     // if n > 2:

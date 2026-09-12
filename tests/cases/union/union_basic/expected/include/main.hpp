@@ -10,7 +10,7 @@ namespace tpyapp::main {
 inline constexpr std::string_view __name__ = "__main__";
 
 void accept_two(const ::tpy::Union<int32_t, std::string>& x);
-void accept_three(const ::tpy::Union<int32_t, bool, std::string>& x);
+void accept_three(const ::tpy::Union<bool, int32_t, std::string>& x);
 void test();
 
 void __tpy_init();

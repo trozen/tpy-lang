@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def add(a: Int32, b: Int32) -> Int32:
+// def add(a: int32, b: int32) -> int32:
 int32_t add(int32_t a, int32_t b) {
     // return a + b
     return (::tpy::add_check<int32_t>(a, b));
@@ -12,7 +12,7 @@ int32_t add(int32_t a, int32_t b) {
 
 // def main() -> None:
 void main() {
-    // xs: list[Int32] = [1, 2, 3, 4, 5]
+    // xs: list[int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> xs = {1, 2, 3, 4, 5};
     // # Named function
     // print(reduce(add, xs))                       # 15
@@ -24,7 +24,7 @@ void main() {
     // print(reduce(lambda a, b: a * b, xs))        # 120
     std::cout << ::tpystd::functools::reduce<int32_t>([](int32_t a, int32_t b) -> int32_t { return (::tpy::mul_check<int32_t>(a, b)); }, xs) << "\n";
     // # Single-element list -- returns that element directly.
-    // one: list[Int32] = [42]
+    // one: list[int32] = [42]
     std::vector<int32_t> one = {42};
     // print(reduce(add, one))                      # 42
     std::cout << ::tpystd::functools::reduce<int32_t>(add, one) << "\n";

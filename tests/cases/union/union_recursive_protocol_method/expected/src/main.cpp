@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def depth(e: Expr) -> Int32:
+// def depth(e: Expr) -> int32:
 int32_t depth(const Expr& e) {
     // match e:
     auto& __match_subject_1 = e;

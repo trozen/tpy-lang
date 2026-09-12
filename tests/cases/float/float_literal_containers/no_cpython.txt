@@ -1,1 +1,1 @@
-Float32 printing differs: TPy prints 1 (no .0), CPython float prints 1.0
+float32 printing differs: TPy prints 1 (no .0), CPython float prints 1.0

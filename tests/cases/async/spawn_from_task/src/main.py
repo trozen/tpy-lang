@@ -4,22 +4,22 @@
 # `auto& slot = slots[id]` reference across the recursive poll_any
 # call -- the reference would dangle after slots reallocated.
 import asyncio
-from tpy import Int32
+from tpy import int32
 from asyncio import Task
 
 
-async def grandchild() -> Int32:
+async def grandchild() -> int32:
     await asyncio.sleep(0.001)
-    return Int32(7)
+    return int32(7)
 
 
-async def child() -> Int32:
-    g: Task[Int32] = asyncio.create_task(grandchild())
-    return await g + Int32(1)
+async def child() -> int32:
+    g: Task[int32] = asyncio.create_task(grandchild())
+    return await g + int32(1)
 
 
 async def main_coro() -> None:
-    c: Task[Int32] = asyncio.create_task(child())
+    c: Task[int32] = asyncio.create_task(child())
     print(await c)
 
 

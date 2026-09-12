@@ -1,1 +1,1 @@
-__init__.py:3: warning: ALL_CAPS variable 'CONST' without Final annotation; use Final[Int32] if this is a constant
+__init__.py:3: warning: ALL_CAPS variable 'CONST' without Final annotation; use Final[int32] if this is a constant

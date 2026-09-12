@@ -1,1 +1,1 @@
-main.py:6: error: Operator '+=' is not supported between Int16 and Int64
+main.py:6: error: Operator '+=' is not supported between int16 and int64

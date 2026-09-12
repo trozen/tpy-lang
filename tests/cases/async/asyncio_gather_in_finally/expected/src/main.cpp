@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def cleanup_task(label: str) -> Int32:
+// async def cleanup_task(label: str) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_cleanup_task::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -20,7 +20,7 @@ namespace tpyapp::main {
         __sub_0.reset();
         // print("cleanup", label)
         std::cout << "cleanup" << " " << label << "\n";
-        // return Int32(0)
+        // return int32(0)
         __state = S_DONE;
         int32_t __tpy_async_ret = 0;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -31,7 +31,7 @@ namespace tpyapp::main {
 }
 
 
-// async def cleanup_task(label: str) -> Int32:
+// async def cleanup_task(label: str) -> int32:
 __coro_cleanup_task cleanup_task(std::string_view label) {
     return __coro_cleanup_task(label);
 }
@@ -122,7 +122,7 @@ __coro_cleanup_task cleanup_task(std::string_view label) {
     }
     case S_JOIN_4: {
         try {
-            // tasks: list[asyncio.Task[Int32]] = []
+            // tasks: list[asyncio.Task[int32]] = []
             tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<int32_t>>{});
             __coro_arg_0 = "a";
             // tasks.append(asyncio.create_task(cleanup_task("a")))

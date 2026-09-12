@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def pair(n: Int32) -> tuple[Int32, Int32]:
+// def pair(n: int32) -> tuple[int32, int32]:
 std::tuple<int32_t, int32_t> pair(int32_t n) {
     // return (n, n + 1)
     return std::tuple<int32_t, int32_t>{n, (::tpy::add_check<int32_t>(n, 1))};

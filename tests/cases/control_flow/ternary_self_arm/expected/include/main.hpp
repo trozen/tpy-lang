@@ -19,10 +19,10 @@ void main();
 
 // class Acc:
 struct Acc {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32):
+    // def __init__(self, n: int32):
     Acc() = default;
     explicit Acc(int32_t n);
 
@@ -33,7 +33,7 @@ struct Acc {
     void bump_smaller(Acc& o);
 
     // @readonly
-    // def larger_n(self, o: readonly["Acc"]) -> Int32:
+    // def larger_n(self, o: readonly["Acc"]) -> int32:
     int32_t larger_n(const Acc& o) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Acc";
 };
@@ -44,7 +44,7 @@ inline std::ostream& operator<<(std::ostream& os, const Acc& obj) {
 }
 
 
-// def __init__(self, n: Int32):
+// def __init__(self, n: int32):
 inline Acc::Acc(int32_t n) : n(n) {}
 
 // def bump_larger(self, o: "Acc") -> None:
@@ -64,7 +64,7 @@ inline void Acc::bump_smaller(Acc& o) {
 }
 
 // @readonly
-// def larger_n(self, o: readonly["Acc"]) -> Int32:
+// def larger_n(self, o: readonly["Acc"]) -> int32:
 inline int32_t Acc::larger_n(const Acc& o) const {
     // c = self if self.n >= o.n else o  # tpyc: ok -- const receiver arm
     const Acc& c = (((this->n >= o.n)) ? ((*this)) : (o));

@@ -15,21 +15,21 @@ void main();
 
 // class Box:
 struct Box {
-    // items: list[Int32]
+    // items: list[int32]
     std::vector<int32_t> items;
-    // _dummy: Int32
+    // _dummy: int32
     int32_t _dummy;
 
     // def __init__(self) -> None:
     Box();
 
-    // def get_span(self) -> Own[Span[Int32] | list[Int32]]:  # tpyc: ok
+    // def get_span(self) -> Own[Span[int32] | list[int32]]:  # tpyc: ok
     ::tpy::Union<std::span<int32_t>, std::vector<int32_t>> get_span();
 
-    // def get_list(self) -> Own[Span[Int32] | list[Int32]]:  # tpyc: ok
+    // def get_list(self) -> Own[Span[int32] | list[int32]]:  # tpyc: ok
     ::tpy::Union<std::span<int32_t>, std::vector<int32_t>> get_list();
 
-    // def get_via_var(self) -> Own[Span[Int32] | list[Int32]]:  # tpyc: ok
+    // def get_via_var(self) -> Own[Span[int32] | list[int32]]:  # tpyc: ok
     ::tpy::Union<std::span<int32_t>, std::vector<int32_t>> get_via_var();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
@@ -43,7 +43,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 // def __init__(self) -> None:
 inline Box::Box() : items(std::vector<int32_t>{10, 20, 30, 40, 50}), _dummy(0) {}
 
-// def get_span(self) -> Own[Span[Int32] | list[Int32]]:  # tpyc: ok
+// def get_span(self) -> Own[Span[int32] | list[int32]]:  # tpyc: ok
 inline ::tpy::Union<std::span<int32_t>, std::vector<int32_t>> Box::get_span() {
     // self._dummy += 1
     this->_dummy = ::tpy::add_check<int32_t>(this->_dummy, 1);
@@ -51,7 +51,7 @@ inline ::tpy::Union<std::span<int32_t>, std::vector<int32_t>> Box::get_span() {
     return ::tpy::list_slice(this->items, ::tpy::BasicSlice{1, 4});
 }
 
-// def get_list(self) -> Own[Span[Int32] | list[Int32]]:  # tpyc: ok
+// def get_list(self) -> Own[Span[int32] | list[int32]]:  # tpyc: ok
 inline ::tpy::Union<std::span<int32_t>, std::vector<int32_t>> Box::get_list() {
     // self._dummy += 1
     this->_dummy = ::tpy::add_check<int32_t>(this->_dummy, 1);
@@ -59,7 +59,7 @@ inline ::tpy::Union<std::span<int32_t>, std::vector<int32_t>> Box::get_list() {
     return ::tpy::list_stepped_slice(this->items, ::tpy::Slice{0, 4, 2});
 }
 
-// def get_via_var(self) -> Own[Span[Int32] | list[Int32]]:  # tpyc: ok
+// def get_via_var(self) -> Own[Span[int32] | list[int32]]:  # tpyc: ok
 inline ::tpy::Union<std::span<int32_t>, std::vector<int32_t>> Box::get_via_var() {
     // self._dummy += 1
     this->_dummy = ::tpy::add_check<int32_t>(this->_dummy, 1);

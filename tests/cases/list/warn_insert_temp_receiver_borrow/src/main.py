@@ -4,13 +4,13 @@
 # CPython divergence (CPython appends the very Payload the Holder holds), so
 # main prints only what both sides agree on -- the element stays writable
 # through the container either way -- and the WARNING is the pin.
-from tpy import Int32, copy
+from tpy import int32, copy
 
 
 class Payload:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 

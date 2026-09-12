@@ -3,14 +3,14 @@
 # frame-emitted __iter__ struct the same way. Async units are seeded BEFORE
 # generator methods, so this one is mis-ordered whatever the declaration order.
 import asyncio
-from tpy import Int32, Own
+from tpy import int32, Own
 from typing import Iterator
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
@@ -28,7 +28,7 @@ class Bag:
 
 # Mutating through the loop element across a suspension: the element must alias
 # the bag's storage, and the change is read back off the bag afterwards.
-async def bump(bag: Bag) -> Int32:
+async def bump(bag: Bag) -> int32:
     total = 0
     for p in bag:
         await asyncio.sleep(0)

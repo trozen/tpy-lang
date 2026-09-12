@@ -1,20 +1,20 @@
 # A ctor param sharing its name with an earlier function's union param must
 # classify against the ctor's own bindings (leaked set -> uncompilable MIL).
 from typing import Iterator
-from tpy import Int32, Own, copy
+from tpy import int32, Own, copy
 
 
 class A:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
 class B:
-    y: Int32
+    y: int32
 
-    def __init__(self, y: Int32) -> None:
+    def __init__(self, y: int32) -> None:
         self.y = y
 
 
@@ -24,7 +24,7 @@ def g(v: A | B) -> Iterator[bool]:
 
 class H:
     u: A | B
-    n: Int32
+    n: int32
 
     # Known sema false positive: the field-consumption check does not
     # credit copy() at a field store, though the MIL genuinely moves v.

@@ -25,7 +25,7 @@ void main();
 // @dataclass
 // class Leaf:
 struct Leaf {
-    // value: Int32
+    // value: int32
     int32_t value;
 
     Leaf() = default;

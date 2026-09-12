@@ -6,19 +6,19 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // arr: Array[Int32, 2] = [Int32(1), Int32(2)]
+    // arr: Array[int32, 2] = [int32(1), int32(2)]
     std::array<int32_t, 2> arr = {1, 2};
-    // p: Ptr[Int32] = m.unsafe_ptr(arr)
+    // p: Ptr[int32] = m.unsafe_ptr(arr)
     int32_t* p = arr.data();
-    // # Context-only: T=UInt32 inferred from assignment target
-    // q1: Ptr[UInt32] = m.unsafe_cast(p)
+    // # Context-only: T=uint32 inferred from assignment target
+    // q1: Ptr[uint32] = m.unsafe_cast(p)
     uint32_t* q1 = reinterpret_cast<uint32_t*>(p);
-    // print(m.unsafe_load(q1, UInt32(0)))
+    // print(m.unsafe_load(q1, uint32(0)))
     std::cout << q1[0] << "\n";
-    // # Explicit type arg: T=UInt32, U=Int32 inferred from arg
-    // q2: Ptr[UInt32] = m.unsafe_cast[UInt32](p)
+    // # Explicit type arg: T=uint32, U=int32 inferred from arg
+    // q2: Ptr[uint32] = m.unsafe_cast[uint32](p)
     uint32_t* q2 = reinterpret_cast<uint32_t*>(p);
-    // print(m.unsafe_load(q2, UInt32(0)))
+    // print(m.unsafe_load(q2, uint32(0)))
     std::cout << q2[0] << "\n";
     // print("done")
     std::cout << "done" << "\n";

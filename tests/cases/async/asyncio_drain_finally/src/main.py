@@ -5,7 +5,7 @@
 # resume position, the wrapper try/finally runs the cleanup, and the
 # task completes via the cached exception path.
 import asyncio
-from tpy import Int32
+from tpy import int32
 from asyncio import Task
 
 

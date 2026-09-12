@@ -16,16 +16,16 @@ void main();
 
 // class Cell:
 struct Cell {
-    // n: Int32
+    // n: int32
     int32_t n;
 
     // def __init__(self):
     Cell();
 
-    // def val(self) -> Int32:
+    // def val(self) -> int32:
     int32_t val() const;
 
-    // def bump(self, k: Int32) -> Int32:
+    // def bump(self, k: int32) -> int32:
     int32_t bump(int32_t k) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cell";
 };
@@ -39,13 +39,13 @@ inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
 // def __init__(self):
 inline Cell::Cell() : n(3) {}
 
-// def val(self) -> Int32:
+// def val(self) -> int32:
 inline int32_t Cell::val() const {
     // return self.n
     return this->n;
 }
 
-// def bump(self, k: Int32) -> Int32:
+// def bump(self, k: int32) -> int32:
 inline int32_t Cell::bump(int32_t k) const {
     // return self.n + k
     return (::tpy::add_check<int32_t>(this->n, k));

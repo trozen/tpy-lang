@@ -40,21 +40,21 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// class IntBox(Cloneable[Int32]):
+// class IntBox(Cloneable[int32]):
 struct IntBox : Cloneable<int32_t> {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32):
+    // def __init__(self, v: int32):
     IntBox() = default;
     explicit IntBox(int32_t v);
 
     // @readonly
-    // def replicate(self) -> Own[Cloneable[Int32]]:
+    // def replicate(self) -> Own[Cloneable[int32]]:
     std::unique_ptr<Cloneable<int32_t>> replicate() const override;
 
     // @readonly
-    // def value(self) -> Int32:
+    // def value(self) -> int32:
     int32_t value() const override;
     static constexpr std::string_view __tpy_class_name__ = "__main__.IntBox";
 };
@@ -86,18 +86,18 @@ struct tpy::RefAdapter<tpyapp::main::Cloneable<T>, __tpy_Impl> : tpyapp::main::C
 namespace tpyapp::main {
 
 
-// def __init__(self, v: Int32):
+// def __init__(self, v: int32):
 inline IntBox::IntBox(int32_t v) : v(v) {}
 
 // @readonly
-// def replicate(self) -> Own[Cloneable[Int32]]:
+// def replicate(self) -> Own[Cloneable[int32]]:
 inline std::unique_ptr<Cloneable<int32_t>> IntBox::replicate() const {
     // return IntBox(self.v)
     return std::make_unique<IntBox>(IntBox(this->v));
 }
 
 // @readonly
-// def value(self) -> Int32:
+// def value(self) -> int32:
 inline int32_t IntBox::value() const {
     // return self.v
     return this->v;

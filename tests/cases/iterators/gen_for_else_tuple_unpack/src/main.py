@@ -1,8 +1,8 @@
 # Generator combining for...else with tuple unpacking
-from tpy import Int32
+from tpy import int32
 from typing import Iterator
 
-def gen(pairs: list[tuple[Int32, Int32]], limit: Int32) -> Iterator[Int32]:
+def gen(pairs: list[tuple[int32, int32]], limit: int32) -> Iterator[int32]:
     for a, b in pairs:
         if a + b >= limit:
             break

@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // @error_return(E)
-// def propagate(h: H) -> Int32:
+// def propagate(h: H) -> int32:
 std::expected<int32_t, E> propagate(H& h) {
     // v = h.view()
     std::vector<int32_t>* v;

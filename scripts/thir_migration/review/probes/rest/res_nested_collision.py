@@ -1,10 +1,10 @@
 import asyncio
-from tpy import Int32
-def bump(d: Int32) -> Int32:
+from tpy import int32
+def bump(d: int32) -> int32:
     return d
-async def runner() -> Int32:
-    total: Int32 = 0
-    def bump(d: Int32) -> Int32:
+async def runner() -> int32:
+    total: int32 = 0
+    def bump(d: int32) -> int32:
         nonlocal total
         total += d
         return total

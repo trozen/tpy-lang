@@ -16,18 +16,18 @@ void main();
 
 // class Buffer:
 struct Buffer {
-    // _data: list[Int32]
+    // _data: list[int32]
     std::vector<int32_t> _data;
 
     // def __init__(self) -> None:
     Buffer();
 
     // @auto_readonly
-    // def merge_span(self, other: list[Int32]) -> Span[auto_readonly[Int32]]:
+    // def merge_span(self, other: list[int32]) -> Span[auto_readonly[int32]]:
     std::span<int32_t> merge_span(std::vector<int32_t>& other);
 
     // @auto_readonly
-    // def merge_span(self, other: list[Int32]) -> Span[auto_readonly[Int32]]:
+    // def merge_span(self, other: list[int32]) -> Span[auto_readonly[int32]]:
     std::span<const int32_t> merge_span(const std::vector<int32_t>& other) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Buffer";
 };
@@ -42,14 +42,14 @@ inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {
 inline Buffer::Buffer() : _data(std::vector<int32_t>{10, 20, 30}) {}
 
 // @auto_readonly
-// def merge_span(self, other: list[Int32]) -> Span[auto_readonly[Int32]]:
+// def merge_span(self, other: list[int32]) -> Span[auto_readonly[int32]]:
 inline std::span<int32_t> Buffer::merge_span(std::vector<int32_t>& other) {
     // return self._data
     return ::tpy::as_mut_span(this->_data);
 }
 
 // @auto_readonly
-// def merge_span(self, other: list[Int32]) -> Span[auto_readonly[Int32]]:
+// def merge_span(self, other: list[int32]) -> Span[auto_readonly[int32]]:
 inline std::span<const int32_t> Buffer::merge_span(const std::vector<int32_t>& other) const {
     // return self._data
     return ::tpy::as_span(this->_data);

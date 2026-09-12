@@ -1,6 +1,6 @@
 # A last-use @nocopy local in a list/array LITERAL moves rather than copies;
 # @nocopy makes a silent copy a hard compile error, so a passing build proves it.
-from tpy import Int32
+from tpy import int32
 from tplib.box import Box
 
 
@@ -14,7 +14,7 @@ def vector_lit() -> None:
     p = Box(2)
     q = Box(3)
     # annotated list[...] forces the std::vector (not fixed-size Array) path
-    xs: list[Box[Int32]] = [p, q]
+    xs: list[Box[int32]] = [p, q]
     print(len(xs), xs[0].get(), xs[1].get())
 
 

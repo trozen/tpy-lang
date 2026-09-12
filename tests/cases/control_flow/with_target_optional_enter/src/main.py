@@ -5,18 +5,18 @@
 # reading the manager after proves the field still aliases.
 from typing import Iterator
 
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
 
 class Holder:
     box: Box
 
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.box = Box(n)
 
     def __enter__(self) -> "Box | None":
@@ -26,7 +26,7 @@ class Holder:
         pass
 
 
-def gen() -> Iterator[Int32]:
+def gen() -> Iterator[int32]:
     h = Holder(7)
     with h as m:
         pass

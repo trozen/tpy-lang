@@ -3,14 +3,14 @@
 #  - bool params/returns marshal via PyObject_IsTrue / PyBool_FromLong, so any
 #    argument coerces by truthiness exactly like CPython's bool();
 #  - `tally(b) -> None` returns Py_None. Its effect is observed through a
-#    marshalled Int64 getter rather than print: the extension's stdout buffers
+#    marshalled int64 getter rather than print: the extension's stdout buffers
 #    separately from the driver's, so a void function must not print or the
 #    ext-exec and cpy-parity runs would interleave differently.
-from tpy import Int64
+from tpy import int64
 from tpy.extern import export
 
 
-_true_count: Int64 = 0
+_true_count: int64 = 0
 
 
 @export
@@ -36,5 +36,5 @@ def tally(b: bool) -> None:
 
 
 @export
-def true_count() -> Int64:
+def true_count() -> int64:
     return _true_count

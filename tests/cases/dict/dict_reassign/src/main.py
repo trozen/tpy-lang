@@ -1,5 +1,5 @@
 # Dict variable reassignment from literal
-from tpy import Int32
+from tpy import int32
 
 def main() -> None:
     d: dict[str, int] = {"a": 1}
@@ -8,7 +8,7 @@ def main() -> None:
     print(d["b"], d["c"])
 
     # Union dict reassignment
-    d2: dict[str, Int32 | str] = {"x": 1, "y": "hello"}
+    d2: dict[str, int32 | str] = {"x": 1, "y": "hello"}
     d2 = {"z": "world"}
     v = d2["z"]
     if isinstance(v, str):

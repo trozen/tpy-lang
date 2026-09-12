@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // s: set[Int32] = {10, 20, 30}
+    // s: set[int32] = {10, 20, 30}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({10, 20, 30});
     // for x in s:
     auto& __obj_0 = s;
@@ -18,7 +18,7 @@ void main() {
         std::cout << x << "\n";
     }
     // # Truthiness
-    // empty: set[Int32] = set()
+    // empty: set[int32] = set()
     ::tpy::ordered_set<int32_t> empty = ::tpy::ordered_set<int32_t>();
     // if s:
     if ((::tpy::__len__(s) != 0)) {

@@ -43,14 +43,14 @@ struct JSONDecodeError : ::tpy::ValueError {
     std::string msg;
     // doc: str
     std::string doc;
-    // pos: Int32
+    // pos: int32
     int32_t pos;
-    // lineno: Int32
+    // lineno: int32
     int32_t lineno;
-    // colno: Int32
+    // colno: int32
     int32_t colno;
 
-    // def __init__(self, msg: str, doc: str, pos: Int32) -> None:
+    // def __init__(self, msg: str, doc: str, pos: int32) -> None:
     JSONDecodeError() = default;
     explicit JSONDecodeError(std::string_view msg, std::string_view doc, int32_t pos);
 
@@ -91,7 +91,7 @@ JsonValue load(T_fp& fp) {
     // return loads(fp.read())
     return loads(fp.read());
 }
-// def dump(obj: JsonValue, fp: Writable, *, indent: Int32 = 0, sort_keys: bool = False) -> None:
+// def dump(obj: JsonValue, fp: Writable, *, indent: int32 = 0, sort_keys: bool = False) -> None:
 template<::tpystd::tpy::Writable T_fp>
 void dump(const JsonValue& obj, T_fp& fp, int32_t indent, bool sort_keys) {
     // fp.write(dumps(obj, indent=indent, sort_keys=sort_keys))

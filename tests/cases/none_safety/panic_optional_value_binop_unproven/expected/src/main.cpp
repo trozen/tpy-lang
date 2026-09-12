@@ -3,7 +3,7 @@
 
 namespace tpyapp::main {
 
-// x: Int32 | None = None
+// x: int32 | None = None
 std::optional<int32_t> x;
 
 void __tpy_init() {
@@ -11,7 +11,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // x: Int32 | None = None
+    // x: int32 | None = None
     x = std::nullopt;
     // print(x + 1)
     std::cout << (::tpy::add_check<int32_t>(::tpy::deref_optional_check(x), 1)) << "\n";

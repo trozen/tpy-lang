@@ -1,11 +1,11 @@
 # @dataclass with Optional fields and None defaults
 from dataclasses import dataclass
 from typing import Optional
-from tpy import Int32
+from tpy import int32
 
 @dataclass
 class Node:
-    value: Int32
+    value: int32
     label: Optional[str] = None
 
 def main() -> None:

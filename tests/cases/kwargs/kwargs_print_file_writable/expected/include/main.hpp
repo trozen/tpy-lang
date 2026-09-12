@@ -21,7 +21,7 @@ struct Sink {
     // def __init__(self) -> None:
     Sink();
 
-    // def write(self, text: str) -> Int32:
+    // def write(self, text: str) -> int32:
     int32_t write(std::string_view text);
 
     // def flush(self) -> None:
@@ -38,11 +38,11 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
 // def __init__(self) -> None:
 inline Sink::Sink() : parts(std::vector<std::string>{}) {}
 
-// def write(self, text: str) -> Int32:
+// def write(self, text: str) -> int32:
 inline int32_t Sink::write(std::string_view text) {
     // self.parts.append(text)
     this->parts.push_back(std::string(text));
-    // return Int32(len(text))
+    // return int32(len(text))
     return ::tpy::__len__(text);
 }
 

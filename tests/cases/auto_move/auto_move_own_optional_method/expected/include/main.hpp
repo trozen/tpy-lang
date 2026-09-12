@@ -16,9 +16,9 @@ void main();
 
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
-    // y: Int32
+    // y: int32
     int32_t y;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
@@ -31,7 +31,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 // class Container:
 struct Container {
-    // val: Int32
+    // val: int32
     int32_t val;
 
 
@@ -50,11 +50,11 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
 inline void Container::take(std::optional<Point> p) {
     // if p is not None:
     if ((p.has_value())) {
-        // self.val = Int32(1)
+        // self.val = int32(1)
         this->val = 1;
     // else:
     } else {
-        // self.val = Int32(0)
+        // self.val = int32(0)
         this->val = 0;
     }
 }

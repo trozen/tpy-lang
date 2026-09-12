@@ -1,9 +1,9 @@
-from tpy import Int32
+from tpy import int32
 class Node:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
-def f(items: list[Node], flag: bool, n: Int32) -> Int32:
+def f(items: list[Node], flag: bool, n: int32) -> int32:
     v: Node | None = None
     if flag:
         v = Node(n)

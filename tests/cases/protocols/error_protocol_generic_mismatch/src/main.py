@@ -1,9 +1,9 @@
 from typing import Sequence
-from tpy import Int32
+from tpy import int32
 
-def sum_ints(items: Sequence[Int32]) -> Int32:
-    total: Int32 = 0
-    i: Int32 = 0
+def sum_ints(items: Sequence[int32]) -> int32:
+    total: int32 = 0
+    i: int32 = 0
     while i < len(items):
         total += items[i]
         i += 1

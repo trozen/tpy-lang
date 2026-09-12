@@ -75,7 +75,7 @@ void main() {
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
-// async def __anext__(self) -> Int32:
+// async def __anext__(self) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_AIter___anext__::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {

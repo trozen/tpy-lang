@@ -7,47 +7,47 @@
 # Destructor order of the superseded object under an in-iteration alias is
 # NOT pinned here: BUGS.md#loop-if-hoist-alias-early-del.
 from typing import Optional, Protocol
-from tpy import Int32, Own, ReturnException, dynamic, error_return, nocopy
+from tpy import int32, Own, ReturnException, dynamic, error_return, nocopy
 
 
 @nocopy
 class Flat:
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
 class Pic:
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
 @dynamic
 class Shape(Protocol):
-    def area(self) -> Int32: ...
+    def area(self) -> int32: ...
 
 
 class Sq:
-    def __init__(self, s: Int32) -> None:
+    def __init__(self, s: int32) -> None:
         self.s = s
 
-    def area(self) -> Int32:
+    def area(self) -> int32:
         return self.s * self.s
 
 
 class Rect:
-    def __init__(self, w: Int32, h: Int32) -> None:
+    def __init__(self, w: int32, h: int32) -> None:
         self.w = w
         self.h = h
 
-    def area(self) -> Int32:
+    def area(self) -> int32:
         return self.w * self.h
 
 
 class CM:
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
-    def __enter__(self) -> Int32:
+    def __enter__(self) -> int32:
         return self.n
 
     def __exit__(self, et, ev, tb) -> None:
@@ -58,7 +58,7 @@ class MyErr(Exception, ReturnException):
     pass
 
 
-def make_list() -> Own[list[Int32]]:
+def make_list() -> Own[list[int32]]:
     return [1, 2, 3]
 
 
@@ -205,7 +205,7 @@ def optional_rvalue_init() -> None:
 # ... the same with a list literal init, grown through the pointer.
 def optional_list_init() -> None:
     for i in range(2):
-        xs: Optional[list[Int32]] = [i]  # tpyc: ok
+        xs: Optional[list[int32]] = [i]  # tpyc: ok
         if xs is not None:
             xs.append(5)
             print("optional_list_init", xs)
@@ -227,10 +227,10 @@ def optional_redecl_post_loop() -> None:
 
 
 class Builder:
-    total: Int32
+    total: int32
 
     # Constructor position.
-    def __init__(self, k: Int32) -> None:
+    def __init__(self, k: int32) -> None:
         self.total = 0
         for i in range(2):
             if i == 0:
@@ -241,7 +241,7 @@ class Builder:
             self.total += f.n
 
     # Method position.
-    def add(self, k: Int32) -> None:
+    def add(self, k: int32) -> None:
         for i in range(2):
             if i == 0:
                 f = Flat(k)  # tpyc: ok
@@ -278,7 +278,7 @@ def try_body() -> None:
 
 
 # Match arm body.
-def match_arm(k: Int32) -> None:
+def match_arm(k: int32) -> None:
     match k:
         case 0:
             if k == 0:
@@ -295,7 +295,7 @@ def match_arm(k: Int32) -> None:
 # rebind slot a free function takes: the nested body classifies off the OUTER
 # prescan (BUGS.md#rebind-slot-missing-module-nested-def).
 def closure() -> None:
-    def inner(k: Int32) -> Int32:
+    def inner(k: int32) -> int32:
         for j in range(2):
             if j == 0:
                 f = Flat(k)  # tpyc: ok
@@ -310,7 +310,7 @@ def closure() -> None:
 
 # @error_return body.
 @error_return(MyErr)
-def error_return_body(i: Int32) -> Int32:
+def error_return_body(i: int32) -> int32:
     for j in range(2):
         if j == 0:
             f = Flat(i)  # tpyc: ok

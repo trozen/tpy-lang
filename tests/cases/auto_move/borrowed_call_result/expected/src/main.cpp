@@ -10,7 +10,7 @@ P& first(std::vector<P>& xs) {
     return ::tpy::__getitem__(xs, 0);
 }
 
-// def drop(xs: Own[list[P]]) -> Int32:
+// def drop(xs: Own[list[P]]) -> int32:
 int32_t drop(std::vector<P>&& xs) {
     // store: list[list[P]] = []
     std::vector<std::vector<P>> store = std::vector<std::vector<P>>{};
@@ -20,7 +20,7 @@ int32_t drop(std::vector<P>&& xs) {
     return ::tpy::__len__(store);
 }
 
-// def hold(p: Own[P]) -> Int32:
+// def hold(p: Own[P]) -> int32:
 int32_t hold(P&& p) {
     // store: list[P] = []
     std::vector<P> store = std::vector<P>{};

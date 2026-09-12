@@ -1,12 +1,12 @@
 # A __del__-bearing record has deleted copy ops, so repeating it must be
 # rejected in sema even with a list annotation (every repeat container copies).
-from tpy import Int32
+from tpy import int32
 
 
 class Res:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
     def __del__(self) -> None:

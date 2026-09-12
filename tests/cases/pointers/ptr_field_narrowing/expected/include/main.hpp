@@ -24,14 +24,14 @@ void main();
 
 // class Node:
 struct Node {
-    // value: Int32
+    // value: int32
     int32_t value;
 
-    // def __init__(self, value: Int32) -> None:
+    // def __init__(self, value: int32) -> None:
     Node() = default;
     explicit Node(int32_t value);
 
-    // def get_value(self) -> Int32:
+    // def get_value(self) -> int32:
     int32_t get_value() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Node";
 };
@@ -50,27 +50,27 @@ struct Container {
     Container() = default;
     explicit Container(Node* node);
 
-    // def read_if_present(self) -> Int32:
+    // def read_if_present(self) -> int32:
     int32_t read_if_present() const;
 
-    // def call_if_present(self) -> Int32:
+    // def call_if_present(self) -> int32:
     int32_t call_if_present() const;
 
-    // def read_without_check(self) -> Int32:
+    // def read_without_check(self) -> int32:
     int32_t read_without_check() const;
 
-    // def read_after_merge(self) -> Int32:
+    // def read_after_merge(self) -> int32:
     int32_t read_after_merge() const;
 
     // def mutate(self) -> None:
     void mutate() const;
 
     // # Method call on self invalidates self.node narrowing
-    // def read_after_method_call(self) -> Int32:
+    // def read_after_method_call(self) -> int32:
     int32_t read_after_method_call() const;
 
     // # Field reassignment invalidates narrowing
-    // def read_after_reassign(self, other: Ptr[Node]) -> Int32:
+    // def read_after_reassign(self, other: Ptr[Node]) -> int32:
     int32_t read_after_reassign(Node* other);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
@@ -90,7 +90,7 @@ struct Wrapper {
     explicit Wrapper(const Container& inner);
 
     // # Method call on nested field invalidates its sub-path narrowing
-    // def read_after_inner_mutate(self) -> Int32:
+    // def read_after_inner_mutate(self) -> int32:
     int32_t read_after_inner_mutate() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
@@ -101,10 +101,10 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
 }
 
 
-// def __init__(self, value: Int32) -> None:
+// def __init__(self, value: int32) -> None:
 inline Node::Node(int32_t value) : value(value) {}
 
-// def get_value(self) -> Int32:
+// def get_value(self) -> int32:
 inline int32_t Node::get_value() const {
     // return self.value
     return this->value;
@@ -113,35 +113,35 @@ inline int32_t Node::get_value() const {
 // def __init__(self, node: Ptr[Node]) -> None:
 inline Container::Container(Node* node) : node(node) {}
 
-// def read_if_present(self) -> Int32:
+// def read_if_present(self) -> int32:
 inline int32_t Container::read_if_present() const {
     // if self.node is not None:
     if ((this->node != nullptr)) {
         // return self.node.value  # tpyc: non_null(self.node)
         return this->node->value;
     }
-    // return Int32(-1)
+    // return int32(-1)
     return -1;
 }
 
-// def call_if_present(self) -> Int32:
+// def call_if_present(self) -> int32:
 inline int32_t Container::call_if_present() const {
     // if self.node is not None:
     if ((this->node != nullptr)) {
         // return self.node.get_value()  # tpyc: non_null(self.node)
         return this->node->get_value();
     }
-    // return Int32(-1)
+    // return int32(-1)
     return -1;
 }
 
-// def read_without_check(self) -> Int32:
+// def read_without_check(self) -> int32:
 inline int32_t Container::read_without_check() const {
     // return self.node.value  # tpyc: nullable(self.node)
     return ::tpy::deref_check(this->node).value;
 }
 
-// def read_after_merge(self) -> Int32:
+// def read_after_merge(self) -> int32:
 inline int32_t Container::read_after_merge() const {
     // if self.node is not None:
     if ((this->node != nullptr)) {
@@ -157,7 +157,7 @@ inline void Container::mutate() const {
 }
 
 // # Method call on self invalidates self.node narrowing
-// def read_after_method_call(self) -> Int32:
+// def read_after_method_call(self) -> int32:
 inline int32_t Container::read_after_method_call() const {
     // if self.node is not None:
     if ((this->node != nullptr)) {
@@ -166,12 +166,12 @@ inline int32_t Container::read_after_method_call() const {
         // return self.node.value  # tpyc: nullable(self.node)
         return ::tpy::deref_check(this->node).value;
     }
-    // return Int32(-1)
+    // return int32(-1)
     return -1;
 }
 
 // # Field reassignment invalidates narrowing
-// def read_after_reassign(self, other: Ptr[Node]) -> Int32:
+// def read_after_reassign(self, other: Ptr[Node]) -> int32:
 inline int32_t Container::read_after_reassign(Node* other) {
     // if self.node is not None:
     if ((this->node != nullptr)) {
@@ -180,7 +180,7 @@ inline int32_t Container::read_after_reassign(Node* other) {
         // return self.node.value  # tpyc: nullable(self.node)
         return ::tpy::deref_check(this->node).value;
     }
-    // return Int32(-1)
+    // return int32(-1)
     return -1;
 }
 
@@ -188,7 +188,7 @@ inline int32_t Container::read_after_reassign(Node* other) {
 inline Wrapper::Wrapper(const Container& inner) : inner(inner) {}
 
 // # Method call on nested field invalidates its sub-path narrowing
-// def read_after_inner_mutate(self) -> Int32:
+// def read_after_inner_mutate(self) -> int32:
 inline int32_t Wrapper::read_after_inner_mutate() const {
     // if self.inner.node is not None:
     if ((this->inner.node != nullptr)) {
@@ -197,7 +197,7 @@ inline int32_t Wrapper::read_after_inner_mutate() const {
         // return self.inner.node.value  # tpyc: nullable(self.inner.node)
         return ::tpy::deref_check(this->inner.node).value;
     }
-    // return Int32(-1)
+    // return int32(-1)
     return -1;
 }
 void __tpy_init();

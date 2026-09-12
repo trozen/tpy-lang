@@ -3,7 +3,7 @@
 
 namespace tpyapp::main {
 
-// x: Arr[Int32, 3] = [1, 2, 3]
+// x: Arr[int32, 3] = [1, 2, 3]
 std::array<int32_t, 3>* x{};
 
 void __tpy_init() {
@@ -11,7 +11,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // x: Arr[Int32, 3] = [1, 2, 3]
+    // x: Arr[int32, 3] = [1, 2, 3]
     static std::array<int32_t, 3> __global_slot_1 = {1, 2, 3};
     x = &__global_slot_1;
     // print(len(x))

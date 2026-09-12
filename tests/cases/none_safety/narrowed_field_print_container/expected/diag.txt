@@ -1,3 +1,3 @@
 main.py:22: warning: copies list[int] | None into field; use copy() to make this explicit
-main.py:23: warning: copies dict[str, Int32] | None into field; use copy() to make this explicit
-main.py:24: warning: copies set[Int32] | None into field; use copy() to make this explicit
+main.py:23: warning: copies dict[str, int32] | None into field; use copy() to make this explicit
+main.py:24: warning: copies set[int32] | None into field; use copy() to make this explicit

@@ -2,11 +2,11 @@
 # evaluated and discarded, and `cls` still binds to the defining class.
 from typing import Self
 
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Point:
-    def __init__(self, x: Int32):
+    def __init__(self, x: int32):
         self.x = x
 
     @classmethod

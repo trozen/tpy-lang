@@ -1,11 +1,11 @@
 # Iterating over an Iterable[Own[T]] parameter should move elements
 # at last use within the loop body (per-element move from owned iterator).
-from tpy import Int32, Own
+from tpy import int32, Own
 from typing import Iterable
 
 class Item:
-    value: Int32
-    def __init__(self, v: Int32) -> None:
+    value: int32
+    def __init__(self, v: int32) -> None:
         self.value = v
 
 def collect(source: Iterable[Own[Item]]) -> Own[list[Item]]:

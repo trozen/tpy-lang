@@ -13,17 +13,17 @@ inline constexpr std::string_view __name__ = "pkg.sub";
 
 // class Widget:
 struct Widget {
-    // value: Int32
+    // value: int32
     int32_t value;
-    // SIZE: ClassVar[Int32] = Int32(8)
+    // SIZE: ClassVar[int32] = int32(8)
     static inline int32_t SIZE = 8;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Widget() = default;
     explicit Widget(int32_t v);
 
     // @staticmethod
-    // def make(v: Int32) -> Own["Widget"]:
+    // def make(v: int32) -> Own["Widget"]:
     static Widget make(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "pkg.sub.Widget";
 };
@@ -34,11 +34,11 @@ inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Widget::Widget(int32_t v) : value(v) {}
 
 // @staticmethod
-// def make(v: Int32) -> Own["Widget"]:
+// def make(v: int32) -> Own["Widget"]:
 inline Widget Widget::make(int32_t v) {
     // return Widget(v)
     return Widget(v);

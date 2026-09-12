@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // p = Pair[Int32](3, 7)
+    // p = Pair[int32](3, 7)
     Pair<int32_t> p = Pair<int32_t>(3, 7);
     // print(p.min_val())
     std::cout << p.min_val() << "\n";

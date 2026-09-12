@@ -3,22 +3,22 @@
 # that the body analysis registered against the enclosing function;
 # otherwise spurious entries would alter codegen for the enclosing main()
 # (e.g. `xs` getting flagged as mutated when it isn't).
-from tpy import Fn, Int32, dispatch
+from tpy import Fn, int32, dispatch
 
 
 @dispatch
-def m[T, U](f: Fn[[T], U], xs: list[T]) -> Int32:
-    return Int32(len(xs))
+def m[T, U](f: Fn[[T], U], xs: list[T]) -> int32:
+    return int32(len(xs))
 
 
 @dispatch
-def m[T, U](f: Fn[[T, T], U], xs: list[T]) -> Int32:
-    return Int32(2 * len(xs))
+def m[T, U](f: Fn[[T, T], U], xs: list[T]) -> int32:
+    return int32(2 * len(xs))
 
 
 def main() -> None:
-    xs: list[Int32] = [1, 2, 3]
-    bias: Int32 = 10
+    xs: list[int32] = [1, 2, 3]
+    bias: int32 = 10
     # Lambda captures `bias` -- both candidate trials run body analysis
     # which registers `bias` as captured / typed. After Regime C picks
     # the 1-arg candidate, the post-Regime-C re-analysis sets up the

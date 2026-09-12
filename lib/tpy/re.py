@@ -28,10 +28,10 @@ TODO(v2): items deferred to a follow-up slice -- each is independent:
     `\1`-style backrefs in `sub` replacements, `(?#comment)` syntax,
     a few Unicode property edge cases.
   * `Match.span` / `start` / `end` returning `int` (BigInt) instead of
-    `Int32` to match CPython exactly. Today they return `Int32` -- in
+    `int32` to match CPython exactly. Today they return `int32` -- in
     practice tuple printing happens to match CPython, but type inference
     for downstream code differs (e.g. arithmetic on Match.start() picks
-    Int32 ops vs CPython's int).
+    int32 ops vs CPython's int).
   * `Pattern.__repr__` / `Match.__repr__` matching CPython's format
     (`re.compile('...')` / `<re.Match object; span=(a, b), match='...'>`).
     Blocked on a Python-style `repr(str)` helper (escape backslashes,
@@ -42,7 +42,7 @@ TODO(v2): items deferred to a follow-up slice -- each is independent:
 from __future__ import annotations
 from typing import Final, Iterator, Optional
 from tpy import (
-    Int32, UInt8, UInt32, UInt64, Ptr, readonly, Own, String, nocopy,
+    int32, uint8, uint32, uint64, Ptr, readonly, Own, String, nocopy,
 )
 from tpy.extern import cpp_template
 from tpy.mem import UninitArrayStorage, UninitHeapStorage
@@ -52,7 +52,7 @@ from tpy import take_ptr
 # Bare `0`/`1` flow through to `size_t` / `uint32_t` PCRE2 args because the
 # compiler treats integer literals (and literal-seeded locals like
 # `offset = 0`) as polymorphic enough to retro-fit unsigned targets when
-# the value provably fits. The remaining `UInt64(...)` / `UInt32(...)`
+# the value provably fits. The remaining `uint64(...)` / `uint32(...)`
 # casts in this file are on `len(...)` results (BigInt) and other typed
 # sources, where a runtime narrowing check is intentional.
 from _bindings import pcre2
@@ -99,16 +99,16 @@ class error(Exception):
 # Convert a PCRE2 negative error code into a human-readable message via
 # pcre2_get_error_message. Buffer is stack-allocated 256 bytes via
 # UninitArrayStorage -- RAII, no manual free.
-def _pcre2_error_msg(errcode: Int32) -> str:
-    buf = UninitArrayStorage[UInt8, 256]()
+def _pcre2_error_msg(errcode: int32) -> str:
+    buf = UninitArrayStorage[uint8, 256]()
     n = pcre2.get_error_message(errcode, buf.ptr(), 256)
     if n < 0:
         return "unknown error"
-    return unsafe_str_from_buf(unsafe_cast(buf.ptr()), UInt64(n))
+    return unsafe_str_from_buf(unsafe_cast(buf.ptr()), uint64(n))
 
 
-def _utf8_advance(data: Ptr[readonly[UInt8]], offset: UInt64,
-                  length: UInt64) -> UInt64:
+def _utf8_advance(data: Ptr[readonly[uint8]], offset: uint64,
+                  length: uint64) -> uint64:
     """Advance one UTF-8 character past `offset`. Empty-match bump-along
     cannot step a bare byte: PCRE2 runs in UTF mode by default and rejects
     an offset that lands mid-character. TPy str is well-formed UTF-8, so the
@@ -116,7 +116,7 @@ def _utf8_advance(data: Ptr[readonly[UInt8]], offset: UInt64,
     caller's loop still terminates."""
     if offset >= length:
         return offset + 1
-    lead = unsafe_load(data, UInt32.trunc(offset))
+    lead = unsafe_load(data, uint32.trunc(offset))
     if lead < 0xC0:        # ASCII (< 0x80) or a stray continuation byte
         return offset + 1
     if lead < 0xE0:
@@ -131,7 +131,7 @@ def _utf8_advance(data: Ptr[readonly[UInt8]], offset: UInt64,
 @nocopy
 class _OwnedCode:
     _p: Ptr[pcre2.Code]
-    def __init__(self, pattern: str, flags: Int32) -> None:
+    def __init__(self, pattern: str, flags: int32) -> None:
         self._p = _OwnedCode._compile(pattern, flags)
     def __del__(self) -> None:
         pcre2.code_free(self._p)
@@ -139,12 +139,12 @@ class _OwnedCode:
         return self._p
 
     @staticmethod
-    def _compile(pattern: str, flags: Int32) -> Ptr[pcre2.Code]:
-        errcode: Int32 = 0
-        erroff: UInt64 = 0
+    def _compile(pattern: str, flags: int32) -> Ptr[pcre2.Code]:
+        errcode: int32 = 0
+        erroff: uint64 = 0
         opts = _to_pcre2_opts(flags)
-        p_data: Ptr[readonly[UInt8]] = unsafe_cast(unsafe_ptr(pattern))
-        code = pcre2.compile(p_data, UInt64(len(pattern)),
+        p_data: Ptr[readonly[uint8]] = unsafe_cast(unsafe_ptr(pattern))
+        code = pcre2.compile(p_data, uint64(len(pattern)),
                              opts, take_ptr(errcode), take_ptr(erroff),
                              None)
         if code is None:
@@ -166,33 +166,33 @@ class _OwnedMatchContext:
 
 # ---------- Public flag constants (CPython-compatible bit values) ----------
 
-# User-facing flags are `Int32`: the total bit surface is tiny (max 256),
-# negative values are never valid, and Int32 is TPy's DefaultInt so users
-# don't need to write `UInt32(...)` when mixing flags with bare literals.
-# Internally `_to_pcre2_opts` translates to PCRE2's `UInt32` flag space
+# User-facing flags are `int32`: the total bit surface is tiny (max 256),
+# negative values are never valid, and int32 is TPy's DefaultInt so users
+# don't need to write `uint32(...)` when mixing flags with bare literals.
+# Internally `_to_pcre2_opts` translates to PCRE2's `uint32` flag space
 # where top-bit values like pcre2.PCRE2_ANCHORED require the wider unsigned range.
-NOFLAG:     Final[Int32] = 0
-IGNORECASE: Final[Int32] = 2
-MULTILINE:  Final[Int32] = 8
-DOTALL:     Final[Int32] = 16
-VERBOSE:    Final[Int32] = 64
-ASCII:      Final[Int32] = 256
+NOFLAG:     Final[int32] = 0
+IGNORECASE: Final[int32] = 2
+MULTILINE:  Final[int32] = 8
+DOTALL:     Final[int32] = 16
+VERBOSE:    Final[int32] = 64
+ASCII:      Final[int32] = 256
 
 # Short aliases (CPython exposes both forms).
-I: Final[Int32] = IGNORECASE
-M: Final[Int32] = MULTILINE
-S: Final[Int32] = DOTALL
-X: Final[Int32] = VERBOSE
-A: Final[Int32] = ASCII
+I: Final[int32] = IGNORECASE
+M: Final[int32] = MULTILINE
+S: Final[int32] = DOTALL
+X: Final[int32] = VERBOSE
+A: Final[int32] = ASCII
 
 
-def _to_pcre2_opts(flags: Int32) -> UInt32:
+def _to_pcre2_opts(flags: int32) -> uint32:
     """Translate `re.*` flag bits to PCRE2 option bits.
 
     UTF + UCP are on by default (matches CPython str-mode regex behavior:
     Unicode-aware \\d, \\w, \\s, case-folding). `re.ASCII` opts out.
     """
-    opts: UInt32 = pcre2.PCRE2_UTF | pcre2.PCRE2_UCP
+    opts: uint32 = pcre2.PCRE2_UTF | pcre2.PCRE2_UCP
     if (flags & IGNORECASE) != 0:
         opts |= pcre2.PCRE2_CASELESS
     if (flags & MULTILINE) != 0:
@@ -216,41 +216,41 @@ class Match:
 
     _md: _OwnedMatchData
     _subject: str
-    _ngroups: Int32   # number of populated entries in the ovector
+    _ngroups: int32   # number of populated entries in the ovector
 
     def __init__(self, md: Own[_OwnedMatchData], subject: str,
-                 ngroups: Int32) -> None:
+                 ngroups: int32) -> None:
         self._md = md
         self._subject = subject
         self._ngroups = ngroups
 
-    def _ovec_load(self, i: UInt32) -> UInt64:
+    def _ovec_load(self, i: uint32) -> uint64:
         ovec = pcre2.get_ovector_pointer(self._md.get())
         return unsafe_load(ovec, i)
 
-    def span(self, group: Int32 = 0) -> tuple[Int32, Int32]:
+    def span(self, group: int32 = 0) -> tuple[int32, int32]:
         """(start, end) byte offsets of `group` in the subject. (-1, -1)
         means the group did not participate.
 
         TODO(v2): non-participating group should surface as `(-1, -1)` to
         match CPython; today returns `(0, 0)`. Trivial to fix once the
-        Match accessor APIs commit to either Int32 or BigInt return type
+        Match accessor APIs commit to either int32 or BigInt return type
         (-1 needs a signed type)."""
         if group < 0 or group >= self._ngroups:
             raise error(f"no such group: {group}")
-        start = self._ovec_load(UInt32.trunc(group * 2))
-        end = self._ovec_load(UInt32.trunc(group * 2 + 1))
+        start = self._ovec_load(uint32.trunc(group * 2))
+        end = self._ovec_load(uint32.trunc(group * 2 + 1))
         if start == pcre2.PCRE2_UNSET or end == pcre2.PCRE2_UNSET:
             return (0, 0)
-        return (Int32.trunc(start), Int32.trunc(end))
+        return (int32.trunc(start), int32.trunc(end))
 
-    def start(self, group: Int32 = 0) -> Int32:
+    def start(self, group: int32 = 0) -> int32:
         return self.span(group)[0]
 
-    def end(self, group: Int32 = 0) -> Int32:
+    def end(self, group: int32 = 0) -> int32:
         return self.span(group)[1]
 
-    def group(self, i: Int32 = 0) -> str:
+    def group(self, i: int32 = 0) -> str:
         """Substring of the subject for `group` (0 = full match)."""
         s, e = self.span(i)
         return self._subject[s:e]
@@ -275,9 +275,9 @@ class Pattern:
     _code: _OwnedCode
     _mctx: _OwnedMatchContext
     pattern: str
-    flags: Int32
+    flags: int32
 
-    def __init__(self, pattern: str, flags: Int32 = NOFLAG) -> None:
+    def __init__(self, pattern: str, flags: int32 = NOFLAG) -> None:
         # Both field initializers reference only ctor params / module-level
         # names -- no body-locals -- so they MIL-hoist into move-construction
         # (safe on @nocopy+__del__ fields).
@@ -290,14 +290,14 @@ class Pattern:
         self.pattern = pattern
         self.flags = flags
 
-    def _do_match(self, subject: str, start_offset: UInt64,
-                  opts: UInt32) -> Optional[Own[Match]]:
+    def _do_match(self, subject: str, start_offset: uint64,
+                  opts: uint32) -> Optional[Own[Match]]:
         md_raw = pcre2.match_data_create_from_pattern(self._code.get(), None)
         if md_raw is None:
             raise error("out of memory allocating match data")
         md = _OwnedMatchData(md_raw)
-        s_data: Ptr[readonly[UInt8]] = unsafe_cast(unsafe_ptr(subject))
-        rc = pcre2.match(self._code.get(), s_data, UInt64(len(subject)),
+        s_data: Ptr[readonly[uint8]] = unsafe_cast(unsafe_ptr(subject))
+        rc = pcre2.match(self._code.get(), s_data, uint64(len(subject)),
                          start_offset, opts, md.get(), self._mctx.get())
         if rc < 0:
             if rc == pcre2.PCRE2_ERROR_NOMATCH:
@@ -321,9 +321,9 @@ class Pattern:
         Yields `Own[Match]` -- a Match owns its PCRE2 match-data, so it
         moves out of the generator by value rather than borrowing a frame
         local."""
-        offset: UInt64 = 0
-        sub_len = UInt64(len(subject))
-        s_data: Ptr[readonly[UInt8]] = unsafe_cast(unsafe_ptr(subject))
+        offset: uint64 = 0
+        sub_len = uint64(len(subject))
+        s_data: Ptr[readonly[uint8]] = unsafe_cast(unsafe_ptr(subject))
         while offset <= sub_len:
             md_raw = pcre2.match_data_create_from_pattern(self._code.get(), None)
             if md_raw is None:
@@ -356,32 +356,32 @@ class Pattern:
         of pattern shape -- divergence flagged in `no_cpython.txt`."""
         out: list[str] = []
         for m in self.finditer(subject):
-            out.append(m.group(Int32(0)))
+            out.append(m.group(int32(0)))
         return out
 
-    def _substitute(self, repl: str, subject: str, opts: UInt32,
+    def _substitute(self, repl: str, subject: str, opts: uint32,
                     md: Ptr[pcre2.MatchData]) -> str:
         """One pcre2_substitute call (plus the buffer-resize retry).
         `opts` selects the mode: SUBSTITUTE_GLOBAL replaces every match;
         SUBSTITUTE_MATCHED replaces exactly the match already sitting in
         `md` (pass None for md in global mode)."""
-        sub_data: Ptr[readonly[UInt8]] = unsafe_cast(unsafe_ptr(subject))
-        repl_data: Ptr[readonly[UInt8]] = unsafe_cast(unsafe_ptr(repl))
+        sub_data: Ptr[readonly[uint8]] = unsafe_cast(unsafe_ptr(subject))
+        repl_data: Ptr[readonly[uint8]] = unsafe_cast(unsafe_ptr(repl))
         # `outlen` is both input (buffer capacity PCRE2 reads on entry) and
         # output (actual bytes written / bytes needed). A plain local +
         # take_ptr avoids needing a separate single-cell storage object.
         # `outbuf` is heap-allocated via UninitHeapStorage -- freed on
         # scope exit, including the raise path and on retry-reassignment.
-        # `cap` stays as an explicit UInt64(...) cast because len() returns
-        # Int32; the signed->unsigned conversion isn't automatic in TPy
+        # `cap` stays as an explicit uint64(...) cast because len() returns
+        # int32; the signed->unsigned conversion isn't automatic in TPy
         # (cross-sign widening is unsigned->signed-only). See BUGS.md.
-        cap = UInt64(len(subject) * 2 + len(repl) + 16)
-        outlen: UInt64 = cap
-        outbuf = UninitHeapStorage[UInt8](UInt32.trunc(cap))
+        cap = uint64(len(subject) * 2 + len(repl) + 16)
+        outlen: uint64 = cap
+        outbuf = UninitHeapStorage[uint8](uint32.trunc(cap))
         rc = pcre2.substitute(
-            self._code.get(), sub_data, UInt64(len(subject)),
+            self._code.get(), sub_data, uint64(len(subject)),
             0, opts | pcre2.PCRE2_SUBSTITUTE_OVERFLOW_LENGTH, md,
-            self._mctx.get(), repl_data, UInt64(len(repl)),
+            self._mctx.get(), repl_data, uint64(len(repl)),
             outbuf.ptr(), take_ptr(outlen),
         )
         if rc == pcre2.PCRE2_ERROR_NOMEMORY:
@@ -390,18 +390,18 @@ class Pattern:
             # Drop OVERFLOW_LENGTH on retry: buffer is now correctly sized,
             # and asking for overflow-length again would make PCRE2 redo
             # the sizing pass for nothing.
-            outbuf = UninitHeapStorage[UInt8](UInt32.trunc(outlen))
+            outbuf = UninitHeapStorage[uint8](uint32.trunc(outlen))
             rc = pcre2.substitute(
-                self._code.get(), sub_data, UInt64(len(subject)),
+                self._code.get(), sub_data, uint64(len(subject)),
                 0, opts, md,
-                self._mctx.get(), repl_data, UInt64(len(repl)),
+                self._mctx.get(), repl_data, uint64(len(repl)),
                 outbuf.ptr(), take_ptr(outlen),
             )
         if rc < 0:
             raise error(_pcre2_error_msg(rc))
         return unsafe_str_from_buf(unsafe_cast(outbuf.ptr()), outlen)
 
-    def sub(self, repl: str, subject: str, count: Int32 = 0) -> str:
+    def sub(self, repl: str, subject: str, count: int32 = 0) -> str:
         """Replace matches of the pattern in `subject` with `repl`.
         PCRE2-native backref syntax: $1..$9, ${name}. `count` limits the
         number of replacements; 0 replaces all, negative replaces none
@@ -426,15 +426,15 @@ class Pattern:
         # match anchored at the same position, and only then skip one
         # character forward.
         result: str = subject
-        offset: UInt64 = 0
+        offset: uint64 = 0
         remaining = count
         prev_empty = False
         while remaining > 0:
-            s_len = UInt64(len(result))
+            s_len = uint64(len(result))
             if offset > s_len:
                 break
-            s_data: Ptr[readonly[UInt8]] = unsafe_cast(unsafe_ptr(result))
-            mopts: UInt32 = 0
+            s_data: Ptr[readonly[uint8]] = unsafe_cast(unsafe_ptr(result))
+            mopts: uint32 = 0
             if prev_empty:
                 mopts = pcre2.PCRE2_NOTEMPTY_ATSTART | pcre2.PCRE2_ANCHORED
             rc = pcre2.match(self._code.get(), s_data, s_len, offset,
@@ -456,12 +456,12 @@ class Pattern:
             # Next attempt starts right after the replacement text. The
             # add-before-subtract order keeps the unsigned arithmetic
             # non-negative when the replacement shrinks the string.
-            offset = mend + UInt64(len(result)) - old_len
+            offset = mend + uint64(len(result)) - old_len
             prev_empty = mend == mstart
             remaining -= 1
         return result      # md drops at end of scope
 
-    def split(self, subject: str, maxsplit: Int32 = 0) -> Own[list[str]]:
+    def split(self, subject: str, maxsplit: int32 = 0) -> Own[list[str]]:
         """Split `subject` at each match. `maxsplit=0` means no limit.
 
         Driven off finditer: each piece is the text between the previous
@@ -470,14 +470,14 @@ class Pattern:
         splits at -- a hand-rolled bump-along here would slice from the
         advanced scan offset and silently drop the inter-match text."""
         out: list[str] = []
-        last: Int32 = 0
-        splits: Int32 = 0
+        last: int32 = 0
+        splits: int32 = 0
         for m in self.finditer(subject):
-            if maxsplit > Int32(0) and splits >= maxsplit:
+            if maxsplit > int32(0) and splits >= maxsplit:
                 break
             out.append(subject[last:m.start()])
             last = m.end()
-            splits += Int32(1)
+            splits += int32(1)
         out.append(subject[last:])
         return out
 
@@ -487,29 +487,29 @@ class Pattern:
 # `re.search("...", subj)` etc. compile-and-throw-away -- the compile cache
 # that CPython has needs module-level mutable state, deferred.
 
-def compile(pattern: str, flags: Int32 = NOFLAG) -> Own[Pattern]:
+def compile(pattern: str, flags: int32 = NOFLAG) -> Own[Pattern]:
     return Pattern(pattern, flags)
 
 def search(pattern: str, subject: str,
-           flags: Int32 = NOFLAG) -> Optional[Own[Match]]:
+           flags: int32 = NOFLAG) -> Optional[Own[Match]]:
     return Pattern(pattern, flags).search(subject)
 
 def match(pattern: str, subject: str,
-          flags: Int32 = NOFLAG) -> Optional[Own[Match]]:
+          flags: int32 = NOFLAG) -> Optional[Own[Match]]:
     return Pattern(pattern, flags).match(subject)
 
 def fullmatch(pattern: str, subject: str,
-              flags: Int32 = NOFLAG) -> Optional[Own[Match]]:
+              flags: int32 = NOFLAG) -> Optional[Own[Match]]:
     return Pattern(pattern, flags).fullmatch(subject)
 
 def findall(pattern: str, subject: str,
-            flags: Int32 = NOFLAG) -> Own[list[str]]:
+            flags: int32 = NOFLAG) -> Own[list[str]]:
     return Pattern(pattern, flags).findall(subject)
 
-def sub(pattern: str, repl: str, subject: str, count: Int32 = 0,
-        flags: Int32 = NOFLAG) -> str:
+def sub(pattern: str, repl: str, subject: str, count: int32 = 0,
+        flags: int32 = NOFLAG) -> str:
     return Pattern(pattern, flags).sub(repl, subject, count)
 
-def split(pattern: str, subject: str, maxsplit: Int32 = Int32(0),
-          flags: Int32 = NOFLAG) -> Own[list[str]]:
+def split(pattern: str, subject: str, maxsplit: int32 = int32(0),
+          flags: int32 = NOFLAG) -> Own[list[str]]:
     return Pattern(pattern, flags).split(subject, maxsplit)

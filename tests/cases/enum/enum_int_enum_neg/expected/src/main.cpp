@@ -42,7 +42,7 @@ std::optional<::tpyapp::main::Prio> EnumUtil<::tpyapp::main::Prio>::try_parse(st
 namespace tpyapp::main {
 
 
-// def neg(p: Prio) -> Int32:
+// def neg(p: Prio) -> int32:
 int32_t neg(Prio p) {
     // m = -p
     int32_t m = (-static_cast<int32_t>(p));

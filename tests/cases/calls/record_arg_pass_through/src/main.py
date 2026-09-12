@@ -1,19 +1,19 @@
 # Record names as free-fn call args (const/mutated slots, reseated borrow,
 # narrowed alias); callee mutations observed on the caller's object (aliasing).
-from tpy import Int32
+from tpy import int32
 
 
 class A:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32):
+    def __init__(self, x: int32):
         self.x = x
 
 
 class B:
-    y: Int32
+    y: int32
 
-    def __init__(self, y: Int32):
+    def __init__(self, y: int32):
         self.y = y
 
 
@@ -26,7 +26,7 @@ class Holder:
         self.b = A(2)
 
 
-def read_rec(a: A) -> Int32:
+def read_rec(a: A) -> int32:
     return a.x
 
 
@@ -34,12 +34,12 @@ def mutate_rec(a: A) -> None:
     a.x += 10
 
 
-def pass_both(a: A, b: A) -> Int32:
+def pass_both(a: A, b: A) -> int32:
     mutate_rec(b)
     return read_rec(a) + read_rec(b)
 
 
-def through_pointer(h: Holder, flag: bool) -> Int32:
+def through_pointer(h: Holder, flag: bool) -> int32:
     p = h.a
     if flag:
         p = h.b
@@ -47,7 +47,7 @@ def through_pointer(h: Holder, flag: bool) -> Int32:
     return read_rec(p)
 
 
-def through_narrowing(v: A | B) -> Int32:
+def through_narrowing(v: A | B) -> int32:
     if isinstance(v, A):
         mutate_rec(v)
         return read_rec(v)

@@ -11,7 +11,7 @@ IntTree g_int;
 // g_dict: JsonValue = {"a": 1, "b": {"c": 2}}
 JsonValue g_dict;
 
-// def depth(t: Tree) -> Int32:
+// def depth(t: Tree) -> int32:
 int32_t depth(const Tree& t) {
     // if isinstance(t, Leaf):
     if (std::holds_alternative<Leaf>(t.value)) {

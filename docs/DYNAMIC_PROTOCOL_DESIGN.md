@@ -57,7 +57,7 @@ class Speakable(Protocol):
 
 @dynamic
 class Drawable(Protocol):
-    def draw(self, x: Int32, y: Int32) -> None: ...
+    def draw(self, x: int32, y: int32) -> None: ...
 ```
 
 Without `@dynamic`, a protocol is always statically dispatched (C++20 concept, template
@@ -507,11 +507,11 @@ template<typename T, __Awaitable_Concept__<T> __tpy_Impl>
 struct tpy::RefAdapter<Awaitable<T>, __tpy_Impl> : Awaitable<T> { /* ... */ };
 ```
 
-Each used `Awaitable[Int32]` resolves to `Awaitable<int32_t>`, and the adapter
+Each used `Awaitable[int32]` resolves to `Awaitable<int32_t>`, and the adapter
 partial-spec selects on `tpy::Adapter<Awaitable<int32_t>, ConcreteImpl>`.
-`Awaitable[Int32]` and `Awaitable[str]` therefore have independent vtables.
+`Awaitable[int32]` and `Awaitable[str]` therefore have independent vtables.
 Direct C++ inheritance threads the parameterized form through to derived
-records (`class IntBox(Awaitable[Int32])` -> `struct IntBox : Awaitable<int32_t>`).
+records (`class IntBox(Awaitable[int32])` -> `struct IntBox : Awaitable<int32_t>`).
 A generic @dynamic protocol extending another generic @dynamic protocol
 preserves the type param in the base clause (`struct Counter<T> : Source<T>`).
 
@@ -537,7 +537,7 @@ A non-object-safe protocol with `@dynamic` is a compile error.
 
 ### Generic `@dynamic` + direct inheritance restriction
 
-When a record explicitly inherits a generic `@dynamic` protocol (`class IntSink(Sink[Int32])`),
+When a record explicitly inherits a generic `@dynamic` protocol (`class IntSink(Sink[int32])`),
 the override must match the base virtual's `::tpy::param_val_or_ref_t<T>` shape. For methods
 whose `T` appears only in the return position, this works -- the direct-inheritance codegen
 emits the correct override. For methods with `T` in *parameter* position, the override

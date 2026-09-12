@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def format_value(value: Int32, *, width: Int32, fill: str = " ") -> str:
+// def format_value(value: int32, *, width: int32, fill: str = " ") -> str:
 std::string format_value(int32_t value, int32_t width, std::string_view fill) {
     // s = str(value)
     std::string s = ::tpy::fixed_to_str<int32_t>(value);

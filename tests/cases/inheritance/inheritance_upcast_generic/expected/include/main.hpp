@@ -33,10 +33,10 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
     return os;
 }
 
-// class IntContainer(Container[Int32]):
+// class IntContainer(Container[int32]):
 struct IntContainer : Container<int32_t> {
 
-    // def __init__(self, value: Int32) -> None:
+    // def __init__(self, value: int32) -> None:
     IntContainer() = default;
     explicit IntContainer(int32_t value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.IntContainer";
@@ -48,7 +48,7 @@ inline std::ostream& operator<<(std::ostream& os, const IntContainer& obj) {
 }
 
 
-// def __init__(self, value: Int32) -> None:
+// def __init__(self, value: int32) -> None:
 inline IntContainer::IntContainer(int32_t value) : Container<int32_t>(value) {}
 void __tpy_init();
 } // namespace tpyapp::main

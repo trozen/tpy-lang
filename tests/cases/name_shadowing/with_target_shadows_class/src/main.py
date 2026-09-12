@@ -5,15 +5,15 @@
 # passing blind.
 from typing import ClassVar
 
-from tpy import Int32
+from tpy import int32
 
 
 class Registry:
-    code: ClassVar[Int32] = 999
+    code: ClassVar[int32] = 999
 
 
 class Guard:
-    def __init__(self, code: Int32):
+    def __init__(self, code: int32):
         self.code = code
 
     def __enter__(self) -> "Guard":
@@ -23,7 +23,7 @@ class Guard:
         pass
 
 
-def run() -> Int32:
+def run() -> int32:
     g = Guard(7)
     with g as Registry:  # tpyc: ok
         Registry.code += 1

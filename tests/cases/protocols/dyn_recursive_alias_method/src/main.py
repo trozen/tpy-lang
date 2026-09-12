@@ -7,21 +7,21 @@
 # recursive alias is emitted before the wrapper struct (see BUGS.md). Read-only
 # traversal is intentional.
 from typing import Protocol
-from tpy import dynamic, Int32
+from tpy import dynamic, int32
 from treelib import Tree, leaf_count
 
 
 @dynamic
 class Counter(Protocol):
-    def count(self, t: Tree[int]) -> Int32: ...
+    def count(self, t: Tree[int]) -> int32: ...
 
 
 class LeafCounter:
-    def count(self, t: Tree[int]) -> Int32:
+    def count(self, t: Tree[int]) -> int32:
         return leaf_count(t)
 
 
-def run(c: Counter) -> Int32:
+def run(c: Counter) -> int32:
     t: Tree[int] = [1, [2, 3], 4]
     return c.count(t)
 

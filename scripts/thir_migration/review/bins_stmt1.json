@@ -90,7 +90,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "Tuple-unpack for over an `is not None`-narrowed `list[tuple[Int32, Int32]] | None` param: no route selected, fallback 'stmt.for_each:tuple.iter_shape' at line 2093.",
+  "evidence": "Tuple-unpack for over an `is not None`-narrowed `list[tuple[int32, int32]] | None` param: no route selected, fallback 'stmt.for_each:tuple.iter_shape' at line 2093.",
   "probe": "scripts/thir_migration/review/probes/stmt1/fe_2056_narrowed_opt_unpack.py",
   "plain_raise": false,
   "known_shape": null
@@ -126,7 +126,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "Nullable borrow-tuple hoist with an owning-call source in one arm (`t = h.pair` / `t = mk()` at `tuple[Int32, Point] | None`); fallback 'if.hoist_type' at line 3096 (a second body-level reject at return.slot_type rides along).",
+  "evidence": "Nullable borrow-tuple hoist with an owning-call source in one arm (`t = h.pair` / `t = mk()` at `tuple[int32, Point] | None`); fallback 'if.hoist_type' at line 3096 (a second body-level reject at return.slot_type rides along).",
   "probe": "scripts/thir_migration/review/probes/stmt1/if_3096_opt_btuple_call.py",
   "plain_raise": false,
   "known_shape": null
@@ -222,7 +222,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "Coerce-wrapped @error_return bind (`v: int = small(n)` with `small -> Int32`); pinned in test_thir_error_return.py:396; fallback 'error_return.stmt_shape' at 3272.",
+  "evidence": "Coerce-wrapped @error_return bind (`v: int = small(n)` with `small -> int32`); pinned in test_thir_error_return.py:396; fallback 'error_return.stmt_shape' at 3272.",
   "probe": "scripts/thir_migration/review/probes/stmt1/er_3272_coerce_bind.py",
   "plain_raise": false,
   "known_shape": null
@@ -258,7 +258,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "First bind of an `Own[list[Int32]]` @error_return result (`xs = items(n)`); pinned test_thir_error_return.py:418; fallback 'error_return.bind_slot' at 3381.",
+  "evidence": "First bind of an `Own[list[int32]]` @error_return result (`xs = items(n)`); pinned test_thir_error_return.py:418; fallback 'error_return.bind_slot' at 3381.",
   "probe": "scripts/thir_migration/review/probes/stmt1/er_3381_bind_slot.py",
   "plain_raise": false,
   "known_shape": null
@@ -282,7 +282,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "`a: Array[Int32, 2] | None = None` -- a pointer-repr Optional whose pointee is outside `_opt_pointee_wide`; fallback 'decl.opt_slot_pointee' at 3992.",
+  "evidence": "`a: Array[int32, 2] | None = None` -- a pointer-repr Optional whose pointee is outside `_opt_pointee_wide`; fallback 'decl.opt_slot_pointee' at 3992.",
   "probe": "scripts/thir_migration/review/probes/stmt1/opt_3992_array.py",
   "plain_raise": false,
   "known_shape": null
@@ -438,7 +438,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "REFUSAL",
   "confidence": "medium",
-  "evidence": "Binding a second name to a structural-protocol global (`it = iter(xs); it2 = it; for v in it2: ...`) is refused by codegen on BOTH paths: 'CodeGenError: Cannot determine C++ type for global it2 with structural protocol type Iterator[Int32]' (the skeleton's namespace-global declaration, raised before any body lowering). The raise here is never reached; the code comment already calls it mirror-defensive. Diagnostic unchanged by the cutover.",
+  "evidence": "Binding a second name to a structural-protocol global (`it = iter(xs); it2 = it; for v in it2: ...`) is refused by codegen on BOTH paths: 'CodeGenError: Cannot determine C++ type for global it2 with structural protocol type Iterator[int32]' (the skeleton's namespace-global declaration, raised before any body lowering). The raise here is never reached; the code comment already calls it mirror-defensive. Diagnostic unchanged by the cutover.",
   "probe": "scripts/thir_migration/review/probes/stmt1/gl_4316_iter_alias_loop.py",
   "plain_raise": false,
   "known_shape": null
@@ -486,7 +486,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "`ys: list[Int32] = h.xs` at module scope (non-name lvalue source; pinned test_thir_top_level.py:750); fallback 'top_level.global_slot_shape' at 4393.",
+  "evidence": "`ys: list[int32] = h.xs` at module scope (non-name lvalue source; pinned test_thir_top_level.py:750); fallback 'top_level.global_slot_shape' at 4393.",
   "probe": "scripts/thir_migration/review/probes/stmt1/gl_4393_field_src.py",
   "plain_raise": false,
   "known_shape": null
@@ -498,7 +498,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "`n = 5; u: Point | Int32 = n` at module scope -- a value-typed global NAME source whose type differs from the union slot; fallback 'top_level.global_slot_shape' at 4428.",
+  "evidence": "`n = 5; u: Point | int32 = n` at module scope -- a value-typed global NAME source whose type differs from the union slot; fallback 'top_level.global_slot_shape' at 4428.",
   "probe": "scripts/thir_migration/review/probes/stmt1/gl_4428_union_int_src.py",
   "plain_raise": false,
   "known_shape": null
@@ -510,7 +510,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "`u: list[Int32] | Int32 = [1, 2]` at module scope (container literal into a union slot); fallback 'top_level.global_slot_shape' at 4434.",
+  "evidence": "`u: list[int32] | int32 = [1, 2]` at module scope (container literal into a union slot); fallback 'top_level.global_slot_shape' at 4434.",
   "probe": "scripts/thir_migration/review/probes/stmt1/gl_4434_union_list_literal.py",
   "plain_raise": false,
   "known_shape": null
@@ -522,7 +522,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "`d: dict[float, Int32] = {1.5: 2}` at module scope (float dict key fails `_container_literal_shape_ok`); fallback 'top_level.global_slot_elem' at 4437.",
+  "evidence": "`d: dict[float, int32] = {1.5: 2}` at module scope (float dict key fails `_container_literal_shape_ok`); fallback 'top_level.global_slot_elem' at 4437.",
   "probe": "scripts/thir_migration/review/probes/stmt1/gl_4437_dict_float_key.py",
   "plain_raise": false,
   "known_shape": null
@@ -534,7 +534,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "`d: dict[Int32, Box[Point]] = {1: Box(Point(1))}` at module scope (@nocopy value -> make_ordered_map); fallback 'top_level.global_slot_elem' at 4445.",
+  "evidence": "`d: dict[int32, Box[Point]] = {1: Box(Point(1))}` at module scope (@nocopy value -> make_ordered_map); fallback 'top_level.global_slot_elem' at 4445.",
   "probe": "scripts/thir_migration/review/probes/stmt1/gl_4445_nocopy_dict.py",
   "plain_raise": false,
   "known_shape": null
@@ -666,7 +666,7 @@
   "reason": "reason_for()",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "Nested def with a param default (`def f(x: Int32 = 1)`); pinned test_fallback.py:205 / test_thir_nested_def.py:112; fallback 'stmt.nested_def:nesteddef.param_default' at 4776.",
+  "evidence": "Nested def with a param default (`def f(x: int32 = 1)`); pinned test_fallback.py:205 / test_thir_nested_def.py:112; fallback 'stmt.nested_def:nesteddef.param_default' at 4776.",
   "probe": "scripts/thir_migration/review/probes/stmt1/nd_4776_default.py",
   "plain_raise": false,
   "known_shape": null
@@ -738,7 +738,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "Nested def with a `list[Int32]` param (also `Int32 | None`); fallback 'nesteddef.param_type' at 4864.",
+  "evidence": "Nested def with a `list[int32]` param (also `int32 | None`); fallback 'nesteddef.param_type' at 4864.",
   "probe": "scripts/thir_migration/review/probes/stmt1/nd_4864_list_param.py",
   "plain_raise": false,
   "known_shape": null
@@ -786,7 +786,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "`u[0] = 5` after `isinstance(u, list)` on a recursive-alias (wrapper) union PARAM `type Tree = Int32 | list[Tree]`; fallback 'stmt.assign:setitem.const_narrowed_recv' at 5651. NB the comment says the AST writes through a const alias here (uncompilable C++, BUGS.md), so AST 'emits' broken code.",
+  "evidence": "`u[0] = 5` after `isinstance(u, list)` on a recursive-alias (wrapper) union PARAM `type Tree = int32 | list[Tree]`; fallback 'stmt.assign:setitem.const_narrowed_recv' at 5651. NB the comment says the AST writes through a const alias here (uncompilable C++, BUGS.md), so AST 'emits' broken code.",
   "probe": "scripts/thir_migration/review/probes/stmt1/cn_5651_wrapper_union.py",
   "plain_raise": false,
   "known_shape": null
@@ -810,7 +810,7 @@
   "reason": "stmt_reject_reason(ret)",
   "bin": "DEAD",
   "confidence": "high",
-  "evidence": "Sema rejects a str literal returned from a Char-typed function in both sync and async bodies ('Type mismatch in return value: expected Char, got str', res_6051_char.py / res_6051_sync_char.py); a coerced literal would arrive as a TpyCoerce node, not a TpyStrLiteral.",
+  "evidence": "Sema rejects a str literal returned from a char-typed function in both sync and async bodies ('Type mismatch in return value: expected char, got str', res_6051_char.py / res_6051_sync_char.py); a coerced literal would arrive as a TpyCoerce node, not a TpyStrLiteral.",
   "probe": null,
   "plain_raise": false,
   "known_shape": null

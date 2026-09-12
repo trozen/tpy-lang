@@ -1,9 +1,9 @@
 # Optional subject: a bare capture matches None and binds the full T | None
 # (CPython semantics); with a preceding `case None:` arm it narrows to T.
-from tpy import Int32
+from tpy import int32
 
 
-def full(v: Int32 | None) -> None:
+def full(v: int32 | None) -> None:
     match v:
         case x:
             if x is None:
@@ -12,7 +12,7 @@ def full(v: Int32 | None) -> None:
                 print(x + 1)
 
 
-def narrowed(v: Int32 | None) -> None:
+def narrowed(v: int32 | None) -> None:
     match v:
         case None:
             print("none arm")

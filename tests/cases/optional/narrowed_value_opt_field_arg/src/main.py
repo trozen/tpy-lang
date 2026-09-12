@@ -2,7 +2,7 @@
 # the field read, but a NARROWED read is the deref instead -- both have to reach
 # the callee with the value the field holds.
 import dialer
-from tpy import Int32
+from tpy import int32
 
 
 class Conn:
@@ -13,10 +13,10 @@ class Conn:
         self.host = h
         self.timeout = t
 
-    def whole(self) -> Int32:
+    def whole(self) -> int32:
         return dialer.dial(self.host, self.timeout)
 
-    def narrowed(self) -> Int32:
+    def narrowed(self) -> int32:
         if self.timeout is None:
             return 0
         return dialer.dial(self.host, self.timeout)

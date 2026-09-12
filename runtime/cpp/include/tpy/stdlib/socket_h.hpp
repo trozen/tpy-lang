@@ -102,7 +102,7 @@ int socketpair(int domain, int type, int protocol, int sv[2]);
 std::uint16_t htons(std::uint16_t hostshort);
 std::uint16_t ntohs(std::uint16_t netshort);
 // `inet_pton` and `inet_ntop` -- we use uint8_t* instead of char* for the
-// IP-text buffers so TPy bindings can use Ptr[UInt8] naturally (matches
+// IP-text buffers so TPy bindings can use Ptr[uint8] naturally (matches
 // the re module's convention for string-like byte buffers). uint8_t* and
 // char* have identical ABI; libc's real decls use char*, linker resolves.
 int            inet_pton(int af, const std::uint8_t* src, void* dst);

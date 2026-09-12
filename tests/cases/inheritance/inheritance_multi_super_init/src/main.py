@@ -1,6 +1,6 @@
 # Only Named has __init__; super().__init__() resolves to it. The aggregate
 # base (Counted) is default-constructed automatically.
-from tpy import Int32
+from tpy import int32
 
 
 class Named:
@@ -14,17 +14,17 @@ class Named:
 
 
 class Counted:
-    count: Int32
+    count: int32
 
 
 class Widget(Named, Counted):
-    def __init__(self, name: str, count: Int32) -> None:
+    def __init__(self, name: str, count: int32) -> None:
         super().__init__(name)
         self.count = count
 
 
 def main() -> None:
-    w = Widget("button", Int32(5))
+    w = Widget("button", int32(5))
     print(w.describe())
     print(w.name)
     print(w.count)

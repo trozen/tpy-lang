@@ -6,13 +6,13 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // a: Int32 = 10
+    // a: int32 = 10
     int32_t a = 10;
-    // b: Int32 = 20
+    // b: int32 = 20
     int32_t b = 20;
-    // c: Int32 = 30
+    // c: int32 = 30
     int32_t c = 30;
-    // def sum_all(x: Int32) -> Int32:
+    // def sum_all(x: int32) -> int32:
     auto sum_all = [&a, &b, &c](int32_t x) -> int32_t {
         // return x + a + b + c
         return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(x, a)), b)), c));

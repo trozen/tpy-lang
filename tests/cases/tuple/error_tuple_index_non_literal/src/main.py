@@ -1,9 +1,9 @@
 # Error: tuple index must be a compile-time integer literal
-from tpy import Int32
+from tpy import int32
 
 def main() -> None:
-    t: tuple[Int32, str] = (Int32(1), "hello")
-    i: Int32 = Int32(0)
+    t: tuple[int32, str] = (int32(1), "hello")
+    i: int32 = int32(0)
     x = t[i]  # tpyc: error(/compile-time integer literal/)
 
 main()

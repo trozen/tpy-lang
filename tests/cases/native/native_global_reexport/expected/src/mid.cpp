@@ -4,13 +4,13 @@
 namespace tpyapp::mid {
 
 
-// def use_global() -> Int32:
+// def use_global() -> int32:
 int32_t use_global() {
     // return GLOBAL_VAL
     return ::tpy_test_global;
 }
 
-// def use_normal() -> Int32:
+// def use_normal() -> int32:
 int32_t use_normal() {
     // return NORMAL_VAL
     return ::tpyapp::leaf::NORMAL_VAL;

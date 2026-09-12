@@ -14,7 +14,7 @@ int32_t total(T_xs&& xs);
 int32_t total(int32_t xs);
 
 // @overload
-// def total(xs: Iterable[Own[Int32]]) -> Int32: ...
+// def total(xs: Iterable[Own[int32]]) -> int32: ...
 template<::tpystd::typing::Iterable<int32_t> T_xs>
 int32_t total(T_xs&& xs) {
     // s = 0
@@ -34,7 +34,7 @@ int32_t total(T_xs&& xs) {
 }
 
 // @overload
-// def total(xs: Int32) -> Int32: ...
+// def total(xs: int32) -> int32: ...
 inline int32_t total(int32_t xs) {
     // return xs
     return xs;

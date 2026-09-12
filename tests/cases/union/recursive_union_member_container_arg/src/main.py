@@ -1,10 +1,10 @@
 # A container that is ALREADY the union's member element (list[V], not a
-# concrete list[Int32]) coerces into a recursive-union param -- it is the
+# concrete list[int32]) coerces into a recursive-union param -- it is the
 # union's list member, so it is NOT falsely rejected by the concrete-container
 # diagnostic (which only fires when a leaf genuinely differs from the union).
-from tpy import Int32
+from tpy import int32
 
-type V = Int32 | list[V]
+type V = int32 | list[V]
 
 
 def first_kind(v: V) -> str:

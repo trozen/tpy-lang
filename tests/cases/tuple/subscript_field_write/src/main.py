@@ -2,17 +2,17 @@
 # The borrow tuple aliases the caller's record, so the write is observed on `leaf`
 # afterward -- forcing the value-vs-reference distinction (a silent copy into the tuple
 # would leave leaf.n at 1 and diverge from CPython on the cpy-parity check).
-from tpy import Int32
+from tpy import int32
 
 
 class Leaf:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
-def bump(t: tuple[Int32, Leaf]) -> None:
+def bump(t: tuple[int32, Leaf]) -> None:
     t[1].n = 5
     t[1].n += 3
 

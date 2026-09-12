@@ -308,7 +308,7 @@ std::tuple<std::optional<::tpy::Bytes>, std::optional<std::string>> _encode_body
     return out;
 }
 
-// def _is_redirect(status: Int32) -> bool:
+// def _is_redirect(status: int32) -> bool:
 bool _is_redirect(int32_t status) {
     // return (status == 301 or status == 302 or status == 303
     // or status == 307 or status == 308)
@@ -407,7 +407,7 @@ void _drop_body_headers(::tpy::ordered_map<std::string, std::string>& headers) {
     }
 }
 
-// def _rebuild_method(method: str, status: Int32) -> str:
+// def _rebuild_method(method: str, status: int32) -> str:
 std::string _rebuild_method(std::string_view method, int32_t status) {
     // # Mirrors requests.Session.rebuild_method: 303 and 302 coerce any non-HEAD
     // # method to GET; 301 coerces only POST. 307/308 preserve the method.
@@ -671,22 +671,22 @@ Response _request_on(::tpystd::tplib::box::Box<::tpystd::http::client::_Connecti
     // # Box from a named local (slicing guard), so build the connection inline.
     // if parts.scheme == "https":
     if ((parts.scheme == "https")) {
-        // hport: Int32 = DEFAULT_HTTPS_PORT
+        // hport: int32 = DEFAULT_HTTPS_PORT
         int32_t hport = DEFAULT_HTTPS_PORT;
         // if pnum is not None:
         if ((pnum.has_value())) {
-            // hport = Int32(pnum)
+            // hport = int32(pnum)
             hport = ((*pnum)).to_fixed_check<int32_t>();
         }
         // return Box(HTTPSConnection(host, hport, timeout, _ssl_context_for(verify)))
         ::tpystd::ssl::SSLContext __tmp_2 = _ssl_context_for(verify);
         return ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPSConnection>(::tpystd::http::client::HTTPSConnection((*host), hport, timeout, &(__tmp_2)));
     }
-    // port: Int32 = DEFAULT_HTTP_PORT
+    // port: int32 = DEFAULT_HTTP_PORT
     int32_t port = DEFAULT_HTTP_PORT;
     // if pnum is not None:
     if ((pnum.has_value())) {
-        // port = Int32(pnum)
+        // port = int32(pnum)
         port = ((*pnum)).to_fixed_check<int32_t>();
     }
     // return Box(HTTPConnection(host, port, timeout))
@@ -709,13 +709,13 @@ std::string _pool_key(std::string_view url, const ::tpy::Union<bool, std::string
         // host = ""
         host = "";
     }
-    // port: Int32 = DEFAULT_HTTPS_PORT if scheme == "https" else DEFAULT_HTTP_PORT
+    // port: int32 = DEFAULT_HTTPS_PORT if scheme == "https" else DEFAULT_HTTP_PORT
     int32_t port = (((scheme == "https")) ? (DEFAULT_HTTPS_PORT) : (DEFAULT_HTTP_PORT));
     // pnum = parts.port
     std::optional<::tpy::BigInt> pnum = parts.port();
     // if pnum is not None:
     if ((pnum.has_value())) {
-        // port = Int32(pnum)
+        // port = int32(pnum)
         port = ((*pnum)).to_fixed_check<int32_t>();
     }
     // # isinstance + early return (not elif): the elif arm's `not verify` on the
@@ -898,7 +898,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_CookieJar___iter__::__nex
 }
 
 
-// def iter_content(self, chunk_size: Int32) -> Iterator[bytes]:
+// def iter_content(self, chunk_size: int32) -> Iterator[bytes]:
 std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_Response_iter_content::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -918,7 +918,7 @@ std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_Response_iter_content::_
             data = __self.content;
             // n = len(data)
             n = ::tpy::__len__(data);
-            // pos: Int32 = 0
+            // pos: int32 = 0
             pos = 0;
             __state = S_JOIN_3;
             continue;
@@ -1359,7 +1359,7 @@ void CookieJar::_ingest(std::string_view raw, std::string_view req_host, std::st
     ::tpy::__setitem__(this->_store, name, Cookie(name, value, domain, path, secure, delete_, expires_at));
 }
 
-// def __init__(self, status_code: Int32, reason: str, url: str,
+// def __init__(self, status_code: int32, reason: str, url: str,
 // headers: Own[CaseInsensitiveDict], content: bytes,
 // cookies: Own[CookieJar],
 // raw: Own[HTTPResponse] | None = None) -> None:
@@ -1374,7 +1374,7 @@ Session::Session() : headers(::tpy::ordered_map<std::string, std::string>()), pa
 // files: dict[str, FileField] | None,
 // json: JsonValue | None, headers: dict[str, str],
 // auth: tuple[str, str] | None,
-// timeout: float | None, hop: Int32,
+// timeout: float | None, hop: int32,
 // send_cookies: CookieJar,
 // verify: bool | str = True,
 // stream: bool = False,
@@ -1461,7 +1461,7 @@ Response Session::_send_for_hop(std::string_view method, std::string_view url, c
 // json: JsonValue | None,
 // headers: dict[str, str], auth: tuple[str, str] | None,
 // timeout: float | None, history: Own[list[Response]],
-// hop: Int32, follow: bool, send_cookies: CookieJar,
+// hop: int32, follow: bool, send_cookies: CookieJar,
 // verify: bool | str = True,
 // stream: bool = False) -> Own[Response]:
 Response Session::_hop(std::string_view method, std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpy::ordered_map<std::string, FileField>* files, const ::tpystd::json::JsonValue* json, ::tpy::ordered_map<std::string, std::string>& headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout, std::vector<Response>&& history, int32_t hop, bool follow, CookieJar& send_cookies, const ::tpy::Union<bool, std::string>& verify, bool stream) {

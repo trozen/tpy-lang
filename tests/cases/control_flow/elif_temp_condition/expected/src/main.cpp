@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def has_items(items: list[Int32]) -> bool:
+// def has_items(items: list[int32]) -> bool:
 bool has_items(const std::vector<int32_t>& items) {
     // return len(items) > 0
     return (::tpy::__len__(items) > 0);
 }
 
-// def test(x: Int32) -> Int32:
+// def test(x: int32) -> int32:
 int32_t test(int32_t x) {
     // if x < 0:
     if ((x < 0)) {

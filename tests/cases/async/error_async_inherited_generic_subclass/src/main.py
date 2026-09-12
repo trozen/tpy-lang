@@ -1,9 +1,9 @@
 # A generic subclass of a generic base (Child[U](Box[U])) instantiated
 # concretely: the inherited async method's coro-struct owner has an unbound
-# type param (mro_ancestors carries Child's U, not the instantiation's Int32),
+# type param (mro_ancestors carries Child's U, not the instantiation's int32),
 # so it is rejected with a clear diagnostic. Same guard as the multi-level case.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
 class Box[T]:
@@ -23,7 +23,7 @@ class Child[U](Box[U]):
 
 
 async def main_coro() -> None:
-    c = Child[Int32](7)
+    c = Child[int32](7)
     r = await c.fetch()  # tpyc: error(/type parameters are not bound to concrete types/)
     print("got:", r)
 

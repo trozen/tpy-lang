@@ -1,10 +1,10 @@
 # Container subscript READS of enum elements -- list[Color] (literal and dynamic
-# index) and dict[Int32, Color] (fixed-int key), read as bare VALUE-form enum
+# index) and dict[int32, Color] (fixed-int key), read as bare VALUE-form enum
 # values. Exercises the compositional value-leaf subscript-read gate, which
 # admits enum elements alongside scalars/str/bytes (the read renders the same
 # `::tpy::__getitem__(c, i)` on both paths). Enums are value types, so a read is
 # a copy on both paths -- no reference/aliasing distinction to force here.
-from tpy import Int32
+from tpy import int32
 from enum import Enum
 
 

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def mk() -> Own[list[Int32]]:
+// def mk() -> Own[list[int32]]:
 std::vector<int32_t> mk() {
     // return [1, 2]
     return {1, 2};
@@ -17,7 +17,7 @@ void main() {
     // xs.append(3)
     xs.push_back(3);
     // # A list slot: the element name lands bare and the slot init copies.
-    // ls: list[list[Int32]] = [xs for i in range(2)]  # tpyc: warning(/copies list/)
+    // ls: list[list[int32]] = [xs for i in range(2)]  # tpyc: warning(/copies list/)
     std::vector<std::vector<int32_t>> ls = ({
         std::vector<std::vector<int32_t>> __result;
         const int32_t __stop_0 = 2;
@@ -28,7 +28,7 @@ void main() {
         std::move(__result);
     });
     // # ... the dict VALUE slot takes the same bare read.
-    // dv: dict[Int32, list[Int32]] = {i: xs for i in range(2)}  # tpyc: warning(/copies list/)
+    // dv: dict[int32, list[int32]] = {i: xs for i in range(2)}  # tpyc: warning(/copies list/)
     ::tpy::ordered_map<int32_t, std::vector<int32_t>> dv = ({
         ::tpy::ordered_map<int32_t, std::vector<int32_t>> __result;
         const int32_t __stop_1 = 2;

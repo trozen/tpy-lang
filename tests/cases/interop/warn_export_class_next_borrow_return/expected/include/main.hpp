@@ -19,10 +19,10 @@ inline constexpr std::string_view __name__ = "__main__";
 // @export
 // class Node:
 struct Node {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32):
+    // def __init__(self, v: int32):
     Node() = default;
     explicit Node(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Node";
@@ -38,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 struct Repeat {
     // _cur: Node
     Node _cur;
-    // _n: Int32
+    // _n: int32
     int32_t _n;
 
     // def __init__(self):
@@ -60,9 +60,9 @@ inline std::ostream& operator<<(std::ostream& os, const Repeat& obj) {
 // @export
 // class Rows:
 struct Rows {
-    // _row: list[Int32]
+    // _row: list[int32]
     std::vector<int32_t> _row;
-    // _n: Int32
+    // _n: int32
     int32_t _n;
 
     // def __init__(self):
@@ -70,7 +70,7 @@ struct Rows {
 
     auto& __iter__() { return *this; }
 
-    // def __next__(self) -> list[Int32]:
+    // def __next__(self) -> list[int32]:
     std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __next__();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Rows";
 };
@@ -85,7 +85,7 @@ inline std::ostream& operator<<(std::ostream& os, const Rows& obj) {
 struct Peek {
     // _cur: Node
     Node _cur;
-    // _n: Int32
+    // _n: int32
     int32_t _n;
 
     // def __init__(self):
@@ -108,7 +108,7 @@ inline std::ostream& operator<<(std::ostream& os, const Peek& obj) {
 struct Swapping {
     // _cur: Node
     Node _cur;
-    // _n: Int32
+    // _n: int32
     int32_t _n;
 
     // def __init__(self):
@@ -132,7 +132,7 @@ inline std::ostream& operator<<(std::ostream& os, const Swapping& obj) {
 // @export
 // class Fresh:
 struct Fresh {
-    // _n: Int32
+    // _n: int32
     int32_t _n;
 
     // def __init__(self):
@@ -151,7 +151,7 @@ inline std::ostream& operator<<(std::ostream& os, const Fresh& obj) {
 }
 
 
-// def __init__(self, v: Int32):
+// def __init__(self, v: int32):
 inline Node::Node(int32_t v) : v(v) {}
 
 // def __init__(self):
@@ -179,7 +179,7 @@ inline std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> Repeat::__ne
 // def __init__(self):
 inline Rows::Rows() : _row(std::vector<int32_t>{1, 2}), _n(0) {}
 
-// def __next__(self) -> list[Int32]:
+// def __next__(self) -> list[int32]:
 inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> Rows::__next__() {
     // if self._n >= 2:
     if ((this->_n >= 2)) {

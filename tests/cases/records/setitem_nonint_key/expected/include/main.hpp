@@ -16,18 +16,18 @@ void main();
 
 // class Store:
 struct Store {
-    // _a: Int32
+    // _a: int32
     int32_t _a;
-    // _b: Int32
+    // _b: int32
     int32_t _b;
 
     // def __init__(self) -> None:
     Store();
 
-    // def __getitem__(self, key: str) -> Int32:
+    // def __getitem__(self, key: str) -> int32:
     int32_t __getitem__(std::string_view key) const;
 
-    // def __setitem__(self, key: str, value: Int32) -> None:
+    // def __setitem__(self, key: str, value: int32) -> None:
     void __setitem__(std::string_view key, int32_t value);
 
     // def __delitem__(self, key: str) -> None:
@@ -46,19 +46,19 @@ inline std::ostream& operator<<(std::ostream& os, const Store& obj) {
 
 // class IntBox:
 struct IntBox {
-    // v: Int32
+    // v: int32
     int32_t v;
 
     // def __init__(self) -> None:
     IntBox();
 
-    // def __getitem__(self, i: Int32) -> Int32:
+    // def __getitem__(self, i: int32) -> int32:
     int32_t __getitem__(int32_t i) const;
 
-    // def __setitem__(self, i: Int32, value: Int32) -> None:
+    // def __setitem__(self, i: int32, value: int32) -> None:
     void __setitem__(int32_t i, int32_t value);
 
-    // def __delitem__(self, i: Int32) -> None:
+    // def __delitem__(self, i: int32) -> None:
     void __delitem__(int32_t i);
 
     int32_t operator[](int32_t i) const {
@@ -76,7 +76,7 @@ inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
 // def __init__(self) -> None:
 inline Store::Store() : _a(0), _b(0) {}
 
-// def __getitem__(self, key: str) -> Int32:
+// def __getitem__(self, key: str) -> int32:
 inline int32_t Store::__getitem__(std::string_view key) const {
     // if key == "a":
     if ((key == "a")) {
@@ -87,7 +87,7 @@ inline int32_t Store::__getitem__(std::string_view key) const {
     return this->_b;
 }
 
-// def __setitem__(self, key: str, value: Int32) -> None:
+// def __setitem__(self, key: str, value: int32) -> None:
 inline void Store::__setitem__(std::string_view key, int32_t value) {
     // if key == "a":
     if ((key == "a")) {
@@ -116,19 +116,19 @@ inline void Store::__delitem__(std::string_view key) {
 // def __init__(self) -> None:
 inline IntBox::IntBox() : v(0) {}
 
-// def __getitem__(self, i: Int32) -> Int32:
+// def __getitem__(self, i: int32) -> int32:
 inline int32_t IntBox::__getitem__(int32_t i) const {
     // return self.v
     return this->v;
 }
 
-// def __setitem__(self, i: Int32, value: Int32) -> None:
+// def __setitem__(self, i: int32, value: int32) -> None:
 inline void IntBox::__setitem__(int32_t i, int32_t value) {
     // self.v = i + value
     this->v = (::tpy::add_check<int32_t>(i, value));
 }
 
-// def __delitem__(self, i: Int32) -> None:
+// def __delitem__(self, i: int32) -> None:
 inline void IntBox::__delitem__(int32_t i) {
     // self.v = -i
     this->v = ::tpy::neg_check<int32_t>(i);

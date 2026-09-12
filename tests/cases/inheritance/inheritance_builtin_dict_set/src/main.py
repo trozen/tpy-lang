@@ -1,16 +1,16 @@
 # A user record inheriting dict / set: the undeclared methods dispatch to the
 # builtin stubs, and the record keeps reference semantics across a call.
-from tpy import Int32, StrView
+from tpy import int32, StrView
 
 
-class Counter(dict[StrView, Int32]):
+class Counter(dict[StrView, int32]):
     label: str
 
     def __init__(self, label: str) -> None:
         self.label = label
 
 
-class Tags(set[Int32]):
+class Tags(set[int32]):
     def __init__(self) -> None:
         pass
 
@@ -21,7 +21,7 @@ def bump(c: Counter, key: StrView) -> None:
     c[key] = c.get(key, 0) + 1
 
 
-def add_tag(t: Tags, tag: Int32) -> None:
+def add_tag(t: Tags, tag: int32) -> None:
     t.add(tag)
 
 

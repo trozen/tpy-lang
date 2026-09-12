@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 from typing import Any
 class Bag:
     _data: dict[str, Any]

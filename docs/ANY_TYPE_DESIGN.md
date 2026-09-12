@@ -313,7 +313,7 @@ A regression test pins this behavior so it isn't accidentally "fixed" toward
 CPython parity. (Full Python numeric coercion across `Any` operands is in
 Future Extensions.) The sibling type-erased form has since gone the other
 way: a value union compares BY VALUE across alternatives through
-`::tpy::Union`'s own operators, so `Int32 | Float64` holding 1 equals one
+`::tpy::Union`'s own operators, so `int32 | float64` holding 1 equals one
 holding 1.0. The
 two forms therefore disagree today; `BUGS.md#any-eq-compares-typeid-not-value`
 tracks settling `Any` the same way.

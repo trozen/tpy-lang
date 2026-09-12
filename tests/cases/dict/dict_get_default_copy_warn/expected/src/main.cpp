@@ -6,11 +6,11 @@ namespace tpyapp::main {
 
 // def main():
 void main() {
-    // d: dict[str, list[Int32]] = {}
+    // d: dict[str, list[int32]] = {}
     ::tpy::ordered_map<std::string, std::vector<int32_t>> d = ::tpy::ordered_map<std::string, std::vector<int32_t>>();
     // d["a"] = [1, 2]
     ::tpy::__setitem__(d, "a", std::vector<int32_t>{1, 2});
-    // fallback: list[Int32] = []
+    // fallback: list[int32] = []
     std::vector<int32_t> fallback = std::vector<int32_t>{};
     // x = d.get("a", fallback)  # tpyc: warning(/returns a copy of the stored value/)
     std::vector<int32_t> x = ::tpy::dict_get_default(d, "a", fallback);
@@ -20,7 +20,7 @@ void main() {
     std::vector<int32_t> y = std::vector<int32_t>(::tpy::dict_get_default(d, "a", fallback));
     // print(len(y))
     std::cout << ::tpy::__len__(y) << "\n";
-    // counts: dict[str, Int32] = {}
+    // counts: dict[str, int32] = {}
     ::tpy::ordered_map<std::string, int32_t> counts = ::tpy::ordered_map<std::string, int32_t>();
     // m = counts.get("k", 5)  # tpyc: ok
     int32_t m = ::tpy::dict_get_default(counts, "k", 5);

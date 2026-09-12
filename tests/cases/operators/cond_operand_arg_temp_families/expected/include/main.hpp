@@ -110,10 +110,10 @@ inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
 
 // class Neg:
 struct Neg {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Neg() = default;
     explicit Neg(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Neg";
@@ -126,13 +126,13 @@ inline std::ostream& operator<<(std::ostream& os, const Neg& obj) {
 
 // class Sink:
 struct Sink {
-    // seen: Int32
+    // seen: int32
     int32_t seen;
 
     // def __init__(self) -> None:
     Sink();
 
-    // def take(self, tag: str, xs: list[Int32] | None) -> bool:
+    // def take(self, tag: str, xs: list[int32] | None) -> bool:
     bool take(std::string_view tag, const std::vector<int32_t>* xs);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Sink";
 };
@@ -144,10 +144,10 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
 
 // class Inner:
 struct Inner {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Inner() = default;
     explicit Inner(int32_t n);
 
@@ -163,7 +163,7 @@ inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
 
 // class Outer:
 struct Outer {
-    // m: Int32
+    // m: int32
     int32_t m;
 
     // def __init__(self, i: Inner) -> None:
@@ -179,14 +179,14 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
 
 // class Counter:
 struct Counter {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Counter() = default;
     explicit Counter(int32_t n);
 
-    // def items(self) -> Iterator[Int32]:
+    // def items(self) -> Iterator[int32]:
     auto items() const {
         // i = 0
         int32_t i = 0;
@@ -212,10 +212,10 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
 
-    // def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: int32) -> None:
     Point() = default;
     explicit Point(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
@@ -287,13 +287,13 @@ inline double Circle::area() {
     return ((3.0) * (this->r));
 }
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Neg::Neg(int32_t v) : v(v) {}
 
 // def __init__(self) -> None:
 inline Sink::Sink() : seen(0) {}
 
-// def take(self, tag: str, xs: list[Int32] | None) -> bool:
+// def take(self, tag: str, xs: list[int32] | None) -> bool:
 inline bool Sink::take(std::string_view tag, const std::vector<int32_t>* xs) {
     // if xs is not None:
     if ((xs != nullptr)) {
@@ -306,7 +306,7 @@ inline bool Sink::take(std::string_view tag, const std::vector<int32_t>* xs) {
     return true;
 }
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Inner::Inner(int32_t n) : n(n) {}
 
 // def bump(self) -> None:
@@ -325,7 +325,7 @@ inline Outer::Outer(Inner& i) {
     this->m = i.n;
 }
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Counter::Counter(int32_t n) {
     // print("genrecv build", n)
     std::cout << "genrecv build" << " " << n << "\n";
@@ -333,7 +333,7 @@ inline Counter::Counter(int32_t n) {
     this->n = n;
 }
 
-// def __init__(self, x: Int32) -> None:
+// def __init__(self, x: int32) -> None:
 inline Point::Point(int32_t x) : x(x) {}
 
 // def __init__(self, target: Point) -> None:

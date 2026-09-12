@@ -5,13 +5,13 @@
 namespace tpyapp::b {
 
 
-// def bee() -> Int32:
+// def bee() -> int32:
 int32_t bee() {
-    // return Int32(7)
+    // return int32(7)
     return 7;
 }
 
-// def use_aye() -> Int32:
+// def use_aye() -> int32:
 int32_t use_aye() {
     // return aye()
     return ::tpyapp::a::aye();

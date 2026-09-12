@@ -139,7 +139,7 @@ def type_param_names(typ: TpyType | None) -> set[str]:
     """Every type parameter `typ` names, at any depth.
 
     The copy verdict keys on *contains* rather than *is* a `TypeParamRef`: a
-    `T | None` or `tuple[T, Int32]` payload is just as unknowable as a bare
+    `T | None` or `tuple[T, int32]` payload is just as unknowable as a bare
     `T`, and answering it confidently is a false positive at a value `T`.
     """
     names: set[str] = set()

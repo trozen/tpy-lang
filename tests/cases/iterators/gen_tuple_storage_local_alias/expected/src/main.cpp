@@ -4,11 +4,11 @@
 namespace tpyapp::main {
 
 
-// def gen() -> Iterator[Int32]:
+// def gen() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // items: list[tuple[Int32, Box]] = [(1, Box(5))]
+        // items: list[tuple[int32, Box]] = [(1, Box(5))]
         items.emplace(std::vector<std::tuple<int32_t, Box>>{std::tuple<int32_t, Box>{1, Box(5)}});
         // t = items[0]
         t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__((*items), 0));
@@ -35,7 +35,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
 }
 
 
-// def gen() -> Iterator[Int32]:
+// def gen() -> Iterator[int32]:
 __gen_gen gen() {
     return __gen_gen();
 }

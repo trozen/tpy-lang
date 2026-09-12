@@ -17,17 +17,17 @@ void main();
 
 // class P:
 struct P {
-    // c: Char
+    // c: char
     char c;
 
-    // def __init__(self, c: Char) -> None:
+    // def __init__(self, c: char) -> None:
     P() = default;
     explicit P(char c);
 
-    // def get(self) -> Char:
+    // def get(self) -> char:
     char get() const;
 
-    // def put(self, c: Char) -> None:
+    // def put(self, c: char) -> None:
     void put(char c);
     static constexpr std::string_view __tpy_class_name__ = "__main__.P";
 };
@@ -38,16 +38,16 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 }
 
 
-// def __init__(self, c: Char) -> None:
+// def __init__(self, c: char) -> None:
 inline P::P(char c) : c(c) {}
 
-// def get(self) -> Char:
+// def get(self) -> char:
 inline char P::get() const {
     // return self.c
     return this->c;
 }
 
-// def put(self, c: Char) -> None:
+// def put(self, c: char) -> None:
 inline void P::put(char c) {
     // self.c = c
     this->c = c;

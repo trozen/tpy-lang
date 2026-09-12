@@ -1,14 +1,14 @@
 # A method call whose receiver walks a field CHAIN with a non-F1 middle link (a
 # generic record over a module-local union alias): the link walk is the fence,
 # so the receiver rejects.
-from tpy import Int32, Own, StrView
+from tpy import int32, Own, StrView
 
-type Num = Int32 | StrView
+type Num = int32 | StrView
 
 
 class Holder[T]:
     tag: T
-    xs: list[Int32]
+    xs: list[int32]
 
     def __init__(self, tag: T):
         self.tag = tag
@@ -27,7 +27,7 @@ def use(o: Outer) -> None:
 
 
 def main() -> None:
-    use(Outer(Holder[Num](Int32(1))))
+    use(Outer(Holder[Num](int32(1))))
 
 
 main()

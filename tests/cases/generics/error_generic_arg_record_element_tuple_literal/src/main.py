@@ -2,13 +2,13 @@
 # pointer-repr storage there, outside the value-tuple family the slot renders.
 # The value-element tuple literal is pinned by
 # tests/cases/generics/generic_infer_compound_t_literal_coerce.
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 

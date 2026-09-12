@@ -1,10 +1,10 @@
 # Printing containers with union/optional element types
-from tpy import Int32
+from tpy import int32
 
 class Pt:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32) -> None:
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
     def __repr__(self) -> str:
@@ -12,15 +12,15 @@ class Pt:
 
 def main() -> None:
     # Dict with union values
-    d: dict[str, Int32 | str] = {"a": 1, "b": "hello"}
+    d: dict[str, int32 | str] = {"a": 1, "b": "hello"}
     print(d)
 
     # List with union elements
-    lst: list[Int32 | str] = [1, "two", 3]
+    lst: list[int32 | str] = [1, "two", 3]
     print(lst)
 
     # Dict with optional values
-    d2: dict[str, Int32 | None] = {"x": 42, "y": None}
+    d2: dict[str, int32 | None] = {"x": 42, "y": None}
     print(d2)
 
     # List with optional elements
@@ -28,7 +28,7 @@ def main() -> None:
     print(l2)
 
     # Tuple with union members
-    t: tuple[Int32 | str, Int32 | str] = (1, "hi")
+    t: tuple[int32 | str, int32 | str] = (1, "hi")
     print(t)
 
     # Nested: list in union value
@@ -44,11 +44,11 @@ def main() -> None:
     print(d4)
 
     # List of tuples with union
-    l4: list[tuple[str, Int32 | str]] = [("a", 1), ("b", "two")]
+    l4: list[tuple[str, int32 | str]] = [("a", 1), ("b", "two")]
     print(l4)
 
     # Three-way union with None (exercises std::monostate path)
-    l5: list[Int32 | str | None] = [1, "two", None]
+    l5: list[int32 | str | None] = [1, "two", None]
     print(l5)
 
 main()

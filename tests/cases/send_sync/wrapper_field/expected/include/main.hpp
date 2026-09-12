@@ -16,10 +16,10 @@ void main();
 
 // class Handler:
 struct Handler {
-    // cb: Send[Callable[[Int32], None]]
+    // cb: Send[Callable[[int32], None]]
     std::function<void(int32_t)> cb;
 
-    // def __init__(self, cb: Send[Callable[[Int32], None]]) -> None:
+    // def __init__(self, cb: Send[Callable[[int32], None]]) -> None:
     explicit Handler(std::function<void(int32_t)> cb);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Handler";
 };
@@ -30,7 +30,7 @@ inline std::ostream& operator<<(std::ostream& os, const Handler& obj) {
 }
 
 
-// def __init__(self, cb: Send[Callable[[Int32], None]]) -> None:
+// def __init__(self, cb: Send[Callable[[int32], None]]) -> None:
 inline Handler::Handler(std::function<void(int32_t)> cb) : cb(cb) {}
 void __tpy_init();
 } // namespace tpyapp::main

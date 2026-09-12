@@ -1,7 +1,7 @@
 # A C-binding @native record constructed at an owning slot: a C binding
 # builds through aggregate initialization, a render the record argument
 # branch does not spell.
-from tpy import Int32, Ptr
+from tpy import int32, Ptr
 from tpy.extern import native
 from tpy.unsafe import unsafe_take
 

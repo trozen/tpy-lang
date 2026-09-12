@@ -6,9 +6,9 @@ namespace tpyapp::pkg::bmod {
 // _B: bytes = b"BBBB"
 ::tpy::Bytes _B;
 
-// def b_first() -> Int32:
+// def b_first() -> int32:
 int32_t b_first() {
-    // return Int32(_B[0])
+    // return int32(_B[0])
     return ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(_B, 0));
 }
 

@@ -55,7 +55,7 @@ void main();
 struct Msg {
     // color: str = ""
     std::string color = "";
-    // value: Int32 = 0
+    // value: int32 = 0
     int32_t value = 0;
 
     explicit Msg(std::string_view color = "", int32_t value = 0);
@@ -117,13 +117,13 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
 
 // class Registry:
 struct Registry {
-    // items: dict[Int32, Item]
+    // items: dict[int32, Item]
     ::tpy::ordered_map<int32_t, Item> items;
 
     // def __init__(self):
     Registry();
 
-    // def update(self, key: Int32, color: Color) -> None:
+    // def update(self, key: int32, color: Color) -> None:
     void update(int32_t key, Color color);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Registry";
 };
@@ -273,7 +273,7 @@ inline std::string Item::__repr__() const {
 // def __init__(self):
 inline Registry::Registry() : items(::tpy::ordered_map<int32_t, Item>()) {}
 
-// def update(self, key: Int32, color: Color) -> None:
+// def update(self, key: int32, color: Color) -> None:
 inline void Registry::update(int32_t key, Color color) {
     // if key in self.items:
     if ((this->items.contains(key))) {

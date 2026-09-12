@@ -3,7 +3,7 @@
 
 namespace tpyapp::main {
 
-// x: Int32 | None = None
+// x: int32 | None = None
 std::optional<int32_t> x;
 
 // def prove() -> None:
@@ -12,7 +12,7 @@ void prove() {
     if (!((x.has_value()))) ::tpy::raise_assertion_error();
 }
 
-// def use() -> Int32:
+// def use() -> int32:
 int32_t use() {
     // return x + 1  # tpyc: warning(/Potential None access/)
     return (::tpy::add_check<int32_t>(::tpy::deref_optional_check(x), 1));
@@ -23,7 +23,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // x: Int32 | None = None
+    // x: int32 | None = None
     x = std::nullopt;
 }
 

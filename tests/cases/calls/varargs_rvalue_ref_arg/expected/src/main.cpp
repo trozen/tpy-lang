@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def sum_all(*items: Box) -> Int32:
+// def sum_all(*items: Box) -> int32:
 int32_t sum_all(::tpy::varargs<const Box> items) {
-    // n: Int32 = 0
+    // n: int32 = 0
     int32_t n = 0;
     // for b in items:
     auto& __obj_0 = items;

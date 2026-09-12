@@ -1,9 +1,9 @@
-from tpy import Int32, Own, copy
+from tpy import int32, Own, copy
 
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 
 def make_point() -> Own[Point]:

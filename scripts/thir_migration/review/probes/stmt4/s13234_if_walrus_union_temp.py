@@ -1,9 +1,9 @@
-from tpy import Int32
-def take(v: Int32 | str) -> Int32:
+from tpy import int32
+def take(v: int32 | str) -> int32:
     return 1
-def g(n: Int32) -> Int32:
+def g(n: int32) -> int32:
     return n + 1
-def f(n: Int32) -> Int32:
+def f(n: int32) -> int32:
     if (m := g(n)) > take(n):
         return m
     return 0

@@ -12,26 +12,26 @@
 #   - @dynamic protocol (Greeter) re-export, ensuring the protocol-
 #     using suppression for descendant submodules doesn't break
 #     downstream references.
-from tpy import Int32
+from tpy import int32
 from pkg import A, B, Container, Greeter, K, V, f
 
 
-def cap(n: Int32 = V) -> Int32:
+def cap(n: int32 = V) -> int32:
     return n
 
 
-def takes_greeter(g: Greeter) -> Int32:
+def takes_greeter(g: Greeter) -> int32:
     return g.greet()
 
 
 def main() -> None:
     a = A()
     b = B()
-    box = Container(Int32(42))
-    print(a.value() + b.value() + V + f(Int32(5)))
+    box = Container(int32(42))
+    print(a.value() + b.value() + V + f(int32(5)))
     print(K.ONE)
     print(cap())
-    print(cap(Int32(10)))
+    print(cap(int32(10)))
     print(box.get())
     print(takes_greeter(b))
 

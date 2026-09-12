@@ -4,11 +4,11 @@
 namespace tpyapp::main {
 
 
-// def two_lists() -> tuple[Own[list[float]], Own[list[Int32]]]:
+// def two_lists() -> tuple[Own[list[float]], Own[list[int32]]]:
 std::tuple<std::vector<double>, std::vector<int32_t>> two_lists() {
     // a: list[float] = []
     std::vector<double> a = std::vector<double>{};
-    // b: list[Int32] = []
+    // b: list[int32] = []
     std::vector<int32_t> b = std::vector<int32_t>{};
     // a.append(1.0)
     a.push_back(1.0);
@@ -18,7 +18,7 @@ std::tuple<std::vector<double>, std::vector<int32_t>> two_lists() {
     return std::tuple<std::vector<double>, std::vector<int32_t>>{std::move(a), std::move(b)};
 }
 
-// def mixed() -> tuple[Own[list[float]], Int32]:
+// def mixed() -> tuple[Own[list[float]], int32]:
 std::tuple<std::vector<double>, int32_t> mixed() {
     // a: list[float] = []
     std::vector<double> a = std::vector<double>{};
@@ -28,11 +28,11 @@ std::tuple<std::vector<double>, int32_t> mixed() {
     return std::tuple<std::vector<double>, int32_t>{std::move(a), 7};
 }
 
-// def dict_and_set() -> tuple[Own[dict[Int32, Int32]], Own[set[Int32]]]:
+// def dict_and_set() -> tuple[Own[dict[int32, int32]], Own[set[int32]]]:
 std::tuple<::tpy::ordered_map<int32_t, int32_t>, ::tpy::ordered_set<int32_t>> dict_and_set() {
-    // d: dict[Int32, Int32] = {}
+    // d: dict[int32, int32] = {}
     ::tpy::ordered_map<int32_t, int32_t> d = ::tpy::ordered_map<int32_t, int32_t>();
-    // s: set[Int32] = set()
+    // s: set[int32] = set()
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>();
     // d[1] = 2
     ::tpy::__setitem__(d, 1, 2);
@@ -52,7 +52,7 @@ std::tuple<Rec, Rec> two_recs() {
     return std::tuple<Rec, Rec>{std::move(p), std::move(q)};
 }
 
-// def recs_and_count() -> tuple[Own[list[Rec]], Int32]:
+// def recs_and_count() -> tuple[Own[list[Rec]], int32]:
 std::tuple<std::vector<Rec>, int32_t> recs_and_count() {
     // rs: list[Rec] = []
     std::vector<Rec> rs = std::vector<Rec>{};

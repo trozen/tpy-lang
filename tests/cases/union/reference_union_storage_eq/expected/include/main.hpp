@@ -18,8 +18,8 @@ struct Mark;
 struct Kennel;
 struct Crate;
 
-extern std::vector<::tpy::Union<Dog, int32_t, double>>* MOD_A;
-extern std::vector<::tpy::Union<Dog, int32_t, double>>* MOD_B;
+extern std::vector<::tpy::Union<Dog, double, int32_t>>* MOD_A;
+extern std::vector<::tpy::Union<Dog, double, int32_t>>* MOD_B;
 extern bool module_eq;
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -27,22 +27,22 @@ struct __gen_gen_eq;
 struct __coro_in_async;
 struct __coro_amain;
 
-bool mixed_list_eq(const std::vector<::tpy::Union<Dog, int32_t, double>>& xs, const std::vector<::tpy::Union<Dog, int32_t, double>>& ys);
+bool mixed_list_eq(const std::vector<::tpy::Union<Dog, double, int32_t>>& xs, const std::vector<::tpy::Union<Dog, double, int32_t>>& ys);
 bool pet_list_eq(const std::vector<::tpy::Union<Cat, Dog>>& xs, const std::vector<::tpy::Union<Cat, Dog>>& ys);
 bool tag_list_ne(const std::vector<::tpy::Union<Mark, Tag>>& xs, const std::vector<::tpy::Union<Mark, Tag>>& ys);
-__gen_gen_eq gen_eq(std::vector<::tpy::Union<Dog, int32_t, double>>& xs, std::vector<::tpy::Union<Dog, int32_t, double>>& ys);
-bool in_closure(const std::vector<::tpy::Union<Dog, int32_t, double>>& xs, const std::vector<::tpy::Union<Dog, int32_t, double>>& ys);
-__coro_in_async in_async(std::vector<::tpy::Union<Dog, int32_t, double>>& xs, std::vector<::tpy::Union<Dog, int32_t, double>>& ys);
-bool in_with(const std::vector<::tpy::Union<Dog, int32_t, double>>& xs, const std::vector<::tpy::Union<Dog, int32_t, double>>& ys);
-bool in_try(const std::vector<::tpy::Union<Dog, int32_t, double>>& xs, const std::vector<::tpy::Union<Dog, int32_t, double>>& ys);
-std::expected<bool, Boom> in_error_return(const std::vector<::tpy::Union<Dog, int32_t, double>>& xs, const std::vector<::tpy::Union<Dog, int32_t, double>>& ys);
-bool in_match(const std::vector<::tpy::Union<Dog, int32_t, double>>& xs, const std::vector<::tpy::Union<Dog, int32_t, double>>& ys);
-int32_t in_comprehension(const std::vector<::tpy::Union<Dog, int32_t, double>>& xs, const std::vector<::tpy::Union<Dog, int32_t, double>>& ys);
+__gen_gen_eq gen_eq(std::vector<::tpy::Union<Dog, double, int32_t>>& xs, std::vector<::tpy::Union<Dog, double, int32_t>>& ys);
+bool in_closure(const std::vector<::tpy::Union<Dog, double, int32_t>>& xs, const std::vector<::tpy::Union<Dog, double, int32_t>>& ys);
+__coro_in_async in_async(std::vector<::tpy::Union<Dog, double, int32_t>>& xs, std::vector<::tpy::Union<Dog, double, int32_t>>& ys);
+bool in_with(const std::vector<::tpy::Union<Dog, double, int32_t>>& xs, const std::vector<::tpy::Union<Dog, double, int32_t>>& ys);
+bool in_try(const std::vector<::tpy::Union<Dog, double, int32_t>>& xs, const std::vector<::tpy::Union<Dog, double, int32_t>>& ys);
+std::expected<bool, Boom> in_error_return(const std::vector<::tpy::Union<Dog, double, int32_t>>& xs, const std::vector<::tpy::Union<Dog, double, int32_t>>& ys);
+bool in_match(const std::vector<::tpy::Union<Dog, double, int32_t>>& xs, const std::vector<::tpy::Union<Dog, double, int32_t>>& ys);
+int32_t in_comprehension(const std::vector<::tpy::Union<Dog, double, int32_t>>& xs, const std::vector<::tpy::Union<Dog, double, int32_t>>& ys);
 bool nullable_eq(const std::vector<::tpy::Union<std::monostate, Cat, Dog>>& xs, const std::vector<::tpy::Union<std::monostate, Cat, Dog>>& ys);
 int32_t crate_pet_n(const Crate& c);
 void bump_first(std::vector<::tpy::Union<Cat, Dog>>& xs);
 int32_t first_n(const std::vector<::tpy::Union<Cat, Dog>>& xs);
-__coro_amain amain(std::vector<::tpy::Union<Dog, int32_t, double>>& xs, std::vector<::tpy::Union<Dog, int32_t, double>>& ys);
+__coro_amain amain(std::vector<::tpy::Union<Dog, double, int32_t>>& xs, std::vector<::tpy::Union<Dog, double, int32_t>>& ys);
 void main();
 
 // class Boom(Exception, ReturnException):
@@ -80,10 +80,10 @@ inline std::ostream& operator<<(std::ostream& os, const Guard& obj) {
 
 // class Dog:
 struct Dog {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Dog() = default;
     explicit Dog(int32_t n);
 
@@ -103,10 +103,10 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 
 // class Cat:
 struct Cat {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Cat() = default;
     explicit Cat(int32_t n);
 
@@ -132,10 +132,10 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 // # only case where a union `!=` is reachable directly.
 // class Tag:
 struct Tag {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Tag() = default;
     explicit Tag(int32_t n);
 
@@ -162,10 +162,10 @@ inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
 
 // class Mark:
 struct Mark {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Mark() = default;
     explicit Mark(int32_t n);
 
@@ -190,10 +190,10 @@ struct Kennel {
 
     // def __init__(self, xs: list[Mixed], ys: list[Mixed]) -> None:
     Kennel() = default;
-    explicit Kennel(const std::vector<::tpy::Union<Dog, int32_t, double>>& xs, const std::vector<::tpy::Union<Dog, int32_t, double>>& ys);
+    explicit Kennel(const std::vector<::tpy::Union<Dog, double, int32_t>>& xs, const std::vector<::tpy::Union<Dog, double, int32_t>>& ys);
 
     // def dict_eq(self, a: dict[str, Mixed], b: dict[str, Mixed]) -> bool:  # method
-    bool dict_eq(const ::tpy::ordered_map<std::string, ::tpy::Union<Dog, int32_t, double>>& a, const ::tpy::ordered_map<std::string, ::tpy::Union<Dog, int32_t, double>>& b) const;
+    bool dict_eq(const ::tpy::ordered_map<std::string, ::tpy::Union<Dog, double, int32_t>>& a, const ::tpy::ordered_map<std::string, ::tpy::Union<Dog, double, int32_t>>& b) const;
 
     // def pet_dict_eq(self, a: dict[str, Pet], b: dict[str, Pet]) -> bool:  # method
     bool pet_dict_eq(const ::tpy::ordered_map<std::string, ::tpy::Union<Cat, Dog>>& a, const ::tpy::ordered_map<std::string, ::tpy::Union<Cat, Dog>>& b) const;
@@ -227,15 +227,15 @@ inline std::ostream& operator<<(std::ostream& os, const Crate& obj) {
 struct __coro_in_async {
     int32_t __state;
     bool __cancel_pending;
-    std::vector<::tpy::Union<Dog, int32_t, double>>& xs;
-    std::vector<::tpy::Union<Dog, int32_t, double>>& ys;
+    std::vector<::tpy::Union<Dog, double, int32_t>>& xs;
+    std::vector<::tpy::Union<Dog, double, int32_t>>& ys;
 
     enum : int32_t {
         S_INITIAL = 0,
         S_DONE = 1,
     };
 
-    __coro_in_async(std::vector<::tpy::Union<Dog, int32_t, double>>& xs, std::vector<::tpy::Union<Dog, int32_t, double>>& ys)
+    __coro_in_async(std::vector<::tpy::Union<Dog, double, int32_t>>& xs, std::vector<::tpy::Union<Dog, double, int32_t>>& ys)
         : __state(S_INITIAL), __cancel_pending(false), xs(xs), ys(ys) {}
 
     ::tpystd::tpy::Poll<bool> __poll__(::tpystd::coro::Waker waker);
@@ -250,8 +250,8 @@ struct __coro_in_async {
 struct __coro_amain {
     int32_t __state;
     bool __cancel_pending;
-    std::vector<::tpy::Union<Dog, int32_t, double>>& xs;
-    std::vector<::tpy::Union<Dog, int32_t, double>>& ys;
+    std::vector<::tpy::Union<Dog, double, int32_t>>& xs;
+    std::vector<::tpy::Union<Dog, double, int32_t>>& ys;
     bool __await_lift_0;
     std::optional<__coro_in_async> __sub_0;
 
@@ -261,7 +261,7 @@ struct __coro_amain {
         S_DONE = 2,
     };
 
-    __coro_amain(std::vector<::tpy::Union<Dog, int32_t, double>>& xs, std::vector<::tpy::Union<Dog, int32_t, double>>& ys)
+    __coro_amain(std::vector<::tpy::Union<Dog, double, int32_t>>& xs, std::vector<::tpy::Union<Dog, double, int32_t>>& ys)
         : __state(S_INITIAL), __cancel_pending(false), xs(xs), ys(ys) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
@@ -275,8 +275,8 @@ struct __coro_amain {
 // Generator: gen_eq
 struct __gen_gen_eq : public ::tpy::next_iter_mixin<__gen_gen_eq, bool> {
     int32_t __state;
-    std::vector<::tpy::Union<Dog, int32_t, double>>& xs;
-    std::vector<::tpy::Union<Dog, int32_t, double>>& ys;
+    std::vector<::tpy::Union<Dog, double, int32_t>>& xs;
+    std::vector<::tpy::Union<Dog, double, int32_t>>& ys;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -284,7 +284,7 @@ struct __gen_gen_eq : public ::tpy::next_iter_mixin<__gen_gen_eq, bool> {
         S_DONE = 2,
     };
 
-    __gen_gen_eq(std::vector<::tpy::Union<Dog, int32_t, double>>& xs, std::vector<::tpy::Union<Dog, int32_t, double>>& ys)
+    __gen_gen_eq(std::vector<::tpy::Union<Dog, double, int32_t>>& xs, std::vector<::tpy::Union<Dog, double, int32_t>>& ys)
         : __state(S_INITIAL), xs(xs), ys(ys) {}
 
     std::expected<bool, ::tpy::StopIteration> __next__();
@@ -307,7 +307,7 @@ inline void Guard::__exit__(std::monostate exc_type, const ::tpy::BaseException*
     // pass
 }
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Dog::Dog(int32_t n) : n(n) {}
 
 // def __eq__(self, other: "Dog") -> bool:
@@ -324,7 +324,7 @@ inline bool Dog::__eq__(const Dog& other) const {
     return (this->n == other.n);
 }
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Cat::Cat(int32_t n) : n(n) {}
 
 // def __eq__(self, other: "Cat") -> bool:
@@ -338,7 +338,7 @@ inline bool Cat::__eq__(const Cat& other) const {
     return (this->n == other.n);
 }
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Tag::Tag(int32_t n) : n(n) {}
 
 // def __eq__(self, other: "Tag") -> bool:
@@ -363,7 +363,7 @@ inline bool Tag::__ne__(const Tag& other) const {
     return (this->n == other.n);
 }
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Mark::Mark(int32_t n) : n(n) {}
 
 // def __eq__(self, other: "Mark") -> bool:
@@ -378,10 +378,10 @@ inline bool Mark::__eq__(const Mark& other) const {
 }
 
 // def __init__(self, xs: list[Mixed], ys: list[Mixed]) -> None:
-inline Kennel::Kennel(const std::vector<::tpy::Union<Dog, int32_t, double>>& xs, const std::vector<::tpy::Union<Dog, int32_t, double>>& ys) : flag((xs == ys)) {}
+inline Kennel::Kennel(const std::vector<::tpy::Union<Dog, double, int32_t>>& xs, const std::vector<::tpy::Union<Dog, double, int32_t>>& ys) : flag((xs == ys)) {}
 
 // def dict_eq(self, a: dict[str, Mixed], b: dict[str, Mixed]) -> bool:  # method
-inline bool Kennel::dict_eq(const ::tpy::ordered_map<std::string, ::tpy::Union<Dog, int32_t, double>>& a, const ::tpy::ordered_map<std::string, ::tpy::Union<Dog, int32_t, double>>& b) const {
+inline bool Kennel::dict_eq(const ::tpy::ordered_map<std::string, ::tpy::Union<Dog, double, int32_t>>& a, const ::tpy::ordered_map<std::string, ::tpy::Union<Dog, double, int32_t>>& b) const {
     // return a == b  # tpyc: ok
     return (a == b);
 }
@@ -395,7 +395,7 @@ inline bool Kennel::pet_dict_eq(const ::tpy::ordered_map<std::string, ::tpy::Uni
 // def __init__(self, pet: Pet) -> None:
 inline Crate::Crate(::tpy::Union<const Cat*, const Dog*> pet) : pet(::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet)) {}
 using Labelled = ::tpy::Union<Mark, Tag>;
-using Mixed = ::tpy::Union<Dog, int32_t, double>;
+using Mixed = ::tpy::Union<Dog, double, int32_t>;
 using Pet = ::tpy::Union<Cat, Dog>;
 
 void __tpy_init();

@@ -22,10 +22,10 @@ std::string describe(::tpy::Union<const Cat*, const Dog*> p) {
 
 // def main() -> None:
 void main() {
-    // d: Pet = Dog(Int32(3))
+    // d: Pet = Dog(int32(3))
     Pet __slot_1 = Dog(3);
     ::tpy::Union<Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
-    // c: Pet = Cat(Int32(5))
+    // c: Pet = Cat(int32(5))
     Pet __slot_2 = Cat(5);
     ::tpy::Union<Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
     // print(describe(d))

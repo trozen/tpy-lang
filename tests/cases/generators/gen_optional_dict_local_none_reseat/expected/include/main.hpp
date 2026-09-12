@@ -17,7 +17,7 @@ void main();
 
 // class Holder:
 struct Holder {
-    // d: dict[Int32, Int32] | None
+    // d: dict[int32, int32] | None
     std::optional<::tpy::ordered_map<int32_t, int32_t>> d;
 
     // def __init__(self) -> None:

@@ -3,12 +3,12 @@
 
 namespace sibling_submod::pkg::leaf_b {
 
-// VAL_B: Int32 = _seed_b()  # tpyc: warning(/ALL_CAPS variable .* without Final/)
+// VAL_B: int32 = _seed_b()  # tpyc: warning(/ALL_CAPS variable .* without Final/)
 int32_t VAL_B{};
 
-// def _seed_b() -> Int32:
+// def _seed_b() -> int32:
 int32_t _seed_b() {
-    // return Int32(20) + Int32(2)
+    // return int32(20) + int32(2)
     return (::tpy::add_check<int32_t>(20, 2));
 }
 
@@ -17,7 +17,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // VAL_B: Int32 = _seed_b()  # tpyc: warning(/ALL_CAPS variable .* without Final/)
+    // VAL_B: int32 = _seed_b()  # tpyc: warning(/ALL_CAPS variable .* without Final/)
     VAL_B = _seed_b();
 }
 

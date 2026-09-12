@@ -6,9 +6,9 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // b = Box[Int32](42)
+    // b = Box[int32](42)
     Box<int32_t> b = Box<int32_t>(42);
-    // v = b.get()  # tpyc: type(Int32 | None)
+    // v = b.get()  # tpyc: type(int32 | None)
     std::optional<int32_t> v = b.get();
     // if v is not None:
     if ((v.has_value())) {

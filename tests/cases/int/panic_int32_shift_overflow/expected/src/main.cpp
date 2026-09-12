@@ -3,7 +3,7 @@
 
 namespace tpyapp::main {
 
-// x: Int32 = 1
+// x: int32 = 1
 int32_t x{};
 
 void __tpy_init() {
@@ -11,7 +11,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // x: Int32 = 1
+    // x: int32 = 1
     x = 1;
     // print(x << 100)  # Should panic: shift count too large
     std::cout << (::tpy::lshift_check<int32_t>(x, 100)) << "\n";

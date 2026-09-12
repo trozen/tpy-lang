@@ -1,9 +1,9 @@
-from tpy import Int32
+from tpy import int32
 class Node:
-    n: Int32
-    def __init__(self, n: Int32) -> None:
+    n: int32
+    def __init__(self, n: int32) -> None:
         self.n = n
-    def __len__(self) -> Int32:
+    def __len__(self) -> int32:
         return self.n
 class H:
     node: Node | None

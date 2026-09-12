@@ -4,10 +4,10 @@
 # survives the yield instead of reading a stale slot -- a naive resumable
 # emit that bound only the synthetic `__for_tup` loop var printed garbage.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
-def gen(pairs: list[tuple[Int32, Int32]]) -> Iterator[Int32]:
+def gen(pairs: list[tuple[int32, int32]]) -> Iterator[int32]:
     total = 0
     for a, b in pairs:
         total += a

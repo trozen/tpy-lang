@@ -1,10 +1,10 @@
 # Borrow tracking through field-path expressions (self.items, obj.field)
-from tpy import Int32, Ptr, take_ptr
+from tpy import int32, Ptr, take_ptr
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32) -> None:
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 

@@ -1,10 +1,10 @@
 # A tuple element typed `Optional[list[...]]` unpacked in a generator loop:
 # the container flavour of an optional is outside the optional-ptr borrow.
 from typing import Iterator, Optional
-from tpy import Int32
+from tpy import int32
 
 
-def gen(pairs: list[tuple[Optional[list[Int32]], Int32]]) -> Iterator[Int32]:  # tpyc: error(/res\.local_storage/)
+def gen(pairs: list[tuple[Optional[list[int32]], int32]]) -> Iterator[int32]:  # tpyc: error(/res\.local_storage/)
     # `xs` is a container-optional unpack target living in the frame.
     for xs, n in pairs:
         if xs is not None:

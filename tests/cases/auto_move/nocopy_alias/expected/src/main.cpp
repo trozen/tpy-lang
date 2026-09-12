@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def close(h: Own[Handle]) -> Int32:
+// def close(h: Own[Handle]) -> int32:
 int32_t close(Handle&& h) {
     // return h.fd
     return h.fd;

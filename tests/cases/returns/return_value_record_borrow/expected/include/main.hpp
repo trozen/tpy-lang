@@ -22,7 +22,7 @@ void main();
 // @dataclass(frozen=True)
 // class F(ValueType):
 struct F {
-    // k: Int32
+    // k: int32
     int32_t k;
 
     F() = default;
@@ -70,10 +70,10 @@ namespace tpyapp::main {
 
 // class D(ValueType):
 struct D {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     D() = default;
     explicit D(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.D";
@@ -92,10 +92,10 @@ namespace tpyapp::main {
 
 // class E(ValueType):
 struct E {
-    // m: Int32
+    // m: int32
     int32_t m;
 
-    // def __init__(self, m: Int32) -> None:
+    // def __init__(self, m: int32) -> None:
     E() = default;
     explicit E(int32_t m);
     static constexpr std::string_view __tpy_class_name__ = "__main__.E";
@@ -136,10 +136,10 @@ inline uint64_t F::__hash__() const {
     return h;
 }
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline D::D(int32_t n) : n(n) {}
 
-// def __init__(self, m: Int32) -> None:
+// def __init__(self, m: int32) -> None:
 inline E::E(int32_t m) : m(m) {}
 void __tpy_init();
 } // namespace tpyapp::main

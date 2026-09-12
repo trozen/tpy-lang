@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def double(x: Int32) -> Int32:
+// def double(x: int32) -> int32:
 int32_t double_(int32_t x) {
     // return x * 2
     return (::tpy::mul_check<int32_t>(x, 2));
 }
 
-// def is_positive(x: Int32) -> bool:
+// def is_positive(x: int32) -> bool:
 bool is_positive(int32_t x) {
     // return x > 0
     return (x > 0);

@@ -1,15 +1,15 @@
-# Error: passing non-iterable type to Iterable[Int32] parameter
+# Error: passing non-iterable type to Iterable[int32] parameter
 from typing import Iterable
-from tpy import Int32
+from tpy import int32
 
 class NotIterable:
-    value: Int32
+    value: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.value = v
 
-def sum_items(items: Iterable[Int32]) -> Int32:
-    total: Int32 = 0
+def sum_items(items: Iterable[int32]) -> int32:
+    total: int32 = 0
     for x in items:
         total += x
     return total

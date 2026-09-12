@@ -16,7 +16,7 @@ void main();
 // @dataclass
 // class Node:
 struct Node {
-    // value: Int32
+    // value: int32
     int32_t value;
     // label: Optional[str] = None
     std::optional<std::string> label = std::nullopt;

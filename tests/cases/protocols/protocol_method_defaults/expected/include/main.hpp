@@ -23,13 +23,13 @@ void main();
 
 // class Tally:
 struct Tally {
-    // _v: Int32
+    // _v: int32
     int32_t _v;
 
     // def __init__(self) -> None:
     Tally();
 
-    // def step(self, n: Int32 = 1, start: Int32 = 0) -> Int32:
+    // def step(self, n: int32 = 1, start: int32 = 0) -> int32:
     int32_t step(int32_t n = 1, int32_t start = 0);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Tally";
 };
@@ -43,24 +43,24 @@ inline std::ostream& operator<<(std::ostream& os, const Tally& obj) {
 // def __init__(self) -> None:
 inline Tally::Tally() : _v(0) {}
 
-// def step(self, n: Int32 = 1, start: Int32 = 0) -> Int32:
+// def step(self, n: int32 = 1, start: int32 = 0) -> int32:
 inline int32_t Tally::step(int32_t n, int32_t start) {
     // self._v = self._v + start + n
     this->_v = (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(this->_v, start)), n));
     // return self._v
     return this->_v;
 }
-// def bump(c: Counter) -> Int32:
+// def bump(c: Counter) -> int32:
 template<Counter T_c>
 int32_t bump(T_c& c) {
     // # Drop both defaults.
     // a = c.step()
     int32_t a = c.step();
     // # Drop just the trailing default.
-    // b = c.step(Int32(5))
+    // b = c.step(int32(5))
     int32_t b = c.step(5);
     // # Pass both explicitly (must keep working).
-    // cc = c.step(Int32(2), Int32(10))
+    // cc = c.step(int32(2), int32(10))
     int32_t cc = c.step(2, 10);
     // return a + b + cc
     return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(a, b)), cc));

@@ -15,21 +15,21 @@ from __future__ import annotations
 
 from .testutil import _assert_byte_identical, _assert_rejects_at, _strict_reject
 
-PRELUDE = "from typing import Final\nfrom tpy import Char, Int32\n"
+PRELUDE = "from typing import Final\nfrom tpy import char, int32\n"
 
 
 class TestFinalGlobalScalars:
     """Coerced literals -- the bulk of the domain. The declared slot drives
-    the spelling, so `Final[int]` wraps in `::tpy::BigInt` where `Final[Int32]`
+    the spelling, so `Final[int]` wraps in `::tpy::BigInt` where `Final[int32]`
     stays bare."""
 
     SRC = PRELUDE + (
-        "MAX_SIZE: Final[Int32] = 100\n"
-        "NEG_VAL: Final[Int32] = -42\n"
+        "MAX_SIZE: Final[int32] = 100\n"
+        "NEG_VAL: Final[int32] = -42\n"
         "PI: Final[float] = 3.14159\n"
         "DEBUG: Final[bool] = True\n"
         "NAME: Final[str] = \"hello\"\n"
-        "LETTER: Final[Char] = \"A\"\n"
+        "LETTER: Final[char] = \"A\"\n"
         "BIG: Final[int] = 100\n"
         "\n"
         "def main() -> None:\n"
@@ -42,7 +42,7 @@ class TestFinalGlobalScalars:
 
     def test_byte_identical(self):
         thir = _assert_byte_identical(self.SRC)
-        # The two slot-driven renders the position exists for: a Char slot
+        # The two slot-driven renders the position exists for: a char slot
         # turns a str literal into a character literal, a BigInt slot wraps.
         assert "inline constexpr char LETTER = 'A';" in thir[0]
         assert "const ::tpy::BigInt BIG = ::tpy::BigInt(100);" in thir[1]
@@ -77,8 +77,8 @@ class TestFinalGlobalOverflowChecked:
     operator so the render is the overflow-checked template."""
 
     SRC = PRELUDE + (
-        "BASE: Final[Int32] = 10\n"
-        "DOUBLE: Final[Int32] = BASE * 2\n"
+        "BASE: Final[int32] = 10\n"
+        "DOUBLE: Final[int32] = BASE * 2\n"
         "\n"
         "def main() -> None:\n"
         "    print(DOUBLE)\n"
@@ -97,14 +97,14 @@ class TestClassConstants:
     of the module's `Final` globals."""
 
     SRC = PRELUDE + (
-        "LIMIT: Final[Int32] = 3\n"
+        "LIMIT: Final[int32] = 3\n"
         "\n"
         "\n"
         "class Limits:\n"
-        "    BASE: Final[Int32] = 10\n"
-        "    DOUBLE: Final[Int32] = BASE * 2\n"
-        "    TRIPLE: Final[Int32] = BASE + DOUBLE\n"
-        "    SCALED: Final[Int32] = BASE * LIMIT\n"
+        "    BASE: Final[int32] = 10\n"
+        "    DOUBLE: Final[int32] = BASE * 2\n"
+        "    TRIPLE: Final[int32] = BASE + DOUBLE\n"
+        "    SCALED: Final[int32] = BASE * LIMIT\n"
         "    LABEL: Final[str] = \"limits\"\n"
         "\n"
         "\n"
@@ -132,7 +132,7 @@ class TestTupleConstant:
 
     SRC = PRELUDE + (
         "class Version:\n"
-        "    SEMVER: Final[tuple[Int32, Int32, Int32]] = (1, 2, 3)\n"
+        "    SEMVER: Final[tuple[int32, int32, int32]] = (1, 2, 3)\n"
         "    LABEL: Final[tuple[str, bool]] = (\"alpha\", True)\n"
         "\n"
         "\n"
@@ -178,8 +178,8 @@ class TestMacroExpandedConstant:
 
     SRC = PRELUDE + (
         "from constmacro import build_pair, build_count\n"
-        "PAIR: Final[tuple[Int32, str]] = build_pair()\n"
-        "COUNT: Final[Int32] = build_count()\n"
+        "PAIR: Final[tuple[int32, str]] = build_pair()\n"
+        "COUNT: Final[int32] = build_count()\n"
         "\n"
         "def main() -> None:\n"
         "    print(COUNT)\n"
@@ -205,11 +205,11 @@ class TestPrimitiveConstructorCall:
     domain -- route through the ordinary call arms."""
 
     SRC = PRELUDE + (
-        "from tpy import Float32, Int64, UInt8\n"
-        "SMALL: Final[Int32] = Int32(42)\n"
-        "BIG: Final[Int64] = Int64(SMALL)\n"
-        "BYTE: Final[UInt8] = UInt8(255)\n"
-        "HALF: Final[Float32] = Float32(0.5)\n"
+        "from tpy import float32, int64, uint8\n"
+        "SMALL: Final[int32] = int32(42)\n"
+        "BIG: Final[int64] = int64(SMALL)\n"
+        "BYTE: Final[uint8] = uint8(255)\n"
+        "HALF: Final[float32] = float32(0.5)\n"
         "FLAG: Final[bool] = bool(1)\n"
         "\n"
         "def main() -> None:\n"
@@ -228,11 +228,11 @@ class TestPrimitiveConstructorCall:
 
 
 class TestCharConstructor:
-    """`Char(65)` is a value-scalar type constructor like the fixed-int ones;
+    """`char(65)` is a value-scalar type constructor like the fixed-int ones;
     the constant position renders it as a `static_cast<char>`."""
 
     SRC = PRELUDE + (
-        "CH: Final[Char] = Char(65)\n"
+        "CH: Final[char] = char(65)\n"
         "\n"
         "def main() -> None:\n"
         "    print(CH)\n"
@@ -251,7 +251,7 @@ class TestClassConstantPosition:
 
     SRC = PRELUDE + (
         "class Codes:\n"
-        "    CH: Final[Char] = Char(65)\n"
+        "    CH: Final[char] = char(65)\n"
         "\n"
         "\n"
         "def main() -> None:\n"
@@ -294,13 +294,13 @@ class TestNonfiniteFloat:
 
 
 class TestTupleSlotOutsideConstantFamily:
-    """Boundary: a tuple element the constant family does not cover (a `Char`
+    """Boundary: a tuple element the constant family does not cover (a `char`
     element -- neither scalar nor str) rejects at the slot rather than
     lowering against the literal's own type, which is where a diverging
     element form would come from."""
 
     SRC = PRELUDE + (
-        "PAIR: Final[tuple[Char, Int32]] = (Char(65), 1)\n"
+        "PAIR: Final[tuple[char, int32]] = (char(65), 1)\n"
         "\n"
         "def main() -> None:\n"
         "    pass\n"

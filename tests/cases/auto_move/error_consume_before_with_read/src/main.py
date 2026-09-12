@@ -1,11 +1,11 @@
 # Consuming a @nocopy local before a `with` whose body reads it must be
 # rejected -- the with body participates in last-use analysis (not last use).
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 
 
 @nocopy
 class Handle:
-    fd: Int32
+    fd: int32
 
 
 def consume(h: Own[Handle]) -> None:
@@ -13,7 +13,7 @@ def consume(h: Own[Handle]) -> None:
 
 
 class Guard:
-    def __enter__(self) -> Int32:
+    def __enter__(self) -> int32:
         return 1
 
     def __exit__(self, et, ev, tb) -> bool:

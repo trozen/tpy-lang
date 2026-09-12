@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // h = Holder(Int32(0))
+    // h = Holder(int32(0))
     Holder h = Holder(0);
     // items: list[P] = [P(1), P(2), P(3)]
     std::vector<P> items = {P(1), P(2), P(3)};

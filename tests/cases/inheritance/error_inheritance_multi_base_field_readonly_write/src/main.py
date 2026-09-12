@@ -1,11 +1,11 @@
 # Writing through BaseN.field in a @readonly method would mutate the
 # ancestor subobject through a const receiver -- rejected, same rule as
 # self.field mutation in a @readonly context.
-from tpy import Int32, readonly
+from tpy import int32, readonly
 
 
 class Parent:
-    counter: Int32
+    counter: int32
 
 
 class Child(Parent):

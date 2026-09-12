@@ -52,11 +52,11 @@ inline std::ostream& operator<<(std::ostream& os, const Base<T, U>& obj) {
     return os;
 }
 
-// class Middle[T](Base[T, Int32]):
+// class Middle[T](Base[T, int32]):
 template<typename T>
 struct Middle : Base<T, int32_t> {
 
-    // def __init__(self, first: T, second: Int32) -> None:
+    // def __init__(self, first: T, second: int32) -> None:
     Middle() = default;
     explicit Middle(::tpy::readonly_form_t<T> first, int32_t second) {
         // self.first = first
@@ -79,7 +79,7 @@ struct Leaf : Middle<T> {
     // extra: str
     std::string extra;
 
-    // def __init__(self, first: T, second: Int32, extra: str) -> None:
+    // def __init__(self, first: T, second: int32, extra: str) -> None:
     Leaf() = default;
     explicit Leaf(::tpy::readonly_form_t<T> first, int32_t second, std::string_view extra) : extra(extra) {
         // self.first = first

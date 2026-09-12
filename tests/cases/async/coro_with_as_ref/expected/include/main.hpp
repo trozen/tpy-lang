@@ -23,10 +23,10 @@ __coro_driver driver();
 
 // class Item:
 struct Item {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Item() = default;
     explicit Item(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Item";
@@ -42,7 +42,7 @@ struct CM {
     // item: Item
     Item item;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     CM() = default;
     explicit CM(int32_t n);
 
@@ -110,10 +110,10 @@ struct __coro_driver {
 };
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Item::Item(int32_t n) : n(n) {}
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline CM::CM(int32_t n) : item(Item(n)) {}
 
 // def __enter__(self) -> Item:

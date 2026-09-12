@@ -17,7 +17,7 @@ template<typename T>
 ::tpy::val_or_ref_t<T> pick(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b, bool use_first = true);
 void main();
 
-// def first_or[T](items: list[T], fallback: T = Int32(0)) -> T:
+// def first_or[T](items: list[T], fallback: T = int32(0)) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> first_or(std::vector<T>& items, ::tpy::param_val_or_ref_t<T> fallback) {
     // if len(items) > 0:

@@ -1,9 +1,9 @@
-from tpy import Int32
+from tpy import int32
 
-type Shape = Int32 | str | list[Shape]
+type Shape = int32 | str | list[Shape]
 
 
-def int_leaves(s: Shape) -> Int32:
+def int_leaves(s: Shape) -> int32:
     match s:
         case list() as items:
             total = 0

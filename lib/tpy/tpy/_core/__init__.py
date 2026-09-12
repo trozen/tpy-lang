@@ -10,10 +10,10 @@ from ._types import (
     # Fixed-width integer constraint protocols
     AnyFixedInt, AnyFixedSigned, AnyFixedUnsigned,
     # Primitive types
-    Float32,
-    Int8, Int16, Int32, Int64,
-    UInt8, UInt16, UInt32, UInt64,
-    Char, String, StrView, FStr,
+    float32,
+    int8, int16, int32, int64,
+    uint8, uint16, uint32, uint64,
+    char, String, StrView, FStr,
     # `Poll`'s body lives here for codegen-ordering reasons (see
     # `_types.py`); its qname is `tpy.coro.Poll`.
     Poll,

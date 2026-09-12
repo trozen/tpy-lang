@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 class Node:
-    v: Int32
-    def __init__(self, v: Int32) -> None:
+    v: int32
+    def __init__(self, v: int32) -> None:
         self.v = v
 def borrow(xs: list[Node]) -> list[Node]:
     return xs

@@ -14,7 +14,7 @@ Usage:
 
 from argparse import ArgumentParser
 from socket import socket, AF_INET, SOCK_STREAM, SHUT_WR
-from tpy import Int32
+from tpy import int32
 
 
 def main() -> None:
@@ -24,7 +24,7 @@ def main() -> None:
     )
     # TODO: change to int
     parser.add_argument(
-        "--port", type=Int32, default=8765, help="server port",
+        "--port", type=int32, default=8765, help="server port",
     )
     parser.add_argument(
         "--message", default="hello from tpy client", help="payload to send",

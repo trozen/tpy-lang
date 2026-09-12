@@ -4,19 +4,19 @@
 namespace tpyapp::main {
 
 
-// def cb(x: Int32) -> None:
+// def cb(x: int32) -> None:
 void cb(int32_t x) {
     // print(x)
     std::cout << x << "\n";
 }
 
-// def take_list(xs: list[Int32]) -> None:
+// def take_list(xs: list[int32]) -> None:
 void take_list(const std::vector<int32_t>& xs) {
     // print(len(xs))
     std::cout << ::tpy::__len__(xs) << "\n";
 }
 
-// def use_callable(f: Callable[[Int32], None]) -> None:
+// def use_callable(f: Callable[[int32], None]) -> None:
 void use_callable(const std::function<void(int32_t)>& f) {
     // n: int = 7
     ::tpy::BigInt n = ::tpy::BigInt(7);
@@ -26,7 +26,7 @@ void use_callable(const std::function<void(int32_t)>& f) {
 
 // def use_local() -> None:
 void use_local() {
-    // f: Callable[[Int32], None] = cb
+    // f: Callable[[int32], None] = cb
     std::function<void(int32_t)> f = cb;
     // n: int = 99
     ::tpy::BigInt n = ::tpy::BigInt(99);

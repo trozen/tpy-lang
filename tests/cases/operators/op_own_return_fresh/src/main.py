@@ -4,13 +4,13 @@
 # .__add__() spelling: list/bytearray follow the Own stub contract (fresh
 # owned concat, not a borrow of the receiver); bytes returns are fresh by
 # construction (bytes is a value type).
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Acc:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
     def __add__(self, o: "Acc") -> Own["Acc"]:
@@ -37,8 +37,8 @@ def test_own_augassign_fallback():
 
 
 def test_list_concat_fresh():
-    xs: list[Int32] = [1, 2]
-    ys: list[Int32] = [3]
+    xs: list[int32] = [1, 2]
+    ys: list[int32] = [3]
     zs = xs.__add__(ys)
     zs.append(9)
     print(zs, xs)

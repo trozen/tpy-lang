@@ -8,11 +8,11 @@ namespace tpyapp::main {
 void reference_element() {
     // pts = [Point(1), Point(2)]
     std::array<Point, 2> pts = {Point(1), Point(2)};
-    // seen: Int32 = 0
+    // seen: int32 = 0
     int32_t seen = 0;
     // # The bare-`T` yield slot hands a reference element out BY VALUE on both
     // # emit paths (the generic-yield copy tracked in BUGS.md), so the witness
-    // # yields `tuple[Int32, T]`, whose slot is pointer-formed and does alias:
+    // # yields `tuple[int32, T]`, whose slot is pointer-formed and does alias:
     // # mutate the element on its first yield, read it back on its second.
     // for i, p in each(pts):
     {
@@ -24,7 +24,7 @@ void reference_element() {
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
         // # The bare-`T` yield slot hands a reference element out BY VALUE on both
         // # emit paths (the generic-yield copy tracked in BUGS.md), so the witness
-        // # yields `tuple[Int32, T]`, whose slot is pointer-formed and does alias:
+        // # yields `tuple[int32, T]`, whose slot is pointer-formed and does alias:
         // # mutate the element on its first yield, read it back on its second.
         // for i, p in each(pts):
         auto& __tup_1 = __for_tup_0;

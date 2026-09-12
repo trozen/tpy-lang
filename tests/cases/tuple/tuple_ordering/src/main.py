@@ -1,6 +1,6 @@
 # Tuple lexicographic ordering: <, <=, >, >=, including @nocopy elements
 from __future__ import annotations
-from tpy import Int32, nocopy
+from tpy import int32, nocopy
 
 def main() -> None:
     a = (1, 2, 3)
@@ -29,9 +29,9 @@ def main() -> None:
 
 @nocopy
 class Rank:
-    val: Int32
+    val: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.val = v
 
     def __eq__(self, other: Rank) -> bool:

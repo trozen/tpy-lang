@@ -572,7 +572,7 @@ def _comp_slot_ok(slot: 'TpyType | None', analyzer) -> bool:
     # The NARROW slot predicate, kept for dict KEYS (the hashable-key axis:
     # widening keys to enum/bytes/record is the container-literal cell's
     # separate key-family concern -- a record key isn't hashable, an enum/bytes
-    # key rides a later row). Char slots ride the same targeted element render
+    # key rides a later row). char slots ride the same targeted element render
     # as scalars (comp elements ARE target-typed, unlike list-literal
     # elements).
     return (_eligible_scalar(slot) or _eligible_char(slot)
@@ -586,7 +586,7 @@ def _comp_elem_slot_ok(slot: 'TpyType | None', analyzer, *,
     of the for-each loop-var classifier on the append/insert side. The wrap
     keys on the element's FORM, not its node kind:
 
-    - value scalar / Char -- bare / target-typed literal retype;
+    - value scalar / char -- bare / target-typed literal retype;
     - owned str / bytes slot -- a BORROW source copies (`std::string(x)` /
       `::tpy::Bytes`), a STORAGE/literal source lands bare;
     - enum -- a value type, bare;
@@ -1000,7 +1000,7 @@ def _lower_comp_container_elem(e, vt: TpyType, lc: '_LowerCtx',
                             use=_ExprUse(slot_target=vt))
     elif _comp_container_name_elem(e, vt, lc, body_declared):
         # A bare NAME at a container slot (`[xs for i in range(3)]` at
-        # `list[list[Int32]]`): the slot init copies the container by value,
+        # `list[list[int32]]`): the slot init copies the container by value,
         # so the read lands bare -- sema already warned about the copy.
         value = _lower_expr(e, lc, body_declared)
     else:
@@ -1385,7 +1385,7 @@ def _module_global_names(lc: '_LowerCtx') -> frozenset:
 def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
                    declared: dict[str, TpyType]) -> THIRGenExpr:
     """Lower a generator expression to the make_generator render.
-    Slice: scalar/Char/str loop-var bindings
+    Slice: scalar/char/str loop-var bindings
     (or the tuple-unpack head) over an LVALUE bare-name container / a
     NON-LVALUE container literal / a range() source (delegated to
     `_lower_genexpr_range`'s counter lambda), with optional &&-joined
@@ -1417,7 +1417,7 @@ def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
     if not (is_list(it_type) or is_set(it_type) or is_dict(it_type)
             or is_array(it_type) or is_span(it_type)
             # A str source iterates its chars off the same begin/end pair
-            # (`char x = *__beg++;` -- the Char loop-var binding below).
+            # (`char x = *__beg++;` -- the char loop-var binding below).
             or _resolved_str_value(it_type, analyzer) is not None):
         raise ThirUnsupported("genexpr.iterable_shape")
     if not is_native_iterable(it_type, analyzer.registry):

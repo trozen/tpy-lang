@@ -5,37 +5,37 @@
 # agrees because `copy()` deep-copies there. Both payload families take the
 # same ONE-step spelling over every borrowed source shape (method call, free
 # call, field, ternary of two calls).
-from tpy import Int32, Own, copy
+from tpy import int32, Own, copy
 
 
 class Payload:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
 class Holder:
-    items: list[Int32]
+    items: list[int32]
     p: Payload
 
     def __init__(self) -> None:
         self.items = [1, 2]
         self.p = Payload(1)
 
-    def bctr(self) -> list[Int32]:
+    def bctr(self) -> list[int32]:
         return self.items
 
     def brec(self) -> Payload:
         return self.p
 
 
-def take_container(h: Holder) -> Own[list[Int32]]:
+def take_container(h: Holder) -> Own[list[int32]]:
     # A borrow-returning METHOD call, copied in one step.
     return copy(h.bctr())  # tpyc: ok
 
 
-def first(rows: list[list[Int32]]) -> list[Int32]:
+def first(rows: list[list[int32]]) -> list[int32]:
     return rows[0]
 
 
@@ -43,7 +43,7 @@ def frec(h: Holder) -> Payload:
     return h.p
 
 
-def take_free(rows: list[list[Int32]]) -> Own[list[Int32]]:
+def take_free(rows: list[list[int32]]) -> Own[list[int32]]:
     # A FREE borrow-returning call is the same borrowed source a method call
     # is, for either family.
     return copy(first(rows))  # tpyc: ok

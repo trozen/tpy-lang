@@ -1,10 +1,10 @@
 from typing import ClassVar
-from tpy import Int32
+from tpy import int32
 class Counter:
-    PAIR: ClassVar[tuple[Int32, Int32]] = (1, 2)
+    PAIR: ClassVar[tuple[int32, int32]] = (1, 2)
     def __init__(self) -> None:
         pass
-def a1() -> tuple[Int32, Int32]:
+def a1() -> tuple[int32, int32]:
     return Counter.PAIR
 def a2() -> None:
     t = Counter.PAIR

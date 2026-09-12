@@ -1,12 +1,12 @@
 # tpy: ext_module
-from tpy import Int64
+from tpy import int64
 from tpy.extern import export
 
 
 @export
 class Foo:
-    def __init__(self, value: Int64):
+    def __init__(self, value: int64):
         self.value = value
 
-    def get(self) -> Int64:
+    def get(self) -> int64:
         return self.value

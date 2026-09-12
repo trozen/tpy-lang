@@ -15,17 +15,17 @@ void main();
 
 // class IntList:
 struct IntList {
-    // items: list[Int32]
+    // items: list[int32]
     std::vector<int32_t> items;
 
-    // def __init__(self, vals: list[Int32]) -> None:
+    // def __init__(self, vals: list[int32]) -> None:
     IntList() = default;
     explicit IntList(const std::vector<int32_t>& vals);
 
-    // def __iter__(self: auto_own[Self]) -> auto_own[Iterator[Int32]]:
+    // def __iter__(self: auto_own[Self]) -> auto_own[Iterator[int32]]:
     auto __iter__() const &;
 
-    // def __iter__(self: auto_own[Self]) -> auto_own[Iterator[Int32]]:
+    // def __iter__(self: auto_own[Self]) -> auto_own[Iterator[int32]]:
     auto __iter__() const &&;
     static constexpr std::string_view __tpy_class_name__ = "__main__.IntList";
 };
@@ -36,16 +36,16 @@ inline std::ostream& operator<<(std::ostream& os, const IntList& obj) {
 }
 
 
-// def __init__(self, vals: list[Int32]) -> None:
+// def __init__(self, vals: list[int32]) -> None:
 inline IntList::IntList(const std::vector<int32_t>& vals) : items(vals) {}
 
-// def __iter__(self: auto_own[Self]) -> auto_own[Iterator[Int32]]:
+// def __iter__(self: auto_own[Self]) -> auto_own[Iterator[int32]]:
 inline auto IntList::__iter__() const & {
     // return iter(self.items)
     return ::tpy::__iter__(this->items);
 }
 
-// def __iter__(self: auto_own[Self]) -> auto_own[Iterator[Int32]]:
+// def __iter__(self: auto_own[Self]) -> auto_own[Iterator[int32]]:
 inline auto IntList::__iter__() const && {
     // return iter(self.items)
     return ::tpy::__iter__(this->items);

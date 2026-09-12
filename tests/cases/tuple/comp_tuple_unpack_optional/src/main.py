@@ -3,26 +3,26 @@
 # (`tuple<optional<P>, ...>`); unpack vars bind to the storage-form
 # optional slots; consumer sites lift via `optional_to_ptr` when used as
 # pointer-form `P | None`.
-from tpy import Int32
+from tpy import int32
 
 
 class P:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
-def borrow(p: P | None) -> Int32:
+def borrow(p: P | None) -> int32:
     if p is None:
-        return Int32(-1)
+        return int32(-1)
     return p.x
 
 
 def main() -> None:
-    items: list[tuple[P | None, Int32]] = [
-        (P(Int32(1)), Int32(10)),
-        (None, Int32(20)),
-        (P(Int32(3)), Int32(30)),
+    items: list[tuple[P | None, int32]] = [
+        (P(int32(1)), int32(10)),
+        (None, int32(20)),
+        (P(int32(3)), int32(30)),
     ]
     # Comprehension unpack: `p` passed to borrow-param
     results = [borrow(p) for p, n in items]

@@ -36,7 +36,7 @@ __coro_amain amain() {
     return __coro_amain();
 }
 
-// async def go(self) -> Int32:
+// async def go(self) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_Runner_go::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -97,7 +97,7 @@ __coro_amain amain() {
 }
 
 
-// async def __aenter__(self) -> Int32:
+// async def __aenter__(self) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_Gate___aenter__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {

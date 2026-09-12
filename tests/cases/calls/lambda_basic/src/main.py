@@ -1,7 +1,7 @@
 # Lambda expressions with Fn-typed parameters: basic type inference and codegen.
-from tpy import Fn, Int32
+from tpy import Fn, int32
 
-def apply(f: Fn[[Int32], Int32], x: Int32) -> Int32:
+def apply(f: Fn[[int32], int32], x: int32) -> int32:
     return f(x)
 
 def main() -> None:

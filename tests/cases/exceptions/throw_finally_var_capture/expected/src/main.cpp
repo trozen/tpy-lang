@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def get_int() -> Int32:
+// def get_int() -> int32:
 int32_t get_int() {
     // return 42
     return 42;
@@ -16,7 +16,7 @@ std::string get_str() {
     return "hello";
 }
 
-// def get_list() -> Own[list[Int32]]:
+// def get_list() -> Own[list[int32]]:
 std::vector<int32_t> get_list() {
     // return [1, 2, 3]
     return {1, 2, 3};
@@ -24,7 +24,7 @@ std::vector<int32_t> get_list() {
 
 // def main() -> None:
 void main() {
-    // # Int32 -- trivial type
+    // # int32 -- trivial type
     // try:
     int32_t x;
     {

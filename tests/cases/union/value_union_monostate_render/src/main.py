@@ -4,22 +4,22 @@
 # `tests/cases/union/value_union_cross_alternative_eq`, so what this case pins
 # is the RENDER -- the bare `(a == b)` on the TPy type, not a helper call and
 # not the variant's own index-first operator.
-from tpy import Float64, Int32
+from tpy import float64, int32
 
 
-def same(a: Int32 | Float64, b: Int32 | Float64) -> bool:
+def same(a: int32 | float64, b: int32 | float64) -> bool:
     return a == b  # a variant-vs-variant compare
 
 
 def widened() -> bool:
-    x: Int32 | Float64 = 1  # std::variant<int32_t, double>
+    x: int32 | float64 = 1  # std::variant<double, int32_t>
     x = 2.5
     y = x
     return same(y, 2.5)
 
 
 def started_none() -> bool:
-    x: Int32 | Float64 | None = None  # the monostate member
+    x: int32 | float64 | None = None  # the monostate member
     was_none = x is None
     x = 3
     return was_none and x is not None

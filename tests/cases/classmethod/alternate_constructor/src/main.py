@@ -3,14 +3,14 @@
 # call returns a freshly constructed object, so there is nothing to alias).
 from typing import ClassVar, Final, Self
 
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Point:
-    ORIGIN: Final[Int32] = 0
-    created: ClassVar[Int32] = 0
+    ORIGIN: Final[int32] = 0
+    created: ClassVar[int32] = 0
 
-    def __init__(self, x: Int32, y: Int32):
+    def __init__(self, x: int32, y: int32):
         self.x = x
         self.y = y
 
@@ -20,11 +20,11 @@ class Point:
         return cls(cls.ORIGIN, cls.ORIGIN)
 
     @classmethod
-    def diagonal(cls, n: Int32) -> Own[Self]:
+    def diagonal(cls, n: int32) -> Own[Self]:
         return cls.scaled(n, 1)
 
     @staticmethod
-    def scaled(n: Int32, k: Int32) -> Own["Point"]:
+    def scaled(n: int32, k: int32) -> Own["Point"]:
         return Point(n * k, n * k)
 
 

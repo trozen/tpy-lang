@@ -1,1 +1,1 @@
-main.py:7: error: Span() cannot be constructed from Span[readonly[Int32]]
+main.py:7: error: Span() cannot be constructed from Span[readonly[int32]]

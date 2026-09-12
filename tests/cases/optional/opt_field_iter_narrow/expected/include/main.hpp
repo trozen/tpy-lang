@@ -17,9 +17,9 @@ void main();
 struct Holder {
     // d: dict[str, str] | None
     std::optional<::tpy::ordered_map<std::string, std::string>> d;
-    // lst: list[Int32] | None
+    // lst: list[int32] | None
     std::optional<std::vector<int32_t>> lst;
-    // st: set[Int32] | None
+    // st: set[int32] | None
     std::optional<::tpy::ordered_set<int32_t>> st;
     // s: str | None
     std::optional<std::string> s;
@@ -27,16 +27,16 @@ struct Holder {
     // def __init__(self):
     Holder();
 
-    // def scan_dict(self) -> Int32:
+    // def scan_dict(self) -> int32:
     int32_t scan_dict() const;
 
-    // def sum_list(self) -> Int32:
+    // def sum_list(self) -> int32:
     int32_t sum_list() const;
 
-    // def sum_set(self) -> Int32:
+    // def sum_set(self) -> int32:
     int32_t sum_set() const;
 
-    // def count_str(self) -> Int32:
+    // def count_str(self) -> int32:
     int32_t count_str() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
@@ -50,7 +50,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 // def __init__(self):
 inline Holder::Holder() : d(::tpy::ordered_map<std::string, std::string>({{"transfer-encoding-extension", "1"}, {"b", "2"}})), lst(std::vector<int32_t>{1, 2, 3}), st(::tpy::ordered_set<int32_t>({40})), s("xy") {}
 
-// def scan_dict(self) -> Int32:
+// def scan_dict(self) -> int32:
 inline int32_t Holder::scan_dict() const {
     // n = 0
     int32_t n = 0;
@@ -73,7 +73,7 @@ inline int32_t Holder::scan_dict() const {
     return n;
 }
 
-// def sum_list(self) -> Int32:
+// def sum_list(self) -> int32:
 inline int32_t Holder::sum_list() const {
     // n = 0
     int32_t n = 0;
@@ -93,7 +93,7 @@ inline int32_t Holder::sum_list() const {
     return n;
 }
 
-// def sum_set(self) -> Int32:
+// def sum_set(self) -> int32:
 inline int32_t Holder::sum_set() const {
     // n = 0
     int32_t n = 0;
@@ -113,7 +113,7 @@ inline int32_t Holder::sum_set() const {
     return n;
 }
 
-// def count_str(self) -> Int32:
+// def count_str(self) -> int32:
 inline int32_t Holder::count_str() const {
     // n = 0
     int32_t n = 0;

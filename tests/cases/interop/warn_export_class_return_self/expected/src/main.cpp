@@ -32,7 +32,7 @@ Box& get_global() {
 }
 
 // @export
-// def fresh(v: Int64) -> Own[Box]:
+// def fresh(v: int64) -> Own[Box]:
 Box fresh(int64_t v) {
     // return Box(v)  # tpyc: ok
     return Box(v);

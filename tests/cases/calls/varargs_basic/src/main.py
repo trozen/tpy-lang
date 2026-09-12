@@ -1,8 +1,8 @@
 # homogeneous *args mapped to Span[readonly[T]]
-from tpy import Int32
+from tpy import int32
 
-def sum_all(*args: Int32) -> Int32:
-    total: Int32 = 0
+def sum_all(*args: int32) -> int32:
+    total: int32 = 0
     for x in args:
         total += x
     return total

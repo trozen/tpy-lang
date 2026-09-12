@@ -21,10 +21,10 @@ __coro_main_coro main_coro();
 
 // class Math:
 struct Math {
-    // base: Int32
+    // base: int32
     int32_t base;
 
-    // def __init__(self, b: Int32) -> None:
+    // def __init__(self, b: int32) -> None:
     Math() = default;
     explicit Math(int32_t b);
 
@@ -120,7 +120,7 @@ struct __coro_main_coro {
 };
 
 
-// def __init__(self, b: Int32) -> None:
+// def __init__(self, b: int32) -> None:
 inline Math::Math(int32_t b) : base(b) {}
 void __tpy_init();
 } // namespace tpyapp::main

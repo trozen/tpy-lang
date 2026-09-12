@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def swap(p: P, z: Char) -> Char:
+// def swap(p: P, z: char) -> char:
 char swap(P& p, char z) {
     // x = p.c
     char x = p.c;
@@ -17,7 +17,7 @@ char swap(P& p, char z) {
 
 // def show(p: P) -> None:
 void show(const P& p) {
-    // # A Char field compared against a string literal.
+    // # A char field compared against a string literal.
     // if p.c == "x":
     if ((p.c == 'x')) {
         // print(p.c)
@@ -27,9 +27,9 @@ void show(const P& p) {
 
 // def main() -> None:
 void main() {
-    // z: Char = "z"
+    // z: char = "z"
     char z = 'z';
-    // x: Char = "x"
+    // x: char = "x"
     char x = 'x';
     // p = P(x)
     P p = P(x);

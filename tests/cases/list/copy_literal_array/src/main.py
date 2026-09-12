@@ -4,7 +4,7 @@
 # is on.
 # Each leg writes through the COPY and prints both, so a silent alias prints
 # the written value twice.
-from tpy import copy, Int32, Array
+from tpy import copy, int32, Array
 
 
 def literal_array() -> None:
@@ -15,7 +15,7 @@ def literal_array() -> None:
 
 
 def annotated_array() -> None:
-    xs = Array[Int32, 2]([3, 4])  # the spelled-out inverse of the leg above
+    xs = Array[int32, 2]([3, 4])  # the spelled-out inverse of the leg above
     ys = copy(xs)
     ys[1] = 9
     print(xs[1], ys[1])

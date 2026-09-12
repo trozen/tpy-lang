@@ -2,17 +2,17 @@
 # loop var, the begin/end iterator loop) and `for i in range(len(c)): c[i]` (len as a
 # range bound, which lights up the bounds-safe container-subscript branch). The loop
 # vars are value scalars (copied), so there is no reference/aliasing distinction here.
-from tpy import Int32
+from tpy import int32
 
 
-def total(items: list[Int32]) -> Int32:
+def total(items: list[int32]) -> int32:
     s = 0
     for x in items:
         s = s + x
     return s
 
 
-def count_pos(xs: list[Int32]) -> Int32:
+def count_pos(xs: list[int32]) -> int32:
     n = 0
     for i in range(len(xs)):
         if xs[i] > 0:
@@ -20,7 +20,7 @@ def count_pos(xs: list[Int32]) -> Int32:
     return n
 
 
-def keysum(d: dict[Int32, Int32]) -> Int32:
+def keysum(d: dict[int32, int32]) -> int32:
     s = 0
     for k in d:
         s = s + k

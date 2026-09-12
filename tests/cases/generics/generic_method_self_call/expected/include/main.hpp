@@ -30,9 +30,9 @@ struct Processor {
         return ::tpy::param_to_return<U>(x);
     }
 
-    // def process(self) -> Int32:
+    // def process(self) -> int32:
     int32_t process() const {
-        // return self.wrap(Int32(99))
+        // return self.wrap(int32(99))
         return this->wrap<int32_t>(99);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Processor";

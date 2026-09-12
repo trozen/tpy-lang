@@ -1,15 +1,15 @@
 # @dataclass(order=True) inheritance: comparison uses parent + child fields
 from dataclasses import dataclass
-from tpy import Int32
+from tpy import int32
 
 @dataclass(order=True)
 class Base:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 @dataclass(order=True)
 class Child(Base):
-    z: Int32
+    z: int32
 
 def main() -> None:
     a = Child(1, 2, 3)

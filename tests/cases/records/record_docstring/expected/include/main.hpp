@@ -15,16 +15,16 @@ void main();
 
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
-    // y: Int32
+    // y: int32
     int32_t y;
 
-    // def __init__(self, x: Int32, y: Int32):
+    // def __init__(self, x: int32, y: int32):
     Point() = default;
     explicit Point(int32_t x, int32_t y);
 
-    // def magnitude_sq(self) -> Int32:
+    // def magnitude_sq(self) -> int32:
     int32_t magnitude_sq() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
@@ -35,11 +35,11 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 }
 
 
-// def __init__(self, x: Int32, y: Int32):
+// def __init__(self, x: int32, y: int32):
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {
 }
 
-// def magnitude_sq(self) -> Int32:
+// def magnitude_sq(self) -> int32:
 inline int32_t Point::magnitude_sq() const {
     // return self.x * self.x + self.y * self.y
     return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(this->x, this->x)), (::tpy::mul_check<int32_t>(this->y, this->y))));

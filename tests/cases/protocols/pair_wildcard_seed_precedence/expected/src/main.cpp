@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // p: Pair[Box[Pet], Int32] = Pair[_, Int32](Box(Dog("Rex")), 5)  # tpyc: type(Pair[Box[Pet], Int32])
+    // p: Pair[Box[Pet], int32] = Pair[_, int32](Box(Dog("Rex")), 5)  # tpyc: type(Pair[Box[Pet], int32])
     Pair<::tpystd::tplib::box::Box<Pet>, int32_t> p = Pair<::tpystd::tplib::box::Box<Pet>, int32_t>(::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(Dog("Rex"))), 5);
     // print(p.a.get().name())
     std::cout << p.a.get().name() << "\n";

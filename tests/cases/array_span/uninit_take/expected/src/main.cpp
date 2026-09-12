@@ -4,10 +4,10 @@
 namespace tpyapp::main {
 
 // # Indexed take on heap storage
-// h = UninitHeapStorage[Int32](3)
+// h = UninitHeapStorage[int32](3)
 ::tpy::UninitHeapStorage<int32_t>* h{};
 // # take0 shortcut on array storage
-// a = UninitArrayStorage[Int32, 1]()
+// a = UninitArrayStorage[int32, 1]()
 ::tpy::UninitArrayStorage<int32_t, 1>* a{};
 // # take with record type
 // pts = UninitHeapStorage[Point](2)
@@ -22,7 +22,7 @@ void __tpy_init() {
 
     // from tpy.mem import UninitArrayStorage, UninitHeapStorage
     // # Indexed take on heap storage
-    // h = UninitHeapStorage[Int32](3)
+    // h = UninitHeapStorage[int32](3)
     static ::tpy::UninitHeapStorage<int32_t> __global_slot_1 = ::tpy::UninitHeapStorage<int32_t>(3);
     h = &__global_slot_1;
     // h.init(0, 10)
@@ -38,7 +38,7 @@ void __tpy_init() {
     // print(h.take(2))
     std::cout << h->take(2) << "\n";
     // # take0 shortcut on array storage
-    // a = UninitArrayStorage[Int32, 1]()
+    // a = UninitArrayStorage[int32, 1]()
     static ::tpy::UninitArrayStorage<int32_t, 1> __global_slot_2 = ::tpy::UninitArrayStorage<int32_t, 1>();
     a = &__global_slot_2;
     // a.init0(42)

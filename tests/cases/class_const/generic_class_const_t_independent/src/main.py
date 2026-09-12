@@ -3,11 +3,11 @@
 # `template<typename T> struct C { ... }`), and instance-side reads
 # render the receiver's parameterized type to land on `C<int32_t>::MAX`.
 from typing import Final
-from tpy import Int32
+from tpy import int32
 
 
 class C[T]:
-    MAX: Final[Int32] = 10
+    MAX: Final[int32] = 10
     SCALE: Final[float] = 1.5
 
     def __init__(self) -> None:
@@ -15,7 +15,7 @@ class C[T]:
 
 
 def main() -> None:
-    c = C[Int32]()
+    c = C[int32]()
     print(c.MAX)
     print(c.SCALE)
     d = C[float]()

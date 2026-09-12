@@ -8,7 +8,7 @@ namespace tpyapp::main {
 void main() {
     // c = Client(name="MyClient")
     Client c = Client("MyClient");
-    // c.connect(host="localhost", port=Int32(8080))
+    // c.connect(host="localhost", port=int32(8080))
     c.connect(Options("localhost", 8080));
 }
 

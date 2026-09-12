@@ -3,13 +3,13 @@
 # never-reassigned field crosses as a read-only view -- tests/interop/
 # field_views.)
 # tpy: ext_module
-from tpy import Int64
+from tpy import int64
 from tpy.extern import export
 
 
 @export
 class Inner:
-    def __init__(self, v: Int64):
+    def __init__(self, v: int64):
         self.v = v
 
 

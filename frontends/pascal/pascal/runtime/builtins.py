@@ -14,7 +14,7 @@ M10 ships:
 from __future__ import annotations
 
 import random as _random
-from tpy import Int32
+from tpy import int32
 
 
 def random_real() -> float:
@@ -22,7 +22,7 @@ def random_real() -> float:
     return _random.random()
 
 
-def random_int(n: Int32) -> Int32:
+def random_int(n: int32) -> int32:
     """`random(n)` -- uniform int in [0, n)."""
     return _random.randrange(n)
 
@@ -34,15 +34,15 @@ def randomize() -> None:
     _random.seed()
 
 
-def succ_int(x: Int32) -> Int32:
+def succ_int(x: int32) -> int32:
     return x + 1
 
 
-def pred_int(x: Int32) -> Int32:
+def pred_int(x: int32) -> int32:
     return x - 1
 
 
-def check_subrange(value: Int32, lo: Int32, hi: Int32, name: str) -> Int32:
+def check_subrange(value: int32, lo: int32, hi: int32, name: str) -> int32:
     """Assert `value` lies in `[lo, hi]`, returning it untouched. TP7
     raises a range-check error (code 201) when an out-of-range value
     is assigned to a subrange-typed variable. The translator inserts

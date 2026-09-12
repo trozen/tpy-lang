@@ -6,10 +6,10 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // # Basic: set() constrains T = Int32
-    // c = Container()  # tpyc: type(/Container\[Int32\]/)
+    // # Basic: set() constrains T = int32
+    // c = Container()  # tpyc: type(/Container\[int32\]/)
     Container<int32_t> c = Container<int32_t>();
-    // c.set(Int32(10))
+    // c.set(int32(10))
     c.set(10);
     // x = c.get()
     int32_t x = c.get();
@@ -20,9 +20,9 @@ void main() {
     // # Void method before constraining call is OK
     // c2 = Container()
     Container<int32_t> c2 = Container<int32_t>();
-    // print(c2.get_count())  # returns Int32, no T dependency
+    // print(c2.get_count())  # returns int32, no T dependency
     std::cout << c2.get_count() << "\n";
-    // c2.set(Int32(42))
+    // c2.set(int32(42))
     c2.set(42);
     // print(c2.get())
     std::cout << c2.get() << "\n";

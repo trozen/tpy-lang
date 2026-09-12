@@ -267,7 +267,7 @@ class OperatorResolver:
         left_record = self.ctx.registry.get_record_for_type(left_effective)
         right_record = self.ctx.registry.get_record_for_type(right_effective)
 
-        # Build type substitution maps for generic types (e.g. list[T] -> list[Int32])
+        # Build type substitution maps for generic types (e.g. list[T] -> list[int32])
         left_subst = self._build_type_subst(left_effective, right_effective)
         right_subst = self._build_type_subst(right_effective, left_effective)
 

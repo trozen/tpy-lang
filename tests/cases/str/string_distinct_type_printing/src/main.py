@@ -6,7 +6,7 @@
 # The `Optional[String]` repr arm has its row in the runtime too, but no TPy
 # spelling reaches it: a `String | None` local rejects at `decl.slot_type` and
 # the param form at `call.native_arg.optptr`, both identical on master.
-from tpy import Int32, String
+from tpy import int32, String
 
 
 def repr_and_str(s: String) -> None:
@@ -34,7 +34,7 @@ def show[T](v: T) -> None:
 def dict_key(s: String) -> None:
     # a dict keyed on String, probed with a `str` key: the lookup must compare
     # and hash in the stored type's domain rather than building an element
-    d: dict[String, Int32] = {}
+    d: dict[String, int32] = {}
     d[s] = 1
     print("dictkey", "a" in d, d["a"], len(d))
 

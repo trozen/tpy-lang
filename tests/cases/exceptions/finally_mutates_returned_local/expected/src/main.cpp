@@ -28,7 +28,7 @@ Box ret_record() {
     }
 }
 
-// def ret_list() -> Own[list[Int32]]:
+// def ret_list() -> Own[list[int32]]:
 std::vector<int32_t> ret_list() {
     // xs = [1]
     std::vector<int32_t> xs = {1};
@@ -88,7 +88,7 @@ std::optional<Box> ret_optional(bool flag) {
     }
 }
 
-// def ret_value_int() -> Int32:
+// def ret_value_int() -> int32:
 int32_t ret_value_int() {
     // n = 10
     int32_t n = 10;

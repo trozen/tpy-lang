@@ -1,6 +1,6 @@
 # Reassigning a union FIELD subject while arm bindings borrow it warns
 # (the bindings would dangle). Runtime takes the non-mutating arm.
-from tpy import Int32
+from tpy import int32
 
 
 class Dog:
@@ -11,9 +11,9 @@ class Dog:
 
 
 class Cat:
-    age: Int32
+    age: int32
 
-    def __init__(self, age: Int32) -> None:
+    def __init__(self, age: int32) -> None:
         self.age = age
 
 

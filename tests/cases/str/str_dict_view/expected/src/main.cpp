@@ -40,9 +40,9 @@ void test_dict_value_update_fallback() {
 
 // def test_dict_int_key_view() -> None:
 void test_dict_int_key_view() {
-    // d: dict[Int32, str] = {Int32(1): "one", Int32(2): "two"}
+    // d: dict[int32, str] = {int32(1): "one", int32(2): "two"}
     ::tpy::ordered_map<int32_t, std::string> d = ::tpy::ordered_map<int32_t, std::string>({{1, "one"}, {2, "two"}});
-    // v = d[Int32(1)]  # tpyc: type(StrView)
+    // v = d[int32(1)]  # tpyc: type(StrView)
     std::string_view v = ::tpy::__getitem__(d, 1);
     // print(v)
     std::cout << v << "\n";

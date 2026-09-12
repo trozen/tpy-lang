@@ -1,29 +1,29 @@
-# Test Int64 and UInt64 basic operations
-from tpy import Int64, UInt64
+# Test int64 and uint64 basic operations
+from tpy import int64, uint64
 
 def main() -> None:
-    # Int64 constructors and large values
-    a: Int64 = Int64(9223372036854775807)  # Max Int64
+    # int64 constructors and large values
+    a: int64 = int64(9223372036854775807)  # Max int64
     print(a)
 
-    b: Int64 = Int64(-9223372036854775808)  # Min Int64
+    b: int64 = int64(-9223372036854775808)  # Min int64
     print(b)
 
-    # Int64 arithmetic
-    x: Int64 = Int64(1000000000)
-    y: Int64 = Int64(2000000000)
+    # int64 arithmetic
+    x: int64 = int64(1000000000)
+    y: int64 = int64(2000000000)
     print(x + y)
-    print(x * Int64(3))
+    print(x * int64(3))
 
-    # UInt64 constructors
-    c: UInt64 = UInt64(0)
-    d: UInt64 = UInt64(18446744073709551615)  # Max UInt64
+    # uint64 constructors
+    c: uint64 = uint64(0)
+    d: uint64 = uint64(18446744073709551615)  # Max uint64
     print(c)
     print(d)
 
-    # UInt64 arithmetic
-    u: UInt64 = UInt64(10000000000)
-    v: UInt64 = UInt64(5000000000)
+    # uint64 arithmetic
+    u: uint64 = uint64(10000000000)
+    v: uint64 = uint64(5000000000)
     print(u + v)
     print(u - v)
 

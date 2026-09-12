@@ -7,17 +7,17 @@
 # value, so they emit as `(void)(...)` -- a bare `(n < 2);` trips GCC's
 # -Wunused-value, which this suite builds with -Werror. This case is where
 # that build is proven.
-from tpy import Int32
+from tpy import int32
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
-def peek(n: Int32) -> Int32:
+def peek(n: int32) -> int32:
     print("peeked")
     return n
 

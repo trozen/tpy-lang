@@ -4,14 +4,14 @@
 namespace tpyapp::main {
 
 
-// def takes(flag: bool) -> Int32:
+// def takes(flag: bool) -> int32:
 int32_t takes(bool flag) {
     // return 1 if flag else 0
     return ((flag) ? (1) : (0));
 }
 
 // @kwarg_bool
-// def run() -> Int32:
+// def run() -> int32:
 int32_t run() {
     // x = takes(flag="true")
     int32_t x = takes(true);

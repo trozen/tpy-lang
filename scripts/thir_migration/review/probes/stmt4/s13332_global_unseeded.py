@@ -1,6 +1,6 @@
-from tpy import Int32
+from tpy import int32
 message = b'before'
-def rejected(n: Int32) -> Int32:
+def rejected(n: int32) -> int32:
     global message
     return n
 def main() -> None:

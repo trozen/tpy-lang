@@ -8,7 +8,7 @@ namespace tpyapp::main {
 void main() {
     // text: str = "hello"
     std::string_view text = "hello";
-    // # str conforms to Sequence[Char]
+    // # str conforms to Sequence[char]
     // print(first_char(text))    # h
     std::cout << first_char(text) << "\n";
     // print(count_chars(text))   # 5

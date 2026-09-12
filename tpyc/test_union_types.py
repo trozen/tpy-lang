@@ -89,7 +89,7 @@ class TestMakeUnion:
         result = make_union(INT32, STR)
         assert isinstance(result, UnionType)
         s = str(result)
-        assert "Int32" in s
+        assert "int32" in s
         assert "str" in s
         assert "|" in s
 
@@ -128,7 +128,7 @@ class TestMakeUnion:
         assert isinstance(result, UnionType)
         new = result.with_inner_types((INT32, BOOL))
         assert isinstance(new, UnionType)
-        assert new.members == (INT32, BOOL)
+        assert new.members == (BOOL, INT32)
 
     def test_readonly_union(self):
         """readonly[A] | readonly[B] should work."""

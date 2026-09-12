@@ -1,20 +1,20 @@
 from tpy.extern import native_global
-from tpy import Int32
+from tpy import int32
 
 # Write to native C globals inside if/else branches (no prior function-scope assignment).
 # Must NOT emit a local declaration that shadows the extern global.
 
-opentop: Int32 = native_global("opentop", binding="C")
-counter: Int32 = native_global("g_counter", binding="C")
+opentop: int32 = native_global("opentop", binding="C")
+counter: int32 = native_global("g_counter", binding="C")
 
-def update_same_name(a: Int32, b: Int32) -> None:
+def update_same_name(a: int32, b: int32) -> None:
     global opentop
     if a < b:
         opentop = a
     else:
         opentop = b
 
-def update_renamed(a: Int32, b: Int32) -> None:
+def update_renamed(a: int32, b: int32) -> None:
     global counter
     if a < b:
         counter = a
@@ -22,9 +22,9 @@ def update_renamed(a: Int32, b: Int32) -> None:
         counter = b
 
 def main() -> None:
-    update_same_name(Int32(10), Int32(20))
+    update_same_name(int32(10), int32(20))
     print(opentop)
-    update_renamed(Int32(30), Int32(40))
+    update_renamed(int32(30), int32(40))
     print(counter)
 
 main()

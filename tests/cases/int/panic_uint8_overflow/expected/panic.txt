@@ -1,1 +1,1 @@
-TurboPython panic: UInt8 overflow in addition
+TurboPython panic: uint8 overflow in addition

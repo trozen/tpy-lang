@@ -17,10 +17,10 @@ void main();
 // @nocopy
 // class Counter:
 struct Counter {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Counter() = default;
     explicit Counter(int32_t n);
     // non-copyable (@nocopy)
@@ -38,10 +38,10 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 // class Acc:
 struct Acc {
-    // total: Int32
+    // total: int32
     int32_t total;
 
-    // def __init__(self, total: Int32) -> None:
+    // def __init__(self, total: int32) -> None:
     Acc() = default;
     explicit Acc(int32_t total);
 
@@ -56,10 +56,10 @@ inline std::ostream& operator<<(std::ostream& os, const Acc& obj) {
 }
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Counter::Counter(int32_t n) : n(n) {}
 
-// def __init__(self, total: Int32) -> None:
+// def __init__(self, total: int32) -> None:
 inline Acc::Acc(int32_t total) : total(total) {}
 
 // def __iadd__(self, other: Counter) -> "Acc":

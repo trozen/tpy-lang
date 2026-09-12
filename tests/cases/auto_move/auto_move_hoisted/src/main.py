@@ -1,16 +1,16 @@
 # If/else branch variable (T* pointer-local) at last use gets auto-moved.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Point:
-    x: Int32
+    x: int32
 
 
-def consume(p: Own[Point]) -> Int32:
+def consume(p: Own[Point]) -> int32:
     return p.x
 
 
-def test(cond: bool) -> Int32:
+def test(cond: bool) -> int32:
     if cond:
         p = Point()
         p.x = 42

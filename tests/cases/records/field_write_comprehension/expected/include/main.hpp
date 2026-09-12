@@ -21,22 +21,22 @@ void main();
 
 // class Pic:
 struct Pic {
-    // data: list[list[Int32]]
+    // data: list[list[int32]]
     std::vector<std::vector<int32_t>> data;
-    // flat: list[Int32]
+    // flat: list[int32]
     std::vector<int32_t> flat;
-    // d: dict[str, Int32]
+    // d: dict[str, int32]
     ::tpy::ordered_map<std::string, int32_t> d;
-    // s: set[Int32]
+    // s: set[int32]
     ::tpy::ordered_set<int32_t> s;
-    // opt: Optional[list[Int32]]
+    // opt: Optional[list[int32]]
     std::optional<std::vector<int32_t>> opt;
 
     // def __init__(self) -> None:
     Pic();
 
     // # Method body, a nested comprehension.
-    // def fill(self, w: Int32, h: Int32) -> None:
+    // def fill(self, w: int32, h: int32) -> None:
     void fill(int32_t w, int32_t h);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pic";
 };
@@ -48,16 +48,16 @@ inline std::ostream& operator<<(std::ostream& os, const Pic& obj) {
 
 // class Grid:
 struct Grid {
-    // width: Int32
+    // width: int32
     int32_t width;
-    // height: Int32
+    // height: int32
     int32_t height;
-    // data: list[list[Int32]]
+    // data: list[list[int32]]
     std::vector<std::vector<int32_t>> data;
 
     // # The doom shape: locals first, so the field writes land in the
     // # constructor BODY rather than the member-init prefix.
-    // def __init__(self, raw: list[Int32]) -> None:
+    // def __init__(self, raw: list[int32]) -> None:
     Grid() = default;
     explicit Grid(const std::vector<int32_t>& raw);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Grid";
@@ -73,7 +73,7 @@ inline std::ostream& operator<<(std::ostream& os, const Grid& obj) {
 inline Pic::Pic() : data(std::vector<std::vector<int32_t>>{}), flat(std::vector<int32_t>{}), d(::tpy::ordered_map<std::string, int32_t>()), s(::tpy::ordered_set<int32_t>()), opt(std::nullopt) {}
 
 // # Method body, a nested comprehension.
-// def fill(self, w: Int32, h: Int32) -> None:
+// def fill(self, w: int32, h: int32) -> None:
 inline void Pic::fill(int32_t w, int32_t h) {
     // self.data = [[0 for k in range(h)] for j in range(w)]  # tpyc: ok
     this->data = ({
@@ -97,7 +97,7 @@ inline void Pic::fill(int32_t w, int32_t h) {
 
 // # The doom shape: locals first, so the field writes land in the
 // # constructor BODY rather than the member-init prefix.
-// def __init__(self, raw: list[Int32]) -> None:
+// def __init__(self, raw: list[int32]) -> None:
 inline Grid::Grid(const std::vector<int32_t>& raw) {
     // width = raw[0]
     int32_t width = ::tpy::__getitem__(raw, 0);

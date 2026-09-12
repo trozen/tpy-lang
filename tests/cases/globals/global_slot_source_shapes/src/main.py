@@ -3,13 +3,13 @@
 # field (the storage member lifts to the pointer, both as a first write and as a
 # write after a slot-allocating one), a subclass rvalue into an annotated base
 # slot, and a union slot from a record rvalue or a list literal.
-from tpy import Int32
+from tpy import int32
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
@@ -21,7 +21,7 @@ class Line:
 
 
 class Holder:
-    xs: list[Int32]
+    xs: list[int32]
     inner: Point
     value: Point | None
 
@@ -32,14 +32,14 @@ class Holder:
 
 
 class Base:
-    n: Int32
+    n: int32
 
     def __init__(self) -> None:
         self.n = 1
 
 
 class Child(Base):
-    extra: Int32
+    extra: int32
 
     def __init__(self) -> None:
         self.n = 2
@@ -48,7 +48,7 @@ class Child(Base):
 
 h: Holder = Holder()
 # A container field and a record field: each global aliases the field.
-ys: list[Int32] = h.xs  # tpyc: ok
+ys: list[int32] = h.xs  # tpyc: ok
 p: Point = h.inner  # tpyc: ok
 # An Optional[record] field is storage form, so the slot lifts it.
 g: Point | None = h.value  # tpyc: ok
@@ -56,7 +56,7 @@ g: Point | None = h.value  # tpyc: ok
 b: Base = Child()  # tpyc: warning(/upcast narrows .Child. to .Base./)
 # A value-variant slot from a record rvalue and from a list literal.
 u: Point | Line = Point(5)  # tpyc: ok
-v: list[Int32] | Int32 = [6, 7]  # tpyc: ok
+v: list[int32] | int32 = [6, 7]  # tpyc: ok
 # A first write allocates a static slot; the later Optional-field write must
 # point at the OWNER's storage rather than reseat through that slot.
 q: Point | None = Point(8)  # tpyc: ok

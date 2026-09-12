@@ -2,11 +2,11 @@
 # resumable frame-member path must never see a yield-containing nested def).
 import asyncio
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
-async def outer(k: Int32) -> Int32:
-    def gen() -> Iterator[Int32]:  # tpyc: error(/nested generator functions are not supported/)
+async def outer(k: int32) -> int32:
+    def gen() -> Iterator[int32]:  # tpyc: error(/nested generator functions are not supported/)
         yield k
 
     total = 0

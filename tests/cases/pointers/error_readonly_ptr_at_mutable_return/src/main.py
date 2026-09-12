@@ -1,13 +1,13 @@
 # Returning a `Ptr[readonly[T]]` param at a mutable `T` slot: that binds a
 # mutable reference to a const pointee, so the return rejects.
-from tpy import Int32, Ptr, readonly
+from tpy import int32, Ptr, readonly
 
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32) -> None:
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 

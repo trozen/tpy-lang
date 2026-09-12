@@ -7,7 +7,7 @@
 
 namespace tpyapp::main {
 
-// class IntCounted(Iterable[Int32], Protocol):
+// class IntCounted(Iterable[int32], Protocol):
 template<typename T>
 concept IntCounted = requires(T& t) {
     { t.length() } -> std::convertible_to<int32_t>;
@@ -27,18 +27,18 @@ void main();
 
 // class IntListIter:
 struct IntListIter {
-    // items: list[Int32]
+    // items: list[int32]
     std::vector<int32_t> items;
-    // pos: Int32
+    // pos: int32
     int32_t pos;
 
-    // def __init__(self, items: list[Int32]) -> None:
+    // def __init__(self, items: list[int32]) -> None:
     IntListIter() = default;
     explicit IntListIter(const std::vector<int32_t>& items);
 
     auto& __iter__() { return *this; }
 
-    // def __next__(self) -> Int32:
+    // def __next__(self) -> int32:
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     static constexpr std::string_view __tpy_class_name__ = "__main__.IntListIter";
 };
@@ -50,16 +50,16 @@ inline std::ostream& operator<<(std::ostream& os, const IntListIter& obj) {
 
 // class IntList(IntCounted):
 struct IntList {
-    // items: list[Int32]
+    // items: list[int32]
     std::vector<int32_t> items;
 
     // def __init__(self) -> None:
     IntList();
 
-    // def add(self, x: Int32) -> None:
+    // def add(self, x: int32) -> None:
     void add(int32_t x);
 
-    // def length(self) -> Int32:
+    // def length(self) -> int32:
     int32_t length() const;
 
     // def __iter__(self) -> Own[IntListIter]:
@@ -73,12 +73,12 @@ inline std::ostream& operator<<(std::ostream& os, const IntList& obj) {
 }
 
 
-// def __init__(self, items: list[Int32]) -> None:
+// def __init__(self, items: list[int32]) -> None:
 inline IntListIter::IntListIter(const std::vector<int32_t>& items) : items(items), pos(0) {}
 
-// def __next__(self) -> Int32:
+// def __next__(self) -> int32:
 inline std::expected<int32_t, ::tpy::StopIteration> IntListIter::__next__() {
-    // if self.pos >= Int32(len(self.items)):
+    // if self.pos >= int32(len(self.items)):
     if ((this->pos >= ::tpy::__len__(this->items))) {
         // raise StopIteration
         return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -94,15 +94,15 @@ inline std::expected<int32_t, ::tpy::StopIteration> IntListIter::__next__() {
 // def __init__(self) -> None:
 inline IntList::IntList() : items(std::vector<int32_t>{}) {}
 
-// def add(self, x: Int32) -> None:
+// def add(self, x: int32) -> None:
 inline void IntList::add(int32_t x) {
     // self.items.append(x)
     this->items.push_back(x);
 }
 
-// def length(self) -> Int32:
+// def length(self) -> int32:
 inline int32_t IntList::length() const {
-    // return Int32(len(self.items))
+    // return int32(len(self.items))
     return ::tpy::__len__(this->items);
 }
 
@@ -111,19 +111,19 @@ inline IntListIter IntList::__iter__() const {
     // return IntListIter(self.items)
     return IntListIter(this->items);
 }
-// def length_of(c: IntCounted) -> Int32:
+// def length_of(c: IntCounted) -> int32:
 template<IntCounted T_c>
 int32_t length_of(T_c& c) {
     // return c.length()
     return c.length();
 }
-// def total(c: IntCounted) -> Int32:
+// def total(c: IntCounted) -> int32:
 template<IntCounted T_c>
 int32_t total(T_c& c) {
-    // # Iteration via the inherited `Iterable[Int32]` requirement; element
+    // # Iteration via the inherited `Iterable[int32]` requirement; element
     // # type is bound concretely at the child level (no type param to
     // # substitute).
-    // s: Int32 = 0
+    // s: int32 = 0
     int32_t s = 0;
     // for x in c:
     auto& __src_0 = c;

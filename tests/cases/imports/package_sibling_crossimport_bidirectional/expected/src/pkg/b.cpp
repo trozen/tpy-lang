@@ -5,16 +5,16 @@
 namespace tpyapp::pkg::b {
 
 
-// def use_a(a: A) -> Int32:
+// def use_a(a: A) -> int32:
 int32_t use_a(const ::tpyapp::pkg::a::A& a) {
     // return a.kind()
     return a.kind();
 }
 
 
-// def kind(self) -> Int32:
+// def kind(self) -> int32:
 int32_t B::kind() const {
-    // return Int32(2)
+    // return int32(2)
     return 2;
 }
 void __tpy_init() {

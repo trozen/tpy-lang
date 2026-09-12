@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // a = ArrayList[Int32, 8]()
+    // a = ArrayList[int32, 8]()
     ::tpystd::tplib::array_list::ArrayList<int32_t, 8> a = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
     // for v in [10, 20, 30, 40, 50]:
     auto __obj_0 = {10, 20, 30, 40, 50};

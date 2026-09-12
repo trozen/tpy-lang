@@ -1,1 +1,1 @@
-main.py:6: error: Type mismatch in '*=' to 'items[...]': expected Int32, got float
+main.py:6: error: Type mismatch in '*=' to 'items[...]': expected int32, got float

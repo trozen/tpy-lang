@@ -16,10 +16,10 @@ void main();
 
 // class Cell:
 struct Cell {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Cell() = default;
     explicit Cell(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cell";
@@ -32,11 +32,11 @@ inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
 
 // class Grid:
 struct Grid {
-    // cells: list[Int32]
+    // cells: list[int32]
     std::vector<int32_t> cells;
     // boxes: list[Cell]
     std::vector<Cell> boxes;
-    // n: Int32 = Int32(4)
+    // n: int32 = int32(4)
     int32_t n = 4;
 
     // def __init__(self) -> None:
@@ -50,13 +50,13 @@ inline std::ostream& operator<<(std::ostream& os, const Grid& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Cell::Cell(int32_t v) : v(v) {}
 
 // def __init__(self) -> None:
 inline Grid::Grid() {
     // # The subject: literal elements read a default-only field.
-    // self.cells = [self.n, Int32(1)]  # tpyc: ok
+    // self.cells = [self.n, int32(1)]  # tpyc: ok
     this->cells = {this->n, 1};
     // self.boxes = [Cell(self.n)]  # tpyc: ok
     this->boxes = {Cell(this->n)};

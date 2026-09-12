@@ -85,7 +85,7 @@ def test_forbidden_pattern_fires_on_leaked_names(text: str) -> None:
         "main.py:14: error: Unsupported sub-pattern in field binding: or-pattern",
         "main.py:2: error: 'int' has no attribute 'append'",
         "main.py:7: warning: copies Data into container; use copy() to make this explicit",
-        "main.py:4: error: expected Int32, got str",
+        "main.py:4: error: expected int32, got str",
     ],
 )
 def test_forbidden_pattern_stays_quiet_on_python_wording(text: str) -> None:

@@ -3,23 +3,23 @@
 # only a field the member-init list has ALREADY initialized -- struct members
 # are ordered by `__init__` assignment order, so `n` (assigned first) holds its
 # value here while a later-assigned or default-only field would not.
-from tpy import Int32
+from tpy import int32
 
 
 class Cell:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 
 class Grid:
-    n: Int32
+    n: int32
     cells: list[Cell]
-    seen: set[Int32]
-    index: dict[Int32, Int32]
+    seen: set[int32]
+    index: dict[int32, int32]
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
         self.cells = [Cell(i) for i in range(self.n)]  # tpyc: ok
         self.seen = {i * 2 for i in range(self.n)}  # tpyc: ok

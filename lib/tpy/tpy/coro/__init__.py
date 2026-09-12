@@ -8,7 +8,7 @@ from .._typing import Protocol
 from .._bootstrap._decorators import Own, dynamic
 from .._bootstrap._extern import builtin_type
 from .._builtins._exceptions import CancelledError
-from .._core import Poll, Ptr, ValueType, Int32
+from .._core import Poll, Ptr, ValueType, int32
 
 
 # The dispatch target for `Waker.wake()`. `asyncio.Executor` inherits
@@ -23,7 +23,7 @@ from .._core import Poll, Ptr, ValueType, Int32
 # the concrete `Ptr[Executor]` handle is available.
 @dynamic
 class Awaker(Protocol):
-    def mark_runnable(self, task_id: Int32, generation: Int32) -> None: ...
+    def mark_runnable(self, task_id: int32, generation: int32) -> None: ...
 
 
 @builtin_type("tpy.coro.Waker")
@@ -40,11 +40,11 @@ class Waker(ValueType):
     generation check.
     """
     awaker: Ptr[Awaker]
-    task_id: Int32
-    generation: Int32
+    task_id: int32
+    generation: int32
 
-    def __init__(self, awaker: Ptr[Awaker] = None, task_id: Int32 = 0,
-                 generation: Int32 = 0) -> None:
+    def __init__(self, awaker: Ptr[Awaker] = None, task_id: int32 = 0,
+                 generation: int32 = 0) -> None:
         self.awaker = awaker
         self.task_id = task_id
         self.generation = generation

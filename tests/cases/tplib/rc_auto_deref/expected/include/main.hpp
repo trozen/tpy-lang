@@ -22,14 +22,14 @@ void main();
 
 // class State:
 struct State {
-    // x: Int32
+    // x: int32
     int32_t x;
 
-    // def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: int32) -> None:
     State() = default;
     explicit State(int32_t x);
 
-    // def doubled(self) -> Int32:
+    // def doubled(self) -> int32:
     int32_t doubled() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.State";
 };
@@ -40,10 +40,10 @@ inline std::ostream& operator<<(std::ostream& os, const State& obj) {
 }
 
 
-// def __init__(self, x: Int32) -> None:
+// def __init__(self, x: int32) -> None:
 inline State::State(int32_t x) : x(x) {}
 
-// def doubled(self) -> Int32:
+// def doubled(self) -> int32:
 inline int32_t State::doubled() const {
     // return self.x * 2
     return (::tpy::mul_check<int32_t>(this->x, 2));

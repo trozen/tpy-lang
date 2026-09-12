@@ -1,8 +1,8 @@
 # Set methods: discard, remove, pop, clear, copy
-from tpy import Int32
+from tpy import int32
 
 def main() -> None:
-    s: set[Int32] = {10, 20, 30}
+    s: set[int32] = {10, 20, 30}
 
     # discard (no error if missing)
     s.discard(20)
@@ -15,13 +15,13 @@ def main() -> None:
     print(s)
 
     # pop (removes first element)
-    val: Int32 = s.pop()
+    val: int32 = s.pop()
     print(val)
     print(s)
 
     # copy
-    a: set[Int32] = {1, 2, 3}
-    b: set[Int32] = a.copy()
+    a: set[int32] = {1, 2, 3}
+    b: set[int32] = a.copy()
     b.add(4)
     print(a)
     print(b)

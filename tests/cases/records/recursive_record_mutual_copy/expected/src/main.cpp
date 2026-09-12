@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def copied_val(a: A) -> Int32:
+// def copied_val(a: A) -> int32:
 int32_t copied_val(const A& a) {
     // a2 = copy(a)
     A a2 = A(a);

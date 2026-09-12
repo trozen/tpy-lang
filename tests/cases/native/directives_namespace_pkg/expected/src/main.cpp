@@ -6,7 +6,7 @@ namespace myapp {
 
 // def main() -> None:
 void main() {
-    // print(add(Int32(10), Int32(32)))
+    // print(add(int32(10), int32(32)))
     std::cout << ::mypkg::utils::add(10, 32) << "\n";
 }
 

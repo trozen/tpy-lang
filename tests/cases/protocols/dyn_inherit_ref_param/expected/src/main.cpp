@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def use(s: Box[Sink], d: dict[str, Int32]) -> Int32:
+// def use(s: Box[Sink], d: dict[str, int32]) -> int32:
 int32_t use(::tpystd::tplib::box::Box<Sink>& s, ::tpy::ordered_map<std::string, int32_t>& d) {
     // s.get().bump(d)
     s.get().bump(d);
@@ -14,7 +14,7 @@ int32_t use(::tpystd::tplib::box::Box<Sink>& s, ::tpy::ordered_map<std::string, 
 
 // def main() -> None:
 void main() {
-    // d = {"a": Int32(2), "b": Int32(3)}
+    // d = {"a": int32(2), "b": int32(3)}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 2}, {"b", 3}});
     // box: Box[Sink] = Box(Counter(10))
     ::tpystd::tplib::box::Box<Sink> box = ::tpystd::tplib::box::Box<Counter>(Counter(10));

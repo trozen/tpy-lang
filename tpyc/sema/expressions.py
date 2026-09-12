@@ -291,7 +291,7 @@ class ExpressionAnalyzer:
             typ = FloatLiteralType(expr.value)
         elif isinstance(expr, TpyStrLiteral):
             # String literals are always str type (including single-char)
-            # Char type is only used when explicitly annotated or from string indexing
+            # char type is only used when explicitly annotated or from string indexing
             typ = STR
         elif isinstance(expr, TpyBytesLiteral):
             typ = BYTES
@@ -512,7 +512,7 @@ class ExpressionAnalyzer:
                     return inner_hint
 
         # Non-empty array literal with list type hint
-        # (e.g. return [x, y] with -> Own[list[T]], or x: list[Int32|None] = [1, None])
+        # (e.g. return [x, y] with -> Own[list[T]], or x: list[int32|None] = [1, None])
         if isinstance(expr, TpyArrayLiteral) and expr.elements:
             inner_hint = unwrap_readonly(type_hint)
             if isinstance(inner_hint, OwnType):
@@ -646,13 +646,13 @@ class ExpressionAnalyzer:
         # past its step.
 
         # Check for INT type parameter references in generic class context
-        # INT type params can be used as values in expressions (e.g., Int32(N))
+        # INT type params can be used as values in expressions (e.g., int32(N))
         if self.ctx.record_ctx.type_params and self.ctx.record_ctx.type_param_kinds:
             try:
                 idx = self.ctx.record_ctx.type_params.index(expr.name)
                 if self.ctx.record_ctx.type_param_kinds[idx] == TypeParamKind.INT:
                     # INT type param - return TypeParamRef with INT kind
-                    # This represents a compile-time constant, treated as Int32-compatible
+                    # This represents a compile-time constant, treated as int32-compatible
                     return TypeParamRef(expr.name, kind=TypeParamKind.INT)
             except ValueError:
                 pass  # Not a type parameter
@@ -1235,11 +1235,11 @@ class ExpressionAnalyzer:
             # Right side must be iterable (intrinsically or via NativeIterable protocol)
             helper = IterableHelper(self.ctx)
             if helper.is_type_iterable(right_type):
-                # For string containers, LHS must be str or Char
+                # For string containers, LHS must be str or char
                 if is_any_str_type(right_type):
                     if not (is_any_str_type(left_type) or is_char_type(left_type)):
                         raise SemanticError(
-                            f"Cannot check '{left_type}' membership in str (expected str or Char)",
+                            f"Cannot check '{left_type}' membership in str (expected str or char)",
                             expr.loc
                         )
                 else:
@@ -1543,7 +1543,7 @@ class ExpressionAnalyzer:
                     expr.resolved_unaryop = result
                 return effective_type
             if expr.op == "~":
-                # Bitwise not on literal - treat as Int32
+                # Bitwise not on literal - treat as int32
                 # Still resolve for codegen
                 if result := self.operators.resolve_unaryop(effective_type, expr.op, loc_node=expr):
                     expr.resolved_unaryop = result
@@ -1756,7 +1756,7 @@ class ExpressionAnalyzer:
         # in C++ (`C<T>::X`), so codegen needs the concrete (or template-scope)
         # type args at the access site. We get them from the receiver's type
         # only when the receiver is a direct instance of the generic owner.
-        # Inheritance with fixed type-args (`class Child(C[Int32]): pass;
+        # Inheritance with fixed type-args (`class Child(C[int32]): pass;
         # obj: Child; obj.X`) loses the args at the receiver-record level
         # and is deferred -- reject for now with a clear hint.
         if owner.type_params and owner is not record:
@@ -1799,7 +1799,7 @@ class ExpressionAnalyzer:
         (`m.Foo.CONST`)."""
         # Phase 9: bare-class access on a generic class can't render the
         # parameterized qname (no type args at the access site), so reject
-        # and point the user at instance access. `Class[Int32].X` syntax
+        # and point the user at instance access. `Class[int32].X` syntax
         # for class-level access on a parameterized generic is not yet
         # supported either.
         if record_info.type_params and expr.field in record_info.class_constants:
@@ -2197,8 +2197,8 @@ class ExpressionAnalyzer:
         Args:
             expected_elem: When provided (from a type annotation or return type hint),
                 each element is checked against this type instead of against the first
-                element. Enables mixed-type literals like [Int32(1), None] when the
-                annotation is list[Int32 | None].
+                element. Enables mixed-type literals like [int32(1), None] when the
+                annotation is list[int32 | None].
         """
         if not expr.elements:
             if not is_body_like_scope(self.ctx.func.current_function):
@@ -2290,7 +2290,7 @@ class ExpressionAnalyzer:
         else:
             # Inferred mode: check all elements against first element's type
             first_type = elem_types[0]
-            # Keep IntLiteralType so array can coerce to either Int32 or BigInt based on context
+            # Keep IntLiteralType so array can coerce to either int32 or BigInt based on context
 
             for i, elem_type in enumerate(elem_types[1:], 2):
                 # Literal-aware unification (int/float literals, tuples, nested
@@ -2334,7 +2334,7 @@ class ExpressionAnalyzer:
         size = len(expr.elements)
 
         # Global context (no current function) -> ListType (std::vector)
-        # Keep IntLiteralType to allow coercion to Int32 when annotation is present
+        # Keep IntLiteralType to allow coercion to int32 when annotation is present
         if self.ctx.func.current_function is None:
             return make_list(first_type)
 
@@ -2577,7 +2577,7 @@ class ExpressionAnalyzer:
             return (None, True)
         # Pick the first overload whose return type is Poll[T] for some T.
         # Substitute the record's class-level type params with typ.type_args
-        # so `Future[Int32]` returns Int32, not the type-var T.
+        # so `Future[int32]` returns int32, not the type-var T.
         from ..typesys import unwrap_ref_type
         type_subst: dict[str, _TpyType] = {}
         if record_info.type_params and len(typ.type_args) == len(record_info.type_params):
@@ -2955,7 +2955,7 @@ class ExpressionAnalyzer:
         if t == e:
             return t
 
-        # Numeric widening (Int32 + Int64 -> Int64, etc.)
+        # Numeric widening (int32 + int64 -> int64, etc.)
         widened = widen_numeric_types(t, e)
         if widened is not None:
             return widened
@@ -4105,7 +4105,7 @@ class ExpressionAnalyzer:
                     )
                 if part.format_spec is not None and (is_big_int_type(resolved) or isinstance(resolved, IntLiteralType)):
                     raise self.ctx.error(
-                        "Format specs on int are not yet supported (use a fixed-width type like Int32)",
+                        "Format specs on int are not yet supported (use a fixed-width type like int32)",
                         part.expr,
                     )
         return STR
@@ -4166,7 +4166,7 @@ class ExpressionAnalyzer:
             for name in captured
         ])
 
-        # Check return type compatibility (allow implicit coercions like int literal -> Int32)
+        # Check return type compatibility (allow implicit coercions like int literal -> int32)
         if isinstance(fn_type.return_type, TypeParamRef):
             # Hint has unresolved type param (e.g. from generic builtin map[T,U]):
             # use the body's inferred type and return a concrete CallableType.

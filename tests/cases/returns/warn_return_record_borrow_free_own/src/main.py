@@ -4,13 +4,13 @@
 # callee's return convention says the source is borrowed. The copy is the
 # ACKNOWLEDGED CPython divergence (CPython hands back the very Payload), so
 # the case prints only what both agree on and the WARNING is the pin.
-from tpy import Int32, Own, copy
+from tpy import int32, Own, copy
 
 
 class Payload:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 

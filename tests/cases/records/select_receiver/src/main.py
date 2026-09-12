@@ -1,15 +1,15 @@
 # A ternary or walrus expression as a method-call receiver: the receiver aliases
 # the chosen operand, so a mutating method must be visible through its name.
-from tpy import Int32
+from tpy import int32
 
 
 class Counter:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
-    def bump(self) -> Int32:
+    def bump(self) -> int32:
         self.n += 1
         return self.n
 

@@ -16,14 +16,14 @@ void main();
 
 // class ParseError(Exception, ReturnException):
 struct ParseError : ::tpy::Exception {
-    // line: Int32
+    // line: int32
     int32_t line;
-    // column: Int32
+    // column: int32
     int32_t column;
     // detail: str
     std::string detail;
 
-    // def __init__(self, line: Int32, column: Int32, detail: str) -> None:
+    // def __init__(self, line: int32, column: int32, detail: str) -> None:
     ParseError() = default;
     explicit ParseError(int32_t line, int32_t column, std::string_view detail);
 
@@ -39,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const ParseError& obj) {
 }
 
 
-// def __init__(self, line: Int32, column: Int32, detail: str) -> None:
+// def __init__(self, line: int32, column: int32, detail: str) -> None:
 inline ParseError::ParseError(int32_t line, int32_t column, std::string_view detail) : line(line), column(column), detail(detail) {}
 void __tpy_init();
 } // namespace tpyapp::main

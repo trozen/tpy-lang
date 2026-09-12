@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def bump(t: tuple[Node, Int32]) -> None:
+// def bump(t: tuple[Node, int32]) -> None:
 void bump(const std::tuple<Node*, int32_t>& t) {
     // t[0].x = t[0].x + t[1]
     std::get<0>(t)->x = (::tpy::add_check<int32_t>(std::get<0>(t)->x, std::get<1>(t)));
 }
 
-// def via_local(items: list[Node]) -> Int32:
+// def via_local(items: list[Node]) -> int32:
 int32_t via_local(std::vector<Node>& items) {
     // p: Ptr[Node] = items[0]
     Node* p = &::tpy::__getitem__(items, 0);
@@ -32,7 +32,7 @@ void via_subscript(const std::vector<Node*>& ps) {
     bump(std::tuple<Node*, int32_t>{::tpy::__getitem__(ps, 0), 1000});
 }
 
-// def via_plain() -> Int32:
+// def via_plain() -> int32:
 int32_t via_plain() {
     // n = Node(5)
     Node n = Node(5);

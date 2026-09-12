@@ -1,12 +1,12 @@
 # Ref[T] from function return types must be stripped when inferring container
 # constructor type args. Otherwise we get e.g. list[Ref[Point]] which maps to
 # invalid C++ (std::vector<Point&>).
-from tpy import Int32, copy_iter
+from tpy import int32, copy_iter
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32) -> None:
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
     def __str__(self) -> str:

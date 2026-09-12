@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def run(n: Int32, hook: Callable[[Int32], None] | None = None) -> None:
+// def run(n: int32, hook: Callable[[int32], None] | None = None) -> None:
 void run(int32_t n, std::optional<std::function<void(int32_t)>> hook) {
     // if hook is not None:
     if ((hook.has_value())) {
@@ -14,7 +14,7 @@ void run(int32_t n, std::optional<std::function<void(int32_t)>> hook) {
 }
 
 // # Non-void return: the narrowed optional callable's result is used.
-// def apply(n: Int32, f: Callable[[Int32], Int32] | None = None) -> Int32:
+// def apply(n: int32, f: Callable[[int32], int32] | None = None) -> int32:
 int32_t apply(int32_t n, std::optional<std::function<int32_t(int32_t)>> f) {
     // if f is not None:
     if ((f.has_value())) {
@@ -25,13 +25,13 @@ int32_t apply(int32_t n, std::optional<std::function<int32_t(int32_t)>> f) {
     return n;
 }
 
-// def report(code: Int32) -> None:
+// def report(code: int32) -> None:
 void report(int32_t code) {
     // print("report:", code)
     std::cout << "report:" << " " << code << "\n";
 }
 
-// def triple(x: Int32) -> Int32:
+// def triple(x: int32) -> int32:
 int32_t triple(int32_t x) {
     // return x * 3
     return (::tpy::mul_check<int32_t>(x, 3));

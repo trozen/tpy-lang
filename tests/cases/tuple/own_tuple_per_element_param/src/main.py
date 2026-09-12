@@ -6,27 +6,27 @@
 # This test pins the happy paths: last-use rvalues / fresh constructors
 # pass through cleanly. The sibling error_tuple_per_element_own_param_*
 # tests pin the borrowed-source diagnostic.
-from tpy import Int32, Own, copy
+from tpy import int32, Own, copy
 
 
 class P:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
-def take(t: tuple[Own[P], Own[P]]) -> Int32:
+def take(t: tuple[Own[P], Own[P]]) -> int32:
     a, b = t
     return a.x + b.x
 
 
-def take_opt(t: tuple[Own[P] | None, Own[P] | None]) -> Int32:
+def take_opt(t: tuple[Own[P] | None, Own[P] | None]) -> int32:
     a, b = t
     if a is not None and b is not None:
         return a.x + b.x
     if a is not None:
         return a.x
-    return Int32(0)
+    return int32(0)
 
 
 def test_record_elements_last_use() -> None:

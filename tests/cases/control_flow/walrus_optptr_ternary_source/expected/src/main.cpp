@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def value_of(n: Node | None) -> Int32:
+// def value_of(n: Node | None) -> int32:
 int32_t value_of(const Node* n) {
     // if n is not None:
     if ((n != nullptr)) {
@@ -15,7 +15,7 @@ int32_t value_of(const Node* n) {
     return -9;
 }
 
-// def pick(c: bool) -> Int32:
+// def pick(c: bool) -> int32:
 int32_t pick(bool c) {
     // h = Holder(1)
     Holder h = Holder(1);
@@ -36,7 +36,7 @@ int32_t pick(bool c) {
     return -1;
 }
 
-// def walk(nodes: list[Node], flag: bool) -> Iterator[Int32]:
+// def walk(nodes: list[Node], flag: bool) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_walk::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -79,7 +79,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_walk::__next__() {
 }
 
 
-// def walk(nodes: list[Node], flag: bool) -> Iterator[Int32]:
+// def walk(nodes: list[Node], flag: bool) -> Iterator[int32]:
 __gen_walk walk(std::vector<Node>& nodes, bool flag) {
     return __gen_walk(nodes, flag);
 }

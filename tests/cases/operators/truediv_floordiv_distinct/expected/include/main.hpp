@@ -15,10 +15,10 @@ void main();
 
 // class Meters(ValueType):
 struct Meters {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Meters() = default;
     explicit Meters(int32_t v);
 
@@ -28,7 +28,7 @@ struct Meters {
     // def __floordiv__(self, other: "Meters") -> "Meters":
     Meters __floordiv__(Meters other) const;
 
-    // def __rfloordiv__(self, other: Int32) -> "Meters":
+    // def __rfloordiv__(self, other: int32) -> "Meters":
     Meters __rfloordiv__(int32_t other) const;
 
     friend double operator/(const Meters& lhs, Meters other) {
@@ -49,7 +49,7 @@ namespace tpyapp::main {
 
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Meters::Meters(int32_t v) : v(v) {}
 
 // def __truediv__(self, other: "Meters") -> float:
@@ -64,7 +64,7 @@ inline Meters Meters::__floordiv__(Meters other) const {
     return Meters((::tpy::div_check<int32_t>(this->v, other.v)));
 }
 
-// def __rfloordiv__(self, other: Int32) -> "Meters":
+// def __rfloordiv__(self, other: int32) -> "Meters":
 inline Meters Meters::__rfloordiv__(int32_t other) const {
     // return Meters(other // self.v)
     return Meters((::tpy::div_check<int32_t>(other, this->v)));

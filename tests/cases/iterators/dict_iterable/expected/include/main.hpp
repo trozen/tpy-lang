@@ -31,7 +31,7 @@ void collect_items(T_items& items) {
         std::cout << x << "\n";
     }
 }
-// def collect_ints(items: Iterable[Int32]) -> None:
+// def collect_ints(items: Iterable[int32]) -> None:
 template<::tpystd::typing::Iterable<int32_t> T_items>
 void collect_ints(T_items& items) {
     // for x in items:
@@ -45,7 +45,7 @@ void collect_ints(T_items& items) {
         std::cout << x << "\n";
     }
 }
-// def collect_pairs(items: Iterable[tuple[str, Int32]]) -> None:
+// def collect_pairs(items: Iterable[tuple[str, int32]]) -> None:
 template<::tpystd::typing::Iterable<std::tuple<std::string, int32_t>> T_items>
 void collect_pairs(T_items& items) {
     // for pair in items:

@@ -25,9 +25,9 @@ void main();
 
 // class Counters:
 struct Counters {
-    // active: Int32
+    // active: int32
     int32_t active;
-    // peak: Int32
+    // peak: int32
     int32_t peak;
 
     // def __init__(self) -> None:

@@ -4,14 +4,14 @@
 # non-generic and generic callers (is_param_derived_expr recognizes borrow contracts),
 # (c) same for generic methods -- val_or_ref_t<T> emission and return-through-local
 # via TpyMethodCall (addr_taken_roots handles self._items[0] -> "self").
-from tpy import Int32
+from tpy import int32
 
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32) -> None:
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 

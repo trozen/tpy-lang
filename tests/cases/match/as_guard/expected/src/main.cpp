@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def literal_as_guard(x: Int32) -> str:
+// def literal_as_guard(x: int32) -> str:
 std::string literal_as_guard(int32_t x) {
     // match x:
     auto& __match_subject_1 = x;
@@ -33,7 +33,7 @@ std::string literal_as_guard(int32_t x) {
     return "";
 }
 
-// def wildcard_as_guard(x: Int32) -> str:
+// def wildcard_as_guard(x: int32) -> str:
 std::string wildcard_as_guard(int32_t x) {
     // match x:
     auto& __match_subject_1 = x;
@@ -58,13 +58,13 @@ std::string wildcard_as_guard(int32_t x) {
 
 // def main() -> None:
 void main() {
-    // print(literal_as_guard(Int32(1)))
+    // print(literal_as_guard(int32(1)))
     std::cout << literal_as_guard(1) << "\n";
-    // print(literal_as_guard(Int32(2)))
+    // print(literal_as_guard(int32(2)))
     std::cout << literal_as_guard(2) << "\n";
-    // print(wildcard_as_guard(Int32(20)))
+    // print(wildcard_as_guard(int32(20)))
     std::cout << wildcard_as_guard(20) << "\n";
-    // print(wildcard_as_guard(Int32(5)))
+    // print(wildcard_as_guard(int32(5)))
     std::cout << wildcard_as_guard(5) << "\n";
 }
 

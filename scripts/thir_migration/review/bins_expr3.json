@@ -198,7 +198,7 @@
   "reason": "call_reject_reason(\"expr.call\")",
   "bin": "DEAD",
   "confidence": "low",
-  "evidence": "Guard fires only if a `range` arg has arity outside 1..3, a missing cpp_template, or a counter type that is not an eligible scalar. Sema enforces the arity and the counter bound first (probe b2_native_range_char.py: BOTH_REFUSE, \"Type 'Char' does not satisfy 'AnyFixedInt' required by 'range'\"), and `range` is a cpp_template builtin. No shape found that sema admits and this refuses; not exhaustively proven.",
+  "evidence": "Guard fires only if a `range` arg has arity outside 1..3, a missing cpp_template, or a counter type that is not an eligible scalar. Sema enforces the arity and the counter bound first (probe b2_native_range_char.py: BOTH_REFUSE, \"Type 'char' does not satisfy 'AnyFixedInt' required by 'range'\"), and `range` is a cpp_template builtin. No shape found that sema admits and this refuses; not exhaustively proven.",
   "probe": null,
   "plain_raise": false,
   "known_shape": null
@@ -462,7 +462,7 @@
   "reason": "\"optional-ptr scalar face outside a flush position\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "Probe verdict BREAKS_AT_CUTOVER, fallback body:optional-ptr scalar face outside a flush position, raise at expressions.py:14473. A generic record ctor `Container[Int32](Int32(42))` inside a match GUARD: the ctor ladder's scalar-pointee row admits the temp face without a flush right, and this raise refuses it.",
+  "evidence": "Probe verdict BREAKS_AT_CUTOVER, fallback body:optional-ptr scalar face outside a flush position, raise at expressions.py:14473. A generic record ctor `Container[int32](int32(42))` inside a match GUARD: the ctor ladder's scalar-pointee row admits the temp face without a flush right, and this raise refuses it.",
   "probe": "scripts/thir_migration/review/probes/expr3/m_optptr_scalar_ctor_guard.py",
   "plain_raise": false,
   "known_shape": null
@@ -642,7 +642,7 @@
   "reason": "\"truthy.optional_name_narrow\"",
   "bin": "UNSURE",
   "confidence": "medium",
-  "evidence": "Needs a value-repr narrowed Optional NAME whose `_value_opt_binding_kind` is None. Thirteen spellings all ROUTE (param, annotated decl, global, str/Char/bool/Float32 params, for-unpack, tuple-unpack, walrus, dict.get, enum, async frame local, generator frame local, field-derived local) -- every value-opt local codegen creates is registered. Missing: a construction that produces an UNregistered value-repr Optional local.",
+  "evidence": "Needs a value-repr narrowed Optional NAME whose `_value_opt_binding_kind` is None. Thirteen spellings all ROUTE (param, annotated decl, global, str/char/bool/float32 params, for-unpack, tuple-unpack, walrus, dict.get, enum, async frame local, generator frame local, field-derived local) -- every value-opt local codegen creates is registered. Missing: a construction that produces an UNregistered value-repr Optional local.",
   "probe": null,
   "plain_raise": false,
   "known_shape": null
@@ -654,7 +654,7 @@
   "reason": "\"truthy.unary_operand\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "Probe verdict BREAKS_AT_CUTOVER with the raise recorded at expressions.py:15320 (truthy.unary_operand): `not c` on a Char -- a modeless operand that is neither bool nor an eligible scalar.",
+  "evidence": "Probe verdict BREAKS_AT_CUTOVER with the raise recorded at expressions.py:15320 (truthy.unary_operand): `not c` on a char -- a modeless operand that is neither bool nor an eligible scalar.",
   "probe": "scripts/thir_migration/review/probes/expr3/t_unary_char.py",
   "plain_raise": false,
   "known_shape": null
@@ -666,7 +666,7 @@
   "reason": "\"truthy.name\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "Probe verdict BREAKS_AT_CUTOVER with the raise recorded at expressions.py:15345 (truthy.name): `if c:` on a Char local; t_name_float.py and t_name_unrouted.py hit the same line.",
+  "evidence": "Probe verdict BREAKS_AT_CUTOVER with the raise recorded at expressions.py:15345 (truthy.name): `if c:` on a char local; t_name_float.py and t_name_unrouted.py hit the same line.",
   "probe": "scripts/thir_migration/review/probes/expr3/t_name_char.py",
   "plain_raise": false,
   "known_shape": null
@@ -678,7 +678,7 @@
   "reason": "\"truthy.field_nonbool\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "Probe verdict BREAKS_AT_CUTOVER with the raise recorded at expressions.py:15349 (truthy.field_nonbool): `if h.c:` on a Char FIELD; t_opt_field_narrow.py reaches it too.",
+  "evidence": "Probe verdict BREAKS_AT_CUTOVER with the raise recorded at expressions.py:15349 (truthy.field_nonbool): `if h.c:` on a char FIELD; t_opt_field_narrow.py reaches it too.",
   "probe": "scripts/thir_migration/review/probes/expr3/t_field_nonbool.py",
   "plain_raise": false,
   "known_shape": null
@@ -702,7 +702,7 @@
   "reason": "\"truthy.method_nonbool\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "Probe verdict BREAKS_AT_CUTOVER with the raise recorded at expressions.py:15359 (truthy.method_nonbool): `if r.cnt():` where cnt() returns Int32.",
+  "evidence": "Probe verdict BREAKS_AT_CUTOVER with the raise recorded at expressions.py:15359 (truthy.method_nonbool): `if r.cnt():` where cnt() returns int32.",
   "probe": "scripts/thir_migration/review/probes/expr3/t_method_nonbool.py",
   "plain_raise": false,
   "known_shape": null
@@ -726,7 +726,7 @@
   "reason": "\"truthy.call_nonbool\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "Probe verdict BREAKS_AT_CUTOVER with the raise recorded at expressions.py:15384 (truthy.call_nonbool): `if cnt():` where the free call returns Int32.",
+  "evidence": "Probe verdict BREAKS_AT_CUTOVER with the raise recorded at expressions.py:15384 (truthy.call_nonbool): `if cnt():` where the free call returns int32.",
   "probe": "scripts/thir_migration/review/probes/expr3/t_call_nonbool.py",
   "plain_raise": false,
   "known_shape": null
@@ -750,7 +750,7 @@
   "reason": "\"truthy.walrus_shape\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "Probe verdict BREAKS_AT_CUTOVER with the raise recorded at expressions.py:15414 (truthy.walrus_shape): a walrus condition whose target is a Float64; t_walrus_opt.py is the Optional twin.",
+  "evidence": "Probe verdict BREAKS_AT_CUTOVER with the raise recorded at expressions.py:15414 (truthy.walrus_shape): a walrus condition whose target is a float64; t_walrus_opt.py is the Optional twin.",
   "probe": "scripts/thir_migration/review/probes/expr3/t_walrus_float.py",
   "plain_raise": false,
   "known_shape": null
@@ -774,7 +774,7 @@
   "reason": "\"expr.ifexpr\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "Probe verdict BREAKS_AT_CUTOVER, fallback body:expr.ifexpr, raise at expressions.py:15638 (ifexpr.value_opt_arm: a BinOp arm at an Optional[Int32] ternary slot -- only name / dict-literal / tuple-literal arms are admitted).",
+  "evidence": "Probe verdict BREAKS_AT_CUTOVER, fallback body:expr.ifexpr, raise at expressions.py:15638 (ifexpr.value_opt_arm: a BinOp arm at an Optional[int32] ternary slot -- only name / dict-literal / tuple-literal arms are admitted).",
   "probe": "scripts/thir_migration/review/probes/expr3/ie_value_opt_arm.py",
   "plain_raise": false,
   "known_shape": null

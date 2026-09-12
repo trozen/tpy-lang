@@ -6,13 +6,13 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // f = Foo(x=Int32(1))
+    // f = Foo(x=int32(1))
     Foo f = Foo(std::vector<int32_t>(), 1);
     // print(f.items)
     std::cout << ::tpy::ListPrinter(f.items) << "\n";
     // print(f.x)
     std::cout << f.x << "\n";
-    // f2 = Foo([Int32(10), Int32(20)], Int32(5))
+    // f2 = Foo([int32(10), int32(20)], int32(5))
     Foo f2 = Foo({10, 20}, 5);
     // print(f2.items)
     std::cout << ::tpy::ListPrinter(f2.items) << "\n";

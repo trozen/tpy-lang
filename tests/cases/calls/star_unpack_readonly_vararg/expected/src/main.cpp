@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def take_ro(*items: readonly[Box]) -> Int32:
+// def take_ro(*items: readonly[Box]) -> int32:
 int32_t take_ro(::tpy::varargs<const Box> items) {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for b in items:
     auto& __obj_0 = items;
@@ -21,13 +21,13 @@ int32_t take_ro(::tpy::varargs<const Box> items) {
     return total;
 }
 
-// def from_ro_span(xs: Span[readonly[Box]]) -> Int32:
+// def from_ro_span(xs: Span[readonly[Box]]) -> int32:
 int32_t from_ro_span(std::span<const Box> xs) {
     // return take_ro(*xs)
     return take_ro(::tpy::varargs<const Box>(xs));
 }
 
-// def from_mut_span(xs: Span[Box]) -> Int32:
+// def from_mut_span(xs: Span[Box]) -> int32:
 int32_t from_mut_span(std::span<Box> xs) {
     // return take_ro(*xs)
     return take_ro(::tpy::varargs<const Box>(xs));

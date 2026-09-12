@@ -16,7 +16,7 @@ void main();
 // class Bounded[T]:
 template<typename T>
 struct Bounded {
-    // LIMIT: Final[Int32] = 7
+    // LIMIT: Final[int32] = 7
     static constexpr int32_t LIMIT = 7;
 
     // def __init__(self) -> None:
@@ -24,7 +24,7 @@ struct Bounded {
         // pass
     }
 
-    // def at_limit(self, n: Int32) -> bool:
+    // def at_limit(self, n: int32) -> bool:
     bool at_limit(int32_t n) const {
         // return n >= self.LIMIT
         return (n >= Bounded<T>::LIMIT);

@@ -12,7 +12,7 @@
  * convert into each other's slots.
  *
  * It is a `std::variant` that owns Python's comparison rule. The variant's own operators compare the
- * ALTERNATIVE INDEX first, so `Int32 | Float64` holding 1 and holding 1.0 are
+ * ALTERNATIVE INDEX first, so `int32 | float64` holding 1 and holding 1.0 are
  * unequal where Python says they are equal -- and every standard container
  * operator over such an element inherits that answer. Giving the TYPE the
  * right operators fixes the element, the `std::vector` of it, the `std::tuple`
@@ -84,7 +84,7 @@ struct Union : std::variant<Ts...> {
     // The read borrow of a BORROW pack: `Union<const Dog*, const Cat*>`.
     // The type names it so no caller has to spell it, and both are
     // constrained to the borrow pack -- there is nothing to add const to on
-    // a pack that owns, and a `Union<Int32, Float64>::as_const()` would be a
+    // a pack that owns, and a `Union<int32, float64>::as_const()` would be a
     // question about a form that does not exist.
     using const_form = typename detail::u_const_form<Ts...>::type;
 

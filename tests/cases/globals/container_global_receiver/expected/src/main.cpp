@@ -5,16 +5,16 @@ namespace tpyapp::main {
 
 // BUF: bytearray = bytearray(b"ab")
 ::tpy::ByteArray* BUF{};
-// NUMS: list[Int32] = [1, 2]
+// NUMS: list[int32] = [1, 2]
 std::vector<int32_t>* NUMS{};
 
-// def add(n: UInt8) -> None:
+// def add(n: uint8) -> None:
 void add(uint8_t n) {
     // BUF.append(n)  # tpyc: ok
     BUF->push_back(n);
 }
 
-// def add_num(n: Int32) -> None:
+// def add_num(n: int32) -> None:
 void add_num(int32_t n) {
     // NUMS.append(n)
     NUMS->push_back(n);
@@ -42,7 +42,7 @@ void __tpy_init() {
     // BUF: bytearray = bytearray(b"ab")
     static ::tpy::ByteArray __global_slot_1 = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
     BUF = &__global_slot_1;
-    // NUMS: list[Int32] = [1, 2]
+    // NUMS: list[int32] = [1, 2]
     static std::vector<int32_t> __global_slot_2 = {1, 2};
     NUMS = &__global_slot_2;
     // main()

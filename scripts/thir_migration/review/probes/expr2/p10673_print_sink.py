@@ -1,5 +1,5 @@
 import sys
-from tpy import Int32
+from tpy import int32
 class W:
     def __init__(self) -> None:
         pass

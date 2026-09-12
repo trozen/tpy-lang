@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def gen(pairs: list[tuple[Int32, Int32]], limit: Int32) -> Iterator[Int32]:
+// def gen(pairs: list[tuple[int32, int32]], limit: int32) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -51,7 +51,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
 }
 
 
-// def gen(pairs: list[tuple[Int32, Int32]], limit: Int32) -> Iterator[Int32]:
+// def gen(pairs: list[tuple[int32, int32]], limit: int32) -> Iterator[int32]:
 __gen_gen gen(std::vector<std::tuple<int32_t, int32_t>>& pairs, int32_t limit) {
     return __gen_gen(pairs, limit);
 }

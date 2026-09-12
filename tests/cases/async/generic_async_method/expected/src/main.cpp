@@ -10,7 +10,7 @@ namespace tpyapp::main {
     case S_INITIAL: {
         // c = Container("hi")
         c.emplace(Container("hi"));
-        // a = await c.echo(Int32(7))  # tpyc: type(Int32)
+        // a = await c.echo(int32(7))  # tpyc: type(int32)
         __sub_0.emplace((*c), 7);
         __state = S_RESUME_0;
         continue;
@@ -35,7 +35,7 @@ namespace tpyapp::main {
         __sub_1.reset();
         // print(b)
         std::cout << b << "\n";
-        // p = await c.labeled(Int32(42))  # tpyc: type(/tuple\[str, Int32\]/)
+        // p = await c.labeled(int32(42))  # tpyc: type(/tuple\[str, int32\]/)
         __sub_2.emplace((*c), 42);
         __state = S_RESUME_2;
         continue;

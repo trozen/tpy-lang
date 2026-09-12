@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // d: dict[str, Int32] = {"a": 1, "b": 2}
+    // d: dict[str, int32] = {"a": 1, "b": 2}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
     // print(d.get("a", 99))     # 1
     std::cout << ::tpy::dict_get_default(d, "a", 99) << "\n";

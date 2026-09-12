@@ -16,11 +16,11 @@ void main();
 // @dataclass(frozen=True, order=True)
 // class Version:
 struct Version {
-    // major: Int32
+    // major: int32
     int32_t major;
-    // minor: Int32
+    // minor: int32
     int32_t minor;
-    // patch: Int32
+    // patch: int32
     int32_t patch;
 
     Version() = default;

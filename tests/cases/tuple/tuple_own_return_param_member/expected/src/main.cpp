@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def f(b: Box) -> tuple[Own[Box], Int32]:
+// def f(b: Box) -> tuple[Own[Box], int32]:
 std::tuple<Box, int32_t> f(const Box& b) {
     // pair = (copy(b), 0)   # tpyc: ok
     auto pair = std::tuple<Box, int32_t>{Box(b), 0};

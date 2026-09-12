@@ -3,19 +3,19 @@
 # class name must mean the class again after the handler ends.
 from typing import ClassVar
 
-from tpy import Int32
+from tpy import int32
 
 
 class Registry:
-    code: ClassVar[Int32] = 999
+    code: ClassVar[int32] = 999
 
 
 class MyError(Exception):
-    def __init__(self, code: Int32):
+    def __init__(self, code: int32):
         self.code = code
 
 
-def boom() -> Int32:
+def boom() -> int32:
     try:
         raise MyError(7)
     except MyError as Registry:  # tpyc: ok

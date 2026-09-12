@@ -9,7 +9,7 @@ std::string name_of_b() {
     // # Uses pkg_b's own Foo to exercise a same-named record whose
     // # identity must stay distinct from pkg_a.Foo in the shared
     // # compilation.
-    // f = Foo(Int32(99))
+    // f = Foo(int32(99))
     Foo f = Foo(99);
     // _ = f.count
     int32_t _ = f.count;

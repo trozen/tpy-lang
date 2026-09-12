@@ -8,7 +8,7 @@ namespace tpyapp::main {
 void main() {
     // s: str = "abc"
     std::string_view s = "abc";
-    // n: Int32 = 3
+    // n: int32 = 3
     int32_t n = 3;
     // # Basic repetition
     // print(s * n)

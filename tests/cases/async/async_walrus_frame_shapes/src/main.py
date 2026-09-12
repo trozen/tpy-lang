@@ -2,17 +2,17 @@
 # in a coroutine body is a frame field too: no C++ local may be declared for it.
 # Each shape below writes the walrus target, suspends, then reads it back.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
 class Node:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 
-async def step(i: Int32) -> Int32:
+async def step(i: int32) -> int32:
     await asyncio.sleep(0)
     return i * 10
 
@@ -38,7 +38,7 @@ async def owning() -> None:
 
 
 # -- statement-borrow alias: mutation after the suspension must reach the caller.
-async def borrow_alias(rows: list[list[Int32]]) -> None:
+async def borrow_alias(rows: list[list[int32]]) -> None:
     i = 0
     while i < len(rows):
         print("borrow len", len(row := rows[i]))
@@ -48,7 +48,7 @@ async def borrow_alias(rows: list[list[Int32]]) -> None:
         i += 1
 
 
-def pick(nodes: list[Node], i: Int32) -> Node | None:
+def pick(nodes: list[Node], i: int32) -> Node | None:
     if i < len(nodes):
         return nodes[i]
     return None

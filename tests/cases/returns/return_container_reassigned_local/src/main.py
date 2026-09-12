@@ -1,18 +1,18 @@
 # An owning-container return whose source local is REASSIGNED, so it binds
 # as a rebind-slot pointer: the return derefs and moves out of it. Both the
 # init slot and every rebind slot are function locals, so the move is safe.
-from tpy import Own, Int32, copy, nocopy
+from tpy import Own, int32, copy, nocopy
 
 
-def gen(n: Int32) -> Own[list[Int32]]:
-    out: list[Int32] = []
+def gen(n: int32) -> Own[list[int32]]:
+    out: list[int32] = []
     for i in range(n):
         out.append(i)
     return out
 
 
-def longest(n: Int32) -> Own[list[Int32]]:
-    best: list[Int32] = []
+def longest(n: int32) -> Own[list[int32]]:
+    best: list[int32] = []
     for i in range(n):
         cur = gen(i)
         if len(cur) > len(best):
@@ -21,16 +21,16 @@ def longest(n: Int32) -> Own[list[Int32]]:
     return best
 
 
-def tally(n: Int32) -> Own[dict[str, Int32]]:
-    acc: dict[str, Int32] = {}
+def tally(n: int32) -> Own[dict[str, int32]]:
+    acc: dict[str, int32] = {}
     for i in range(n):
-        fresh: dict[str, Int32] = {}
+        fresh: dict[str, int32] = {}
         fresh["n"] = i
         acc = copy(fresh)
     return acc
 
 
-def uniq(n: Int32) -> Own[set[Int32]]:
+def uniq(n: int32) -> Own[set[int32]]:
     s = {0}
     for i in range(n):
         fresh = {i}

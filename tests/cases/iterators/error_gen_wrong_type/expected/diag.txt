@@ -1,1 +1,1 @@
-main.py:4: error: Generator function must have return type 'Iterator[T]', got 'Int32'
+main.py:4: error: Generator function must have return type 'Iterator[T]', got 'int32'

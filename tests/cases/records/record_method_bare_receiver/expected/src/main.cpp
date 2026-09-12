@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def combine(a: Counter, b: Counter) -> Int32:
+// def combine(a: Counter, b: Counter) -> int32:
 int32_t combine(Counter& a, const Counter& b) {
     // a.bump()          # void, statement position
     a.bump();
@@ -14,7 +14,7 @@ int32_t combine(Counter& a, const Counter& b) {
     return a.diff(b);
 }
 
-// def narrowed_receiver(v: Counter | Label) -> Int32:
+// def narrowed_receiver(v: Counter | Label) -> int32:
 int32_t narrowed_receiver(::tpy::Union<Counter*, Label*> v) {
     // if isinstance(v, Counter):
     if (std::holds_alternative<Counter*>(v)) {
@@ -29,7 +29,7 @@ int32_t narrowed_receiver(::tpy::Union<Counter*, Label*> v) {
     return ::tpy::__len__(__v.name);
 }
 
-// def inherited(f: FancyCounter, k: Int32) -> Int32:
+// def inherited(f: FancyCounter, k: int32) -> int32:
 int32_t inherited(FancyCounter& f, int32_t k) {
     // f.bump()
     f.bump();

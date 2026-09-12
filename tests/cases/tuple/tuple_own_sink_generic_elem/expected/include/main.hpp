@@ -16,10 +16,10 @@ void main();
 
 // class Item:
 struct Item {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Item() = default;
     explicit Item(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Item";
@@ -45,15 +45,15 @@ struct Tally {
         this->_items.push_back(std::move(x));
     }
 
-    // def get(self, i: Int32) -> T:
+    // def get(self, i: int32) -> T:
     ::tpy::val_or_ref_t<T> get(int32_t i) {
         // return self._items[i]
         return ::tpy::__getitem__(this->_items, i);
     }
 
-    // def pairs(self) -> Own[list[tuple[T, Int32]]]:
+    // def pairs(self) -> Own[list[tuple[T, int32]]]:
     std::vector<std::tuple<T, int32_t>> pairs() const {
-        // out: list[tuple[T, Int32]] = []
+        // out: list[tuple[T, int32]] = []
         std::vector<std::tuple<T, int32_t>> out = std::vector<std::tuple<T, int32_t>>{};
         // i = 0
         int32_t i = 0;
@@ -63,7 +63,7 @@ struct Tally {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& it = *__beg_0;
-            // # Subject: the tuple literal at append's Own[tuple[T, Int32]] slot.
+            // # Subject: the tuple literal at append's Own[tuple[T, int32]] slot.
             // out.append((copy(it), i))
             out.push_back(std::tuple<T, int32_t>{T(it), i});
             // i += 1
@@ -82,7 +82,7 @@ inline std::ostream& operator<<(std::ostream& os, const Tally<T>& obj) {
 }
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Item::Item(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -43,7 +43,7 @@ void bump_and_peek(Leaf* x) {
     }
 }
 
-// def label(x: Leaf | None) -> Int32:
+// def label(x: Leaf | None) -> int32:
 int32_t label(const Leaf* x) {
     // match x:
     auto& __match_subject_1 = x;

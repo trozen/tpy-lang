@@ -20,10 +20,10 @@ from ._core import (
     # Fixed-width integer constraint protocols
     AnyFixedInt, AnyFixedSigned, AnyFixedUnsigned,
     # Primitive types
-    Float32,
-    Int8, Int16, Int32, Int64,
-    UInt8, UInt16, UInt32, UInt64,
-    Char, String, StrView, FStr, BytesView,
+    float32,
+    int8, int16, int32, int64,
+    uint8, uint16, uint32, uint64,
+    char, String, StrView, FStr, BytesView,
     # Container types
     Span, Array, Ptr, SpanIter,
     # varargs is imported under a private alias so its builtin record
@@ -43,7 +43,7 @@ from ._builtins._exceptions import CancelledError
 from ._builtins._types import basic_slice
 from ._builtins._io import BinaryIO, open_text, open_binary
 
-type Float64 = float
+type float64 = float
 
 # Version/implementation identification lives in `tpy.version` submodule:
 #     from tpy.version import __version__, version_info, is_compiled
@@ -52,10 +52,10 @@ type Float64 = float
 
 __all__ = [
     # Primitive types
-    "Int8", "Int16", "Int32", "Int64",
-    "UInt8", "UInt16", "UInt32", "UInt64",
-    "Float32", "Float64",
-    "Char", "String", "StrView", "FStr", "BytesView",
+    "int8", "int16", "int32", "int64",
+    "uint8", "uint16", "uint32", "uint64",
+    "float32", "float64",
+    "char", "String", "StrView", "FStr", "BytesView",
     # Container types
     "Span", "Array", "Ptr", "SpanIter",
     # Slice types

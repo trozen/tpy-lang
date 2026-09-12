@@ -1,12 +1,12 @@
 # Generic instantiation with nocopy type arg: auto-move at last use
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 
 
 @nocopy
 class Handle:
-    fd: Int32
+    fd: int32
 
-    def __init__(self, fd: Int32):
+    def __init__(self, fd: int32):
         self.fd = fd
 
 
@@ -17,7 +17,7 @@ class Holder[T]:
         self.item = item
 
 
-def consume(h: Own[Holder[Handle]]) -> Int32:
+def consume(h: Own[Holder[Handle]]) -> int32:
     return h.item.fd
 
 

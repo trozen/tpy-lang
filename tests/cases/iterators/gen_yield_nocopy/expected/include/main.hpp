@@ -16,10 +16,10 @@ void main();
 // @nocopy
 // class Handle:
 struct Handle {
-    // fd: Int32
+    // fd: int32
     int32_t fd;
 
-    // def __init__(self, fd: Int32) -> None:
+    // def __init__(self, fd: int32) -> None:
     Handle() = default;
     explicit Handle(int32_t fd);
     // non-copyable (@nocopy)
@@ -36,7 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
 }
 
 
-// def __init__(self, fd: Int32) -> None:
+// def __init__(self, fd: int32) -> None:
 inline Handle::Handle(int32_t fd) : fd(fd) {}
 inline auto handles(std::vector<Handle>& items) {
     return ::tpy::make_generator<::tpy::val_or_ref<Handle>>(

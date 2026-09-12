@@ -1,7 +1,7 @@
-from tpy import Int32
-def compute(x: Int32) -> Int32:
+from tpy import int32
+def compute(x: int32) -> int32:
     return x * 2
-def go(x: Int32) -> Int32:
+def go(x: int32) -> int32:
     match (n := compute(x)):
         case 0:
             return 0

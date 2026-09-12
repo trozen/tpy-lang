@@ -4,9 +4,9 @@
 # circular-import error on this exact pkg/__init__.py + helper.py
 # shape, so the cpy phase is skipped via no_cpython.txt.
 from pkg import Boosted
-from tpy import Int32
+from tpy import int32
 
-def main() -> Int32:
+def main() -> int32:
     return Boosted(3).boost()
 
 # Print the result so a regression that silently misroutes the

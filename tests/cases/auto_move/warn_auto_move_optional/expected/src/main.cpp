@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def consume(p: Own[Point]) -> Int32:
+// def consume(p: Own[Point]) -> int32:
 int32_t consume(Point&& p) {
     // return p.x
     return p.x;
 }
 
-// def test(a: Point | None) -> Int32:
+// def test(a: Point | None) -> int32:
 int32_t test(const Point* a) {
     // q: Point | None = a
     const Point* q = a;

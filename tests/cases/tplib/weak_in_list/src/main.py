@@ -2,32 +2,32 @@
 # for the non-owning side: each Weak observes its target Rc independently;
 # upgrade succeeds while the corresponding Rc is alive and returns None
 # after the target's last strong reference is dropped.
-from tpy import Int32, Own
+from tpy import int32, Own
 from tplib.rc import Rc, Weak
 
 
 class Node:
-    value: Int32
+    value: int32
 
-    def __init__(self, value: Int32) -> None:
+    def __init__(self, value: int32) -> None:
         self.value = value
 
 
-def observed_values(observers: list[Weak[Node]]) -> Own[list[Int32]]:
-    result: list[Int32] = []
+def observed_values(observers: list[Weak[Node]]) -> Own[list[int32]]:
+    result: list[int32] = []
     for w in observers:
         upgraded = w.upgrade()
         if upgraded is None:
-            result.append(Int32(-1))
+            result.append(int32(-1))
         else:
             result.append(upgraded.get().value)
     return result
 
 
 def main() -> None:
-    a = Rc.new(Node(Int32(10)))
-    b = Rc.new(Node(Int32(20)))
-    c = Rc.new(Node(Int32(30)))
+    a = Rc.new(Node(int32(10)))
+    b = Rc.new(Node(int32(20)))
+    c = Rc.new(Node(int32(30)))
 
     observers: list[Weak[Node]] = [a.downgrade(), b.downgrade(), c.downgrade()]
 
@@ -36,7 +36,7 @@ def main() -> None:
         print(v)
 
     # Mutate via the original Rc, observe through the Weak.
-    a.get().value = Int32(99)
+    a.get().value = int32(99)
     upgraded = observers[0].upgrade()
     assert upgraded is not None
     print(upgraded.get().value)  # 99 -- shared

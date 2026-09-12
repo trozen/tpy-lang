@@ -1,12 +1,12 @@
 # Test the pass-through pattern: returned tuple flows directly into another
 # function expecting the same TPy type. Both return and param use pointer
 # form, so the C++ types match without an intermediate conversion.
-from tpy import Int32
+from tpy import int32
 
 
 class T:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
@@ -14,9 +14,9 @@ def make_pair(a: T, b: T) -> tuple[T | None, T | None]:
     return (a, b)
 
 
-def consume(p: tuple[T | None, T | None]) -> Int32:
+def consume(p: tuple[T | None, T | None]) -> int32:
     a, b = p
-    total = Int32(0)
+    total = int32(0)
     if a is not None:
         total = total + a.x
     if b is not None:

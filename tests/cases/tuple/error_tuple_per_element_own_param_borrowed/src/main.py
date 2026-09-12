@@ -2,16 +2,16 @@
 # `tuple[Own[T], ...]` param form too (not just `Own[tuple[T, ...]]`).
 # The dispatch in check_own_param has two entry paths -- this test
 # pins the direct-per-element-form path.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class P:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
-def take(t: tuple[Own[P], Own[P]]) -> Int32:
+def take(t: tuple[Own[P], Own[P]]) -> int32:
     a, b = t
     return a.x + b.x
 

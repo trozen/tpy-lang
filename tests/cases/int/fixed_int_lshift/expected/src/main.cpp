@@ -7,28 +7,28 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // # Basic shifts
-    // print(Int8(1) << Int8(0))    # 1
+    // print(int8(1) << int8(0))    # 1
     std::cout << static_cast<int>((::tpy::lshift_check<int8_t>(1, 0))) << "\n";
-    // print(Int8(1) << Int8(6))    # 64
+    // print(int8(1) << int8(6))    # 64
     std::cout << static_cast<int>((::tpy::lshift_check<int8_t>(1, 6))) << "\n";
-    // print(Int8(-1) << Int8(0))   # -1
+    // print(int8(-1) << int8(0))   # -1
     std::cout << static_cast<int>((::tpy::lshift_check<int8_t>(-1, 0))) << "\n";
-    // # UInt8 shifts
-    // print(UInt8(1) << UInt8(7))  # 128
+    // # uint8 shifts
+    // print(uint8(1) << uint8(7))  # 128
     std::cout << static_cast<int>((::tpy::lshift_check<uint8_t>(1, 7))) << "\n";
-    // print(UInt8(3) << UInt8(4))  # 48
+    // print(uint8(3) << uint8(4))  # 48
     std::cout << static_cast<int>((::tpy::lshift_check<uint8_t>(3, 4))) << "\n";
-    // # Int16 shifts
-    // print(Int16(1) << Int16(14))  # 16384
+    // # int16 shifts
+    // print(int16(1) << int16(14))  # 16384
     std::cout << (::tpy::lshift_check<int16_t>(1, 14)) << "\n";
-    // # UInt16 shifts
-    // print(UInt16(1) << UInt16(15))  # 32768
+    // # uint16 shifts
+    // print(uint16(1) << uint16(15))  # 32768
     std::cout << (::tpy::lshift_check<uint16_t>(1, 15)) << "\n";
-    // # Int32 shifts
-    // print(Int32(1) << Int32(30))  # 1073741824
+    // # int32 shifts
+    // print(int32(1) << int32(30))  # 1073741824
     std::cout << (::tpy::lshift_check<int32_t>(1, 30)) << "\n";
-    // # Int64 shifts
-    // print(Int64(1) << Int64(62))  # 4611686018427387904
+    // # int64 shifts
+    // print(int64(1) << int64(62))  # 4611686018427387904
     std::cout << (::tpy::lshift_check<int64_t>(1, 62)) << "\n";
 }
 

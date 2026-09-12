@@ -2,13 +2,13 @@
 # have __del__. The __tpy_owned_ flag must be shared (not shadowed) so that
 # both destructors in the chain are skipped on the moved-from object.
 from typing import Self
-from tpy import Own, Ptr, Int32
+from tpy import Own, Ptr, int32
 from tpy.unsafe import unsafe_alloc, unsafe_free, unsafe_init, unsafe_drop, unsafe_move_out
 
 class Base:
-    _ptr: Ptr[Int32]
+    _ptr: Ptr[int32]
 
-    def __init__(self, value: Int32):
+    def __init__(self, value: int32):
         print("Base.init", value)
         self._ptr = unsafe_alloc()
         unsafe_init(self._ptr, value)
@@ -19,9 +19,9 @@ class Base:
         unsafe_free(self._ptr)
 
 class Child(Base):
-    _extra: Int32
+    _extra: int32
 
-    def __init__(self, value: Int32, extra: Int32):
+    def __init__(self, value: int32, extra: int32):
         super().__init__(value)
         self._extra = extra
         print("Child.init", extra)
@@ -29,15 +29,15 @@ class Child(Base):
     def __del__(self):
         print("Child.del")
 
-    def take(self: Own[Self]) -> Int32:
+    def take(self: Own[Self]) -> int32:
         print("take")
-        val: Int32 = unsafe_move_out(self._ptr)
+        val: int32 = unsafe_move_out(self._ptr)
         unsafe_free(self._ptr)
         return val
 
 def main() -> None:
-    c = Child(Int32(42), Int32(7))
-    val: Int32 = c.take()
+    c = Child(int32(42), int32(7))
+    val: int32 = c.take()
     print("got", val)
 
 main()

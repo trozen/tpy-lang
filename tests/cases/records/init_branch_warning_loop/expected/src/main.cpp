@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // a = Accum(Int32(4))
+    // a = Accum(int32(4))
     Accum a = Accum(4);
     // print(a.total)
     std::cout << a.total << "\n";

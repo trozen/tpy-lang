@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // v: Vec[Int32] = Vec[Int32]()
+    // v: Vec[int32] = Vec[int32]()
     ::std::vector<int32_t> v = ::std::vector<int32_t>();
     // v.add(10)
     v.push_back(10);
@@ -15,7 +15,7 @@ void main() {
     // v.add(30)
     v.push_back(30);
     // # getter via @cpp_template
-    // n = v.count  # tpyc: type(Int32)
+    // n = v.count  # tpyc: type(int32)
     int32_t n = static_cast<int32_t>(v.size());
     // print(n)
     std::cout << n << "\n";
@@ -24,8 +24,8 @@ void main() {
     // # setter via @cpp_template
     // v.cap = 100
     v.reserve(100);
-    // # getter via @native(cpp_return_type=UInt64) (deterministic after reserve)
-    // c = v.cap  # tpyc: type(Int32)
+    // # getter via @native(cpp_return_type=uint64) (deterministic after reserve)
+    // c = v.cap  # tpyc: type(int32)
     int32_t c = static_cast<int32_t>(v.capacity());
     // print(c)
     std::cout << c << "\n";

@@ -1,19 +1,19 @@
 # ArrayList example: using the tplib generic list with fixed-capacity storage.
-from tpy import Int32, Span, Array, copy
+from tpy import int32, Span, Array, copy
 from tplib import ArrayList
 
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32) -> None:
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 
 
-def sum_ints(lst: ArrayList[Int32, 16]) -> Int32:
-    total: Int32 = 0
+def sum_ints(lst: ArrayList[int32, 16]) -> int32:
+    total: int32 = 0
     for i in range(len(lst)):
         total = total + lst[i]
     return total
@@ -26,8 +26,8 @@ def print_points(lst: ArrayList[Point, 8]) -> None:
 
 
 def main() -> None:
-    # --- Int32 ArrayList with capacity 16 ---
-    nums = ArrayList[Int32, 16]()
+    # --- int32 ArrayList with capacity 16 ---
+    nums = ArrayList[int32, 16]()
     print(len(nums) == 0)        # True
     print(bool(nums))            # False
 
@@ -72,16 +72,16 @@ def main() -> None:
     print(len(pts))               # 2
 
     # --- Construct from Span ---
-    arr: Array[Int32, 3] = [10, 20, 30]
-    s: Span[Int32] = arr
-    from_span = ArrayList[Int32, 8](s)
+    arr: Array[int32, 3] = [10, 20, 30]
+    s: Span[int32] = arr
+    from_span = ArrayList[int32, 8](s)
     print(len(from_span))            # 3
     print(from_span[0])              # 10
     print(from_span[2])              # 30
     
     # --- Construct from dict
-    d = dict([("one", Int32(1)), ("two", Int32(2)), ("three", Int32(3))])
-    from_dict = ArrayList[tuple[str, Int32], 16](d.items())
+    d = dict([("one", int32(1)), ("two", int32(2)), ("three", int32(3))])
+    from_dict = ArrayList[tuple[str, int32], 16](d.items())
     for d_key in from_dict:
         print(d_key)
     print("from_dict:", from_dict)

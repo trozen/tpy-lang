@@ -3,11 +3,11 @@
 # format -- regression guard for the type_name registry.
 
 from typing import Any
-from tpy import Int32
+from tpy import int32
 
 
 def main() -> None:
-    x: Any = [Int32(1), Int32(2), Int32(3)]
+    x: Any = [int32(1), int32(2), int32(3)]
     print(hash(x))
 
 

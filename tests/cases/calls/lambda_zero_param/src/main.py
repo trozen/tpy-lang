@@ -1,7 +1,7 @@
 # Lambda with zero parameters.
-from tpy import Fn, Int32
+from tpy import Fn, int32
 
-def invoke(f: Fn[[], Int32]) -> Int32:
+def invoke(f: Fn[[], int32]) -> int32:
     return f()
 
 def main() -> None:

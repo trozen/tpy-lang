@@ -3,12 +3,12 @@
 # and a list element. Sema used to reject a class pattern on this subject.
 # Do not add a `None` value or switch the mutation to append/pop -- each
 # folds the body at a recursive-alias slot, costing the case its routing.
-from tpy import Int32
+from tpy import int32
 
 type Tree[T] = T | list[Tree[T]]
 
 
-def branch_count(t: Tree[None]) -> Int32:
+def branch_count(t: Tree[None]) -> int32:
     match t:
         case None:  # tpyc: ok
             return 0

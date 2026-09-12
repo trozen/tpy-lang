@@ -1,5 +1,5 @@
 # Error loc: gap-filled default should point to call site, not function definition
-from tpy import Int32
+from tpy import int32
 
 def f[T](a: T, b: T = 0) -> None:
     pass

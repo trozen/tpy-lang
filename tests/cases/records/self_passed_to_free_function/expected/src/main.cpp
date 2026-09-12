@@ -23,7 +23,7 @@ std::string to_upper(std::string_view s) {
     return std::string(s);
 }
 
-// def append_item(mod: Module, val: Int32):
+// def append_item(mod: Module, val: int32):
 void append_item(Module& mod, int32_t val) {
     // mod._items.append(val)
     mod._items.push_back(val);

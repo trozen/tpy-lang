@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def producer(q: Queue[Int32]) -> None:
+// async def producer(q: Queue[int32]) -> None:
 ::tpystd::tpy::Poll<::std::monostate> __coro_producer::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -41,12 +41,12 @@ namespace tpyapp::main {
 }
 
 
-// async def producer(q: Queue[Int32]) -> None:
+// async def producer(q: Queue[int32]) -> None:
 __coro_producer producer(::tpystd::asyncio::Queue<int32_t>& q) {
     return __coro_producer(q);
 }
 
-// async def consumer(q: Queue[Int32], out: list[Int32]) -> None:
+// async def consumer(q: Queue[int32], out: list[int32]) -> None:
 ::tpystd::tpy::Poll<::std::monostate> __coro_consumer::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -86,7 +86,7 @@ __coro_producer producer(::tpystd::asyncio::Queue<int32_t>& q) {
 }
 
 
-// async def consumer(q: Queue[Int32], out: list[Int32]) -> None:
+// async def consumer(q: Queue[int32], out: list[int32]) -> None:
 __coro_consumer consumer(::tpystd::asyncio::Queue<int32_t>& q, std::vector<int32_t>& out) {
     return __coro_consumer(q, out);
 }
@@ -95,12 +95,12 @@ __coro_consumer consumer(::tpystd::asyncio::Queue<int32_t>& q, std::vector<int32
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // q: Queue[Int32] = Queue(2)
+        // q: Queue[int32] = Queue(2)
         q.emplace(::tpystd::asyncio::Queue<int32_t>(2));
         // print("empty:", q.empty(), "full:", q.full(), "qsize:", q.qsize(),
         // "maxsize:", q.maxsize)
         std::cout << "empty:" << " " << ::tpy::print_bool((*q).empty()) << " " << "full:" << " " << ::tpy::print_bool((*q).full()) << " " << "qsize:" << " " << (*q).qsize() << " " << "maxsize:" << " " << (*q).maxsize << "\n";
-        // out: list[Int32] = []
+        // out: list[int32] = []
         out.emplace(std::vector<int32_t>{});
         // pt = asyncio.create_task(producer(q))
         pt.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(producer((*q)))));
@@ -169,7 +169,7 @@ __coro_consumer consumer(::tpystd::asyncio::Queue<int32_t>& q, std::vector<int32
                 std::cout << "caught empty" << "\n";
             }
         }
-        // qb: Queue[Int32] = Queue(1)
+        // qb: Queue[int32] = Queue(1)
         qb.emplace(::tpystd::asyncio::Queue<int32_t>(1));
         // qb.put_nowait(1)
         (*qb).put_nowait(1);
@@ -186,7 +186,7 @@ __coro_consumer consumer(::tpystd::asyncio::Queue<int32_t>& q, std::vector<int32
             }
         }
         // # Unbounded queue: never full, put_nowait never raises.
-        // qu: Queue[Int32] = Queue(0)
+        // qu: Queue[int32] = Queue(0)
         qu.emplace(::tpystd::asyncio::Queue<int32_t>(0));
         // qu.put_nowait(1)
         (*qu).put_nowait(1);

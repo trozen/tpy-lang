@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def param_member(c: P) -> None:
 void param_member(const P& c) {
-    // xs: list[tuple[Int32, P]] = [(1, c)]  # tpyc: warning(/copies P into owned storage/)
+    // xs: list[tuple[int32, P]] = [(1, c)]  # tpyc: warning(/copies P into owned storage/)
     std::vector<std::tuple<int32_t, P>> xs = {::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, const P*>{1, &(c)})};
     // print(xs[0][1].x)
     std::cout << std::get<1>(::tpy::__getitem__(xs, 0)).x << "\n";
@@ -14,7 +14,7 @@ void param_member(const P& c) {
 
 // def comp_member(cells: list[P]) -> None:
 void comp_member(const std::vector<P>& cells) {
-    // xs: list[tuple[Int32, P]] = [(1, c) for c in cells]  # tpyc: warning(/copies P into owned storage/)
+    // xs: list[tuple[int32, P]] = [(1, c) for c in cells]  # tpyc: warning(/copies P into owned storage/)
     std::vector<std::tuple<int32_t, P>> xs = ({
         std::vector<std::tuple<int32_t, P>> __result;
         auto& __obj_0 = cells;

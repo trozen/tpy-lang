@@ -21,7 +21,7 @@ def field_typed_locals(ctx: FunctionMacroContext) -> None:
         # 'tag' lives on the base class, so this exercises inherited-field lookup
         base_t = ctx.get_field_type(ptype, "tag")
         if base_t is None or not base_t.is_int32:
-            ctx.error("expected inherited Int32 field 'tag'")
+            ctx.error("expected inherited int32 field 'tag'")
         ret_t = ctx.get_method_return_type(ptype, "describe")
         if ret_t is None or not ret_t.is_str:
             ctx.error("expected str-returning method 'describe'")

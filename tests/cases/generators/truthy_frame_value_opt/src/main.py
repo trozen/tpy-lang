@@ -4,24 +4,24 @@
 # CFG-decomposed and used to render the frame field raw, so `Some(0)` read
 # as true; the non-suspending forms in the same body were already correct.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    f: Int32 | None
+    f: int32 | None
 
-    def __init__(self, v: Int32 | None) -> None:
+    def __init__(self, v: int32 | None) -> None:
         self.f = v
 
 
-def branch_suspends(v: Int32 | None) -> Iterator[Int32]:
+def branch_suspends(v: int32 | None) -> Iterator[int32]:
     # The branch body yields -> CFG Branch terminator.
     if v:  # tpyc: warning(/Truthiness check on optional value/)
         yield 1
     yield 2
 
 
-def branch_no_suspend(v: Int32 | None) -> Iterator[Int32]:
+def branch_no_suspend(v: int32 | None) -> Iterator[int32]:
     # Same test, no suspension inside -> ordinary statement path. The
     # control: this form was never wrong, and must not move.
     n = 0
@@ -30,13 +30,13 @@ def branch_no_suspend(v: Int32 | None) -> Iterator[Int32]:
     yield n
 
 
-def not_form(v: Int32 | None) -> Iterator[Int32]:
+def not_form(v: int32 | None) -> Iterator[int32]:
     if not v:  # tpyc: warning(/Truthiness check on optional value/)
         yield 1
     yield 2
 
 
-def while_suspends(v: Int32 | None) -> Iterator[Int32]:
+def while_suspends(v: int32 | None) -> Iterator[int32]:
     # A trailing statement keeps the simple-generator peephole from
     # applying, so the loop head goes through the CFG.
     while v:  # tpyc: warning(/Truthiness check on optional value/)
@@ -45,7 +45,7 @@ def while_suspends(v: Int32 | None) -> Iterator[Int32]:
     yield 2
 
 
-def peephole_while(v: Int32 | None) -> Iterator[Int32]:
+def peephole_while(v: int32 | None) -> Iterator[int32]:
     # The while IS the last statement -> simple-generator lambda peephole,
     # a separate condition renderer from the CFG one above.
     while v:  # tpyc: warning(/Truthiness check on optional value/)
@@ -53,7 +53,7 @@ def peephole_while(v: Int32 | None) -> Iterator[Int32]:
         v = None
 
 
-def frame_local(b: Box) -> Iterator[Int32]:
+def frame_local(b: Box) -> Iterator[int32]:
     # The optional reaches the frame as a promoted LOCAL rather than a param.
     v = b.f
     if v:  # tpyc: warning(/Truthiness check on optional value/)
@@ -61,7 +61,7 @@ def frame_local(b: Box) -> Iterator[Int32]:
     yield 2
 
 
-def drive(label: str, v: Int32 | None) -> None:
+def drive(label: str, v: int32 | None) -> None:
     print(label, "branch", list(branch_suspends(v)))
     print(label, "nosusp", list(branch_no_suspend(v)))
     print(label, "not", list(not_form(v)))

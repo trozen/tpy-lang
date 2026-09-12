@@ -4,8 +4,8 @@
 namespace tpystd::os {
 
 
-// def _wrap_stat(t: tuple[Int64, Int64, Int64, Int64, Int64, Int64, Int64,
-// float, float, float, Int64, Int64, Int64]
+// def _wrap_stat(t: tuple[int64, int64, int64, int64, int64, int64, int64,
+// float, float, float, int64, int64, int64]
 // ) -> Own[stat_result]:
 ::tpystd::os::_types::stat_result _wrap_stat(const std::tuple<int64_t, int64_t, int64_t, int64_t, int64_t, int64_t, int64_t, double, double, double, int64_t, int64_t, int64_t>& t) {
     // return stat_result(t[0], t[1], t[2], t[3], t[4], t[5], t[6],
@@ -286,7 +286,7 @@ __gen_walk walk(std::string_view top, bool topdown, std::optional<std::function<
     return __gen_walk(top, topdown, onerror, followlinks);
 }
 
-// def mkdir(path: str, mode: Int64 = 0o777) -> None:
+// def mkdir(path: str, mode: int64 = 0o777) -> None:
 void mkdir(std::string_view path, int64_t mode) {
     // _mkdir(path, mode)
     ::tpy::stdlib::os::mkdir(path, mode);
@@ -344,7 +344,7 @@ void replace(std::string_view src, std::string_view dst) {
     ::tpy::stdlib::os::rename(src, dst);
 }
 
-// def makedirs(name: str, mode: Int64 = 0o777, exist_ok: bool = False) -> None:
+// def makedirs(name: str, mode: int64 = 0o777, exist_ok: bool = False) -> None:
 void makedirs(std::string_view name, int64_t mode, bool exist_ok) {
     // head = path.dirname(name)
     std::string head = ::tpystd::os::path::dirname(name);
@@ -388,67 +388,67 @@ void removedirs(std::string_view name) {
     }
 }
 
-// def open(path: str, flags: Int64, mode: Int64 = 0o777) -> Int64:
+// def open(path: str, flags: int64, mode: int64 = 0o777) -> int64:
 int64_t open(std::string_view path, int64_t flags, int64_t mode) {
     // return _open_fd(path, flags, mode)
     return ::tpy::stdlib::os::open_fd(path, flags, mode);
 }
 
-// def close(fd: Int64) -> None:
+// def close(fd: int64) -> None:
 void close(int64_t fd) {
     // _close_fd(fd)
     ::tpy::stdlib::os::close_fd(fd);
 }
 
-// def read(fd: Int64, n: Int64) -> Own[bytes]:
+// def read(fd: int64, n: int64) -> Own[bytes]:
 ::tpy::Bytes read(int64_t fd, int64_t n) {
     // return _read_fd(fd, n)
     return ::tpy::stdlib::os::read_fd(fd, n);
 }
 
-// def write(fd: Int64, data: bytes) -> Int64:
+// def write(fd: int64, data: bytes) -> int64:
 int64_t write(int64_t fd, ::tpy::BytesView data) {
     // return _write_fd(fd, data)
     return ::tpy::stdlib::os::write_fd(fd, data);
 }
 
-// def lseek(fd: Int64, pos: Int64, how: Int64) -> Int64:
+// def lseek(fd: int64, pos: int64, how: int64) -> int64:
 int64_t lseek(int64_t fd, int64_t pos, int64_t how) {
     // return _lseek_fd(fd, pos, how)
     return ::tpy::stdlib::os::lseek_fd(fd, pos, how);
 }
 
-// def pipe() -> tuple[Int64, Int64]:
+// def pipe() -> tuple[int64, int64]:
 std::tuple<int64_t, int64_t> pipe() {
     // return _pipe_fd()
     return ::tpy::stdlib::os::pipe_fd();
 }
 
-// def dup(fd: Int64) -> Int64:
+// def dup(fd: int64) -> int64:
 int64_t dup(int64_t fd) {
     // return _dup_fd(fd)
     return ::tpy::stdlib::os::dup_fd(fd);
 }
 
-// def dup2(fd: Int64, fd2: Int64) -> Int64:
+// def dup2(fd: int64, fd2: int64) -> int64:
 int64_t dup2(int64_t fd, int64_t fd2) {
     // return _dup2_fd(fd, fd2)
     return ::tpy::stdlib::os::dup2_fd(fd, fd2);
 }
 
-// def fstat(fd: Int64) -> Own[stat_result]:
+// def fstat(fd: int64) -> Own[stat_result]:
 ::tpystd::os::_types::stat_result fstat(int64_t fd) {
     // return _wrap_stat(_fstat_fd(fd))
     return _wrap_stat(::tpy::stdlib::os::fstat_fd(fd));
 }
 
-// def chmod(path: str, mode: Int64) -> None:
+// def chmod(path: str, mode: int64) -> None:
 void chmod(std::string_view path, int64_t mode) {
     // _chmod_path(path, mode)
     ::tpy::stdlib::os::chmod_path(path, mode);
 }
 
-// def chown(path: str, uid: Int64, gid: Int64) -> None:
+// def chown(path: str, uid: int64, gid: int64) -> None:
 void chown(std::string_view path, int64_t uid, int64_t gid) {
     // _chown_path(path, uid, gid)
     ::tpy::stdlib::os::chown_path(path, uid, gid);
@@ -462,13 +462,13 @@ void utime(std::string_view path, const std::tuple<double, double>& times) {
     ::tpy::stdlib::os::utime_path(path, std::get<0>(times), std::get<1>(times));
 }
 
-// def access(path: str, mode: Int64) -> bool:
+// def access(path: str, mode: int64) -> bool:
 bool access(std::string_view path, int64_t mode) {
     // return _access_path(path, mode)
     return ::tpy::stdlib::os::access_path(path, mode);
 }
 
-// def urandom(n: Int64) -> Own[bytes]:
+// def urandom(n: int64) -> Own[bytes]:
 ::tpy::Bytes urandom(int64_t n) {
     // return _urandom(n)
     return ::tpy::stdlib::os::urandom(n);
@@ -480,25 +480,25 @@ void link(std::string_view src, std::string_view dst) {
     ::tpy::stdlib::os::link_path(src, dst);
 }
 
-// def truncate(path: str, length: Int64) -> None:
+// def truncate(path: str, length: int64) -> None:
 void truncate(std::string_view path, int64_t length) {
     // _truncate_path(path, length)
     ::tpy::stdlib::os::truncate_path(path, length);
 }
 
-// def ftruncate(fd: Int64, length: Int64) -> None:
+// def ftruncate(fd: int64, length: int64) -> None:
 void ftruncate(int64_t fd, int64_t length) {
     // _ftruncate_fd(fd, length)
     ::tpy::stdlib::os::ftruncate_fd(fd, length);
 }
 
-// def fsync(fd: Int64) -> None:
+// def fsync(fd: int64) -> None:
 void fsync(int64_t fd) {
     // _fsync_fd(fd)
     ::tpy::stdlib::os::fsync_fd(fd);
 }
 
-// def get_terminal_size(fd: Int64 = 1) -> Own[terminal_size]:
+// def get_terminal_size(fd: int64 = 1) -> Own[terminal_size]:
 terminal_size get_terminal_size(int64_t fd) {
     // t = _terminal_size_raw(fd)
     std::tuple<int64_t, int64_t> t = ::tpy::stdlib::os::terminal_size_raw(fd);
@@ -514,7 +514,7 @@ std::string fspath(std::string_view path) {
 }
 
 // # CPython os.cpu_count() returns None when the count is indeterminate.
-// def cpu_count() -> Int64 | None:
+// def cpu_count() -> int64 | None:
 std::optional<int64_t> cpu_count() {
     // n = _cpu_count_raw()
     int64_t n = ::tpy::stdlib::os::cpu_count();

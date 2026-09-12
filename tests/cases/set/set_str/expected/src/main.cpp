@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // s: set[Int32] = {1, 2, 3}
+    // s: set[int32] = {1, 2, 3}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2, 3});
     // x: str = str(s)
     std::string x = ::tpy::set_to_str(s);
@@ -14,7 +14,7 @@ void main() {
     std::cout << x << "\n";
     // print(f"set: {s}")
     std::cout << std::format("set: {}", ::tpy::set_to_str(s)) << "\n";
-    // empty: set[Int32] = set()
+    // empty: set[int32] = set()
     ::tpy::ordered_set<int32_t> empty = ::tpy::ordered_set<int32_t>();
     // print(str(empty))
     std::cout << ::tpy::set_to_str(empty) << "\n";

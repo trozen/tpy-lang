@@ -2,18 +2,18 @@
 # @nocopy makes Heavy move-only, so brace-init (std::initializer_list)
 # won't work -- codegen must use make_vector (reserve + emplace_back).
 from dataclasses import dataclass
-from tpy import Int32, nocopy
+from tpy import int32, nocopy
 
 
 @nocopy
 @dataclass
 class Heavy:
-    value: Int32
+    value: int32
 
 
 @dataclass
 class Light:
-    value: Int32
+    value: int32
 
 
 type Item = Heavy | Light

@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // ps: list[tuple[Int32, str]] = [(1, "c"), (2, "a"), (3, "b")]
+    // ps: list[tuple[int32, str]] = [(1, "c"), (2, "a"), (3, "b")]
     std::vector<std::tuple<int32_t, std::string>> ps = {std::tuple<int32_t, std::string>{1, "c"}, std::tuple<int32_t, std::string>{2, "a"}, std::tuple<int32_t, std::string>{3, "b"}};
     // for s in names(ps):
     auto __obj_0 = names<int32_t>(ps);
@@ -17,7 +17,7 @@ void main() {
         // print(s)
         std::cout << s << "\n";
     }
-    // qs: list[tuple[str, Int32]] = [("a", 3), ("b", 7), ("c", 1)]
+    // qs: list[tuple[str, int32]] = [("a", 3), ("b", 7), ("c", 1)]
     std::vector<std::tuple<std::string, int32_t>> qs = {std::tuple<std::string, int32_t>{"a", 3}, std::tuple<std::string, int32_t>{"b", 7}, std::tuple<std::string, int32_t>{"c", 1}};
     // for k, n in keep(qs):
     auto __obj_1 = keep<std::string>(qs);

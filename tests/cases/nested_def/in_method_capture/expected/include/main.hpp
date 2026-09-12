@@ -15,15 +15,15 @@ void main();
 
 // class Acc:
 struct Acc {
-    // total: Int32
+    // total: int32
     int32_t total;
-    // count: Int32
+    // count: int32
     int32_t count;
 
     // def __init__(self) -> None:
     Acc();
 
-    // def collect(self, k: Int32) -> None:
+    // def collect(self, k: int32) -> None:
     void collect(int32_t k);
 
     // def _tick(self) -> None:
@@ -40,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Acc& obj) {
 // def __init__(self) -> None:
 inline Acc::Acc() : total(0), count(0) {}
 
-// def collect(self, k: Int32) -> None:
+// def collect(self, k: int32) -> None:
 inline void Acc::collect(int32_t k) {
     // bonus = 1
     int32_t bonus = 1;

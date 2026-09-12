@@ -1,15 +1,15 @@
 # A pointer-repr `Optional[list]` FIELD write takes a target-threaded render the
 # shared field-write tail does not spell, so it keeps rejecting.
-from tpy import Int32
+from tpy import int32
 
 
 class Bag:
-    items: list[Int32] | None
+    items: list[int32] | None
 
-    def __init__(self, items: list[Int32] | None) -> None:
+    def __init__(self, items: list[int32] | None) -> None:
         self.items = items
 
-    def replace(self, items: list[Int32] | None) -> None:
+    def replace(self, items: list[int32] | None) -> None:
         self.items = items  # tpyc: error(/assign.field_write_shape/)
 
 

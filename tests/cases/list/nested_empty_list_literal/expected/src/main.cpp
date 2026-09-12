@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def rows() -> Int32:
+// def rows() -> int32:
 int32_t rows() {
-    // xs: list[list[Int32]] = [[], [1]]   # tpyc: ok -- an empty nested element
+    // xs: list[list[int32]] = [[], [1]]   # tpyc: ok -- an empty nested element
     std::vector<std::vector<int32_t>> xs = {{}, {1}};
     // xs[0].append(9)                     # the empty row is a real, mutable list
     ::tpy::__getitem__(xs, 0).push_back(9);

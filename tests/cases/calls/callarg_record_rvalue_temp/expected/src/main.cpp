@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def take_rec(r: A) -> Int32:
+// def take_rec(r: A) -> int32:
 int32_t take_rec(const A& r) {
     // return r.x
     return r.x;
@@ -18,14 +18,14 @@ void mutate_rec(A& r) {
     std::cout << r.x << "\n";
 }
 
-// def use_ret() -> Int32:
+// def use_ret() -> int32:
 int32_t use_ret() {
     // return take_rec(A(7))
     A __tmp_1 = A(7);
     return take_rec(__tmp_1);
 }
 
-// def use_decl() -> Int32:
+// def use_decl() -> int32:
 int32_t use_decl() {
     // r = take_rec(A(8))
     A __tmp_2 = A(8);

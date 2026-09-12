@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def apply(f: Callable[[Int32], Int32], v: Int32) -> Int32:
+// def apply(f: Callable[[int32], int32], v: int32) -> int32:
 int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t v) {
     // return f(v)
     return f(v);

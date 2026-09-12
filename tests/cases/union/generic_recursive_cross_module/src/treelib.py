@@ -1,9 +1,9 @@
-from tpy import Int32
+from tpy import int32
 
 type Tree[T] = T | list[Tree[T]]
 
 
-def leaf_count[T](t: Tree[T]) -> Int32:
+def leaf_count[T](t: Tree[T]) -> int32:
     match t:
         case list() as branches:
             total = 0

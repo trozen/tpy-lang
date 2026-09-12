@@ -2,11 +2,11 @@
 # parameterized C++ qname (no type-args at the access site). Force users
 # to access through an instance.
 from typing import Final
-from tpy import Int32
+from tpy import int32
 
 
 class C[T]:
-    MAX: Final[Int32] = 10
+    MAX: Final[int32] = 10
 
 
 def main() -> None:

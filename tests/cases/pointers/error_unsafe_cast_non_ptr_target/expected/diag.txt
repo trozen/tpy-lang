@@ -1,1 +1,1 @@
-main.py:6: error: unsafe_cast() target must be a pointer type, got Int32
+main.py:6: error: unsafe_cast() target must be a pointer type, got int32

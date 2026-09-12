@@ -1,10 +1,10 @@
 # Test @dataclass with Optional[Record] field default (std::nullopt codegen fix).
-from tpy import Int32
+from tpy import int32
 from dataclasses import dataclass
 
 @dataclass
 class Inner:
-    x: Int32
+    x: int32
 
 @dataclass
 class Outer:

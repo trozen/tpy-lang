@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def consume(s: Own[Storage]) -> Int32:
+// def consume(s: Own[Storage]) -> int32:
 int32_t consume(Storage&& s) {
     // return s.get()
     return s.get();

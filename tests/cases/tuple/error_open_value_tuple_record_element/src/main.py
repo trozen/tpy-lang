@@ -1,12 +1,12 @@
 # `tuple[T, Record]` is not an OPEN VALUE tuple: the concrete element is a
 # reference type, so the borrow/storage duality matters and the return rejects.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Box:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 

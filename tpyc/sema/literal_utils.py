@@ -21,9 +21,9 @@ _FIXED_INT_BY_NAME = {str(t): t for t in ALL_FIXED_INTS}
 
 
 def is_char_literal_init(target: TpyType, actual: TpyType, expr: TpyExpr) -> bool:
-    """A single-char `str` literal initializing a `Char` slot.
+    """A single-char `str` literal initializing a `char` slot.
 
-    `Char` has no coercion from `str` (a runtime string cannot narrow to one
+    `char` has no coercion from `str` (a runtime string cannot narrow to one
     character), but the one-character literal is unambiguous and codegen
     renders it as a C++ char literal. Shared by the assignment, argument and
     default-value checks so the one spelling they all exempt stays one

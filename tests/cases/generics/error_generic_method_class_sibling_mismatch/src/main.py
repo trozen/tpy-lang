@@ -3,7 +3,7 @@
 # LOCATED "does not satisfy bound" diagnostic -- not an unlocated internal crash
 # (the failure mode the merged-subst fix prevents).
 from typing import Protocol
-from tpy import Int32, StrView
+from tpy import int32, StrView
 
 
 class Container[T](Protocol):
@@ -11,10 +11,10 @@ class Container[T](Protocol):
 
 
 class IntBox:
-    v: Int32
-    def __init__(self, v: Int32) -> None:
+    v: int32
+    def __init__(self, v: int32) -> None:
         self.v = v
-    def get(self) -> Int32:
+    def get(self) -> int32:
         return self.v
 
 
@@ -24,7 +24,7 @@ class Runner[R]:
 
 
 def main() -> None:
-    # R = StrView, but IntBox.get() -> Int32, so IntBox does not satisfy Container[StrView].
+    # R = StrView, but IntBox.get() -> int32, so IntBox does not satisfy Container[StrView].
     print(Runner[StrView]().pick[IntBox](IntBox(42)))   # tpyc: error(/does not satisfy bound/)
 
 

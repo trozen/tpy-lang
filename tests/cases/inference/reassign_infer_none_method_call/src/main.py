@@ -1,17 +1,17 @@
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    value: Int32
+    value: int32
 
-    def __init__(self, value: Int32) -> None:
+    def __init__(self, value: int32) -> None:
         self.value = value
 
-    def get(self) -> Int32:
+    def get(self) -> int32:
         return self.value
 
 
-b = Box(Int32(123))
+b = Box(int32(123))
 x = None
 x = b.get()
 print(x)

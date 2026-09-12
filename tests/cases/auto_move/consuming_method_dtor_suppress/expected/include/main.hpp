@@ -15,11 +15,11 @@ void main();
 
 // class HeapVal:
 struct HeapVal {
-    // _ptr: Ptr[Int32]
+    // _ptr: Ptr[int32]
     int32_t* _ptr;
     bool __tpy_owned_ = true;
 
-    // def __init__(self, value: Int32):
+    // def __init__(self, value: int32):
     explicit HeapVal(int32_t value);
     HeapVal(const HeapVal&) = delete;
     HeapVal& operator=(const HeapVal&) = delete;
@@ -29,7 +29,7 @@ struct HeapVal {
     // def __del__(self):
     ~HeapVal();
 
-    // def take(self: Own[Self]) -> Int32:
+    // def take(self: Own[Self]) -> int32:
     int32_t take() &&;
     static constexpr std::string_view __tpy_class_name__ = "__main__.HeapVal";
 };
@@ -40,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const HeapVal& obj) {
 }
 
 
-// def __init__(self, value: Int32):
+// def __init__(self, value: int32):
 inline HeapVal::HeapVal(int32_t value) {
     // print("init", value)
     std::cout << "init" << " " << value << "\n";
@@ -72,12 +72,12 @@ inline HeapVal::~HeapVal() {
     ::operator delete(this->_ptr, std::align_val_t(alignof(int32_t)));
 }
 
-// def take(self: Own[Self]) -> Int32:
+// def take(self: Own[Self]) -> int32:
 inline int32_t HeapVal::take() && {
     this->__tpy_owned_ = false;
     // print("take")
     std::cout << "take" << "\n";
-    // val: Int32 = unsafe_move_out(self._ptr)
+    // val: int32 = unsafe_move_out(self._ptr)
     int32_t val = std::move(*this->_ptr);
     // unsafe_free(self._ptr)
     ::operator delete(this->_ptr, std::align_val_t(alignof(int32_t)));

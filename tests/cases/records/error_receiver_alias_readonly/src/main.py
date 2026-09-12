@@ -1,11 +1,11 @@
 # Receiver-alias mutation obeys docs/LANGUAGE_FEATURES.md's readonly rules.
-from tpy import Int32, readonly
+from tpy import int32, readonly
 
 
 class Cell:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     @readonly

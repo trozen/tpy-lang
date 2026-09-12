@@ -3,10 +3,10 @@
 # a scalar absorbed by the optional's converting ctor), not spell the
 # element's own type (regression: untargeted monostate/nullptr render).
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
-async def pick(n: Int32) -> tuple[Int32, Int32 | None]:
+async def pick(n: int32) -> tuple[int32, int32 | None]:
     if n > 0:
         return (n, n * 2)
     return (n, None)

@@ -82,22 +82,22 @@ namespace tpystd::urllib::request {
     // if scheme == "https":
     ::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>* conn;
     if ((scheme == "https")) {
-        // hport: Int32 = HTTPS_PORT
+        // hport: int32 = HTTPS_PORT
         int32_t hport = HTTPS_PORT;
         // if pnum is not None:
         if ((pnum.has_value())) {
-            // hport = Int32(pnum)
+            // hport = int32(pnum)
             hport = ((*pnum)).to_fixed_check<int32_t>();
         }
         // conn: Box[_Connection] = Box(HTTPSConnection(host, hport, timeout, context))
         conn = &*(__slot_1 = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPSConnection>(::tpystd::http::client::HTTPSConnection((*host), hport, timeout, context)));
     // else:
     } else {
-        // port: Int32 = HTTP_PORT
+        // port: int32 = HTTP_PORT
         int32_t port = HTTP_PORT;
         // if pnum is not None:
         if ((pnum.has_value())) {
-            // port = Int32(pnum)
+            // port = int32(pnum)
             port = ((*pnum)).to_fixed_check<int32_t>();
         }
         // conn = Box(HTTPConnection(host, port, timeout))

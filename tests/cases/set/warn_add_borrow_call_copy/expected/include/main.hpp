@@ -17,7 +17,7 @@ void main();
 // @dataclass(frozen=True)
 // class Key:
 struct Key {
-    // n: Int32
+    // n: int32
     int32_t n;
 
     Key() = default;

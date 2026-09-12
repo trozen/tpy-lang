@@ -16,12 +16,12 @@ void main();
 
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
-    // y: Int32
+    // y: int32
     int32_t y;
 
-    // def __init__(self, x: Int32, y: Int32) -> None:
+    // def __init__(self, x: int32, y: int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y);
 
@@ -37,10 +37,10 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 // class Holder:
 struct Holder {
-    // pair: tuple[Optional[Point], Int32]
+    // pair: tuple[Optional[Point], int32]
     std::tuple<std::optional<Point>, int32_t> pair;
 
-    // def __init__(self, pair: tuple[Optional[Point], Int32]) -> None:
+    // def __init__(self, pair: tuple[Optional[Point], int32]) -> None:
     Holder() = default;
     explicit Holder(const std::tuple<const Point*, int32_t>& pair);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
@@ -52,7 +52,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 }
 
 
-// def __init__(self, x: Int32, y: Int32) -> None:
+// def __init__(self, x: int32, y: int32) -> None:
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __repr__(self) -> str:
@@ -61,7 +61,7 @@ inline std::string Point::__repr__() const {
     return std::format("Point({}, {})", this->x, this->y);
 }
 
-// def __init__(self, pair: tuple[Optional[Point], Int32]) -> None:
+// def __init__(self, pair: tuple[Optional[Point], int32]) -> None:
 inline Holder::Holder(const std::tuple<const Point*, int32_t>& pair) : pair(::tpy::tuple_to_storage<std::tuple<std::optional<Point>, int32_t>>(pair)) {}
 void __tpy_init();
 } // namespace tpyapp::main

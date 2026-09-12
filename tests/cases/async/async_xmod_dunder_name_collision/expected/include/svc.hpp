@@ -38,10 +38,10 @@ inline std::ostream& operator<<(std::ostream& os, const Gate& obj) {
 
 // class Ticker:
 struct Ticker {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Ticker() = default;
     explicit Ticker(int32_t n);
 
@@ -186,7 +186,7 @@ inline __coro_Svc_fetch Svc::fetch() const {
 }
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Ticker::Ticker(int32_t n) : n(n) {}
 
 // def __aiter__(self) -> "Ticker":

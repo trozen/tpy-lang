@@ -48,11 +48,11 @@ template<typename T>
 struct _ChanState {
     // _buf: UninitHeapStorage[T]
     ::tpy::UninitHeapStorage<T> _buf;
-    // _cap: UInt32
+    // _cap: uint32
     uint32_t _cap;
-    // _head: UInt32
+    // _head: uint32
     uint32_t _head;
-    // _count: UInt32
+    // _count: uint32
     uint32_t _count;
     // _closed: bool
     bool _closed;
@@ -67,7 +67,7 @@ struct _ChanState {
     bool _has_recv_waiter;
     bool __tpy_owned_ = true;
 
-    // def __init__(self, capacity: UInt32) -> None:
+    // def __init__(self, capacity: uint32) -> None:
     explicit _ChanState(uint32_t capacity) : _buf(::tpy::UninitHeapStorage<T>(capacity)), _cap(capacity), _head(0), _count(0), _closed(false), _send_waker(::tpystd::coro::Waker()), _has_send_waiter(false), _recv_waker(::tpystd::coro::Waker()), _has_recv_waiter(false) {}
     // non-copyable (@nocopy)
     _ChanState(const _ChanState&) = delete;
@@ -88,7 +88,7 @@ struct _ChanState {
         if (!this->__tpy_owned_) return;
         // # UninitHeapStorage is uninitialized storage and won't drop live
         // # slots itself -- drain the buffered elements or they leak.
-        // i: UInt32 = 0
+        // i: uint32 = 0
         uint32_t i = 0;
         // while i < self._count:
         while ((i < this->_count)) {
@@ -401,7 +401,7 @@ inline std::ostream& operator<<(std::ostream& os, const Receiver<T>& obj) {
     return os;
 }
 
-// def channel[T: Send](capacity: Int32) -> tuple[Own[Sender[T]], Own[Receiver[T]]]:
+// def channel[T: Send](capacity: int32) -> tuple[Own[Sender[T]], Own[Receiver[T]]]:
 template<typename T>
 std::tuple<Sender<T>, Receiver<T>> channel(int32_t capacity) {
     // if capacity < 1:
@@ -409,7 +409,7 @@ std::tuple<Sender<T>, Receiver<T>> channel(int32_t capacity) {
         // raise ValueError("channel capacity must be >= 1")
         throw ::tpy::ValueError("channel capacity must be >= 1");
     }
-    // state = Rc.new(_ChanState[T](UInt32(capacity)))
+    // state = Rc.new(_ChanState[T](uint32(capacity)))
     ::tpystd::tplib::rc::Rc<_ChanState<T>> state = Rc<_ChanState<T>>::template new_<_ChanState<T>>(_ChanState<T>(static_cast<uint32_t>(capacity)));
     // state_for_sender = state.clone()
     ::tpystd::tplib::rc::Rc<_ChanState<T>> state_for_sender = state.clone();

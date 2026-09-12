@@ -16,7 +16,7 @@ void main();
 // class Container[T]:
 template<typename T>
 struct Container {
-    // count: Int32
+    // count: int32
     int32_t count;
     // val: T
     T val;
@@ -28,7 +28,7 @@ struct Container {
     void set(::tpy::param_val_or_ref_t<T> val) {
         // self.val = val
         this->val = ::tpy::param_to_storage<T>(val);
-        // self.count = self.count + Int32(1)
+        // self.count = self.count + int32(1)
         this->count = (::tpy::add_check<int32_t>(this->count, 1));
     }
 
@@ -38,7 +38,7 @@ struct Container {
         return this->val;
     }
 
-    // def get_count(self) -> Int32:
+    // def get_count(self) -> int32:
     int32_t get_count() const {
         // return self.count
         return this->count;

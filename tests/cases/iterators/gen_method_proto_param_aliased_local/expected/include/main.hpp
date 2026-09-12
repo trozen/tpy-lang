@@ -18,10 +18,10 @@ void main();
 
 // class Repeater:
 struct Repeater {
-    // times: Int32
+    // times: int32
     int32_t times;
 
-    // def __init__(self, times: Int32) -> None:
+    // def __init__(self, times: int32) -> None:
     Repeater() = default;
     explicit Repeater(int32_t times);
 
@@ -67,7 +67,7 @@ struct __gen_Repeater_run : public ::tpy::next_iter_mixin<__gen_Repeater_run<T_i
     }
 };
 
-// def run(self, it: Iterable[Int32]) -> Iterator[Int32]:
+// def run(self, it: Iterable[int32]) -> Iterator[int32]:
 template <::tpystd::typing::Iterable<int32_t> T_it>
 std::expected<int32_t, ::tpy::StopIteration> __gen_Repeater_run<T_it>::__next__() {
     while (true) switch (__state) {
@@ -114,7 +114,7 @@ inline __gen_Repeater_run<T_it> Repeater::run(T_it&& it) const {
 }
 
 
-// def __init__(self, times: Int32) -> None:
+// def __init__(self, times: int32) -> None:
 inline Repeater::Repeater(int32_t times) : times(times) {}
 void __tpy_init();
 } // namespace tpyapp::main

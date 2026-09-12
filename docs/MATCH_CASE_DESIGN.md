@@ -295,8 +295,8 @@ pattern arguments to field names:
 ```python
 @dataclass
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
     # CPython auto-generates: __match_args__ = ("x", "y")
 
 match p:
@@ -360,7 +360,7 @@ compatible types:
 ```python
 case Dog(name=n) | Cat(name=n):   # ok: both bind 'n: str'
 case Dog(name=n) | Cat():          # error: 'n' not bound in all alternatives
-case Dog(age=n) | Cat(name=n):     # error if age:Int32 vs name:str (type mismatch)
+case Dog(age=n) | Cat(name=n):     # error if age:int32 vs name:str (type mismatch)
 ```
 
 ---
@@ -434,7 +434,7 @@ switch (__match_subject.index()) {
 Wildcard/capture maps to `default:`. Each case arm gets a `break`.
 
 **Binding storage (scalar copy vs reference).** A pattern binding whose type
-is a free-copy scalar (`Int32`/fixed ints, `bool`, `Char`, float, enum) is
+is a free-copy scalar (`int32`/fixed ints, `bool`, `char`, float, enum) is
 bound *by value* (`auto n = __dog.legs;`), not `auto&`. The copy is a free
 register move and keeps the binding valid if the arm body mutates the
 subject's storage (a union field reassign destroys the old alternative in
@@ -1037,16 +1037,16 @@ workaround rather than claiming the program is wrong.
 |-----------|---------|
 | Class pattern on non-member of union | `'Triangle' is not a member of union 'Circle \| Rect'` |
 | Duplicate case for same type | `duplicate case for 'Circle' in match statement` |
-| Incompatible literal type | `str literal pattern not valid for subject type 'Int32'` |
+| Incompatible literal type | `str literal pattern not valid for subject type 'int32'` |
 | Literal kind not renderable against an otherwise-compatible subject | `<kind> literal pattern against subject type '<T>' is not yet implemented; ...` |
 | Or-pattern alternative a switch tier cannot label | `unsupported alternative in an or-pattern over a <union/enum/int-or-bool> subject: ...` |
 | Or-pattern variable mismatch | `variable 'n' not bound in all alternatives of or-pattern` |
-| Or-pattern type mismatch | `variable 'n' has type 'Int32' in first alternative but 'str' in second` |
+| Or-pattern type mismatch | `variable 'n' has type 'int32' in first alternative but 'str' in second` |
 | Too many positional args | `'Point' accepts 2 positional patterns but 3 were given` |
 | Unknown field in keyword pattern | `'Circle' has no field 'width'` |
 | Unreachable case after wildcard | `unreachable case after wildcard pattern` |
 | Value-only arm after an Optional class catch-all | `unreachable case: every non-None value is already matched by an earlier arm` |
-| Optional capture re-typing an existing variable | `match capture 'x' binds the full Optional subject ('Int32 \| None') but 'x' already has type 'Int32'; ...` |
+| Optional capture re-typing an existing variable | `match capture 'x' binds the full Optional subject ('int32 \| None') but 'x' already has type 'int32'; ...` |
 | `as` binding on `case None:` | `'as' binding not allowed on 'case None:'` |
 
 ### Compile-time warnings
@@ -1075,7 +1075,7 @@ Tests go in `tests/cases/match/` (new directory).
 | `union_as_pattern` | `case Dog() as d:` pattern + name |
 | `enum_basic` | match on enum with value patterns |
 | `optional_basic` | match on `T \| None` with None pattern |
-| `literal_int` | match on `Int32` with literal patterns |
+| `literal_int` | match on `int32` with literal patterns |
 | `literal_str` | match on `str` with literal patterns |
 | `or_pattern` | `case Dog() \| Cat():` |
 | `or_pattern_bindings` | `case Dog(name=n) \| Cat(name=n):` |

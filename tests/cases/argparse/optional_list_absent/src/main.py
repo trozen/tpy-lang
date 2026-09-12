@@ -2,11 +2,11 @@
 # Optional[list[T]] = None when the flag is absent (D1: matches CPython
 # argparse, where missing append/extend/multi-nargs flags give None
 # rather than an empty list).
-from tpy import Int32
+from tpy import int32
 from argparse import ArgumentParser
 
 
-def main() -> Int32:
+def main() -> int32:
     p1 = ArgumentParser()
     p1.add_argument("--tag", action="append")
     p1.add_argument("--num", action="append", type=int)

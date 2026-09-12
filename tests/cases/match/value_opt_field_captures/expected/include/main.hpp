@@ -18,10 +18,10 @@ void main();
 
 // class WithScalar:
 struct WithScalar {
-    // n: Optional[Int32]
+    // n: Optional[int32]
     std::optional<int32_t> n;
 
-    // def __init__(self, n: Optional[Int32]) -> None:
+    // def __init__(self, n: Optional[int32]) -> None:
     WithScalar() = default;
     explicit WithScalar(std::optional<int32_t> n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.WithScalar";
@@ -50,10 +50,10 @@ inline std::ostream& operator<<(std::ostream& os, const WithStr& obj) {
 
 // class Other:
 struct Other {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Other() = default;
     explicit Other(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Other";
@@ -65,13 +65,13 @@ inline std::ostream& operator<<(std::ostream& os, const Other& obj) {
 }
 
 
-// def __init__(self, n: Optional[Int32]) -> None:
+// def __init__(self, n: Optional[int32]) -> None:
 inline WithScalar::WithScalar(std::optional<int32_t> n) : n(n) {}
 
 // def __init__(self, s: Optional[str]) -> None:
 inline WithStr::WithStr(std::optional<std::string_view> s) : s(s ? std::make_optional(std::string(*s)) : std::nullopt) {}
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Other::Other(int32_t v) : v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

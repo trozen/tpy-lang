@@ -8,7 +8,7 @@
 import asyncio
 from typing import Iterator
 
-from tpy import Int32, ReturnException, error_return, nocopy, readonly
+from tpy import int32, ReturnException, error_return, nocopy, readonly
 
 
 class Boom(Exception, ReturnException):
@@ -24,9 +24,9 @@ class Guard:
 
 
 class Dog:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def __eq__(self, other: "Dog") -> bool:
@@ -51,9 +51,9 @@ class Dog:
 
 
 class Cat:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def __eq__(self, other: "Cat") -> bool:
@@ -77,9 +77,9 @@ class Cat:
 # `__ne__` INVERTED on purpose: CPython calls a declared `__ne__` instead of
 # deriving one from `__eq__`, so both rows below disagree with the negation.
 class Tag:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def __eq__(self, other: "Tag") -> bool:
@@ -94,9 +94,9 @@ class Tag:
 
 
 class Mark:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def __eq__(self, other: "Mark") -> bool:
@@ -108,9 +108,9 @@ class Mark:
 # `__ne__` and NO `__eq__`: `!=` calls the dunder while `==` still falls back
 # to identity, so the two operators answer from different rules on one pair.
 class OnlyNe:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def __ne__(self, other: "OnlyNe") -> bool:
@@ -123,24 +123,24 @@ class OnlyNe:
 # the row the storage form cannot answer, because the slot it compares is a
 # copy of the object rather than the object.
 class Plain:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
 class Other:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
 @nocopy
 class Locked:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def __eq__(self, other: "Locked") -> bool:
@@ -151,9 +151,9 @@ class Locked:
 
 @nocopy
 class Sealed:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def __eq__(self, other: "Sealed") -> bool:
@@ -169,9 +169,9 @@ type Anon = Plain | Other
 type Held = Locked | Sealed
 # A record beside VALUE alternatives: the borrowed pointee leg goes through
 # the same value leaf the storage form uses, so `1` and `1.0` are equal here
-# too. `float` rather than the `Float64` spelling of the same type, which an
+# too. `float` rather than the `float64` spelling of the same type, which an
 # alias body rejects (BUGS.md#imported-alias-member-in-alias-body).
-type Mixed = Dog | Int32 | float
+type Mixed = Dog | int32 | float
 
 
 def eq(a: Pet, b: Pet) -> bool:  # free function param
@@ -240,10 +240,10 @@ def mixed_eq(xs: list[Mixed]) -> None:  # borrowed value members
 
 
 class Shelter:
-    tag: Int32
+    tag: int32
     flag: bool
 
-    def __init__(self, tag: Int32, a: Pet, b: Pet) -> None:  # constructor
+    def __init__(self, tag: int32, a: Pet, b: Pet) -> None:  # constructor
         self.tag = tag
         self.flag = a == b  # tpyc: ok
 
@@ -266,7 +266,7 @@ def elem_eq(xs: list[Pet]) -> bool:  # local lifted out of a container
 # an operand here -- iterating `list[Pet]` binds the storage element, which
 # is a different C++ type from the borrowed parameter
 # (BUGS.md#ref-union-loop-var-vs-borrow-compare).
-def count_eq(a: Pet, b: Pet) -> Int32:  # comprehension
+def count_eq(a: Pet, b: Pet) -> int32:  # comprehension
     flags = [a == b for _ in [1, 2]]  # tpyc: ok
     return len(flags) if flags[0] else 0
 
@@ -304,7 +304,7 @@ def in_error_return(a: Pet, b: Pet) -> bool:  # @error_return
 
 
 def in_match(a: Pet, b: Pet) -> bool:  # match arm
-    tag: Int32 = 1
+    tag: int32 = 1
     match tag:
         case 1:
             return a == b  # tpyc: ok

@@ -1,10 +1,10 @@
 # Basic async with: __aenter__/__aexit__ run, as-binding works.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
 class CM:
-    async def __aenter__(self) -> Int32:
+    async def __aenter__(self) -> int32:
         print("aenter")
         return 7
 

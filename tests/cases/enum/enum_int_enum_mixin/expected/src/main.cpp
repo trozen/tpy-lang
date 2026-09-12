@@ -52,8 +52,8 @@ void main() {
     std::cout << SmallEnum::A << "\n";
     // print(SmallEnum.C)
     std::cout << SmallEnum::C << "\n";
-    // # Arithmetic gives Int8
-    // x: Int8 = SmallEnum.B + Int8(10)
+    // # Arithmetic gives int8
+    // x: int8 = SmallEnum.B + int8(10)
     int8_t x = (::tpy::add_check<int8_t>(static_cast<int8_t>(SmallEnum::B), 10));
     // print(x)
     std::cout << static_cast<int>(x) << "\n";
@@ -61,7 +61,7 @@ void main() {
     // print(SmallEnum.A < SmallEnum.C)
     std::cout << ::tpy::print_bool((static_cast<int8_t>(SmallEnum::A) < static_cast<int8_t>(SmallEnum::C))) << "\n";
     // # Int comparison
-    // print(SmallEnum.B == Int8(1))
+    // print(SmallEnum.B == int8(1))
     std::cout << ::tpy::print_bool((static_cast<int8_t>(SmallEnum::B) == 1)) << "\n";
 }
 
@@ -70,7 +70,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # IntEnum with explicit Int8 underlying type via mixin syntax
+    // # IntEnum with explicit int8 underlying type via mixin syntax
     // from enum import Enum
     // main()
     main();

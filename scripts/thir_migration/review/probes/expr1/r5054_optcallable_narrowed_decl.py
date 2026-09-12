@@ -1,6 +1,6 @@
 from typing import Callable
-from tpy import Int32
-def f(cb: Callable[[Int32], Int32] | None) -> Int32:
+from tpy import int32
+def f(cb: Callable[[int32], int32] | None) -> int32:
     if cb is not None:
         h = cb
         return h(1)

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def main_coro(f: Future[Int32]) -> None:
+// async def main_coro(f: Future[int32]) -> None:
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -29,7 +29,7 @@ namespace tpyapp::main {
 }
 
 
-// async def main_coro(f: Future[Int32]) -> None:
+// async def main_coro(f: Future[int32]) -> None:
 __coro_main_coro main_coro(::tpystd::asyncio::Future<int32_t>& f) {
     return __coro_main_coro(f);
 }
@@ -41,9 +41,9 @@ __coro_main_coro main_coro(::tpystd::asyncio::Future<int32_t>& f) {
         // # Construct the Future inside the running loop: CPython >= 3.14 rejects
         // # loop-less Future() construction (get_event_loop() errors with no running
         // # loop), so create + set_result within asyncio.run's loop.
-        // f: Future[Int32] = Future[Int32]()
+        // f: Future[int32] = Future[int32]()
         f.emplace(::tpystd::asyncio::Future<int32_t>());
-        // f.set_result(Int32(99))
+        // f.set_result(int32(99))
         (*f).set_result(99);
         // await main_coro(f)
         __sub_0.emplace((*f));

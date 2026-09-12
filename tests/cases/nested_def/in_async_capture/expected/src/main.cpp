@@ -47,13 +47,13 @@ __coro_capture_mutate capture_mutate() {
     return __coro_capture_mutate();
 }
 
-// async def across_await() -> Int32:
+// async def across_await() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_across_await::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // base = 100
         base = 100;
-        // def scaled(x: Int32) -> Int32:
+        // def scaled(x: int32) -> int32:
         // def scaled: frame member
         // first = scaled(1)
         first = scaled(1);
@@ -82,18 +82,18 @@ int32_t __coro_across_await::scaled(int32_t x) {
     return (::tpy::add_check<int32_t>(x, base));
 }
 
-// async def across_await() -> Int32:
+// async def across_await() -> int32:
 __coro_across_await across_await() {
     return __coro_across_await();
 }
 
-// def apply(f: Callable[[Int32], Int32], v: Int32) -> Int32:
+// def apply(f: Callable[[int32], int32], v: int32) -> int32:
 int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t v) {
     // return f(v)
     return f(v);
 }
 
-// async def lambda_capture(n: Int32) -> Int32:
+// async def lambda_capture(n: int32) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_lambda_capture::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -120,7 +120,7 @@ int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t v) {
 }
 
 
-// async def lambda_capture(n: Int32) -> Int32:
+// async def lambda_capture(n: int32) -> int32:
 __coro_lambda_capture lambda_capture(int32_t n) {
     return __coro_lambda_capture(n);
 }

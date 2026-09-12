@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def total(d: readonly[dict[str, list[Int32]]]) -> Int32:
+// def total(d: readonly[dict[str, list[int32]]]) -> int32:
 int32_t total(const ::tpy::ordered_map<std::string, std::vector<int32_t>>& d) {
     // n = 0
     int32_t n = 0;
@@ -36,7 +36,7 @@ int32_t total(const ::tpy::ordered_map<std::string, std::vector<int32_t>>& d) {
 
 // def main():
 void main() {
-    // d: dict[str, list[Int32]] = {}
+    // d: dict[str, list[int32]] = {}
     ::tpy::ordered_map<std::string, std::vector<int32_t>> d = ::tpy::ordered_map<std::string, std::vector<int32_t>>();
     // d["a"] = [1, 2]
     ::tpy::__setitem__(d, "a", std::vector<int32_t>{1, 2});

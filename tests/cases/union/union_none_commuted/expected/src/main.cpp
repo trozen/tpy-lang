@@ -4,14 +4,14 @@
 namespace tpyapp::main {
 
 
-// def check(v: Int32 | Cat | None) -> str:
+// def check(v: int32 | Cat | None) -> str:
 std::string check(::tpy::Union<std::monostate, const Cat*, const int32_t*> v) {
     // if None is v:
     if ((std::holds_alternative<std::monostate>(v))) {
         // return "none"
         return "none";
     }
-    // if isinstance(v, Int32):
+    // if isinstance(v, int32):
     if (std::holds_alternative<const int32_t*>(v)) {
         auto& __v = *std::get<const int32_t*>(v);
         // return "int"
@@ -22,11 +22,11 @@ std::string check(::tpy::Union<std::monostate, const Cat*, const int32_t*> v) {
     return "cat";
 }
 
-// def check_not(v: Int32 | Cat | None) -> str:
+// def check_not(v: int32 | Cat | None) -> str:
 std::string check_not(::tpy::Union<std::monostate, const Cat*, const int32_t*> v) {
     // if None is not v:
     if ((!std::holds_alternative<std::monostate>(v))) {
-        // if isinstance(v, Int32):
+        // if isinstance(v, int32):
         if (std::holds_alternative<const int32_t*>(v)) {
             auto& __v = *std::get<const int32_t*>(v);
             // return "got int"
@@ -42,7 +42,7 @@ std::string check_not(::tpy::Union<std::monostate, const Cat*, const int32_t*> v
 
 // def main() -> None:
 void main() {
-    // print(check(Int32(1)))
+    // print(check(int32(1)))
     int32_t __tmp_1 = 1;
     std::cout << check(::tpy::Union<std::monostate, const Cat*, const int32_t*>{&__tmp_1}) << "\n";
     // print(check(Cat("Whiskers")))
@@ -50,7 +50,7 @@ void main() {
     std::cout << check(::tpy::Union<std::monostate, const Cat*, const int32_t*>{&__tmp_2}) << "\n";
     // print(check(None))
     std::cout << check(::tpy::Union<std::monostate, const Cat*, const int32_t*>{std::monostate{}}) << "\n";
-    // print(check_not(Int32(2)))
+    // print(check_not(int32(2)))
     int32_t __tmp_3 = 2;
     std::cout << check_not(::tpy::Union<std::monostate, const Cat*, const int32_t*>{&__tmp_3}) << "\n";
     // print(check_not(Cat("Paws")))

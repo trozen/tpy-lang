@@ -2,12 +2,12 @@
 # then mutated: the local aliases the field, so the append is visible through
 # the receiver. Two legs of one shape -- the arm is shared, so the bytearray
 # and the list read the same row.
-from tpy import Int32
+from tpy import int32
 
 
 class H:
     buf: bytearray
-    xs: list[Int32]
+    xs: list[int32]
 
     def __init__(self) -> None:
         self.buf = bytearray(b"ab")
@@ -16,7 +16,7 @@ class H:
     def view(self) -> bytearray:
         return self.buf  # tpyc: ok
 
-    def nums(self) -> list[Int32]:
+    def nums(self) -> list[int32]:
         return self.xs  # tpyc: ok
 
 

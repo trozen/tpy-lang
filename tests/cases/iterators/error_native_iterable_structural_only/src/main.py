@@ -4,18 +4,18 @@
 # requires std::ranges::begin/end (only synthesized when the record explicitly
 # extends NativeIterable). Without this gate, sema would admit the call but
 # C++ template instantiation would later fail.
-from tpy import Int32, NativeIterable, Own
+from tpy import int32, NativeIterable, Own
 
 
 class CounterIter:
-    current: Int32
-    limit: Int32
+    current: int32
+    limit: int32
 
-    def __init__(self, start: Int32, limit: Int32) -> None:
+    def __init__(self, start: int32, limit: int32) -> None:
         self.current = start
         self.limit = limit
 
-    def __next__(self) -> Int32:
+    def __next__(self) -> int32:
         if self.current < self.limit:
             result = self.current
             self.current += 1
@@ -26,10 +26,10 @@ class CounterIter:
 # Has __iter__ -- structurally matches NativeIterable's __iter__ method
 # signature, but does NOT declare `extends NativeIterable`. Sema must reject.
 class Counter:
-    start: Int32
-    limit: Int32
+    start: int32
+    limit: int32
 
-    def __init__(self, start: Int32, limit: Int32) -> None:
+    def __init__(self, start: int32, limit: int32) -> None:
         self.start = start
         self.limit = limit
 
@@ -37,8 +37,8 @@ class Counter:
         return CounterIter(self.start, self.limit)
 
 
-def sum_native(items: NativeIterable[Int32]) -> Int32:
-    total: Int32 = 0
+def sum_native(items: NativeIterable[int32]) -> int32:
+    total: int32 = 0
     for x in items:
         total += x
     return total

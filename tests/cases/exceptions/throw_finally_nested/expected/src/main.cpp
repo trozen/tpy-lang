@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def nested_return() -> Int32:
+// def nested_return() -> int32:
 int32_t nested_return() {
     // try:
     {

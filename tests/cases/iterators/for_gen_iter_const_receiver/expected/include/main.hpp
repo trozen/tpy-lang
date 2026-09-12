@@ -16,16 +16,16 @@ void main();
 
 // class Source:
 struct Source {
-    // _n: Int32
+    // _n: int32
     int32_t _n;
 
-    // def __init__(self, n: Int32):
+    // def __init__(self, n: int32):
     Source() = default;
     explicit Source(int32_t n);
 
-    // def __iter__(self) -> Iterator[Int32]:
+    // def __iter__(self) -> Iterator[int32]:
     auto __iter__() const {
-        // i: Int32 = 0
+        // i: int32 = 0
         int32_t i = 0;
         return ::tpy::make_generator<int32_t>(
             [this, i]() mutable -> std::optional<int32_t> {
@@ -56,7 +56,7 @@ struct Consumer {
     Consumer() = default;
     explicit Consumer(Source&& src);
 
-    // def sum_all(self) -> Int32:
+    // def sum_all(self) -> int32:
     int32_t sum_all() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Consumer";
 };
@@ -67,15 +67,15 @@ inline std::ostream& operator<<(std::ostream& os, const Consumer& obj) {
 }
 
 
-// def __init__(self, n: Int32):
+// def __init__(self, n: int32):
 inline Source::Source(int32_t n) : _n(n) {}
 
 // def __init__(self, src: Own[Source]):
 inline Consumer::Consumer(Source&& src) : _src(std::move(src)) {}
 
-// def sum_all(self) -> Int32:
+// def sum_all(self) -> int32:
 inline int32_t Consumer::sum_all() const {
-    // acc: Int32 = 0
+    // acc: int32 = 0
     int32_t acc = 0;
     // for v in self._src:
     auto& __src_0 = this->_src;

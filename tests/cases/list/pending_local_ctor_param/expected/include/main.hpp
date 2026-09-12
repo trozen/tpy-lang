@@ -22,7 +22,7 @@ struct Holder {
     // self.xs = xs
     std::vector<int32_t> xs;
 
-    // def __init__(self, xs: Own[list[Int32]]):
+    // def __init__(self, xs: Own[list[int32]]):
     Holder() = default;
     explicit Holder(std::vector<int32_t>&& xs);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
@@ -56,7 +56,7 @@ struct DictHolder {
     // self.d = d
     ::tpy::ordered_map<std::string, int32_t> d;
 
-    // def __init__(self, d: Own[dict[str, Int32]]):
+    // def __init__(self, d: Own[dict[str, int32]]):
     DictHolder() = default;
     explicit DictHolder(::tpy::ordered_map<std::string, int32_t>&& d);
     static constexpr std::string_view __tpy_class_name__ = "__main__.DictHolder";
@@ -72,7 +72,7 @@ struct SetHolder {
     // self.s = s
     ::tpy::ordered_set<int32_t> s;
 
-    // def __init__(self, s: Own[set[Int32]]):
+    // def __init__(self, s: Own[set[int32]]):
     SetHolder() = default;
     explicit SetHolder(::tpy::ordered_set<int32_t>&& s);
     static constexpr std::string_view __tpy_class_name__ = "__main__.SetHolder";
@@ -85,10 +85,10 @@ inline std::ostream& operator<<(std::ostream& os, const SetHolder& obj) {
 
 // class DataError(Exception):
 struct DataError : ::tpy::Exception {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, xs: list[Int32]):
+    // def __init__(self, xs: list[int32]):
     DataError() = default;
     explicit DataError(const std::vector<int32_t>& xs);
 
@@ -104,16 +104,16 @@ inline std::ostream& operator<<(std::ostream& os, const DataError& obj) {
 }
 
 
-// def __init__(self, xs: Own[list[Int32]]):
+// def __init__(self, xs: Own[list[int32]]):
 inline Holder::Holder(std::vector<int32_t>&& xs) : xs(std::move(xs)) {}
 
-// def __init__(self, d: Own[dict[str, Int32]]):
+// def __init__(self, d: Own[dict[str, int32]]):
 inline DictHolder::DictHolder(::tpy::ordered_map<std::string, int32_t>&& d) : d(std::move(d)) {}
 
-// def __init__(self, s: Own[set[Int32]]):
+// def __init__(self, s: Own[set[int32]]):
 inline SetHolder::SetHolder(::tpy::ordered_set<int32_t>&& s) : s(std::move(s)) {}
 
-// def __init__(self, xs: list[Int32]):
+// def __init__(self, xs: list[int32]):
 inline DataError::DataError(const std::vector<int32_t>& xs) : n(::tpy::__len__(xs)) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -4,20 +4,20 @@
 # `Pinned` is non-copyable because it defines `__del__`, which deletes the
 # generated struct's copy constructor; `@nocopy` is the other way to be one
 # (pinned by tpyc/test_compiler.py, since compilation stops at this error).
-from tpy import Int32
+from tpy import int32
 
 
 class Pinned:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def __del__(self) -> None:
         self.n = 0
 
 
-def insert_slot[T](v: T) -> Int32:
+def insert_slot[T](v: T) -> int32:
     xs: list[T] = []
     # tpyc: error(/cannot copy non-copyable type 'Pinned' into owned storage/)
     xs.append(v)

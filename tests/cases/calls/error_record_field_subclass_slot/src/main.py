@@ -1,13 +1,13 @@
 # A field holding a SUBCLASS passed at a base-class parameter: the
 # field-reference argument row admits the exact slot type only, so
 # `base_use(h.c)` rejects.
-from tpy import Int32
+from tpy import int32
 
 
 class A:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
@@ -23,7 +23,7 @@ class H2:
         self.c = Child()
 
 
-def base_use(a: A) -> Int32:
+def base_use(a: A) -> int32:
     return a.x
 
 

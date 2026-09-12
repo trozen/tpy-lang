@@ -3,16 +3,16 @@
 # warning it still draws is a filed defect
 # (BUGS.md#match-exhaustiveness-or-wildcard); this case pins it.
 from dataclasses import dataclass
-from tpy import Int32
+from tpy import int32
 
 
 @dataclass
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 
-def f(p: Point) -> Int32:
+def f(p: Point) -> int32:
     match p:  # tpyc: warning(/non\-exhaustive\ match\ on\ 'Point';\ no\ unconditional/)
         case Point(x=1, y=0):
             return 5

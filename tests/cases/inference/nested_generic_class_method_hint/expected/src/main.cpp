@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // c: Container[Int32] = Container(0)
+    // c: Container[int32] = Container(0)
     Container<int32_t> c = Container<int32_t>(0);
     // r: Rc[Box[Greeter]] = c.wrap(Box(Cat("Whiskers")))  # tpyc: type(Rc[Box[Greeter]])
     ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Greeter>> r = c.wrap<::tpystd::tplib::box::Box<Greeter>>(::tpystd::tplib::box::Box<Greeter>(::tpy::make_adapter<Greeter>(Cat("Whiskers"))));

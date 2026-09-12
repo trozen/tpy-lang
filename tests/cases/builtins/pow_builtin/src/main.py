@@ -1,12 +1,12 @@
-# Test pow() builtin for Int32, BigInt, and float
-from tpy import Int32
+# Test pow() builtin for int32, BigInt, and float
+from tpy import int32
 
 def main() -> None:
-    # Int32 pow
-    a: Int32 = pow(Int32(2), Int32(10))
+    # int32 pow
+    a: int32 = pow(int32(2), int32(10))
     print(a)
-    print(pow(Int32(3), Int32(0)))
-    print(pow(Int32(-2), Int32(3)))
+    print(pow(int32(3), int32(0)))
+    print(pow(int32(-2), int32(3)))
 
     # BigInt pow
     b = pow(int(2), int(30))

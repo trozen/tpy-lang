@@ -1,5 +1,5 @@
-from tpy import Int32
-def pick(c: bool) -> Int32:
+from tpy import int32
+def pick(c: bool) -> int32:
     if c:
         s: str | None = "a"
     else:

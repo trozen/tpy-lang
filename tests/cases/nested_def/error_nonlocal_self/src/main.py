@@ -1,11 +1,11 @@
 # `nonlocal self` in a nested def is rejected: the method receiver has no
 # rebindable storage behind `this`, so a rebind would silently keep the
 # original object where CPython switches to the new one.
-from tpy import Int32
+from tpy import int32
 
 
 class C:
-    n: Int32
+    n: int32
 
     def __init__(self) -> None:
         self.n = 1

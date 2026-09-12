@@ -2,19 +2,19 @@
 # Verifies that protocol return types from __iter__ are recognized as iterable.
 from __future__ import annotations
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 class Stack:
-    items: list[Int32]
+    items: list[int32]
     def __init__(self) -> None:
         self.items = [1, 2, 3]
 
-    def __iter__(self) -> Iterator[Int32]:
+    def __iter__(self) -> Iterator[int32]:
         return iter(self.items)
 
 def main() -> None:
     s = Stack()
-    total: Int32 = 0
+    total: int32 = 0
     for x in s:
         total += x
     print(total)

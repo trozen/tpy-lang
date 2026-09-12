@@ -2,11 +2,11 @@
 # DIFFERENT ancestors -- each coro struct names its own defining record (the
 # owners are stamped independently).
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
 class HasEnter:
-    n: Int32
+    n: int32
 
     def __init__(self) -> None:
         self.n = 0

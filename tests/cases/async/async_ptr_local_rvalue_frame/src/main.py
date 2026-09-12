@@ -2,11 +2,11 @@
 # into a pointer-form coro-frame local materialize in frame slots.
 import asyncio
 from typing import Optional
-from tpy import Int32
+from tpy import int32
 
 
 class Point:
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 

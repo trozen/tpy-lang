@@ -572,7 +572,7 @@ class SemanticAnalyzer:
                                 from_star_import=True):
                             # Re-resolve a name absent from this source's
                             # exports against any module that does export
-                            # it (typical case: `Int32` star-imported via
+                            # it (typical case: `int32` star-imported via
                             # `from utils import *` where utils itself
                             # re-imports it from tpy). `_bind_star_reexport`
                             # rewrites `imported_names` and the namespace
@@ -597,7 +597,7 @@ class SemanticAnalyzer:
                 alias = module.module_aliases.get(import_module_name)
                 self.ctx.global_ns.bind_module(import_module_name, alias)
                 # Register tpy type aliases for qualified annotation resolution
-                # (e.g. import tpy; x: tpy.Float64)
+                # (e.g. import tpy; x: tpy.float64)
                 if import_module_name == "tpy":
                     self._register_all_tpy_type_aliases()
 
@@ -787,7 +787,7 @@ class SemanticAnalyzer:
             # the defining module's name takes precedence over any
             # import aliasing in downstream modules. Skip generic aliases:
             # their display name is only meaningful parameterized
-            # (`Either[Int32]`), and keying on the unsubstituted members
+            # (`Either[int32]`), and keying on the unsubstituted members
             # would mislabel an unrelated concrete union of the same shape.
             if (display_names is not None and not type_params
                     and isinstance(typ, UnionType)):
@@ -3344,7 +3344,7 @@ class SemanticAnalyzer:
             if self._field_type_blocks_default_ctor(fld.type, _visited):
                 return True
         # Route parents through the field-type predicate so generic
-        # parents (e.g. `class C(Box[Int32])`) dispatch through the
+        # parents (e.g. `class C(Box[int32])`) dispatch through the
         # `type_args` branch and consult the base template's
         # `del_suppresses_default_ctor`.
         for p in rec.parents:
@@ -3482,6 +3482,7 @@ class SemanticAnalyzer:
 
         # Pre-scan for codegen
         self.top_level_scan_result = scan_reassigned_vars(stmts)
+        self.stmts._warn_scalar_type_shadows(None, set(), self.top_level_scan_result)
         # Last-use analysis for auto-move (shared with codegen)
         self.ctx.all_last_uses |= analyze_last_uses(
             stmts, liveness_alias_sources(self.top_level_scan_result))
@@ -3554,7 +3555,7 @@ class SemanticAnalyzer:
         # Compile-time-only types (e.g. FStr) take priority
         self.registrar._register_compile_time_type_alias(local_name, "tpy", original_name)
 
-        # AST-level type aliases (e.g. Float64 = float)
+        # AST-level type aliases (e.g. float64 = float)
         tpy_info = self.ctx.registry.get_module("tpy")
         if not tpy_info or not tpy_info.type_aliases:
             return
@@ -3580,7 +3581,7 @@ class SemanticAnalyzer:
     def _bind_star_reexport(self, original_name: str, local_name: str) -> None:
         """Try to bind a star-imported re-export from a known module.
 
-        When 'from utils import *' brings in a name like Int32 that utils
+        When 'from utils import *' brings in a name like int32 that utils
         imported from tpy, we need to find the original source and bind it
         correctly so the name is usable.
         """
@@ -3592,7 +3593,7 @@ class SemanticAnalyzer:
                 self.ctx.global_ns.bind_imported_name(local_name, mod_name, original_name)
                 self._register_user_module_import(mod_name, original_name, local_name)
                 return
-        # Fallback: tpy type aliases (e.g. Int32, Float64)
+        # Fallback: tpy type aliases (e.g. int32, float64)
         self._register_tpy_type_alias(original_name, local_name)
 
     def _register_nested_with_alias(self, items, register_fn,
@@ -3923,7 +3924,7 @@ class SemanticAnalyzer:
 
         # Star imports include all public names from the source (matching
         # CPython), but not all of them have entries in ModuleInfo (e.g.
-        # re-imported names like Int32 from tpy). Skip those so the caller
+        # re-imported names like int32 from tpy). Skip those so the caller
         # doesn't bind them as coming from this module.
         if from_star_import:
             return False

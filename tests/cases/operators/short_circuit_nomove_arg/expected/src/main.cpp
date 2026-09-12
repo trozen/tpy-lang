@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def take(p: Pinned | None) -> Int32:
+// def take(p: Pinned | None) -> int32:
 int32_t take(const Pinned* p) {
     // return p.n if p is not None else 0
     return (((p != nullptr)) ? (p->n) : (0));
@@ -42,14 +42,14 @@ bool or_rhs_hatch(bool flag) {
     return (flag || (take(&(p)) > 0));
 }
 
-// def ternary_arm(flag: bool) -> Int32:
+// def ternary_arm(flag: bool) -> int32:
 int32_t ternary_arm(bool flag) {
     // return take(Pinned(9)) if flag else -1  # tpyc: warning(/builds Pinned even when the branch is not taken/)
     Pinned __tmp_3 = Pinned(9);
     return ((flag) ? (take(&(__tmp_3))) : (-1));
 }
 
-// def ternary_arm_hatch(flag: bool) -> Int32:
+// def ternary_arm_hatch(flag: bool) -> int32:
 int32_t ternary_arm_hatch(bool flag) {
     // p = Pinned(9)
     Pinned p = Pinned(9);
@@ -57,7 +57,7 @@ int32_t ternary_arm_hatch(bool flag) {
     return ((flag) ? (take(&(p))) : (-1));
 }
 
-// def chained(a: Int32, b: Int32) -> bool:
+// def chained(a: int32, b: int32) -> bool:
 bool chained(int32_t a, int32_t b) {
     // # Later comparator of a chained compare: also a conditional operand.
     // return a < b < take(Pinned(10))  # tpyc: warning(/builds Pinned even when the branch is not taken/)
@@ -65,7 +65,7 @@ bool chained(int32_t a, int32_t b) {
     return ((a < b) && (b < take(&(__tmp_4))));
 }
 
-// def chained_hatch(a: Int32, b: Int32) -> bool:
+// def chained_hatch(a: int32, b: int32) -> bool:
 bool chained_hatch(int32_t a, int32_t b) {
     // p = Pinned(10)
     Pinned p = Pinned(10);
@@ -73,7 +73,7 @@ bool chained_hatch(int32_t a, int32_t b) {
     return ((a < b) && (b < take(&(p))));
 }
 
-// def take_ref(p: Pinned) -> Int32:
+// def take_ref(p: Pinned) -> int32:
 int32_t take_ref(const Pinned& p) {
     // return p.n
     return p.n;
@@ -94,7 +94,7 @@ bool ref_param_hatch(bool flag) {
     return (flag || (take_ref(p) > 0));
 }
 
-// def take_own(p: Own[Pinned]) -> Int32:  # tpyc: warning(/never consumed/)
+// def take_own(p: Own[Pinned]) -> int32:  # tpyc: warning(/never consumed/)
 int32_t take_own(Pinned&& p) {
     // return p.n
     return p.n;
@@ -109,7 +109,7 @@ bool own_param(bool flag) {
     return (flag || (take_own(Pinned(13)) > 0));
 }
 
-// def use(p: Noisy) -> Int32:
+// def use(p: Noisy) -> int32:
 int32_t use(const Noisy& p) {
     // return p.n
     return p.n;

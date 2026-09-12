@@ -1,9 +1,9 @@
 # Inference through Own[T] still catches type mismatches.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Box:
-    value: Int32
+    value: int32
 
 
 def merge[T](a: Own[T], b: Own[T]) -> None:
@@ -13,6 +13,6 @@ def merge[T](a: Own[T], b: Own[T]) -> None:
 def main():
     b = Box()
     b.value = 1
-    nums: list[Int32] = [10, 20]
-    # T can't be both Box and list[Int32]
+    nums: list[int32] = [10, 20]
+    # T can't be both Box and list[int32]
     merge(b, nums)  # tpyc: error(/Cannot infer type arguments/)

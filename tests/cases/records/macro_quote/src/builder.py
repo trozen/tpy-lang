@@ -53,7 +53,7 @@ def builder(cls: ClassInfo) -> None:
     # Generate a field_count() staticmethod using quote_fun
     count = len(cls.fields)
     func = ast.quote_fun(f"""
-        def field_count() -> Int32:
+        def field_count() -> int32:
             return {count}
     """)
     func.is_staticmethod = True

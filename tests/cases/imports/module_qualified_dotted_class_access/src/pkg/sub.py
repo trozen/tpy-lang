@@ -1,14 +1,14 @@
 from typing import ClassVar
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Widget:
-    SIZE: ClassVar[Int32] = Int32(8)
-    value: Int32
+    SIZE: ClassVar[int32] = int32(8)
+    value: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.value = v
 
     @staticmethod
-    def make(v: Int32) -> Own["Widget"]:
+    def make(v: int32) -> Own["Widget"]:
         return Widget(v)

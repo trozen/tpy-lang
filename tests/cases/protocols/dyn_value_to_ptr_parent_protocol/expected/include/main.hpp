@@ -52,17 +52,17 @@ void main();
 
 // class Cat(NamedPet):
 struct Cat : NamedPet {
-    // tag: Int32
+    // tag: int32
     int32_t tag;
 
-    // def __init__(self, t: Int32) -> None:
+    // def __init__(self, t: int32) -> None:
     Cat() = default;
     explicit Cat(int32_t t);
 
-    // def name(self) -> Int32:
+    // def name(self) -> int32:
     int32_t name() override;
 
-    // def label(self) -> Int32:
+    // def label(self) -> int32:
     int32_t label() override;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cat";
 };
@@ -109,16 +109,16 @@ struct tpy::RefAdapter<tpyapp::main::NamedPet, T> : tpyapp::main::NamedPet {
 namespace tpyapp::main {
 
 
-// def __init__(self, t: Int32) -> None:
+// def __init__(self, t: int32) -> None:
 inline Cat::Cat(int32_t t) : tag(t) {}
 
-// def name(self) -> Int32:
+// def name(self) -> int32:
 inline int32_t Cat::name() {
     // return self.tag
     return this->tag;
 }
 
-// def label(self) -> Int32:
+// def label(self) -> int32:
 inline int32_t Cat::label() {
     // return self.tag + 100
     return (::tpy::add_check<int32_t>(this->tag, 100));

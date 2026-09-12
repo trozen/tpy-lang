@@ -62,12 +62,12 @@ self-check additionally requires `Python.h`.
 ## Cases
 
 - **`funcs/`** (`src/funcs.py`) -- the free-function surface: `answer()` (no-arg
-  `Int64`, `METH_NOARGS`), `add(a: Int64, b: Int64)` (rung 1, argument
+  `int64`, `METH_NOARGS`), `add(a: int64, b: int64)` (rung 1, argument
   marshalling, `METH_VARARGS`), and `big_square`/`negate` over `int` (rung 2,
   BigInt, including values beyond int64 that cross via the hex round-trip).
   `ext_checks.py` covers the marshalling-error cases (`OverflowError` on an
-  out-of-`Int64` int, `TypeError` on a non-integer) -- which deliberately
-  diverge from the source, where `Int64` is just an annotation and `int` is
+  out-of-`int64` int, `TypeError` on a non-integer) -- which deliberately
+  diverge from the source, where `int64` is just an annotation and `int` is
   unbounded, so they are checked only against the `.so`.
 - **`floats/`** (`floats.py`) -- the `float` boundary (rung 3): `scale(x: float)`
   and `addf(a, b: float)` marshal as C++ `double` (`int`/`bool` args coerce via
@@ -75,7 +75,7 @@ self-check additionally requires `Python.h`.
   CPython for the values driven, so they are parity-checked in `driver.py`
   rather than an ext-only file.
 - **`int_widths/`** (`int_widths.py`) -- every fixed-width int boundary
-  (`Int8`..`Int64` / `UInt8`..`UInt64`): each `iN`/`uN` round-trips its width
+  (`int8`..`int64` / `uint8`..`uint64`): each `iN`/`uN` round-trips its width
   through the matching C++ type with a per-width range check. `driver.py`
   exercises the min/max of each width (in-range, so source-parity holds);
   `ext_checks.py` covers the ext-only divergences -- out-of-range and
@@ -84,7 +84,7 @@ self-check additionally requires `Python.h`.
 - **`bools/`** (`bools.py`) -- the `bool` boundary plus a void-return `@export`:
   `flip`/`both`/`identity` marshal as C++ `bool` (any arg coerces by truthiness,
   via `PyObject_IsTrue` / `PyBool_FromLong`), and `tally(b) -> None` returns
-  `Py_None` (its effect read back through an `Int64` getter, since the
+  `Py_None` (its effect read back through an `int64` getter, since the
   extension must not print). `ext_checks.py` covers the truthiness coercions
   observable only through `identity` (which the source returns unchanged) and a
   `__bool__`-raising argument -- both ext-only divergences from the source.
@@ -119,5 +119,5 @@ self-check additionally requires `Python.h`.
 - **`constants/`** (`constants.py`) -- module-level `Final` constants exposed as
   init-time module-attribute snapshots: `int` (incl. a value beyond int64 via
   the BigInt hex round-trip), `float`, `bool`, `str`. `ext_checks.py` asserts a
-  `Final[Char]` (a non-boundary type) is *not* exposed -- it exists on the
+  `Final[char]` (a non-boundary type) is *not* exposed -- it exists on the
   source but not the `.so`, so that check is ext-only.

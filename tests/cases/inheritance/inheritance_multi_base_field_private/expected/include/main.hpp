@@ -17,7 +17,7 @@ void main();
 
 // class RateLimiter:
 struct RateLimiter {
-    // _count: Int32
+    // _count: int32
     int32_t _count;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.RateLimiter";
@@ -30,7 +30,7 @@ inline std::ostream& operator<<(std::ostream& os, const RateLimiter& obj) {
 
 // class CacheStats:
 struct CacheStats {
-    // _count: Int32
+    // _count: int32
     int32_t _count;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.CacheStats";

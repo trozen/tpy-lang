@@ -366,7 +366,7 @@ def extract_int_literal(expr: TpyExpr) -> int | None:
     """Extract a compile-time integer value from a range argument.
 
     Handles bare literals (3), negated literals (-3), and fixed-int
-    constructor calls with a literal arg (Int32(3)).
+    constructor calls with a literal arg (int32(3)).
     Returns the integer value or None if not a compile-time constant.
     """
     return fixed_int_literal_value_from_expr(expr)
@@ -1248,7 +1248,7 @@ def is_duplicable_expr(expr: TpyExpr) -> bool:
 
     TODO: replace with an `is_pure` bit computed during sema and attached
     to THIR nodes (see docs/IR_DESIGN.md). The current syntactic check
-    misses cases like `Int32(0)` -- a primitive-type constructor call
+    misses cases like `int32(0)` -- a primitive-type constructor call
     that codegen elides to a bare literal -- so chained-compare endpoint
     inlining still binds a temp for it.
     """

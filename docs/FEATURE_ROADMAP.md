@@ -48,7 +48,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | B4 | Dynamic dispatch -- @dynamic protocols | L | Done | [II](#dynamic-dispatch-dynp) |
 | B5 | Per-method type parameter bounds | S-M | Done | [I](#type-parameter-bounds----per-method) |
 | B6 | `# tpy:` directives | S-M | Done | [I](#tpy-directives) |
-| B7 | Float32 type | S | Done | [I](#float32-type) |
+| B7 | float32 type | S | Done | [I](#float32-type) |
 | B8 | Dataclasses | M | Done (Phase 1; auto `__eq__`/`frozen`/`__hash__` pending) | [VII](#dataclasses) |
 | B9 | List comprehensions | M | Done | [VI](#list-comprehensions) |
 | B10 | `@overload` dispatch flattening | M | Done | [VII](#overload-dispatch-flattening) |
@@ -297,7 +297,7 @@ tuple and dict.
 
 Currently tuple elements must be value types or wrapped in `Own[T]`. This prevents
 surprising implicit copies when returning objects from functions (e.g. changing
-`-> Point` to `-> tuple[Int32, Point]` would silently copy the Point).
+`-> Point` to `-> tuple[int32, Point]` would silently copy the Point).
 
 The goal is to support bare reference types in tuples. The key observation is that
 TPy already has context-dependent semantics for `T`:
@@ -320,7 +320,7 @@ same context rules as standalone `T`:
 
 ```python
 # Return context: Point is reference (like -> Point)
-def find(items: list[Point], id: Int32) -> tuple[Point, bool]:
+def find(items: list[Point], id: int32) -> tuple[Point, bool]:
     ...  # -> std::tuple<const Point&, bool>
 
 # Field context: Point is owned (like field: Point)
@@ -331,7 +331,7 @@ class Cache:
 results: list[tuple[Point, bool]]  # std::vector<std::tuple<Point, bool>>
 
 # Own[T] still works for explicit ownership in returns
-def make(x: Int32) -> tuple[Own[Point], bool]:
+def make(x: int32) -> tuple[Own[Point], bool]:
     return (Point(x, x), True)  # std::tuple<Point, bool>, owned copy
 ```
 
@@ -417,7 +417,7 @@ User types inheriting `Spannable` get iteration for free in both runtimes.
 
 **`Spannable[T]` protocol**: Readonly protocol for types with `__span__()`. Enables
 generic functions accepting any span-producing type
-(`def sum_all(c: Spannable[Int32])`). Builtins (list, Array, Span, Span[readonly[T]]) conform via `extends`. User types conform structurally -- `__span__() -> Span[T]`
+(`def sum_all(c: Spannable[int32])`). Builtins (list, Array, Span, Span[readonly[T]]) conform via `extends`. User types conform structurally -- `__span__() -> Span[T]`
 satisfies the readonly protocol via covariant return. `Spannable[T]` values coerce to
 `Span[readonly[T]]` and support for-loop iteration.
 
@@ -502,7 +502,7 @@ starts warm:
   `bytes`/`bytearray` don't have. Faithful keep-alive needs either a copy (not a
   view) or `Rc`/an export-counter -- not v1-sized. Building a documented-unsafe
   writable view under a trusted CPython name is the wrong tradeoff.
-- **Two storage models surfaced:** (a) `BytesView | Span[UInt8]` variant +
+- **Two storage models surfaced:** (a) `BytesView | Span[uint8]` variant +
   runtime readonly check; (b) Codex's exporter-backed `obj:bytes|bytearray` +
   offset/length/readonly/released, deriving spans per-access -- gives cheap
   `.obj` + soft resize-detection but needs a borrowed-reference field
@@ -590,7 +590,7 @@ defined -- needed for full use cases like `append_default`).
 ### Callable / Function Pointer Types
 
 ```python
-def apply(f: Callable[[Int32], Int32], x: Int32) -> Int32:
+def apply(f: Callable[[int32], int32], x: int32) -> int32:
     return f(x)
 ```
 
@@ -870,7 +870,7 @@ mixed unions (primitives + records), return values, local variables, fields
 ### Final / Constant Globals
 
 **Done.** `Final[T]` for module-level constants. Emits `inline constexpr` (or
-`extern const` for BigInt). Supports fixed-width ints, float, bool, str, Char, BigInt.
+`extern const` for BigInt). Supports fixed-width ints, float, bool, str, char, BigInt.
 `__name__` is a synthetic `Final[str]`. ALL_CAPS without `Final` warns.
 See Future Extensions table for planned enhancements.
 
@@ -921,24 +921,24 @@ coherent home rather than ad-hoc flags -- design captured in
 
 ---
 
-### Float32 Type
+### float32 Type
 
 ```python
-from tpy import Float32
+from tpy import float32
 
-x: Float32 = 1.5   # -> float (C++)
+x: float32 = 1.5   # -> float (C++)
 ```
 
-`Float32` -> `float` (C++ single precision). Currently `float` maps to `double` (64-bit).
+`float32` -> `float` (C++ single precision). Currently `float` maps to `double` (64-bit).
 No single-precision float type exists.
 
 **Why it matters**: GPU programming, graphics, and memory-sensitive applications need
 32-bit floats. Also useful for C interop where APIs expect `float` rather than `double`.
 
-**Current state**: Done. Float32 type and Float64 alias implemented. Float32 maps to C++
-`float` (single precision). Float64 is an alias for `float` (C++ `double`). Mixed arithmetic:
-Float32 + Float32 -> Float32, Float32 + float -> float (widening), Float32 + int -> Float32.
-Implicit coercion from int/float literals to Float32. Full operator support, print, f-string,
+**Current state**: Done. float32 type and float64 alias implemented. float32 maps to C++
+`float` (single precision). float64 is an alias for `float` (C++ `double`). Mixed arithmetic:
+float32 + float32 -> float32, float32 + float -> float (widening), float32 + int -> float32.
+Implicit coercion from int/float literals to float32. Full operator support, print, f-string,
 str/bool/float conversions.
 
 **Dependencies**: None. Mirrors existing fixed-width int registration pattern.
@@ -953,10 +953,10 @@ str/bool/float conversions.
 
 ```python
 from typing import Iterator, Iterable
-from tpy import Int32
+from tpy import int32
 
-def sum_all(items: Iterable[Int32]) -> Int32:
-    total: Int32 = 0
+def sum_all(items: Iterable[int32]) -> int32:
+    total: int32 = 0
     for x in items:
         total += x
     return total
@@ -967,7 +967,7 @@ def sum_all(items: Iterable[Int32]) -> Int32:
 - `iter(x)` builtin: calls `x.__iter__()`, returns `Iterator[T]`
 - Auto-synthesis of `__iter__` on types with `__next__` (returning self)
 - For-loop support for `Iterator[T]` and `Iterable[T]` parameter types
-- Bounded type parameters: `T: Iterable[Int32]`
+- Bounded type parameters: `T: Iterable[int32]`
 - Return-type protocol conformance checking in the protocol system
 
 ---
@@ -980,7 +980,7 @@ class Builder:
         self.name = name
         return self
 
-    def with_offset(self, other: Self) -> Int32:
+    def with_offset(self, other: Self) -> int32:
         return self.value + other.value
 ```
 
@@ -1009,7 +1009,7 @@ and overload resolution. See `docs/BIDIRECTIONAL_CALL_INFERENCE_DESIGN.md` for f
 design.
 
 **Why it matters**: Currently type inference is bottom-up only. This means expressions
-like `connect("localhost", Int32(8080))` can't infer that `8080` should be `Int32` from
+like `connect("localhost", int32(8080))` can't infer that `8080` should be `int32` from
 the parameter type. Bi-directional inference enables coercion-aware argument matching
 and return-type-based overload filtering.
 
@@ -1032,9 +1032,9 @@ coercion-aware return-type matching, overload filtering by return type.
 
 ```python
 from tplib import Box
-from tpy import Int32
+from tpy import int32
 
-b = Box[Int32](42)
+b = Box[int32](42)
 print(b.get())       # 42
 b.set(100)
 print(b.get())       # 100 -- auto-deref through Deref[T] protocol
@@ -1172,7 +1172,7 @@ branch are available at the C++ template instantiation level.
 ### Built-in / Conditional Protocol Conformance
 
 A third conformance axis beyond structural protocols (B4/B15) and `@dynamic`
-runtime polymorphism: letting **built-in** types (`Int32`, `str`, `bool`,
+runtime polymorphism: letting **built-in** types (`int32`, `str`, `bool`,
 `float`) and **generic-container** types (`list[T]`, `dict[K, V]`) participate
 in protocol conformance, including **conditional** conformance
 (`list[T]` conforms to `Stringable` iff `T` does).
@@ -1182,7 +1182,7 @@ stdlib** -- a serializer / formatter / hasher that recurses over arbitrary
 typed shapes. Two concrete goals depend on it:
 
 - **Zero-copy typed serialization** -- `json.dumps(data)` over
-  `data: dict[str, Int32]` with no `JsonValue` wrapper and no O(n) deep copy.
+  `data: dict[str, int32]` with no `JsonValue` wrapper and no O(n) deep copy.
 - **Moving `print` / `str` out of the compiler** -- they are compiler-blessed
   today (`gen_print` + C++ `printing.hpp`) only because containers and scalars
   can't conform to a `Display`-style protocol in stdlib. Fix conformance and
@@ -1257,7 +1257,7 @@ class NotFound(Exception):
     pass
 
 @error_return(NotFound)
-def find(items: list[Int32], target: Int32) -> Int32:
+def find(items: list[int32], target: int32) -> int32:
     for i in range(len(items)):
         if items[i] == target:
             return i
@@ -1453,7 +1453,7 @@ interactions. Also provides the foundation for `@noalloc` enforcement and `@noth
 
 ```python
 class Counter:         # implicitly Sendable (all fields are value types)
-    count: Int32
+    count: int32
 
 class SharedCache:     # NOT Sendable (contains Ptr)
     data: Ptr[Buffer]
@@ -1599,7 +1599,7 @@ sentinel instead:
 | `UninitHeapStorage[T]` | Nulls on move (heap pointer) | Yes, naturally |
 | `std::unique_ptr<T>` | Guaranteed null after move | Yes, naturally |
 | `std::optional<T>` | Unspecified by standard | No, unreliable |
-| Value types (`Int32`, `bool`) | No null state | No |
+| Value types (`int32`, `bool`) | No null state | No |
 
 The optimization: if a class has at least one pointer-like field, skip `__tpy_owned_`
 and instead check that field in the destructor. The move constructor explicitly nulls
@@ -1626,10 +1626,10 @@ N: Final = 1024
 MASK: Final = (1 << N) - 1      # evaluated at compile time
 
 @comptime
-def make_lookup() -> Array[Int32, 256]:
-    result = Array[Int32, 256]()
+def make_lookup() -> Array[int32, 256]:
+    result = Array[int32, 256]()
     for i in range(256):
-        result[i] = Int32(popcount(i))
+        result[i] = int32(popcount(i))
     return result
 
 TABLE: Final = make_lookup()    # embedded in binary
@@ -1658,13 +1658,13 @@ Compile-time code generation via decorators:
 ```python
 @derive(Eq, Hash)
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 @serialize("json")
 class Config:
     name: str
-    value: Int32
+    value: int32
 ```
 
 See LANGUAGE_FEATURES.md "Compile-Time Hooks" for detailed design (`@compile_time` /
@@ -1824,7 +1824,7 @@ swap *which module* is imported); this monomorphizes *one* module body over
 **Current state**: 🚧 Phase 0 POC done (CPython prototype of `compile_param()`
 / `instantiate()` + sub-module propagation + factory registry). Phases 1-5
 (sema recognition, `constexpr` codegen, per-combination TU generation,
-dependency-graph duplication, `Int32`/`Int64` params, auto-registration) not
+dependency-graph duplication, `int32`/`int64` params, auto-registration) not
 started. See `docs/COMPILE_PARAM_DESIGN.md`.
 
 **Dependencies**: None hard. Coordinates with F8 (conditional compilation) and
@@ -2088,8 +2088,8 @@ type).
 ### Closures / Nested Functions
 
 ```python
-def make_adder(n: Int32) -> Callable[[Int32], Int32]:
-    def add(x: Int32) -> Int32:
+def make_adder(n: int32) -> Callable[[int32], int32]:
+    def add(x: int32) -> int32:
         return x + n    # captures n
     return add
 ```
@@ -2263,7 +2263,7 @@ Design options:
 2. **Typed kwargs via TypedDict** -- Python 3.12 `Unpack[TypedDict]` (PEP 692):
    ```python
    class ConnectOptions(TypedDict):
-       port: Int32
+       port: int32
        timeout: float
 
    def connect(**kwargs: Unpack[ConnectOptions]) -> Connection:
@@ -2510,8 +2510,8 @@ Maps to `std::ostringstream`-based concatenation in C++.
 ```python
 @dataclass
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
     # auto-generates __init__, __eq__, __repr__
 ```
 
@@ -2530,7 +2530,7 @@ See `docs/DATACLASS_DESIGN.md` for full design and remaining phases (auto `__eq_
 ### Keyword Arguments and Default Values
 
 ```python
-def connect(host: str, port: Int32 = Int32(8080), timeout: float = 30.0) -> None:
+def connect(host: str, port: int32 = int32(8080), timeout: float = 30.0) -> None:
     ...
 
 connect("localhost", timeout=5.0)
@@ -2582,7 +2582,7 @@ Two related improvements to defaults on generic type parameters:
 ### dict Type
 
 ```python
-d: dict[str, Int32] = {"a": 1, "b": 2}
+d: dict[str, int32] = {"a": 1, "b": 2}
 for k, v in d.items():
     print(k, v)
 ```
@@ -2617,10 +2617,10 @@ from typing import overload
 
 class ArrayList[T, N: int]:
     @overload
-    def __getitem__(self, index: Int32) -> T: ...
+    def __getitem__(self, index: int32) -> T: ...
     @overload
     def __getitem__(self, s: slice) -> Span[readonly[T]]: ...
-    def __getitem__(self, index: Int32 | slice) -> T | Span[readonly[T]]:
+    def __getitem__(self, index: int32 | slice) -> T | Span[readonly[T]]:
         if isinstance(index, slice):
             return self._get_span(index.start, index.stop)
         return self._storage[index]
@@ -2639,7 +2639,7 @@ std::span<T> operator[](tpy::Slice s) { return _get_span(s.start, s.stop); }
 
 **Why it matters**: Enables methods that accept different types and return different
 types per variant -- the key pattern for user-defined slicing (`__getitem__` with
-`Int32` vs `slice`), constructor variants, and any method where the return type depends
+`int32` vs `slice`), constructor variants, and any method where the return type depends
 on the argument type.
 
 The approach uses standard Python `@overload` syntax (PEP 484). In CPython, `@overload`
@@ -2652,7 +2652,7 @@ Only methods with explicit `@overload` stubs are flattened -- no automatic patte
 detection. This keeps the behavior explicit and avoids subtle errors from auto-deduction
 of per-branch return types.
 
-Key use cases: `__getitem__` with `Int32 | slice` (different return types), constructor
+Key use cases: `__getitem__` with `int32 | slice` (different return types), constructor
 variants (`ArrayList` from span vs iterable), `pop()` vs `pop(index)`.
 
 **Current state**: Done. Two decorators: **`typing.overload`** (bodyless stubs followed
@@ -2685,10 +2685,10 @@ in `if`/`while`/`not`/`and`/`or`, `__len__() != 0` fallback, `Truthy` protocol b
 ### List Slicing
 
 ```python
-items: list[Int32] = [10, 20, 30, 40, 50]
-sub = items[1:3]       # Span[Int32] -> [20, 30] (zero-copy view)
-last = items[-2:]      # Span[Int32] -> [40, 50]
-copy = items[:]        # Span[Int32] -> full view
+items: list[int32] = [10, 20, 30, 40, 50]
+sub = items[1:3]       # Span[int32] -> [20, 30] (zero-copy view)
+last = items[-2:]      # Span[int32] -> [40, 50]
+copy = items[:]        # Span[int32] -> full view
 ```
 
 **Design decision**: Slicing returns `Span[T]` (zero-copy view into the original
@@ -2711,10 +2711,10 @@ from typing import overload
 
 class ArrayList[T, N: int]:
     @overload
-    def __getitem__(self, index: Int32) -> T: ...
+    def __getitem__(self, index: int32) -> T: ...
     @overload
     def __getitem__(self, s: slice) -> Span[readonly[T]]: ...
-    def __getitem__(self, index: Int32 | slice) -> T | Span[readonly[T]]:
+    def __getitem__(self, index: int32 | slice) -> T | Span[readonly[T]]:
         if isinstance(index, slice):
             return self.__span__()[index.start:index.stop]
         return self._storage[index]
@@ -2731,7 +2731,7 @@ new `list[T]` (elements are not contiguous). String step slicing returns `str`
   `StrView`. Indices clamped (Python semantics), negative indices supported. `@readonly`
   context and `Span[readonly[T]]` source propagate to `Span[readonly[T]]` result.
 - **Phase 2 (done)**: `slice` built-in type. User records with `@overload __getitem__`
-  accept both `Int32` (index) and `slice` (range) parameters.
+  accept both `int32` (index) and `slice` (range) parameters.
 - **Phase 3 (done)**: Stepped slicing with a two-type design -- `basic_slice`
   (start, stop) for `a[1:3]` returns zero-copy views, `slice` (start, stop, step) for
   `a[1:3:2]` returns owned copies. `basic_slice` coerces to `slice` (C++ implicit
@@ -2832,7 +2832,7 @@ receivers handled cleanly on both read and write sides,
 constants, subclass shadow of non-final `ClassVar` with
 same-type/finality (multi-base validates against every declaring
 ancestor), T-independent class constants on generic classes
-(`class C[T]: MAX: Final[Int32] = 10`, accessed via instance or self
+(`class C[T]: MAX: Final[int32] = 10`, accessed via instance or self
 through the parameterized qname `C<int32_t>::MAX`), and full validation
 gates (name conflicts, Final-override blocking, cross-finality
 rejection, multi-base ambiguity, T-dependent rejection on generics,
@@ -2841,8 +2841,8 @@ Final-mutation rejection, instance-write CPython-divergence warning
 matching mypy/pyright). Deferred items live in `docs/CLASSVAR_DESIGN.md`
 "Future Extensions": T-dependent class constants on generics
 (per-monomorphization initializers), bare-class access on parameterized
-generics (`C[Int32].X` syntax), inheritance through fixed-type-arg
-parents (`class Child(C[Int32])`).
+generics (`C[int32].X` syntax), inheritance through fixed-type-arg
+parents (`class Child(C[int32])`).
 
 **Dependencies**: None. Reuses module-level `Final` allow-list, `RecordInfo`
 plumbing (`native_name`, `module`), and `_get_qualified_cpp_name`.
@@ -2888,7 +2888,7 @@ error. Duplicate method definitions in the same class are now also a sema error.
 ### set Type
 
 ```python
-s: set[Int32] = {1, 2, 3}
+s: set[int32] = {1, 2, 3}
 s.add(4)
 s |= {5, 6}
 if 2 in s:
@@ -2924,7 +2924,7 @@ insertion-order preservation.
 
 ```python
 data: bytes = b"hello"
-first_byte: Int32 = data[0]
+first_byte: int32 = data[0]
 ```
 
 Maps to `::tpy::Bytes`; `bytearray` is `::tpy::ByteArray`, a distinct mutable type. `BytesView` maps to
@@ -2980,7 +2980,7 @@ print(args.name)
 @dataclass
 class Args:
     name: str
-    count: Int32
+    count: int32
 args: Args = parse_args_typed(Args, sys.argv)
 print(args.name)  # static field access, zero overhead
 ```
@@ -3043,21 +3043,21 @@ return `Any`. `D22` multi-inheritance for the MRO routing.
 
 ```python
 from typing import TypedDict
-from tpy import Int32
+from tpy import int32
 
 class UserInfo(TypedDict):
     name: str
-    age: Int32
+    age: int32
     active: bool
 
 def process(info: UserInfo) -> None:
     print(info["name"])     # -> str (compile-time resolved)
-    print(info["age"])      # -> Int32
+    print(info["age"])      # -> int32
     # info["unknown"]       # compile error: key not in UserInfo
     # info[variable]        # compile error: key must be string literal
 
 # Construction (keyword arguments)
-user = UserInfo(name="Alice", age=Int32(30), active=True)
+user = UserInfo(name="Alice", age=int32(30), active=True)
 ```
 
 A dict-like type where keys are fixed string literals with per-key value types.
@@ -3090,7 +3090,7 @@ maps to `Optional[T]` fields:
 ```python
 class Partial(TypedDict, total=False):
     name: str       # Optional -- may be absent
-    age: Int32      # Optional
+    age: int32      # Optional
 ```
 
 **Current state**: Done. `class Foo(TypedDict):` with string-literal subscript,
@@ -3225,11 +3225,11 @@ cooperative chaining is tracked in "Future Extensions".
 ```python
 class Tree:
     class Node:
-        value: Int32
+        value: int32
         left: Ptr[Tree.Node]
         right: Ptr[Tree.Node]
 
-        def __init__(self, value: Int32) -> None:
+        def __init__(self, value: int32) -> None:
             self.value = value
             self.left = None
             self.right = None
@@ -3289,7 +3289,7 @@ Things Python checks at runtime that TPy can verify statically.
 Track provable value ranges of integer variables to elide redundant runtime checks.
 
 ```python
-i: Int32 = 0
+i: int32 = 0
 while i < len(arr):
     x = arr[i]      # i is in [0, len(arr)) -- bounds check elided
     i += 1
@@ -3384,7 +3384,7 @@ errors and report multiple diagnostics per compilation.
 
 ```
 file.py:5: error: Unknown type 'Foo'
-file.py:12: error: No matching overload for 'bar(Int32)'
+file.py:12: error: No matching overload for 'bar(int32)'
 file.py:18: warning: Unused variable 'x'
 3 errors, 1 warning
 ```

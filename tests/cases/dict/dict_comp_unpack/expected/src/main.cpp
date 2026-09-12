@@ -7,9 +7,9 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // # Unpack from dict.items()
-    // prices: dict[str, Int32] = {"apple": 3, "banana": 1, "cherry": 5}
+    // prices: dict[str, int32] = {"apple": 3, "banana": 1, "cherry": 5}
     ::tpy::ordered_map<std::string, int32_t> prices = ::tpy::ordered_map<std::string, int32_t>({{"apple", 3}, {"banana", 1}, {"cherry", 5}});
-    // doubled: dict[str, Int32] = {k: v * 2 for k, v in prices.items()}
+    // doubled: dict[str, int32] = {k: v * 2 for k, v in prices.items()}
     ::tpy::ordered_map<std::string, int32_t> doubled = ({
         ::tpy::ordered_map<std::string, int32_t> __result;
         auto __obj_0 = ::tpy::dict_items(prices);
@@ -33,9 +33,9 @@ void main() {
         std::cout << k << " " << ::tpy::__getitem__(doubled, k) << "\n";
     }
     // # Unpack from list of tuples
-    // pairs: list[tuple[str, Int32]] = [("x", 10), ("y", 20), ("z", 30)]
+    // pairs: list[tuple[str, int32]] = [("x", 10), ("y", 20), ("z", 30)]
     std::vector<std::tuple<std::string, int32_t>> pairs = {std::tuple<std::string, int32_t>{"x", 10}, std::tuple<std::string, int32_t>{"y", 20}, std::tuple<std::string, int32_t>{"z", 30}};
-    // result: dict[str, Int32] = {k: v for k, v in pairs}
+    // result: dict[str, int32] = {k: v for k, v in pairs}
     ::tpy::ordered_map<std::string, int32_t> result = ({
         ::tpy::ordered_map<std::string, int32_t> __result;
         auto& __obj_2 = pairs;
@@ -55,8 +55,8 @@ void main() {
     std::cout << ::tpy::__getitem__(result, "y") << "\n";
     // print(result["z"])
     std::cout << ::tpy::__getitem__(result, "z") << "\n";
-    // # Swap keys and values (Int32 -> str)
-    // swapped: dict[Int32, str] = {v: k for k, v in prices.items()}
+    // # Swap keys and values (int32 -> str)
+    // swapped: dict[int32, str] = {v: k for k, v in prices.items()}
     ::tpy::ordered_map<int32_t, std::string> swapped = ({
         ::tpy::ordered_map<int32_t, std::string> __result;
         auto __obj_3 = ::tpy::dict_items(prices);

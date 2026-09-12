@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // nums = [i for i in range(4)]  # tpyc: type(/Array\[Int32, 4\]/)
+    // nums = [i for i in range(4)]  # tpyc: type(/Array\[int32, 4\]/)
     std::array<int32_t, 4> nums = ::tpy::array_from_index<int32_t, 4>([&](std::size_t __i_0) -> int32_t {
         int32_t i = int32_t(__i_0);
         return i;

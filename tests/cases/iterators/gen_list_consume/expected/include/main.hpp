@@ -12,7 +12,7 @@ inline constexpr std::string_view __name__ = "__main__";
 void main();
 
 inline auto squares(int32_t n) {
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     return ::tpy::make_generator<int32_t>(
         [n, i]() mutable -> std::optional<int32_t> {

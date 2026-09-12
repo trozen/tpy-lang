@@ -28,10 +28,10 @@ void main();
 
 // class Node:
 struct Node {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Node() = default;
     explicit Node(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Node";
@@ -44,10 +44,10 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 
 // class Counter:
 struct Counter {
-    // base: Int32
+    // base: int32
     int32_t base;
 
-    // def __init__(self, base: Int32) -> None:
+    // def __init__(self, base: int32) -> None:
     Counter() = default;
     explicit Counter(int32_t base);
 
@@ -114,12 +114,12 @@ struct __gen_head : public ::tpy::next_iter_mixin<__gen_head<T, T_it>, T> {
         return os << "<generator head>";
     }
 };
-// def head[T](it: Iterable[T], n: Int32) -> Iterator[T]:
+// def head[T](it: Iterable[T], n: int32) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 std::expected<T, ::tpy::StopIteration> __gen_head<T, T_it>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // c: Int32 = 0
+        // c: int32 = 0
         c = 0;
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
@@ -157,7 +157,7 @@ std::expected<T, ::tpy::StopIteration> __gen_head<T, T_it>::__next__() {
 }
 
 
-// def head[T](it: Iterable[T], n: Int32) -> Iterator[T]:
+// def head[T](it: Iterable[T], n: int32) -> Iterator[T]:
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 __gen_head<T, T_it> head(T_it&& it, int32_t n) {
     return __gen_head<T, T_it>(std::forward<T_it>(it), n);
@@ -242,13 +242,13 @@ inline __gen_Counter_around Counter::around() const {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Node::Node(int32_t v) : v(v) {}
 
-// def __init__(self, base: Int32) -> None:
+// def __init__(self, base: int32) -> None:
 inline Counter::Counter(int32_t base) : base(base) {}
 inline auto simple(int32_t n) {
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     return ::tpy::make_generator<int32_t>(
         [n, i]() mutable -> std::optional<int32_t> {

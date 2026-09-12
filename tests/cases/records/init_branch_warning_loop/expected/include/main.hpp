@@ -15,10 +15,10 @@ void main();
 
 // class Accum:
 struct Accum {
-    // total: Int32
+    // total: int32
     int32_t total;
 
-    // def __init__(self, n: Int32):
+    // def __init__(self, n: int32):
     Accum() = default;
     explicit Accum(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Accum";
@@ -30,15 +30,15 @@ inline std::ostream& operator<<(std::ostream& os, const Accum& obj) {
 }
 
 
-// def __init__(self, n: Int32):
+// def __init__(self, n: int32):
 inline Accum::Accum(int32_t n) : total(0) {
-    // i: Int32 = Int32(0)
+    // i: int32 = int32(0)
     int32_t i = 0;
     // while i < n:
     while ((i < n)) {
         // self.total = self.total + i  # tpyc: ok
         this->total = (::tpy::add_check<int32_t>(this->total, i));
-        // i = i + Int32(1)
+        // i = i + int32(1)
         i = (::tpy::add_check<int32_t>(i, 1));
     }
 }

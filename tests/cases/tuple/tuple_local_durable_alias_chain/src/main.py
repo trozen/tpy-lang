@@ -1,16 +1,16 @@
 # A durable reference member shared along a multi-step alias chain (s = r = t):
 # returning the tail still aliases the member, so a post-boundary mutation
 # reaches the caller's object.
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    val: Int32
-    def __init__(self, v: Int32) -> None:
+    val: int32
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 
-def f(b: Box) -> tuple[Int32, Box]:
+def f(b: Box) -> tuple[int32, Box]:
     t = (1, b)
     r = t
     s = r

@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // a: list[Int32] = [1, 2, 3, 4, 5]
+    // a: list[int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> a = {1, 2, 3, 4, 5};
     // a[::2] = [10, 20]  # slice selects 3 elements, RHS has 2
     ::tpy::list_set_stepped_slice(a, ::tpy::Slice{std::nullopt, std::nullopt, 2}, std::vector<int32_t>{10, 20});

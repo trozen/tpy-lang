@@ -1,1 +1,1 @@
-main.py:7: error: Type mismatch in '*=' to 'y': expected Int32, got float
+main.py:7: error: Type mismatch in '*=' to 'y': expected int32, got float

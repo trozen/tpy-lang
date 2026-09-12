@@ -1,9 +1,9 @@
 # Test nonlocal for mutable captures
-from tpy import Int32
+from tpy import int32
 
 def main() -> None:
-    total: Int32 = 0
-    def accumulate(x: Int32) -> None:
+    total: int32 = 0
+    def accumulate(x: int32) -> None:
         nonlocal total
         total += x
     accumulate(10)

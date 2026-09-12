@@ -4,20 +4,20 @@
 # the sibling case error_match_capture_readonly_mutation covers the
 # un-narrowed spelling, and this one pins the scope-binding fallback.
 # Compilation stops at the first error, so one position only.
-from tpy import Int32, readonly
+from tpy import int32, readonly
 
 
 class Cat:
-    hunger: Int32
+    hunger: int32
 
-    def __init__(self, hunger: Int32) -> None:
+    def __init__(self, hunger: int32) -> None:
         self.hunger = hunger
 
 
 class Dog:
-    bones: Int32
+    bones: int32
 
-    def __init__(self, bones: Int32) -> None:
+    def __init__(self, bones: int32) -> None:
         self.bones = bones
 
 

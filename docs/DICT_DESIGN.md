@@ -22,7 +22,7 @@
 | String copy avoidance in for-each | `PendingStrType` approach (see TODO) |
 | `copy()` | Redundant with value semantics, but Python compat |
 | `__repr__` / `repr()` | String representation protocol |
-| `dict[K,V](inline_literal)` | `dict[str, Int32]([("a", 1), ("b", 2)])` fails: IntLiterals in tuples don't unify in list literal analysis. Workaround: typed intermediate variable. Needs tuple-aware IntLiteral unification in list_literals.py |
+| `dict[K,V](inline_literal)` | `dict[str, int32]([("a", 1), ("b", 2)])` fails: IntLiterals in tuples don't unify in list literal analysis. Workaround: typed intermediate variable. Needs tuple-aware IntLiteral unification in list_literals.py |
 | Set operations on views | `d.keys() & other`, `d.keys() \| other`, etc. |
 
 ### Known Limitations
@@ -42,9 +42,9 @@ most real-world Python programs rely on dicts for configuration, caching, lookup
 and data transformation.
 
 ```python
-from tpy import Int32
+from tpy import int32
 
-d: dict[str, Int32] = {"x": 1, "y": 2, "z": 3}
+d: dict[str, int32] = {"x": 1, "y": 2, "z": 3}
 d["w"] = 4
 print(d["x"])         # 1
 print(len(d))         # 4
@@ -67,7 +67,7 @@ insertion order (matching Python 3.7+ dict semantics).
 
 2. **Key type safety**: Types must conform to the `Hashable` protocol (have `__hash__`)
    to be used as dict keys. All primitive types (str, int, fixed-width ints, float, bool,
-   Char) and Enum types are hashable. Unhashable types (list, dict, Optional) are rejected
+   char) and Enum types are hashable. Unhashable types (list, dict, Optional) are rejected
    at compile time.
 
 3. **Familiar API**: Phase 1 covers the most common dict operations: literals, subscript,
@@ -224,7 +224,7 @@ standard dunder protocol:
 (e.g. `d: dict[str, int] = {"a": 1}`), the expected key/value types are passed
 to `_analyze_dict_literal`, which uses `analyze_expr_with_hint` to analyze keys
 and values. This allows IntLiteralType to resolve to the annotated type (e.g.
-BigInt) instead of the default (Int32). Works for nested dicts too.
+BigInt) instead of the default (int32). Works for nested dicts too.
 
 **Subscript**: Dict branch before integer index check. Key type validated via
 `check_type_compatible`.
@@ -237,8 +237,8 @@ BigInt) instead of the default (Int32). Works for nested dicts too.
 without `Own[]`.
 
 **DictType compatibility**: Uses recursive `check_type_compatible` on key and
-value types (not exact match), so `dict[str, Int32]` is compatible with
-`dict[str, Int32]` even through coercion paths.
+value types (not exact match), so `dict[str, int32]` is compatible with
+`dict[str, int32]` even through coercion paths.
 
 ### 5. Codegen
 
@@ -268,7 +268,7 @@ for `ordered_map`.
 ### 7. Key Type Validation
 
 Key types must conform to the `Hashable` protocol (have `__hash__` method returning
-`UInt64`). Validation uses `type_conforms_to_protocol` instead of a hardcoded whitelist.
+`uint64`). Validation uses `type_conforms_to_protocol` instead of a hardcoded whitelist.
 
 **Allowed key types** (conform to `Hashable`):
 
@@ -276,10 +276,10 @@ Key types must conform to the `Hashable` protocol (have `__hash__` method return
 |------|------------------------------|-------|
 | `str` / `String` / `StrView` | `std::hash<std::string>` / `std::hash<std::string_view>` | |
 | `int` (BigInt) | `BigInt::hash()` with `std::hash<BigInt>` specialization | |
-| `Int8`..`Int64`, `UInt8`..`UInt64` | `std::hash<intN_t>` via `std::integral` constraint | |
+| `int8`..`int64`, `uint8`..`uint64` | `std::hash<intN_t>` via `std::integral` constraint | |
 | `float` | `std::hash<double>` | |
 | `bool` | `std::hash<bool>` | |
-| `Char` | `std::hash<char>` | |
+| `char` | `std::hash<char>` | |
 | `Enum` / `IntEnum` | `std::hash<underlying_int>` via `std::is_enum_v` constraint | |
 
 **Not yet supported as keys**:
@@ -307,14 +307,14 @@ Key types must conform to the `Hashable` protocol (have `__hash__` method return
 | `dict_methods` | `get(key)`, `pop()` (both overloads), `clear()` |
 | `dict_in` | `key in d`, `key not in d` |
 | `dict_iteration` | `for k in d` iterates keys in insertion order |
-| `dict_empty` | Empty dict with annotation: `d: dict[str, Int32] = {}` |
-| `dict_int_keys` | Int32 as keys |
+| `dict_empty` | Empty dict with annotation: `d: dict[str, int32] = {}` |
+| `dict_int_keys` | int32 as keys |
 | `dict_int_annotation` | `dict[str, int]` annotation with bare int literals |
-| `dict_literal_ints` | Dict literal with bare integer literals (Int32 inference) |
+| `dict_literal_ints` | Dict literal with bare integer literals (int32 inference) |
 | `dict_overwrite` | `d[k] = v` overwrites existing key, preserves order |
 | `dict_param_return` | Dict as function parameter and return type |
 | `dict_mutate_param` | Dict mutation through function parameter |
-| `dict_nested` | Nested `dict[str, dict[str, Int32]]` with annotation propagation |
+| `dict_nested` | Nested `dict[str, dict[str, int32]]` with annotation propagation |
 | `dict_del` | `del d[k]`, multi-target del, del-then-insert |
 | `dict_keys` | `d.keys()` iteration and `len()` |
 | `dict_values` | `d.values()` iteration and `len()` |
@@ -420,7 +420,7 @@ Tuple type (A10) is now implemented. `.items()` was implemented in Phase 2.
 ### `dict(pairs)` Constructor (Done)
 
 ```python
-pairs: list[tuple[str, Int32]] = [("a", 1), ("b", 2)]
+pairs: list[tuple[str, int32]] = [("a", 1), ("b", 2)]
 d = dict(pairs)              # from list of tuples
 d2 = dict(other.items())     # from items view
 ```

@@ -1,5 +1,5 @@
 # Both bases provide greet(); the child overrides it, which resolves the ambiguity.
-from tpy import Int32
+from tpy import int32
 
 
 class Speaker:

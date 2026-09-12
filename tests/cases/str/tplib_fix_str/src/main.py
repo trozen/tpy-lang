@@ -1,5 +1,5 @@
 # Test tplib.FixStr: fixed-capacity string imported from the standard library.
-from tpy import Int32, Char, copy
+from tpy import int32, char, copy
 from tplib import FixStr
 
 
@@ -7,8 +7,8 @@ def main() -> None:
     # -- empty, append, len --
     s = FixStr[16]()
     print(len(s))               # 0
-    h: Char = "h"
-    i: Char = "i"
+    h: char = "h"
+    i: char = "i"
     s.append(h)
     s.append(i)
     print(len(s))               # 2
@@ -18,7 +18,7 @@ def main() -> None:
     print(s[1])                 # i
 
     # -- setitem --
-    o: Char = "o"
+    o: char = "o"
     s[1] = o
     print(s[1])                 # o
 
@@ -27,8 +27,8 @@ def main() -> None:
     print(len(s))               # 1
 
     # -- iter --
-    e: Char = "e"
-    y: Char = "y"
+    e: char = "e"
+    y: char = "y"
     s.append(e)
     s.append(y)
     for c in s:
@@ -46,7 +46,7 @@ def main() -> None:
 
     # -- copy --
     t = copy(s)
-    b: Char = "b"
+    b: char = "b"
     t[0] = b
     print(s[0])                 # h (original unchanged)
     print(t[0])                 # b

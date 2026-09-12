@@ -6,8 +6,8 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // # Test with Int32
-    // box_int: Box[Int32] = Box[Int32](42)
+    // # Test with int32
+    // box_int: Box[int32] = Box[int32](42)
     Box<int32_t> box_int = Box<int32_t>(42);
     // print(box_int.get())
     std::cout << box_int.get() << "\n";
@@ -25,7 +25,7 @@ void main() {
     // print(box_str.get())
     std::cout << box_str.get() << "\n";
     // # Test type deduction (no explicit annotation)
-    // box_deduced = Box[Int32](999)
+    // box_deduced = Box[int32](999)
     Box<int32_t> box_deduced = Box<int32_t>(999);
     // print(box_deduced.get())
     std::cout << box_deduced.get() << "\n";

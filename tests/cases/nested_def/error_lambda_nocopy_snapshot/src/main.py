@@ -8,20 +8,20 @@
 # `[g](int32_t i) ...` over a deleted copy constructor. The `Own[Guard]`,
 # local and frame-member shapes reject through the same predicate.
 from typing import Callable
-from tpy import Int32
+from tpy import int32
 
 
 class Guard:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
     def __del__(self) -> None:
         print("bye")
 
 
-def apply(f: Callable[[Int32], Int32], v: Int32) -> Int32:
+def apply(f: Callable[[int32], int32], v: int32) -> int32:
     return f(v)
 
 

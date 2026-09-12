@@ -10,7 +10,7 @@ void value_move() {
     ::tpystd::tplib::box::Box<int32_t> p = ::tpystd::tplib::box::Box<int32_t>(7);
     // q = Box(8)
     ::tpystd::tplib::box::Box<int32_t> q = ::tpystd::tplib::box::Box<int32_t>(8);
-    // d: dict[Int32, Box[Int32]] = {0: p, 1: q}
+    // d: dict[int32, Box[int32]] = {0: p, 1: q}
     ::tpy::ordered_map<int32_t, ::tpystd::tplib::box::Box<int32_t>> d = ::tpy::make_ordered_map<int32_t, ::tpystd::tplib::box::Box<int32_t>>(0, std::move(p), 1, std::move(q));
     // print(d[0].get(), d[1].get())
     std::cout << ::tpy::__getitem__(d, 0).get() << " " << ::tpy::__getitem__(d, 1).get() << "\n";
@@ -18,10 +18,10 @@ void value_move() {
 
 // def not_last_use() -> None:
 void not_last_use() {
-    // inner: list[Int32] = [1, 2]
+    // inner: list[int32] = [1, 2]
     std::vector<int32_t> inner = {1, 2};
     // # inner read after -> copied, not moved (asserts the over-trigger guard)
-    // d: dict[Int32, list[Int32]] = {0: inner}  # tpyc: warning(/copies .* into owned storage/)
+    // d: dict[int32, list[int32]] = {0: inner}  # tpyc: warning(/copies .* into owned storage/)
     ::tpy::ordered_map<int32_t, std::vector<int32_t>> d = ::tpy::ordered_map<int32_t, std::vector<int32_t>>({{0, inner}});
     // inner.append(3)
     inner.push_back(3);

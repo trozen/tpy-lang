@@ -3,13 +3,13 @@
 # keeps its slot mutable too. The wholesale source borrow needs the slot to
 # stay non-const so codegen's per-element address-take into the mutable
 # `varargs<Box>` pack is well-typed.
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    val: Int32
+    val: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 

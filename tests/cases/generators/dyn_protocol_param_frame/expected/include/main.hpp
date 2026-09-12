@@ -85,15 +85,15 @@ void main();
 
 // class Impl:
 struct Impl {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Impl() = default;
     explicit Impl(int32_t n);
 
     // @readonly
-    // def get(self) -> Int32:
+    // def get(self) -> int32:
     int32_t get() const;
 
     // def bump(self) -> None:
@@ -110,14 +110,14 @@ inline std::ostream& operator<<(std::ostream& os, const Impl& obj) {
 // # temp -- the other half of the adapter-vs-upcast split.
 // class Inh(Src):
 struct Inh : Src {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Inh() = default;
     explicit Inh(int32_t n);
 
-    // def get(self) -> Int32:
+    // def get(self) -> int32:
     int32_t get() override;
 
     // def bump(self) -> None:
@@ -132,10 +132,10 @@ inline std::ostream& operator<<(std::ostream& os, const Inh& obj) {
 
 // class Holder:
 struct Holder {
-    // tag: Int32
+    // tag: int32
     int32_t tag;
 
-    // def __init__(self, tag: Int32) -> None:
+    // def __init__(self, tag: int32) -> None:
     Holder() = default;
     explicit Holder(int32_t tag);
 
@@ -350,11 +350,11 @@ inline __gen_Holder_walk Holder::walk(Src& s) const {
 }
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Impl::Impl(int32_t n) : n(n) {}
 
 // @readonly
-// def get(self) -> Int32:
+// def get(self) -> int32:
 inline int32_t Impl::get() const {
     // return self.n
     return this->n;
@@ -366,10 +366,10 @@ inline void Impl::bump() {
     this->n = ::tpy::add_check<int32_t>(this->n, 1);
 }
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Inh::Inh(int32_t n) : n(n) {}
 
-// def get(self) -> Int32:
+// def get(self) -> int32:
 inline int32_t Inh::get() {
     // return self.n
     return this->n;
@@ -381,7 +381,7 @@ inline void Inh::bump() {
     this->n = ::tpy::add_check<int32_t>(this->n, 1);
 }
 
-// def __init__(self, tag: Int32) -> None:
+// def __init__(self, tag: int32) -> None:
 inline Holder::Holder(int32_t tag) : tag(tag) {}
 void __tpy_init();
 } // namespace tpyapp::main

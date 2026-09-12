@@ -138,7 +138,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 struct _SignalScope {
     // _armed: bool
     bool _armed;
-    // _fd: Int32
+    // _fd: int32
     int32_t _fd;
     bool __tpy_owned_ = true;
 
@@ -178,12 +178,12 @@ inline std::ostream& operator<<(std::ostream& os, const _SignalScope& obj) {
 struct _SockRecv {
     // _sock: Ptr[socket]
     ::tpystd::socket::socket* _sock;
-    // _n: Int32
+    // _n: int32
     int32_t _n;
     // _cancel_pending: bool
     bool _cancel_pending;
 
-    // def __init__(self, sock: Ptr[socket], n: Int32) -> None:
+    // def __init__(self, sock: Ptr[socket], n: int32) -> None:
     _SockRecv() = default;
     explicit _SockRecv(::tpystd::socket::socket* sock, int32_t n);
     // non-copyable (@nocopy)
@@ -212,7 +212,7 @@ struct _SockSendAll {
     ::tpystd::socket::socket* _sock;
     // _data: bytes
     ::tpy::Bytes _data;
-    // _sent: UInt64
+    // _sent: uint64
     uint64_t _sent;
     // _cancel_pending: bool
     bool _cancel_pending;
@@ -259,7 +259,7 @@ struct _SockAccept {
     void cancel();
 
     // def __poll__(self, waker: Waker
-    // ) -> Own[Poll[tuple[Own[socket], tuple[str, Int32]]]]:
+    // ) -> Own[Poll[tuple[Own[socket], tuple[str, int32]]]]:
     ::tpystd::tpy::Poll<std::tuple<::tpystd::socket::socket, std::tuple<std::string, int32_t>>> __poll__(::tpystd::coro::Waker waker);
     static constexpr std::string_view __tpy_class_name__ = "asyncio._SockAccept";
 };
@@ -274,14 +274,14 @@ inline std::ostream& operator<<(std::ostream& os, const _SockAccept& obj) {
 struct _SockConnect {
     // _sock: Ptr[socket]
     ::tpystd::socket::socket* _sock;
-    // _addr: tuple[str, Int32]
+    // _addr: tuple[str, int32]
     std::tuple<std::string, int32_t> _addr;
     // _started: bool
     bool _started;
     // _cancel_pending: bool
     bool _cancel_pending;
 
-    // def __init__(self, sock: Ptr[socket], addr: tuple[str, Int32]) -> None:
+    // def __init__(self, sock: Ptr[socket], addr: tuple[str, int32]) -> None:
     _SockConnect() = default;
     explicit _SockConnect(::tpystd::socket::socket* sock, const std::tuple<std::string, int32_t>& addr);
     // non-copyable (@nocopy)
@@ -437,7 +437,7 @@ template<typename T>
 struct _GatherFuture {
     // _tasks: list[Task[T]]
     std::vector<::tpystd::asyncio::_executor::Task<T>> _tasks;
-    // _completion_indices: list[Int32]
+    // _completion_indices: list[int32]
     std::vector<int32_t> _completion_indices;
     // _completion_boxes: list[Box[T]]
     std::vector<::tpystd::tplib::box::Box<T>> _completion_boxes;
@@ -445,7 +445,7 @@ struct _GatherFuture {
     std::vector<bool> _settled;
     // _exc: Box[Throwable] | None
     std::optional<::tpystd::tplib::box::Box<::tpy::Throwable>> _exc;
-    // _completed: Int32
+    // _completed: int32
     int32_t _completed;
     // _cleanup: bool
     bool _cleanup;
@@ -516,7 +516,7 @@ struct _GatherFuture {
         // # Poll every unsettled task with the shared waker. Multiple
         // # wakes between polls coalesce at the executor (one runnable
         // # flag per slot), so the O(N) re-poll per cycle is bounded.
-        // i: Int32 = 0
+        // i: int32 = 0
         int32_t i = 0;
         // while i < n:
         while ((i < n)) {
@@ -595,11 +595,11 @@ struct _GatherFuture {
         // # concurrent operations); fine for v1.5.
         // result: list[T] = []
         std::vector<T> result = std::vector<T>{};
-        // orig_i: Int32 = 0
+        // orig_i: int32 = 0
         int32_t orig_i = 0;
         // while orig_i < n:
         while ((orig_i < n)) {
-            // k: Int32 = 0
+            // k: int32 = 0
             int32_t k = 0;
             // kn = len(self._completion_indices)
             int32_t kn = ::tpy::__len__(this->_completion_indices);
@@ -628,7 +628,7 @@ struct _GatherFuture {
 
     // def _propagate_cancel(self) -> None:
     void _propagate_cancel() {
-        // i: Int32 = 0
+        // i: int32 = 0
         int32_t i = 0;
         // n = len(self._tasks)
         int32_t n = ::tpy::__len__(this->_tasks);
@@ -688,15 +688,15 @@ struct _GatherSettledFuture {
     std::vector<::tpystd::asyncio::_executor::Task<T>> _tasks;
     // _settled: list[bool]
     std::vector<bool> _settled;
-    // _result_indices: list[Int32]
+    // _result_indices: list[int32]
     std::vector<int32_t> _result_indices;
     // _result_boxes: list[Box[T]]
     std::vector<::tpystd::tplib::box::Box<T>> _result_boxes;
-    // _exc_indices: list[Int32]
+    // _exc_indices: list[int32]
     std::vector<int32_t> _exc_indices;
     // _exc_boxes: list[Box[Throwable]]
     std::vector<::tpystd::tplib::box::Box<::tpy::Throwable>> _exc_boxes;
-    // _completed: Int32
+    // _completed: int32
     int32_t _completed;
     // _cancel_pending: bool
     bool _cancel_pending;
@@ -750,7 +750,7 @@ struct _GatherSettledFuture {
         this->_cancel_pending = false;
         // if was_canceling:
         if (was_canceling) {
-            // i: Int32 = 0
+            // i: int32 = 0
             int32_t i = 0;
             // while i < n:
             while ((i < n)) {
@@ -763,7 +763,7 @@ struct _GatherSettledFuture {
                 i = ::tpy::add_check<int32_t>(i, 1);
             }
         }
-        // i: Int32 = 0
+        // i: int32 = 0
         int32_t i = 0;
         // while i < n:
         while ((i < n)) {
@@ -812,13 +812,13 @@ struct _GatherSettledFuture {
         // # operations); fine for v1.5.
         // result: list[Settled[T]] = []
         std::vector<Settled<T>> result = std::vector<Settled<T>>{};
-        // orig_i: Int32 = 0
+        // orig_i: int32 = 0
         int32_t orig_i = 0;
         // while orig_i < n:
         while ((orig_i < n)) {
             // settled_via_value = False
             bool settled_via_value = false;
-            // k: Int32 = 0
+            // k: int32 = 0
             int32_t k = 0;
             // kn = len(self._result_indices)
             int32_t kn = ::tpy::__len__(this->_result_indices);
@@ -1161,7 +1161,7 @@ inline std::ostream& operator<<(std::ostream& os, const _LockAcquire& obj) {
 // @nocopy
 // class Semaphore:
 struct Semaphore {
-    // _value: Int32
+    // _value: int32
     int32_t _value;
     // _waiters: list[Waker]
     std::vector<::tpystd::coro::Waker> _waiters;
@@ -1169,10 +1169,10 @@ struct Semaphore {
     // # bound lives here, gated in release(), rather than in a BoundedSemaphore
     // # override -- TPy uses static method dispatch, so an override would only
     // # fire through a BoundedSemaphore-typed reference (and warns about it).
-    // _bound: Int32
+    // _bound: int32
     int32_t _bound;
 
-    // def __init__(self, value: Int32 = 1) -> None:
+    // def __init__(self, value: int32 = 1) -> None:
     explicit Semaphore(int32_t value = 1);
     // non-copyable (@nocopy)
     Semaphore(const Semaphore&) = delete;
@@ -1270,7 +1270,7 @@ struct Queue {
     // _items: list[T]
     std::vector<T> _items;
     // # Public, like CPython's Queue.maxsize; <= 0 means unbounded.
-    // maxsize: Int32
+    // maxsize: int32
     int32_t maxsize;
     // _getters: list[Waker]
     std::vector<::tpystd::coro::Waker> _getters;
@@ -1278,10 +1278,10 @@ struct Queue {
     std::vector<::tpystd::coro::Waker> _putters;
     // _joiners: list[Waker]
     std::vector<::tpystd::coro::Waker> _joiners;
-    // _unfinished: Int32
+    // _unfinished: int32
     int32_t _unfinished;
 
-    // def __init__(self, maxsize: Int32 = 0) -> None:
+    // def __init__(self, maxsize: int32 = 0) -> None:
     explicit Queue(int32_t maxsize = 0) : _items(std::vector<T>{}), maxsize(maxsize), _getters(std::vector<::tpystd::coro::Waker>{}), _putters(std::vector<::tpystd::coro::Waker>{}), _joiners(std::vector<::tpystd::coro::Waker>{}), _unfinished(0) {}
     // non-copyable (@nocopy)
     Queue(const Queue&) = delete;
@@ -1289,7 +1289,7 @@ struct Queue {
     Queue(Queue&&) = default;
     Queue& operator=(Queue&&) = default;
 
-    // def qsize(self) -> Int32:
+    // def qsize(self) -> int32:
     int32_t qsize() const {
         // return len(self._items)
         return ::tpy::__len__(this->_items);
@@ -1363,7 +1363,7 @@ struct Queue {
     // # True if the awaited condition holds now; else parks `waker` and
     // # returns False. kind: 0 = get (non-empty), 1 = put (not full),
     // # 2 = join (no unfinished tasks).
-    // def _wait_ready(self, kind: Int32, waker: Waker) -> bool:
+    // def _wait_ready(self, kind: int32, waker: Waker) -> bool:
     bool _wait_ready(int32_t kind, ::tpystd::coro::Waker waker) {
         // if kind == 0:
         if ((kind == 0)) {
@@ -1414,10 +1414,10 @@ template<typename T>
 struct _QueueWait {
     // _q: Ptr[Queue[T]]
     Queue<T>* _q;
-    // _kind: Int32
+    // _kind: int32
     int32_t _kind;
 
-    // def __init__(self, q: Ptr[Queue[T]], kind: Int32) -> None:
+    // def __init__(self, q: Ptr[Queue[T]], kind: int32) -> None:
     _QueueWait() = default;
     explicit _QueueWait(Queue<T>* q, int32_t kind) : _q(q), _kind(kind) {}
     // non-copyable (@nocopy)
@@ -1456,7 +1456,7 @@ struct EventLoop {
     // def __init__(self) -> None:
     EventLoop();
 
-    // def sock_recv(self, sock: socket, n: Int32) -> Own[_SockRecv]:
+    // def sock_recv(self, sock: socket, n: int32) -> Own[_SockRecv]:
     _SockRecv sock_recv(::tpystd::socket::socket& sock, int32_t n) const;
 
     // def sock_sendall(self, sock: socket, data: bytes) -> Own[_SockSendAll]:
@@ -1467,7 +1467,7 @@ struct EventLoop {
     _SockAccept sock_accept(::tpystd::socket::socket& sock) const;
 
     // def sock_connect(self, sock: socket,
-    // address: tuple[str, Int32]) -> Own[_SockConnect]:
+    // address: tuple[str, int32]) -> Own[_SockConnect]:
     _SockConnect sock_connect(::tpystd::socket::socket& sock, const std::tuple<std::string, int32_t>& address) const;
     static constexpr std::string_view __tpy_class_name__ = "asyncio.EventLoop";
 };
@@ -1481,10 +1481,10 @@ inline std::ostream& operator<<(std::ostream& os, const EventLoop& obj) {
 struct IncompleteReadError : ::tpy::EOFError {
     // partial: bytes
     ::tpy::Bytes partial;
-    // expected: Int32 | None
+    // expected: int32 | None
     std::optional<int32_t> expected;
 
-    // def __init__(self, partial: bytes, expected: Int32 | None) -> None:
+    // def __init__(self, partial: bytes, expected: int32 | None) -> None:
     explicit IncompleteReadError(::tpy::BytesView partial, std::optional<int32_t> expected);
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<IncompleteReadError>(*this); }
@@ -1521,7 +1521,7 @@ struct StreamReader {
 
     __coro_StreamReader__fill _fill();
 
-    // def _take(self, n: Int32) -> bytes:
+    // def _take(self, n: int32) -> bytes:
     ::tpy::Bytes _take(int32_t n);
 
     __coro_StreamReader_read read(int32_t n);
@@ -1592,11 +1592,11 @@ struct _ServerSockets {
     _ServerSockets& operator=(_ServerSockets&&) = default;
 
     // @auto_readonly
-    // def __getitem__(self, i: Int32) -> auto_readonly[socket]:
+    // def __getitem__(self, i: int32) -> auto_readonly[socket]:
     ::tpystd::socket::socket& __getitem__(int32_t i);
 
     // @auto_readonly
-    // def __getitem__(self, i: Int32) -> auto_readonly[socket]:
+    // def __getitem__(self, i: int32) -> auto_readonly[socket]:
     const ::tpystd::socket::socket& __getitem__(int32_t i) const;
 
     const ::tpystd::socket::socket& operator[](int32_t i) const {
@@ -1654,7 +1654,7 @@ inline std::ostream& operator<<(std::ostream& os, const Server& obj) {
 // class BoundedSemaphore(Semaphore):
 struct BoundedSemaphore : Semaphore {
 
-    // def __init__(self, value: Int32 = 1) -> None:
+    // def __init__(self, value: int32 = 1) -> None:
     explicit BoundedSemaphore(int32_t value = 1);
     // non-copyable
     BoundedSemaphore(const BoundedSemaphore&) = delete;
@@ -2639,7 +2639,7 @@ inline _SignalScope::~_SignalScope() {
     // # _ExecutorScope that clears it).
 }
 
-// def __init__(self, sock: Ptr[socket], n: Int32) -> None:
+// def __init__(self, sock: Ptr[socket], n: int32) -> None:
 inline _SockRecv::_SockRecv(::tpystd::socket::socket* sock, int32_t n) : _sock(sock), _n(n), _cancel_pending(false) {}
 
 // def cancel(self) -> None:
@@ -2666,7 +2666,7 @@ inline void _SockAccept::cancel() {
     this->_cancel_pending = true;
 }
 
-// def __init__(self, sock: Ptr[socket], addr: tuple[str, Int32]) -> None:
+// def __init__(self, sock: Ptr[socket], addr: tuple[str, int32]) -> None:
 inline _SockConnect::_SockConnect(::tpystd::socket::socket* sock, const std::tuple<std::string, int32_t>& addr) : _sock(sock), _addr(addr), _started(false), _cancel_pending(false) {}
 
 // def cancel(self) -> None:
@@ -2810,7 +2810,7 @@ inline ::tpystd::tpy::Poll<std::monostate> _LockAcquire::__poll__(::tpystd::coro
     return ::tpystd::coro::poll_pending<std::monostate>();
 }
 
-// def __init__(self, value: Int32 = 1) -> None:
+// def __init__(self, value: int32 = 1) -> None:
 inline Semaphore::Semaphore(int32_t value) {
     // if value < 0:
     if ((value < 0)) {
@@ -2887,7 +2887,7 @@ inline EventLoop::EventLoop() {
     // pass
 }
 
-// def sock_recv(self, sock: socket, n: Int32) -> Own[_SockRecv]:
+// def sock_recv(self, sock: socket, n: int32) -> Own[_SockRecv]:
 inline _SockRecv EventLoop::sock_recv(::tpystd::socket::socket& sock, int32_t n) const {
     // return _SockRecv(sock, n)
     return _SockRecv(&sock, n);
@@ -2907,13 +2907,13 @@ inline _SockAccept EventLoop::sock_accept(::tpystd::socket::socket& sock) const 
 }
 
 // def sock_connect(self, sock: socket,
-// address: tuple[str, Int32]) -> Own[_SockConnect]:
+// address: tuple[str, int32]) -> Own[_SockConnect]:
 inline _SockConnect EventLoop::sock_connect(::tpystd::socket::socket& sock, const std::tuple<std::string, int32_t>& address) const {
     // return _SockConnect(sock, address)
     return _SockConnect(&sock, address);
 }
 
-// def __init__(self, partial: bytes, expected: Int32 | None) -> None:
+// def __init__(self, partial: bytes, expected: int32 | None) -> None:
 inline IncompleteReadError::IncompleteReadError(::tpy::BytesView partial, std::optional<int32_t> expected) : ::tpy::EOFError("incomplete read"), partial(::tpy::Bytes(partial)), expected(expected) {}
 
 // def __init__(self, sock: Own[Rc[socket]]) -> None:
@@ -2925,7 +2925,7 @@ inline bool StreamReader::at_eof() const {
     return (this->_eof && (::tpy::__len__(this->_buf) == 0));
 }
 
-// def _take(self, n: Int32) -> bytes:
+// def _take(self, n: int32) -> bytes:
 inline ::tpy::Bytes StreamReader::_take(int32_t n) {
     // # Materialize owned head before reassigning `_buf` (a no-step slice
     // # is a borrow into the old buffer).
@@ -2975,14 +2975,14 @@ inline bool StreamWriter::is_closing() const {
 inline _ServerSockets::_ServerSockets(::tpystd::tplib::rc::Rc<::tpystd::socket::socket>&& sock) : _sock(std::move(sock)) {}
 
 // @auto_readonly
-// def __getitem__(self, i: Int32) -> auto_readonly[socket]:
+// def __getitem__(self, i: int32) -> auto_readonly[socket]:
 inline ::tpystd::socket::socket& _ServerSockets::__getitem__(int32_t i) {
     // return self._sock.get()
     return this->_sock.get();
 }
 
 // @auto_readonly
-// def __getitem__(self, i: Int32) -> auto_readonly[socket]:
+// def __getitem__(self, i: int32) -> auto_readonly[socket]:
 inline const ::tpystd::socket::socket& _ServerSockets::__getitem__(int32_t i) const {
     // return self._sock.get()
     return this->_sock.get();
@@ -3000,7 +3000,7 @@ inline void Server::close() {
     this->_task.cancel();
 }
 
-// def __init__(self, value: Int32 = 1) -> None:
+// def __init__(self, value: int32 = 1) -> None:
 inline BoundedSemaphore::BoundedSemaphore(int32_t value) {
     // if value < 0:
     if ((value < 0)) {

@@ -1,8 +1,8 @@
 # Error: wrong argument count for __call__
-from tpy import Int32
+from tpy import int32
 
 class Doubler:
-    def __call__(self, x: Int32) -> Int32:
+    def __call__(self, x: int32) -> int32:
         return x * 2
 
 def main():

@@ -18,7 +18,7 @@ void main() {
     ::tpy::Any a = ::tpy::make_any(::tpy::BigInt(9));
     // b.raw = a  # already Any: no wrap at all
     b.__setattr__("raw", a);
-    // print(cast(int, b.lit), cast(Int32, b.port), cast(int, b.raw))
+    // print(cast(int, b.lit), cast(int32, b.port), cast(int, b.raw))
     std::cout << ::tpy::any_cast_or_panic<::tpy::BigInt>(b.__getattr__("lit")) << " " << ::tpy::any_cast_or_panic<int32_t>(b.__getattr__("port")) << " " << ::tpy::any_cast_or_panic<::tpy::BigInt>(b.__getattr__("raw")) << "\n";
     // s = Strict()
     Strict s = Strict();

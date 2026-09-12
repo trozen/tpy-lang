@@ -1,28 +1,28 @@
 """Tests list[T]() constructor syntax."""
-from tpy import Int32, Array
+from tpy import int32, Array
 
 def test_local_list() -> None:
     # Local list without annotation
-    local_nums = list[Int32]()
+    local_nums = list[int32]()
     local_nums.append(100)
     local_nums.append(200)
     print(len(local_nums))
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32 = 0, y: Int32 = 0):
+    x: int32
+    y: int32
+    def __init__(self, x: int32 = 0, y: int32 = 0):
         self.x = x
         self.y = y
 
 # Constructor without LHS annotation - type inferred from constructor
-nums = list[Int32]()
+nums = list[int32]()
 nums.append(1)
 nums.append(2)
 print(len(nums))
 
 # Constructor with matching LHS annotation
-other: list[Int32] = list[Int32]()
+other: list[int32] = list[int32]()
 other.append(3)
 print(len(other))
 
@@ -44,12 +44,12 @@ print(nested[0][0].x)
 test_local_list()
 
 # Direct print of empty list constructor (regression test for ListPrinter CTAD)
-print(list[Int32]())
+print(list[int32]())
 print(list[int]())
 
 # list(iterable) constructor - type inferred from argument
 print(list([1, 2, 3]))
-print(list([Int32(10), Int32(20)]))
+print(list([int32(10), int32(20)]))
 src = [100, 200, 300]
 copy = list(src)
 print(copy)
@@ -58,6 +58,6 @@ print(len(src))  # Original unchanged
 print(len(copy))
 
 # Array → list conversion
-arr: Array[Int32, 3] = [5, 6, 7]
+arr: Array[int32, 3] = [5, 6, 7]
 from_arr = list(arr)
 print(from_arr)

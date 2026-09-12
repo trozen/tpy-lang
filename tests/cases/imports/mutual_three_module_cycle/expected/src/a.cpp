@@ -6,13 +6,13 @@
 namespace tpyapp::a {
 
 
-// def aa() -> Int32:
+// def aa() -> int32:
 int32_t aa() {
     // return 1
     return 1;
 }
 
-// def call_b() -> Int32:
+// def call_b() -> int32:
 int32_t call_b() {
     // return bb()
     return ::tpyapp::b::bb();

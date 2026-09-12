@@ -2,7 +2,7 @@
 # (the element-compat check's "no list element" branch).
 def main() -> None:
     xs = [1, 2]
-    xs = 5  # tpyc: error(/expected list\[Int32\], got IntLiteral\(5\)/)
+    xs = 5  # tpyc: error(/expected list\[int32\], got IntLiteral\(5\)/)
     print(xs)
 
 main()

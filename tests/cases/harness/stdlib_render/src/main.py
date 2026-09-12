@@ -96,17 +96,17 @@ import zoneinfo
 # `itertools.cycle` is the library's one owning-slot copy at an open payload.
 # Its hedge is declaration-time, so this call is not what produces it -- it is
 # here so the render of an instantiated `cycle` is pinned alongside.
-from tpy import Int32
+from tpy import int32
 
 
 class _Cell:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
-def _pin_cycle_copy() -> Int32:
+def _pin_cycle_copy() -> int32:
     total = 0
     for c in itertools.islice(itertools.cycle([_Cell(1), _Cell(2)]), 3):
         total += c.n

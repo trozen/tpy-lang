@@ -8,10 +8,10 @@ namespace tpyapp::main {
 void main() {
     // items: list[int] = [1, 2, 3]
     std::vector<::tpy::BigInt> items = {1, 2, 3};
-    // by_key: dict[str, Int32] = {"a": 1}
+    // by_key: dict[str, int32] = {"a": 1}
     ::tpy::ordered_map<std::string, int32_t> by_key = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
     // # Single-element set to avoid TPy vs CPython set-ordering differences.
-    // elems: set[Int32] = {7}
+    // elems: set[int32] = {7}
     ::tpy::ordered_set<int32_t> elems = ::tpy::ordered_set<int32_t>({7});
     // Bag(items, by_key, elems, (10, 20)).show()
     Bag(&(items), &(by_key), &(elems), std::tuple<int32_t, int32_t>{10, 20}).show();

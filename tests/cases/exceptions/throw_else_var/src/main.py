@@ -1,7 +1,7 @@
 # else body references variable declared in try body (hoisted)
-from tpy import Int32
+from tpy import int32
 
-def risky(x: Int32) -> Int32:
+def risky(x: int32) -> int32:
     if x < 0:
         raise ValueError("negative")
     return x * 2

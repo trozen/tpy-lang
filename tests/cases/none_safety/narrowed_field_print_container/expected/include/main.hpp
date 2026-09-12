@@ -17,19 +17,19 @@ void main();
 struct Bag {
     // items: list[int] | None
     std::optional<std::vector<::tpy::BigInt>> items;
-    // by_key: dict[str, Int32] | None
+    // by_key: dict[str, int32] | None
     std::optional<::tpy::ordered_map<std::string, int32_t>> by_key;
-    // elems: set[Int32] | None
+    // elems: set[int32] | None
     std::optional<::tpy::ordered_set<int32_t>> elems;
-    // tup: tuple[int, Int32] | None
+    // tup: tuple[int, int32] | None
     std::optional<std::tuple<::tpy::BigInt, int32_t>> tup;
 
     // def __init__(
     // self,
     // items: list[int] | None,
-    // by_key: dict[str, Int32] | None,
-    // elems: set[Int32] | None,
-    // tup: tuple[int, Int32] | None,
+    // by_key: dict[str, int32] | None,
+    // elems: set[int32] | None,
+    // tup: tuple[int, int32] | None,
     // ) -> None:
     Bag() = default;
     explicit Bag(const std::vector<::tpy::BigInt>* items, const ::tpy::ordered_map<std::string, int32_t>* by_key, const ::tpy::ordered_set<int32_t>* elems, std::optional<std::tuple<::tpy::BigInt, int32_t>> tup);
@@ -48,9 +48,9 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 // def __init__(
 // self,
 // items: list[int] | None,
-// by_key: dict[str, Int32] | None,
-// elems: set[Int32] | None,
-// tup: tuple[int, Int32] | None,
+// by_key: dict[str, int32] | None,
+// elems: set[int32] | None,
+// tup: tuple[int, int32] | None,
 // ) -> None:
 inline Bag::Bag(const std::vector<::tpy::BigInt>* items, const ::tpy::ordered_map<std::string, int32_t>* by_key, const ::tpy::ordered_set<int32_t>* elems, std::optional<std::tuple<::tpy::BigInt, int32_t>> tup) : items(::tpy::ptr_to_optional(items)), by_key(::tpy::ptr_to_optional(by_key)), elems(::tpy::ptr_to_optional(elems)), tup(tup) {}
 void __tpy_init();

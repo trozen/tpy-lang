@@ -17,12 +17,12 @@ void main();
 
 // class Series:
 struct Series {
-    // a: Int32
+    // a: int32
     int32_t a;
-    // b: Int32
+    // b: int32
     int32_t b;
 
-    // def __init__(self, a: Int32, b: Int32) -> None:
+    // def __init__(self, a: int32, b: int32) -> None:
     Series() = default;
     explicit Series(int32_t a, int32_t b);
 
@@ -68,7 +68,7 @@ inline __gen_Series_items Series::items() const {
 }
 
 
-// def __init__(self, a: Int32, b: Int32) -> None:
+// def __init__(self, a: int32, b: int32) -> None:
 inline Series::Series(int32_t a, int32_t b) : a(a), b(b) {}
 void __tpy_init();
 } // namespace tpyapp::main

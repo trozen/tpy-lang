@@ -15,14 +15,14 @@ void main();
 
 // class Box:
 struct Box {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32):
+    // def __init__(self, n: int32):
     Box() = default;
     explicit Box(int32_t n);
 
-    // def double(self) -> Int32:
+    // def double(self) -> int32:
     int32_t double_() const;
 
     // def delete(self) -> None:
@@ -36,10 +36,10 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 }
 
 
-// def __init__(self, n: Int32):
+// def __init__(self, n: int32):
 inline Box::Box(int32_t n) : n(n) {}
 
-// def double(self) -> Int32:
+// def double(self) -> int32:
 inline int32_t Box::double_() const {
     // return self.n * 2
     return (::tpy::mul_check<int32_t>(this->n, 2));

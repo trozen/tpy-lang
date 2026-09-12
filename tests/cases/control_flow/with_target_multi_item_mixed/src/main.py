@@ -8,13 +8,13 @@
 # and printing it here would pin that divergence in a parity-checked case.
 from typing import Iterator
 
-from tpy import Int32
+from tpy import int32
 
 
 class Item:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
 
@@ -24,7 +24,7 @@ SHARED: Item = Item(7)
 class Owner:
     item: Item
 
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.item = Item(n)
 
     def __enter__(self) -> Item:
@@ -45,7 +45,7 @@ class Delegator:
         print("delegator dropped")
 
 
-def steps() -> Iterator[Int32]:
+def steps() -> Iterator[int32]:
     with Owner(5) as owned, Delegator() as lent:
         pass
     yield 0

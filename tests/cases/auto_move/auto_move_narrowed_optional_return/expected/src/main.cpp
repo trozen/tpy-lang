@@ -9,7 +9,7 @@ Handle extract() {
     // h: Handle | None = Handle()
     Handle __slot_1 = Handle();
     Handle* h = &__slot_1;
-    // h.value = Int32(99)
+    // h.value = int32(99)
     h->value = 99;
     // assert h is not None
     if (!((h != nullptr))) ::tpy::raise_assertion_error();

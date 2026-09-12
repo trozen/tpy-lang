@@ -8,7 +8,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // data: list[Int32] = [1, 2, 3]
+        // data: list[int32] = [1, 2, 3]
         data.emplace(std::vector<int32_t>{1, 2, 3});
         // await consume(data)
         __sub_0.emplace((*data));

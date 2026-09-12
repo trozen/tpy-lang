@@ -17,7 +17,7 @@ std::vector<Node>* pool{};
 // q: Node | None = None
 Node* q{};
 
-// def find(ns: list[Node], k: Int32) -> Node | None:
+// def find(ns: list[Node], k: int32) -> Node | None:
 Node* find(std::vector<Node>& ns, int32_t k) {
     // for n in ns:
     auto& __obj_0 = ns;

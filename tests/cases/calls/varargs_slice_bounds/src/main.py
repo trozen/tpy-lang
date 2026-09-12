@@ -1,18 +1,18 @@
 # Slice bounds: negative indices, out-of-range indices, empty slices.
 # varargs::slice mirrors Python clamp semantics (negative index wraps via
 # +size_; out-of-range clamps; i >= j returns empty).
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    val: Int32
+    val: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 
-def sum_slice(start: Int32, stop: Int32, *items: Box) -> Int32:
-    n: Int32 = 0
+def sum_slice(start: int32, stop: int32, *items: Box) -> int32:
+    n: int32 = 0
     for b in items[start:stop]:
         n += b.val
     return n

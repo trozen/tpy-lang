@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def classify(n: Int32) -> Iterator[Int32]:
+// def classify(n: int32) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_classify::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -52,7 +52,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_classify::__next__() {
 }
 
 
-// def classify(n: Int32) -> Iterator[Int32]:
+// def classify(n: int32) -> Iterator[int32]:
 __gen_classify classify(int32_t n) {
     return __gen_classify(n);
 }

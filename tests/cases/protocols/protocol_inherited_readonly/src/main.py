@@ -1,41 +1,41 @@
 # Inherited @readonly protocol methods work on readonly receivers.
 # Base defines @readonly read(), Child inherits it.
 # Calling read() on readonly[Child] and on T: Child must succeed.
-from tpy import Int32, readonly
+from tpy import int32, readonly
 from typing import Protocol
 
 
 class Base(Protocol):
     @readonly
-    def read(self) -> Int32:
+    def read(self) -> int32:
         ...
 
 
 class Child(Base, Protocol):
-    def write(self, v: Int32) -> None:
+    def write(self, v: int32) -> None:
         ...
 
 
 class Impl:
-    value: Int32
+    value: int32
 
-    def __init__(self, value: Int32) -> None:
+    def __init__(self, value: int32) -> None:
         self.value = value
 
     @readonly
-    def read(self) -> Int32:
+    def read(self) -> int32:
         return self.value
 
-    def write(self, v: Int32) -> None:
+    def write(self, v: int32) -> None:
         self.value = v
 
 
 @readonly
-def read_via_child(x: Child) -> Int32:
+def read_via_child(x: Child) -> int32:
     return x.read()
 
 
-def read_via_bound[T: Child](x: readonly[T]) -> Int32:
+def read_via_bound[T: Child](x: readonly[T]) -> int32:
     return x.read()
 
 

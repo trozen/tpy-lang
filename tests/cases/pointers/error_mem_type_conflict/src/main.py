@@ -1,6 +1,6 @@
-from tpy import Ptr, UInt8, UInt32, Char
+from tpy import Ptr, uint8, uint32, char
 from tpy.unsafe import unsafe_ptr, unsafe_copy_n
 
 def test(s: str) -> None:
-    buf: list[UInt8] = [UInt8(0)] * 10
-    unsafe_copy_n(unsafe_ptr(buf), unsafe_ptr(s), UInt32(3))  # tpyc: error(/Cannot infer type arguments/)
+    buf: list[uint8] = [uint8(0)] * 10
+    unsafe_copy_n(unsafe_ptr(buf), unsafe_ptr(s), uint32(3))  # tpyc: error(/Cannot infer type arguments/)

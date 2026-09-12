@@ -3,9 +3,9 @@
 
 namespace tpyapp::main {
 
-// GO: Int32 | None = None
+// GO: int32 | None = None
 std::optional<int32_t> GO;
-// GP: Int32 = 0
+// GP: int32 = 0
 int32_t GP{};
 
 // def enable() -> None:
@@ -15,7 +15,7 @@ void enable() {
     GO = 7;
 }
 
-// def read_ret() -> Int32:
+// def read_ret() -> int32:
 int32_t read_ret() {
     // if GO is not None:
     if ((GO.has_value())) {
@@ -26,7 +26,7 @@ int32_t read_ret() {
     return -1;
 }
 
-// def read_sink() -> Int32:
+// def read_sink() -> int32:
 int32_t read_sink() {
     // if GO is not None:
     if ((GO.has_value())) {
@@ -37,7 +37,7 @@ int32_t read_sink() {
     return -1;
 }
 
-// def read_aug() -> Int32:
+// def read_aug() -> int32:
 int32_t read_aug() {
     // t = 1
     int32_t t = 1;
@@ -50,7 +50,7 @@ int32_t read_aug() {
     return t;
 }
 
-// def write_from(p: Int32 | None) -> None:
+// def write_from(p: int32 | None) -> None:
 void write_from(std::optional<int32_t> p) {
     // global GO
     // if p is not None:
@@ -60,7 +60,7 @@ void write_from(std::optional<int32_t> p) {
     }
 }
 
-// def write_plain(p: Int32 | None) -> None:
+// def write_plain(p: int32 | None) -> None:
 void write_plain(std::optional<int32_t> p) {
     // global GP
     // if p is not None:
@@ -97,9 +97,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // GO: Int32 | None = None
+    // GO: int32 | None = None
     GO = std::nullopt;
-    // GP: Int32 = 0
+    // GP: int32 = 0
     GP = 0;
     // main()
     main();

@@ -2,11 +2,11 @@
 # from a base class. CPython-faithful: ClassInfo.has_method walks
 # parent records via the registry so inherited dunders count.
 from functools import total_ordering
-from tpy import Int32
+from tpy import int32
 
 class Base:
-    val: Int32
-    def __init__(self, v: Int32) -> None:
+    val: int32
+    def __init__(self, v: int32) -> None:
         self.val = v
     def __eq__(self, other: "Base") -> bool:
         return self.val == other.val
@@ -17,8 +17,8 @@ class Base:
 class Child(Base):
     pass
 
-a = Child(Int32(3))
-b = Child(Int32(5))
+a = Child(int32(3))
+b = Child(int32(5))
 print(a < b)
 print(a <= b)
 print(a > b)

@@ -22,7 +22,7 @@ struct Buffer {
     // def add(self, s: str) -> None:
     void add(std::string_view s);
 
-    // def size(self) -> Int32:
+    // def size(self) -> int32:
     int32_t size() const;
 
     // def dump(self) -> str:
@@ -45,9 +45,9 @@ inline void Buffer::add(std::string_view s) {
     this->_items.push_back(std::string(s));
 }
 
-// def size(self) -> Int32:
+// def size(self) -> int32:
 inline int32_t Buffer::size() const {
-    // return Int32(len(self._items))
+    // return int32(len(self._items))
     return ::tpy::__len__(this->_items);
 }
 

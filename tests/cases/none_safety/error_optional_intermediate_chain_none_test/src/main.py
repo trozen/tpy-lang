@@ -1,12 +1,12 @@
 # `is not None` over a two-link field chain whose intermediate link is itself
 # Optional: not lowered yet, so the case pins the reject.
-from tpy import Int32
+from tpy import int32
 
 
 class Inner:
-    value: Int32 | None
+    value: int32 | None
 
-    def __init__(self, v: Int32 | None) -> None:
+    def __init__(self, v: int32 | None) -> None:
         self.value = v
 
 
@@ -24,7 +24,7 @@ class OptTop:
         self.inner = i
 
 
-def get_value(t: OptTop) -> Int32:
+def get_value(t: OptTop) -> int32:
     # An Optional-declared intermediate link reads through an unwrap the chain
     # rule excludes.
     if t.inner is not None and t.inner.value is not None:  # tpyc: error(/binop.shape.is not/)

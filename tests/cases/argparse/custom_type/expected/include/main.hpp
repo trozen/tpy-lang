@@ -62,7 +62,7 @@ inline std::ostream& operator<<(std::ostream& os, const __tpy_builder_argparse_a
 
 // def __init__(self, raw: str) -> None:
 inline Tag::Tag(std::string_view raw) : namespace_(""), name(raw) {
-    // idx: Int32 = raw.find(":")
+    // idx: int32 = raw.find(":")
     int32_t idx = ::tpy::str_find(raw, ":");
     // if idx >= 0:
     if ((idx >= 0)) {

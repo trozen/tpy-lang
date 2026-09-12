@@ -1,6 +1,6 @@
-from tpy import Int32
+from tpy import int32
 
-CONST: Int32 = Int32(42)
+CONST: int32 = int32(42)
 
 def func() -> None:
     print("from init")

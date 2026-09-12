@@ -68,8 +68,8 @@ void main() {
     double nip = std::get<1>(__tup_2);
     // print(nfrac, nip)
     std::cout << ::tpy::print_float(nfrac) << " " << ::tpy::print_float(nip) << "\n";
-    // # frexp: (mantissa in [0.5, 1), exponent as T). T defaults to Int32
-    // # (see math_frexp_generic for explicit Int64/BigInt variants).
+    // # frexp: (mantissa in [0.5, 1), exponent as T). T defaults to int32
+    // # (see math_frexp_generic for explicit int64/BigInt variants).
     // m1, ex1 = math.frexp(12.0)    # 0.75, 4
     auto __tup_3 = ::tpy::stdlib::math::frexp<int32_t>(12.0);
     double m1 = std::get<0>(__tup_3);

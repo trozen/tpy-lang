@@ -1,15 +1,15 @@
 # Generic recursive union alias instantiated with a UNION leaf
-# (Tree[Int32 | str]). The wrapper's variant arms are the leaf union and the
+# (Tree[int32 | str]). The wrapper's variant arms are the leaf union and the
 # list branch, so an arm naming one of those is a real member and must keep
-# compiling -- only an arm naming a type INSIDE the leaf union (`case Int32()`)
+# compiling -- only an arm naming a type INSIDE the leaf union (`case int32()`)
 # has no variant to dispatch on. The list capture aliases the subject, so the
 # append below is visible through `forest` afterwards.
-from tpy import Int32
+from tpy import int32
 
 type Tree[T] = T | list[Tree[T]]
 
 
-def leaf_count(t: Tree[Int32 | str]) -> Int32:
+def leaf_count(t: Tree[int32 | str]) -> int32:
     match t:
         case list() as branches:  # tpyc: ok
             total = 0
@@ -21,7 +21,7 @@ def leaf_count(t: Tree[Int32 | str]) -> Int32:
 
 
 def main() -> None:
-    forest: Tree[Int32 | str] = [1, "a", [2, "b"]]
+    forest: Tree[int32 | str] = [1, "a", [2, "b"]]
     print(leaf_count(forest))
     match forest:
         case list() as branches:  # tpyc: ok
@@ -29,7 +29,7 @@ def main() -> None:
         case _:
             print("leaf")
     print(leaf_count(forest))
-    leaf: Tree[Int32 | str] = "solo"
+    leaf: Tree[int32 | str] = "solo"
     print(leaf_count(leaf))
 
 

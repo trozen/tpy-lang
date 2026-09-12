@@ -1,12 +1,12 @@
 # Field-write of tuple[T | None, ...] outside the constructor needs the
 # same pointer-form -> storage-form lift as field-init: `self.f = p` where
 # p is a pointer-form param goes through tuple_to_storage.
-from tpy import Int32
+from tpy import int32
 
 
 class T:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 

@@ -4,24 +4,24 @@
 # a record with `__del__`, whose copy constructor C++ deletes -- that decides.
 # Without the peel this renders an ill-formed copy the toolchain catches.
 from typing import Callable, Iterator
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Guard:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
     def __del__(self) -> None:
         print("bye")
 
 
-def apply(f: Callable[[Int32], Int32], v: Int32) -> Int32:
+def apply(f: Callable[[int32], int32], v: int32) -> int32:
     return f(v)
 
 
-def gen(g: Own[Guard]) -> Iterator[Int32]:  # tpyc: error(/expr\.lambda/)
+def gen(g: Own[Guard]) -> Iterator[int32]:  # tpyc: error(/expr\.lambda/)
     yield apply(lambda i: i + g.x, 1)
     yield apply(lambda i: i + g.x, 2)
 

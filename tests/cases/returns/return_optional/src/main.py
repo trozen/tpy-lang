@@ -1,16 +1,16 @@
-from tpy import Int32
+from tpy import int32
 
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32):
+    def __init__(self, x: int32, y: int32):
         self.x = x
         self.y = y
 
 
-def find(points: list[Point], target: Int32) -> Point | None:
+def find(points: list[Point], target: int32) -> Point | None:
     for p in points:
         if p.x == target:
             return p

@@ -17,13 +17,13 @@ void main();
 
 // class Holder:
 struct Holder {
-    // items: list[Int32]
+    // items: list[int32]
     std::vector<int32_t> items;
 
     // def __init__(self) -> None:
     Holder();
 
-    // def borrow(self) -> list[Int32]:
+    // def borrow(self) -> list[int32]:
     std::vector<int32_t>& borrow();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
@@ -37,7 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 // def __init__(self) -> None:
 inline Holder::Holder() : items(std::vector<int32_t>{1, 2}) {}
 
-// def borrow(self) -> list[Int32]:
+// def borrow(self) -> list[int32]:
 inline std::vector<int32_t>& Holder::borrow() {
     // return self.items
     return this->items;

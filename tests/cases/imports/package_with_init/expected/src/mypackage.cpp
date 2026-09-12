@@ -3,7 +3,7 @@
 
 namespace tpyapp::mypackage {
 
-// CONST: Int32 = Int32(42)
+// CONST: int32 = int32(42)
 int32_t CONST{};
 
 // def func() -> None:
@@ -17,7 +17,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // CONST: Int32 = Int32(42)
+    // CONST: int32 = int32(42)
     CONST = 42;
 }
 

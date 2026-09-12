@@ -1,16 +1,16 @@
 # A user __contains__ with a fixed-int param takes the standard call-arg
 # narrow: an in-range BigInt needle converts and dispatches (out-of-range
 # panics -- see the panic_ sibling).
-from tpy import Int32
+from tpy import int32
 
 
 class Bag:
-    xs: list[Int32]
+    xs: list[int32]
 
     def __init__(self):
         self.xs = [1, 2]
 
-    def __contains__(self, item: Int32) -> bool:
+    def __contains__(self, item: int32) -> bool:
         return item in self.xs
 
 

@@ -8,7 +8,7 @@ std::vector<std::string>* _AM_PM{};
 // _ZNAMES: list[str] = ["UTC", "GMT"]
 std::vector<std::string>* _ZNAMES{};
 
-// def _is_digit_char(c: Char) -> bool:
+// def _is_digit_char(c: char) -> bool:
 bool _is_digit_char(char c) {
     // o = ord(c)
     int32_t o = static_cast<int32_t>(static_cast<unsigned char>(c));
@@ -16,7 +16,7 @@ bool _is_digit_char(char c) {
     return ((48 <= o) && (o <= 57));
 }
 
-// def _is_space_char(c: Char) -> bool:
+// def _is_space_char(c: char) -> bool:
 bool _is_space_char(char c) {
     // o = ord(c)
     int32_t o = static_cast<int32_t>(static_cast<unsigned char>(c));
@@ -24,7 +24,7 @@ bool _is_space_char(char c) {
     return ((o == 32) || ((9 <= o) && (o <= 13)));
 }
 
-// def _char_ieq(a: Char, b: Char) -> bool:
+// def _char_ieq(a: char, b: char) -> bool:
 bool _char_ieq(char a, char b) {
     // # ASCII case-insensitive char compare (strptime literals and names
     // # match case-insensitively -- CPython compiles with IGNORECASE).
@@ -296,7 +296,7 @@ void _parse_fail(std::string_view data, std::string_view fmt) {
     return p;
 }
 
-// def _apply_directive(d: Char, data: str, p: int, st: _ParseState,
+// def _apply_directive(d: char, data: str, p: int, st: _ParseState,
 // fmt: str) -> int:
 ::tpy::BigInt _apply_directive(char d, std::string_view data, const ::tpy::BigInt& p, _ParseState& st, std::string_view fmt) {
     // m = len(data)

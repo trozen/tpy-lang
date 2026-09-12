@@ -1,5 +1,5 @@
 """Test type inference with Ptr[T] and Ptr[readonly[T]] parameters."""
-from tpy import Int32, Ptr, readonly
+from tpy import int32, Ptr, readonly
 
 
 class PtrHolder[T]:
@@ -17,8 +17,8 @@ class ReadOnlyPtrHolder[T]:
 
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 
 pt: Point = Point()

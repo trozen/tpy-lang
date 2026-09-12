@@ -5,7 +5,7 @@
 namespace tpyapp::b {
 
 
-// def sum_pair(p: Pair) -> Int32:
+// def sum_pair(p: Pair) -> int32:
 int32_t sum_pair(const ::tpyapp::a::Pair& p) {
     // return p.x + p.y
     return (::tpy::add_check<int32_t>(p.x, p.y));
@@ -15,7 +15,7 @@ int32_t sum_pair(const ::tpyapp::a::Pair& p) {
 // # auto-generated __init__. Exercises that the macro-emitted
 // # constructor is visible across the cycle, not just the field
 // # accessors.
-// def make_pair_sum(x: Int32, y: Int32) -> Int32:
+// def make_pair_sum(x: int32, y: int32) -> int32:
 int32_t make_pair_sum(int32_t x, int32_t y) {
     // p = Pair(x, y)
     ::tpyapp::a::Pair p = ::tpyapp::a::Pair(x, y);

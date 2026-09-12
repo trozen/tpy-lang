@@ -16,9 +16,9 @@ void main();
 // @dataclasses.dataclass
 // class Foo:
 struct Foo {
-    // items: list[Int32] = dataclasses.field(default_factory=list)
+    // items: list[int32] = dataclasses.field(default_factory=list)
     std::vector<int32_t> items = {};
-    // x: Int32 = dataclasses.field(default=42)
+    // x: int32 = dataclasses.field(default=42)
     int32_t x = 42;
 
     explicit Foo(std::vector<int32_t>&& items = {}, int32_t x = 42);

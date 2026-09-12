@@ -1,1 +1,1 @@
-main.py:8: error: Expression is not callable (type 'Int32')
+main.py:8: error: Expression is not callable (type 'int32')

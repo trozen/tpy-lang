@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def tail(xs: readonly[list[Int32]]) -> Iterator[Int32]:
+// def tail(xs: readonly[list[int32]]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_tail::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -38,7 +38,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_tail::__next__() {
 }
 
 
-// def tail(xs: readonly[list[Int32]]) -> Iterator[Int32]:
+// def tail(xs: readonly[list[int32]]) -> Iterator[int32]:
 __gen_tail tail(const std::vector<int32_t>& xs) {
     return __gen_tail(xs);
 }
@@ -47,7 +47,7 @@ __gen_tail tail(const std::vector<int32_t>& xs) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // data: list[Int32] = [10, 20]
+        // data: list[int32] = [10, 20]
         data.emplace(std::vector<int32_t>{10, 20});
         // print(sum(tail(data)))
         std::cout << ::tpy::builtin_sum<int32_t>(tail((*data))) << "\n";
@@ -108,7 +108,7 @@ void main() {
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(amain()));
 }
 
-// async def total(self) -> Int32:
+// async def total(self) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_Holder_total::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {

@@ -47,13 +47,13 @@ void main();
 
 // class Counter:
 struct Counter {
-    // hits: Int32
+    // hits: int32
     int32_t hits;
 
     // def __init__(self) -> None:
     Counter();
 
-    // def bump(self) -> Int32:
+    // def bump(self) -> int32:
     int32_t bump();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
@@ -65,13 +65,13 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 // class Dog(Pet):
 struct Dog : Pet {
-    // hits: Int32
+    // hits: int32
     int32_t hits;
 
     // def __init__(self) -> None:
     Dog();
 
-    // def bump(self) -> Int32:
+    // def bump(self) -> int32:
     int32_t bump() override;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
 };
@@ -83,13 +83,13 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 
 // class Cat(Pet):
 struct Cat : Pet {
-    // hits: Int32
+    // hits: int32
     int32_t hits;
 
     // def __init__(self) -> None:
     Cat();
 
-    // def bump(self) -> Int32:
+    // def bump(self) -> int32:
     int32_t bump() override;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cat";
 };
@@ -122,7 +122,7 @@ namespace tpyapp::main {
 // def __init__(self) -> None:
 inline Counter::Counter() : hits(0) {}
 
-// def bump(self) -> Int32:
+// def bump(self) -> int32:
 inline int32_t Counter::bump() {
     // self.hits += 1
     this->hits = ::tpy::add_check<int32_t>(this->hits, 1);
@@ -133,7 +133,7 @@ inline int32_t Counter::bump() {
 // def __init__(self) -> None:
 inline Dog::Dog() : hits(0) {}
 
-// def bump(self) -> Int32:
+// def bump(self) -> int32:
 inline int32_t Dog::bump() {
     // self.hits += 1
     this->hits = ::tpy::add_check<int32_t>(this->hits, 1);
@@ -144,7 +144,7 @@ inline int32_t Dog::bump() {
 // def __init__(self) -> None:
 inline Cat::Cat() : hits(0) {}
 
-// def bump(self) -> Int32:
+// def bump(self) -> int32:
 inline int32_t Cat::bump() {
     // self.hits += 2
     this->hits = ::tpy::add_check<int32_t>(this->hits, 2);

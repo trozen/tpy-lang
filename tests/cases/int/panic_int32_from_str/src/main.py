@@ -1,4 +1,4 @@
-from tpy import Int32
-# Invalid string for Int32 parsing
-x: Int32 = Int32("abc")
+from tpy import int32
+# Invalid string for int32 parsing
+x: int32 = int32("abc")
 print(x)

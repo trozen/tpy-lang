@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def pick_list(c: bool, a: list[Int32], b: list[Int32]) -> None:
+// def pick_list(c: bool, a: list[int32], b: list[int32]) -> None:
 void pick_list(bool c, std::vector<int32_t>& a, std::vector<int32_t>& b) {
     // v = a if c else b  # tpyc: ok
     std::vector<int32_t>& v = ((c) ? (a) : (b));
@@ -12,7 +12,7 @@ void pick_list(bool c, std::vector<int32_t>& a, std::vector<int32_t>& b) {
     v.push_back(9);
 }
 
-// def pick_dict(c: bool, a: dict[str, Int32], b: dict[str, Int32]) -> None:
+// def pick_dict(c: bool, a: dict[str, int32], b: dict[str, int32]) -> None:
 void pick_dict(bool c, ::tpy::ordered_map<std::string, int32_t>& a, ::tpy::ordered_map<std::string, int32_t>& b) {
     // v = a if c else b  # tpyc: ok
     ::tpy::ordered_map<std::string, int32_t>& v = ((c) ? (a) : (b));
@@ -20,7 +20,7 @@ void pick_dict(bool c, ::tpy::ordered_map<std::string, int32_t>& a, ::tpy::order
     ::tpy::__setitem__(v, "k", 9);
 }
 
-// def pick_set(c: bool, a: set[Int32], b: set[Int32]) -> None:
+// def pick_set(c: bool, a: set[int32], b: set[int32]) -> None:
 void pick_set(bool c, ::tpy::ordered_set<int32_t>& a, ::tpy::ordered_set<int32_t>& b) {
     // v = a if c else b  # tpyc: ok
     ::tpy::ordered_set<int32_t>& v = ((c) ? (a) : (b));
@@ -37,7 +37,7 @@ void pick_bytearray(bool c, ::tpy::ByteArray& a, ::tpy::ByteArray& b) {
     v.push_back(9);
 }
 
-// def pick_array(c: bool, a: Array[Int32, 2], b: Array[Int32, 2]) -> None:
+// def pick_array(c: bool, a: Array[int32, 2], b: Array[int32, 2]) -> None:
 void pick_array(bool c, std::array<int32_t, 2>& a, std::array<int32_t, 2>& b) {
     // v = a if c else b  # tpyc: ok
     std::array<int32_t, 2>& v = ((c) ? (a) : (b));
@@ -55,7 +55,7 @@ void pick_record(bool c, Tag& a, Tag& b) {
     v.n = 9;
 }
 
-// def read_through(c: bool, a: bytearray, b: bytearray) -> Int32:
+// def read_through(c: bool, a: bytearray, b: bytearray) -> int32:
 int32_t read_through(bool c, const ::tpy::ByteArray& a, const ::tpy::ByteArray& b) {
     // # The same lvalue ternary as a SUBSCRIPT RECEIVER: the element read
     // # aliases the chosen buffer.
@@ -65,17 +65,17 @@ int32_t read_through(bool c, const ::tpy::ByteArray& a, const ::tpy::ByteArray& 
 
 // def main() -> None:
 void main() {
-    // xs: list[Int32] = [1]
+    // xs: list[int32] = [1]
     std::vector<int32_t> xs = {1};
-    // ys: list[Int32] = [2]
+    // ys: list[int32] = [2]
     std::vector<int32_t> ys = {2};
     // pick_list(True, xs, ys)
     pick_list(true, xs, ys);
     // print(len(xs), len(ys))
     std::cout << ::tpy::__len__(xs) << " " << ::tpy::__len__(ys) << "\n";
-    // d1: dict[str, Int32] = {"a": 1}
+    // d1: dict[str, int32] = {"a": 1}
     ::tpy::ordered_map<std::string, int32_t> d1 = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
-    // d2: dict[str, Int32] = {"b": 2}
+    // d2: dict[str, int32] = {"b": 2}
     ::tpy::ordered_map<std::string, int32_t> d2 = ::tpy::ordered_map<std::string, int32_t>({{"b", 2}});
     // pick_dict(False, d1, d2)
     pick_dict(false, d1, d2);
@@ -99,9 +99,9 @@ void main() {
     std::cout << ::tpy::__len__(b1) << " " << ::tpy::__len__(b2) << "\n";
     // print(read_through(True, b1, b2))
     std::cout << read_through(true, b1, b2) << "\n";
-    // a1 = Array[Int32, 2]([1, 1])
+    // a1 = Array[int32, 2]([1, 1])
     std::array<int32_t, 2> a1 = std::array<int32_t, 2>({1, 1});
-    // a2 = Array[Int32, 2]([2, 2])
+    // a2 = Array[int32, 2]([2, 2])
     std::array<int32_t, 2> a2 = std::array<int32_t, 2>({2, 2});
     // pick_array(True, a1, a2)
     pick_array(true, a1, a2);

@@ -1,14 +1,14 @@
-from tpy import Int32, Span, copy
+from tpy import int32, Span, copy
 
-def get_span(data: list[Int32]) -> Span[Int32]:
+def get_span(data: list[int32]) -> Span[int32]:
     return data
 
 def main() -> None:
-    nums: list[Int32] = [Int32(1), Int32(2), Int32(3)]
-    span: Span[Int32] = get_span(nums)
+    nums: list[int32] = [int32(1), int32(2), int32(3)]
+    span: Span[int32] = get_span(nums)
 
     # copy() on a Span should work (creates a view)
-    span_copy: Span[Int32] = copy(span)
+    span_copy: Span[int32] = copy(span)
 
     # Both spans can access the same data
     print(span[0])

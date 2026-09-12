@@ -2,18 +2,18 @@
 # guarded tier distributes alternatives per variant index and has no default
 # block to fold the wildcard into. The guard also makes the Cat arm
 # conditional, so the match reads as non-exhaustive.
-from tpy import Int32
+from tpy import int32
 
 
 class Cat:
-    legs: Int32
+    legs: int32
 
     def __init__(self) -> None:
         self.legs = 4
 
 
 class Dog:
-    legs: Int32
+    legs: int32
 
     def __init__(self) -> None:
         self.legs = 4

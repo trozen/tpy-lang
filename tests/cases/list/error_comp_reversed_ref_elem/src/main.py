@@ -3,16 +3,16 @@
 # reference (BUGS.md#reversed-yields-element-copies), so a mutation through the
 # loop var would never reach the source. The value-element spelling stays
 # admitted (tests/cases/list/comp_combinator_source).
-from tpy import Int32
+from tpy import int32
 
 
 class Node:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
-    def bump(self) -> Int32:
+    def bump(self) -> int32:
         self.v += 1
         return self.v
 

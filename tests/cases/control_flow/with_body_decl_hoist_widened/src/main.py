@@ -5,23 +5,23 @@
 # kept manager's (kept_manager_and_reseat), each draws its own function-top slot
 # and the two are numbered in source order -- the manager first, the reseat
 # second.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class CM:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
-    def __enter__(self) -> Int32:
+    def __enter__(self) -> int32:
         return self.n
 
     def __exit__(self, et, ev, tb) -> None:
         print("exit", self.n)
 
 
-def in_branch(n: Int32) -> Int32:
+def in_branch(n: int32) -> int32:
     if n > 0:
         with CM(n) as c:
             # First decl of `v`, read after the with: predeclared inside the
@@ -38,7 +38,7 @@ def in_loop() -> None:
         print(w)
 
 
-def nonvalue_rvalue_reassigned(n: Int32) -> Int32:
+def nonvalue_rvalue_reassigned(n: int32) -> int32:
     with CM(n) as c:
         # A list first-declared in the body and later rvalue-reassigned: the
         # pointer predecl plus a lazily allocated function-top slot.
@@ -50,7 +50,7 @@ def nonvalue_rvalue_reassigned(n: Int32) -> Int32:
     return len(xs)
 
 
-def nonvalue_in_branch(n: Int32) -> Int32:
+def nonvalue_in_branch(n: int32) -> int32:
     total = 0
     if n > 0:
         with CM(n) as c:
@@ -61,9 +61,9 @@ def nonvalue_in_branch(n: Int32) -> Int32:
 
 
 class Node:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def __enter__(self) -> "Node":
@@ -76,7 +76,7 @@ class Node:
         return Node(self.n + 1)
 
 
-def kept_manager_and_reseat() -> Int32:
+def kept_manager_and_reseat() -> int32:
     with Node(1) as outer:
         with Node(10) as inner:
             print(inner.n)

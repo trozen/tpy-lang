@@ -15,7 +15,7 @@ inline constexpr std::string_view __name__ = "__main__";
 // @nocopy
 // class Acc:
 struct Acc {
-    // total: Int32
+    // total: int32
     int32_t total;
 
     // def __init__(self):
@@ -26,7 +26,7 @@ struct Acc {
     Acc(Acc&&) = default;
     Acc& operator=(Acc&&) = default;
 
-    // def __iadd__(self, n: Int32) -> "Acc":  # tpyc: ok
+    // def __iadd__(self, n: int32) -> "Acc":  # tpyc: ok
     Acc& __iadd__(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Acc";
 };
@@ -40,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Acc& obj) {
 // def __init__(self):
 inline Acc::Acc() : total(0) {}
 
-// def __iadd__(self, n: Int32) -> "Acc":  # tpyc: ok
+// def __iadd__(self, n: int32) -> "Acc":  # tpyc: ok
 inline Acc& Acc::__iadd__(int32_t n) {
     // self.total += n
     this->total = ::tpy::add_check<int32_t>(this->total, n);

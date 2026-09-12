@@ -3,20 +3,20 @@
 
 namespace tpyapp::main {
 
-// count: Int32 = 0
+// count: int32 = 0
 int32_t count{};
 // # 4. BigInt stop mutated — .to_int32() captured once
 // n = 4
 int32_t n{};
-// count2: Int32 = 0
+// count2: int32 = 0
 int32_t count2{};
 
 // # 1. Mutating stop inside loop — should iterate original count
 // def test_stop_snapshot() -> None:
 void test_stop_snapshot() {
-    // n: Int32 = 5
+    // n: int32 = 5
     int32_t n = 5;
-    // count: Int32 = 0
+    // count: int32 = 0
     int32_t count = 0;
     // for i in range(n):
     int32_t __stop_0 = n;
@@ -33,13 +33,13 @@ void test_stop_snapshot() {
 // # 2. Mutating start/stop/step inside loop — all captured once
 // def test_all_args_snapshot() -> None:
 void test_all_args_snapshot() {
-    // start: Int32 = 0
+    // start: int32 = 0
     int32_t start = 0;
-    // stop: Int32 = 10
+    // stop: int32 = 10
     int32_t stop = 10;
-    // step: Int32 = 2
+    // step: int32 = 2
     int32_t step = 2;
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for i in range(start, stop, step):
     int32_t __start_0 = start;
@@ -62,7 +62,7 @@ void test_all_args_snapshot() {
 }
 
 // # 3. Function call in stop — evaluated once, not per-iteration
-// def get_stop(n: Int32) -> Int32:
+// def get_stop(n: int32) -> int32:
 int32_t get_stop(int32_t n) {
     // print(n)  # side effect to verify call count
     std::cout << n << "\n";
@@ -75,7 +75,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // count: Int32 = 0
+    // count: int32 = 0
     count = 0;
     // for i in range(get_stop(3)):
     int32_t __stop_0 = get_stop(3);
@@ -88,7 +88,7 @@ void __tpy_init() {
     // # 4. BigInt stop mutated — .to_int32() captured once
     // n = 4
     n = 4;
-    // count2: Int32 = 0
+    // count2: int32 = 0
     count2 = 0;
     // for i in range(n):
     int32_t __stop_1 = n;

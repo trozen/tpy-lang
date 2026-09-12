@@ -1,9 +1,9 @@
 # Error: with statement on a type that has no __enter__/__exit__
-from tpy import Int32
+from tpy import int32
 
 
 class Plain:
-    x: Int32
+    x: int32
 
 
 def main() -> None:

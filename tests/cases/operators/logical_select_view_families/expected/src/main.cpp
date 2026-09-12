@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def pick(a: bytes, b: bytes) -> Int32:
+// def pick(a: bytes, b: bytes) -> int32:
 int32_t pick(::tpy::BytesView a, ::tpy::BytesView b) {
     // # Both operands are PARAMS, so both spell `std::span<const uint8_t>` at
     // # runtime although their resolved type is the owned `bytes`; the select
@@ -13,7 +13,7 @@ int32_t pick(::tpy::BytesView a, ::tpy::BytesView b) {
     return ::tpy::__len__(((!a.empty()) ? a : b));
 }
 
-// def pick_local(a: bytes, b: bytes) -> Int32:
+// def pick_local(a: bytes, b: bytes) -> int32:
 int32_t pick_local(::tpy::BytesView a, ::tpy::BytesView b) {
     // # The same span-spelled select at a LOCAL sink: the local keeps the view,
     // # so no owning conversion is taken here.
@@ -23,7 +23,7 @@ int32_t pick_local(::tpy::BytesView a, ::tpy::BytesView b) {
     return ::tpy::__len__(v);
 }
 
-// def pick_rebound(a: bytes, b: bytes) -> Int32:
+// def pick_rebound(a: bytes, b: bytes) -> int32:
 int32_t pick_rebound(::tpy::BytesView a, ::tpy::BytesView __param_b) {
     ::tpy::Bytes b = ::tpy::Bytes(__param_b);
     // # A REBOUND `bytes` param is still a view for the select's purposes, so
@@ -76,11 +76,11 @@ void main() {
     std::cout << ::tpy::BytesPrinter(pick_owned(::tpy::BytesView{}, ::tpy::bytes_literal("ab", 2))) << "\n";
     // xs = [1, 2, 3]
     std::array<int32_t, 3> xs = {1, 2, 3};
-    // ys: list[Int32] = []
+    // ys: list[int32] = []
     std::vector<int32_t> ys = std::vector<int32_t>{};
-    // s = Span[Int32](xs)
+    // s = Span[int32](xs)
     std::span<int32_t> s = std::span<int32_t>(xs);
-    // t = Span[Int32](ys)
+    // t = Span[int32](ys)
     std::span<int32_t> t = std::span<int32_t>(ys);
     // # Span: the same select, tested with __len__ rather than .empty().
     // u = t or s  # tpyc: ok

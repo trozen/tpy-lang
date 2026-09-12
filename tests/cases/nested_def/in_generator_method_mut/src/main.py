@@ -2,17 +2,17 @@
 # frame must classify non-const and the mutation is visible on the
 # caller's object after iteration.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
 class Tally:
-    total: Int32
+    total: int32
 
     def __init__(self) -> None:
         self.total = 0
 
-    def steps(self, k: Int32) -> Iterator[Int32]:
-        def push(v: Int32) -> None:
+    def steps(self, k: int32) -> Iterator[int32]:
+        def push(v: int32) -> None:
             self.total += v
 
         for i in range(k):

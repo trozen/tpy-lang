@@ -6,17 +6,17 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // # Iterable[Int32] via list
-    // xs: list[Int32] = [10, 20, 30]
+    // # Iterable[int32] via list
+    // xs: list[int32] = [10, 20, 30]
     std::vector<int32_t> xs = {10, 20, 30};
     // print(bytes(xs))
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_from_int_iterable(xs)) << "\n";
-    // # Iterable[UInt8] via list
-    // ys: list[UInt8] = [1, 2, 3]
+    // # Iterable[uint8] via list
+    // ys: list[uint8] = [1, 2, 3]
     std::vector<uint8_t> ys = {1, 2, 3};
     // print(bytes(ys))
     std::cout << ::tpy::BytesPrinter(::tpy::construct<::tpy::Bytes>(ys)) << "\n";
-    // # Generator expression of Int32 (the original user case from the REPL)
+    // # Generator expression of int32 (the original user case from the REPL)
     // print(bytes(x * 2 for x in xs))
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_from_int_iterable([&xs]() {
         auto& __src = xs;
@@ -46,14 +46,14 @@ void main() {
             }
         );
     }())) << "\n";
-    // # bytearray.extend with Int32 iterable
+    // # bytearray.extend with int32 iterable
     // ba = bytearray()
     ::tpy::ByteArray ba = ::tpy::ByteArray();
     // ba.extend(xs)
     ::tpy::bytes_extend_int_iterable(ba, xs);
     // print(ba)
     std::cout << ::tpy::ByteArrayPrinter(ba) << "\n";
-    // # bytearray.extend with UInt8 iterable
+    // # bytearray.extend with uint8 iterable
     // ba.extend(ys)
     ::tpy::extend(ba, ys);
     // print(ba)
@@ -65,7 +65,7 @@ void main() {
     ::tpy::extend(ba, other);
     // print(ba)
     std::cout << ::tpy::ByteArrayPrinter(ba) << "\n";
-    // # bytearray.extend with a generator of UInt8 (exercises the __next__ fallback
+    // # bytearray.extend with a generator of uint8 (exercises the __next__ fallback
     // # in tpy::extend since generators aren't std::ranges::input_range).
     // ba.extend(v for v in ys)
     ::tpy::extend(ba, [&ys]() {

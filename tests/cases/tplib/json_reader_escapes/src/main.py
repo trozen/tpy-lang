@@ -1,5 +1,5 @@
 # Test JSON escape handling: \b, \f, \uXXXX in reader; control char escaping in writer.
-from tpy import Int32, error_return
+from tpy import int32, error_return
 from tplib.json import JsonError, JsonReader, JsonWriter
 
 @error_return(JsonError)

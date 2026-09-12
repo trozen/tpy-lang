@@ -16,7 +16,7 @@ void main();
 
 // class Inner:
 struct Inner {
-    // value: Int32
+    // value: int32
     int32_t value;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.Inner";
@@ -36,7 +36,7 @@ struct Outer {
     Outer() = default;
     explicit Outer(Inner&& inner);
 
-    // def get_value(self) -> Int32:
+    // def get_value(self) -> int32:
     int32_t get_value() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Outer";
 };
@@ -50,7 +50,7 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
 // def __init__(self, inner: Own[Inner]):
 inline Outer::Outer(Inner&& inner) : inner(std::move(inner)) {}
 
-// def get_value(self) -> Int32:
+// def get_value(self) -> int32:
 inline int32_t Outer::get_value() const {
     // return self.inner.value
     return this->inner.value;

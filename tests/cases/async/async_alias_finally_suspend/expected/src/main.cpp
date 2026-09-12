@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def make() -> Own[list[Int32]]:
+// async def make() -> Own[list[int32]]:
 ::tpystd::tpy::Poll<std::vector<int32_t>> __coro_make::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -64,12 +64,12 @@ namespace tpyapp::main {
 }
 
 
-// async def make() -> Own[list[Int32]]:
+// async def make() -> Own[list[int32]]:
 __coro_make make() {
     return __coro_make();
 }
 
-// async def driver() -> Int32:
+// async def driver() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_driver::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -94,7 +94,7 @@ __coro_make make() {
 }
 
 
-// async def driver() -> Int32:
+// async def driver() -> int32:
 __coro_driver driver() {
     return __coro_driver();
 }

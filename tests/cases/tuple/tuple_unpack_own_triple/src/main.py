@@ -1,13 +1,13 @@
 # Three-element all-Own tuple unpack: every target is moved out of the
 # consumed temporary and moved onward.
-from tpy import Own, nocopy, Int32
+from tpy import Own, nocopy, int32
 
 
 @nocopy
 class Counter:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 

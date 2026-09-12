@@ -36,7 +36,7 @@ __coro_driver driver() {
     return __coro_driver();
 }
 
-// async def last_n(self) -> Int32:
+// async def last_n(self) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_Container_last_n::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {

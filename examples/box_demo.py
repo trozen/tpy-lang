@@ -1,14 +1,14 @@
 # Box example: using tplib's heap-allocated owning container.
 from dataclasses import dataclass
-from tpy import Int32, Own, dynamic
+from tpy import int32, Own, dynamic
 from tplib import Box
 from typing import Protocol
 
 
 @dataclass
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 
 class Tag:
@@ -50,20 +50,20 @@ class Square(Shape):
 
 
 def main() -> None:
-    # --- Basic usage with Int32 ---
-    b = Box(Int32(42))
+    # --- Basic usage with int32 ---
+    b = Box(int32(42))
     print(b)                          # Box(42)
-    b.set(Int32(100))
+    b.set(int32(100))
     print("after set:", b)            # Box(100)
 
     # --- Clone (Box is non-copyable, clone is explicit) ---
     c = b.clone()
-    c.set(Int32(999))
+    c.set(int32(999))
     print("original:", b)             # Box(100) (unchanged)
     print("clone:", c)                # Box(999)
 
     # --- take() consumes the box, returning the owned value ---
-    val: Int32 = c.take()
+    val: int32 = c.take()
     print("taken:", val)              # 999
     # c is consumed here -- any further use would be a compile error
 
@@ -80,7 +80,7 @@ def main() -> None:
     print("taken point:", pt.x, pt.y) # 3 4
 
     # --- Temporaries work too ---
-    print("temp:", Box(Int32(77)).take())  # 77
+    print("temp:", Box(int32(77)).take())  # 77
 
     # --- Covariant: Box[Circle] -> Box[Shape] ---
     print_area(Box(Circle(5.0)))      # 78.5

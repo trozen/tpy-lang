@@ -1,5 +1,5 @@
 # Deferred generic inference: method returning unresolved T before any constraining call
-from tpy import Int32
+from tpy import int32
 
 class Container[T]:
     val: T

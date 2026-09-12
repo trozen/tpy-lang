@@ -4,26 +4,26 @@
 namespace tpyapp::main {
 
 
-// def to_str(x: Int32) -> str:
+// def to_str(x: int32) -> str:
 std::string to_str(int32_t x) {
     // return str(x)
     return ::tpy::fixed_to_str<int32_t>(x);
 }
 
-// def double(x: Int32) -> Int32:
+// def double(x: int32) -> int32:
 int32_t double_(int32_t x) {
     // return x * 2
     return (::tpy::mul_check<int32_t>(x, 2));
 }
 
-// def apply_callable(f: Callable[[Int32], Int32], x: Int32) -> Int32:
+// def apply_callable(f: Callable[[int32], int32], x: int32) -> int32:
 int32_t apply_callable(const std::function<int32_t(int32_t)>& f, int32_t x) {
     // return f(x)
     return f(x);
 }
 
 // # Return Callable wrapping a named function
-// def get_doubler() -> Callable[[Int32], Int32]:
+// def get_doubler() -> Callable[[int32], int32]:
 std::function<int32_t(int32_t)> get_doubler() {
     // return double
     return double_;

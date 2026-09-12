@@ -21,14 +21,14 @@ void main();
 
 // class CM:
 struct CM {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     CM() = default;
     explicit CM(int32_t n);
 
-    // def __enter__(self) -> Int32:
+    // def __enter__(self) -> int32:
     int32_t __enter__() const;
 
     // def __exit__(self, et, ev, tb) -> None:
@@ -43,10 +43,10 @@ inline std::ostream& operator<<(std::ostream& os, const CM& obj) {
 
 // class Node:
 struct Node {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Node() = default;
     explicit Node(int32_t n);
 
@@ -67,10 +67,10 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 }
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline CM::CM(int32_t n) : n(n) {}
 
-// def __enter__(self) -> Int32:
+// def __enter__(self) -> int32:
 inline int32_t CM::__enter__() const {
     // return self.n
     return this->n;
@@ -82,7 +82,7 @@ inline void CM::__exit__(std::monostate et, const ::tpy::BaseException* ev, std:
     std::cout << "exit" << " " << this->n << "\n";
 }
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Node::Node(int32_t n) : n(n) {}
 
 // def __enter__(self) -> "Node":

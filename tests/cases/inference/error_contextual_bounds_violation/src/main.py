@@ -1,9 +1,9 @@
 # Contextual inference respects type parameter bounds.
-from tpy import Int32
+from tpy import int32
 from typing import Sized
 
 class C[T: Sized]:
     val: T
 
 def main():
-    x: C[Int32] = C()  # tpyc: error(/does not satisfy bound/)
+    x: C[int32] = C()  # tpyc: error(/does not satisfy bound/)

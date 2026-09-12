@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // b = Box[Int32](Int32(10))
+    // b = Box[int32](int32(10))
     Box<int32_t> b = Box<int32_t>(10);
     // r1 = b.transform(42)
     int32_t r1 = b.transform<int32_t>(42);

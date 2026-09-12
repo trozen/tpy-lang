@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def make() -> tuple[Own[A], Int32]:
+// def make() -> tuple[Own[A], int32]:
 std::tuple<A, int32_t> make() {
     // return (A(5), 7)
     return std::tuple<A, int32_t>{A(5), 7};
 }
 
-// def consume(p: tuple[Own[A], Int32]) -> Int32:
+// def consume(p: tuple[Own[A], int32]) -> int32:
 int32_t consume(std::tuple<A, int32_t>&& p) {
     // return p[0].n + p[1]
     return (::tpy::add_check<int32_t>(std::get<0>(p).n, std::get<1>(p)));

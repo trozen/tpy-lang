@@ -2,14 +2,14 @@
 # the atomic sibling of rc_dunders. Verifies the Equatable/Comparable/Hashable
 # bounds dispatch through Arc to the underlying T (Arc is @nocopy, so a silent
 # copy would be a compile error rather than a hidden value duplication).
-from tpy import Int32
+from tpy import int32
 from tplib.arc import Arc
 
 
 def main() -> None:
-    a = Arc.new(Int32(10))
-    b = Arc.new(Int32(10))   # same content, different cell
-    c = Arc.new(Int32(20))
+    a = Arc.new(int32(10))
+    b = Arc.new(int32(10))   # same content, different cell
+    c = Arc.new(int32(20))
 
     # Content equality (not identity): a and b are distinct cells, equal content.
     print(a == b)             # True

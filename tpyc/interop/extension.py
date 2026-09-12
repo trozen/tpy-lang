@@ -431,7 +431,7 @@ class ExtensionGenerator:
         """A C++ expression converting the borrowed PyObject* `src` into the TPy
         value of `typ`. Recurses for containers -- the glue, not a C++ template,
         drives the element choice because the C++ type is ambiguous at the leaves
-        (list[bytes] and list[list[UInt8]] share a C++ type) -- and bottoms out
+        (list[bytes] and list[list[uint8]] share a C++ type) -- and bottoms out
         at from_py<leaf>."""
         inner = _boundary_inner(typ)
         elems = _container_element_types(inner)
@@ -851,7 +851,7 @@ class ExtensionGenerator:
         elif is_exposed_enum(ret_typ):
             _cpp, ev = self._enum_cpp_var(ret_typ, sym)
             # Cast to the enum's underlying int (not long long) so enum_to_py
-            # picks the signed/unsigned Py_BuildValue format -- a UInt64 member
+            # picks the signed/unsigned Py_BuildValue format -- a uint64 member
             # above INT64_MAX must cross unsigned, not wrap to a negative.
             und = enum_info_of(_boundary_inner(ret_typ)).underlying_type.to_cpp()
             out.write(f"{ind}return ::tpy::interop::enum_to_py({ev}, "

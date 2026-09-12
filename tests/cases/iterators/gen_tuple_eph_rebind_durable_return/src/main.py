@@ -3,27 +3,27 @@
 # local keeps the borrow C++ shape across rebinds (first init was borrow
 # form), and the storage RHS takes the element-wise lift.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    val: Int32
-    def __init__(self, v: Int32) -> None:
+    val: int32
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 
 class Holder:
-    pair: tuple[Int32, Box]
+    pair: tuple[int32, Box]
     def __init__(self, b: Box) -> None:
         self.pair = (44, b)
 
 
-def gen() -> Iterator[tuple[Int32, Box]]:
-    items: list[tuple[Int32, Box]] = [(1, Box(5))]
+def gen() -> Iterator[tuple[int32, Box]]:
+    items: list[tuple[int32, Box]] = [(1, Box(5))]
     yield items[0]
 
 
-def pick(h: Holder) -> tuple[Int32, Box]:
+def pick(h: Holder) -> tuple[int32, Box]:
     for p in gen():
         q = p
         q = h.pair

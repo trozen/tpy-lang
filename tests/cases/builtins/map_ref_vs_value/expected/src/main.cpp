@@ -16,7 +16,7 @@ Point make_new(const Point& p) {
     return Point((::tpy::mul_check<int32_t>(p.x, 2)), (::tpy::mul_check<int32_t>(p.y, 2)));
 }
 
-// def set_x(p: Point, new_x: Int32) -> Point:
+// def set_x(p: Point, new_x: int32) -> Point:
 Point& set_x(Point& p, int32_t new_x) {
     // p.x = new_x
     p.x = new_x;
@@ -62,7 +62,7 @@ void main() {
     std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
     // print(pts[1].x)  # 103 (unchanged)
     std::cout << ::tpy::__getitem__(pts, 1).x << "\n";
-    // # Multi-iterable: ref Point + value Int32
+    // # Multi-iterable: ref Point + value int32
     // vals = [10, 20]
     std::array<int32_t, 2> vals = {10, 20};
     // for p in map(set_x, pts, vals):

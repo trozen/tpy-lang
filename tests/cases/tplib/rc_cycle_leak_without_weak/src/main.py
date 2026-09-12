@@ -3,7 +3,7 @@
 # edges as strong and demonstrates __del__ never fires for either node.
 # Documents that Weak is the recommended fix, not an optional polish.
 from __future__ import annotations
-from tpy import Int32
+from tpy import int32
 from tplib import Rc
 
 

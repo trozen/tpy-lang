@@ -76,7 +76,7 @@ def _is_safe_widening(actual: TpyType, expected: TpyType) -> bool:
         return False
     if a.signed == b.signed:
         return a.bits < b.bits
-    # Unsigned -> signed: need strictly more bits (e.g. UInt8 -> Int16)
+    # Unsigned -> signed: need strictly more bits (e.g. uint8 -> int16)
     if not a.signed and b.signed:
         return a.bits < b.bits
     return False
@@ -151,7 +151,7 @@ class Coercion:
     # Lossless widening (actual->expected) at a container element position:
     # iterating actual yields values that widen implicitly into expected.
     # "Lossless" follows Python/CPython's informal notion: large fixed-ints
-    # to Float32 and BigInt to float/Float32 lose mantissa precision but are
+    # to float32 and BigInt to float/float32 lose mantissa precision but are
     # still considered widenings at this position (same as implicit int->float
     # promotion in Python arithmetic).
     widening_safe: bool = False
@@ -210,7 +210,7 @@ COERCIONS: list[Coercion] = [
         to_type=is_big_int_type,
     ),
 
-    # Widening between fixed-width integers (e.g. Int8 -> Int32, UInt8 -> Int16)
+    # Widening between fixed-width integers (e.g. int8 -> int32, uint8 -> int16)
     Coercion(
         name="fixed_int_widening",
         from_type=is_fixed_int_type,
@@ -273,7 +273,7 @@ COERCIONS: list[Coercion] = [
         codegen=lambda e, _a, _b, _c: e,  # identity: gen_expr provides 'f' suffix
     ),
 
-    # Float32 coercions (widening to Float32)
+    # float32 coercions (widening to float32)
     Coercion(
         name="int_literal_to_float32",
         from_type=_is(IntLiteralType),
@@ -294,7 +294,7 @@ COERCIONS: list[Coercion] = [
         widening_safe=True,
         codegen=lambda e, _a, _b, _c: f"static_cast<float>({e})",
     ),
-    # Float32 -> float (widening, lossless)
+    # float32 -> float (widening, lossless)
     Coercion(
         name="float32_to_float",
         from_type=is_float32_type,
@@ -302,7 +302,7 @@ COERCIONS: list[Coercion] = [
         widening_safe=True,
         codegen=lambda e, _a, _b, _c: f"static_cast<double>({e})",
     ),
-    # float -> Float32 (narrowing, but allowed for convenience -- matches C++ behavior)
+    # float -> float32 (narrowing, but allowed for convenience -- matches C++ behavior)
     Coercion(
         name="float_to_float32",
         from_type=is_float64_type,
@@ -310,21 +310,21 @@ COERCIONS: list[Coercion] = [
         codegen=lambda e, _a, _b, _c: f"static_cast<float>({e})",
     ),
 
-    # Char to str coercion
+    # char to str coercion
     Coercion(
         name="char_to_str",
         from_type=is_char_type,
         to_type=is_str_type,
         codegen=lambda e, _a, _b, _c: f"std::string(::tpy::char_to_str({e}))",
     ),
-    # Char to String coercion
+    # char to String coercion
     Coercion(
         name="char_to_string",
         from_type=is_char_type,
         to_type=is_string_type,
         codegen=lambda e, _a, _b, _c: f"::tpy::String(1, {e})",
     ),
-    # Char to StrView coercion
+    # char to StrView coercion
     Coercion(
         name="char_to_strview",
         from_type=is_char_type,
@@ -612,7 +612,7 @@ def is_protocol_type_arg_widening(
 
     Used for container conformance (e.g. list[A] satisfies Iterable[B]) where
     the caller iterates actual and each element implicitly widens into expected.
-    Narrowing is rejected (list[Int32] must NOT satisfy Iterable[UInt8]).
+    Narrowing is rejected (list[int32] must NOT satisfy Iterable[uint8]).
 
     At this position `actual` is an element type of a container, never a scalar.
     IntLiteralType's concrete value is therefore meaningless (it describes the

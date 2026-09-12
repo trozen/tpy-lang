@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def close(h: Own[Handle]) -> Int32:
+// def close(h: Own[Handle]) -> int32:
 int32_t close(Handle&& h) {
     // return h.fd
     return h.fd;
 }
 
-// def forward(h: Own[Handle]) -> Int32:
+// def forward(h: Own[Handle]) -> int32:
 int32_t forward(Handle&& h) {
     // return close(h)  # tpyc: ok
     return close(std::move(h));

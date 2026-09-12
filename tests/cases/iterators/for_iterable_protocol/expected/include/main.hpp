@@ -18,18 +18,18 @@ void main();
 
 // class CounterIter:
 struct CounterIter {
-    // current: Int32
+    // current: int32
     int32_t current;
-    // limit: Int32
+    // limit: int32
     int32_t limit;
 
-    // def __init__(self, start: Int32, limit: Int32) -> None:
+    // def __init__(self, start: int32, limit: int32) -> None:
     CounterIter() = default;
     explicit CounterIter(int32_t start, int32_t limit);
 
     auto& __iter__() { return *this; }
 
-    // def __next__(self) -> Int32:
+    // def __next__(self) -> int32:
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     static constexpr std::string_view __tpy_class_name__ = "__main__.CounterIter";
 };
@@ -41,12 +41,12 @@ inline std::ostream& operator<<(std::ostream& os, const CounterIter& obj) {
 
 // class Counter:
 struct Counter {
-    // start: Int32
+    // start: int32
     int32_t start;
-    // limit: Int32
+    // limit: int32
     int32_t limit;
 
-    // def __init__(self, start: Int32, limit: Int32) -> None:
+    // def __init__(self, start: int32, limit: int32) -> None:
     Counter() = default;
     explicit Counter(int32_t start, int32_t limit);
 
@@ -61,10 +61,10 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 }
 
 
-// def __init__(self, start: Int32, limit: Int32) -> None:
+// def __init__(self, start: int32, limit: int32) -> None:
 inline CounterIter::CounterIter(int32_t start, int32_t limit) : current(start), limit(limit) {}
 
-// def __next__(self) -> Int32:
+// def __next__(self) -> int32:
 inline std::expected<int32_t, ::tpy::StopIteration> CounterIter::__next__() {
     // if self.current < self.limit:
     if ((this->current < this->limit)) {
@@ -79,7 +79,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> CounterIter::__next__() {
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }
 
-// def __init__(self, start: Int32, limit: Int32) -> None:
+// def __init__(self, start: int32, limit: int32) -> None:
 inline Counter::Counter(int32_t start, int32_t limit) : start(start), limit(limit) {}
 
 // def __iter__(self) -> Own[CounterIter]:
@@ -87,10 +87,10 @@ inline CounterIter Counter::__iter__() const {
     // return CounterIter(self.start, self.limit)
     return CounterIter(this->start, this->limit);
 }
-// def sum_items(items: Iterable[Int32]) -> Int32:
+// def sum_items(items: Iterable[int32]) -> int32:
 template<::tpystd::typing::Iterable<int32_t> T_items>
 int32_t sum_items(T_items& items) {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for x in items:
     auto& __src_0 = items;

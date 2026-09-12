@@ -1,7 +1,7 @@
 # *args combined with keyword-only params
-from tpy import Int32
+from tpy import int32
 
-def f(*args: Int32, sep: str = ", ") -> str:
+def f(*args: int32, sep: str = ", ") -> str:
     result = ""
     for i in range(len(args)):
         if i > 0:

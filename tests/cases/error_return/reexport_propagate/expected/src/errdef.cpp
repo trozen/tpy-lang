@@ -5,7 +5,7 @@ namespace tpyapp::errdef {
 
 
 // @error_return(AppError)
-// def check(n: Int32) -> Int32:
+// def check(n: int32) -> int32:
 std::expected<int32_t, AppError> check(int32_t n) {
     // if n < 0:
     if ((n < 0)) {

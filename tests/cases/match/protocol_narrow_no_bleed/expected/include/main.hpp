@@ -16,10 +16,10 @@ template<typename T_items>
 int32_t process(T_items& items, std::string_view tag);
 void main();
 
-// def iter_sum(items: Iterable[Int32]) -> Int32:
+// def iter_sum(items: Iterable[int32]) -> int32:
 template<::tpystd::typing::Iterable<int32_t> T_items>
 int32_t iter_sum(T_items& items) {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for y in items:
     auto& __src_0 = items;
@@ -34,7 +34,7 @@ int32_t iter_sum(T_items& items) {
     // return total
     return total;
 }
-// def process(items: Spannable[Int32] | Iterable[Int32], tag: str) -> Int32:
+// def process(items: Spannable[int32] | Iterable[int32], tag: str) -> int32:
 template<typename T_items>
   requires (::tpystd::typing::Iterable<T_items, int32_t> || ::tpystd::tpy::Spannable<T_items, int32_t>)
 int32_t process(T_items& items, std::string_view tag) {
@@ -49,7 +49,7 @@ int32_t process(T_items& items, std::string_view tag) {
         if (!(::tpystd::tpy::Spannable<T_items, int32_t>)) ::tpy::raise_assertion_error();
         // s = span(items)
         std::span<const int32_t> s = ::tpy::as_span(items);
-        // total: Int32 = 0
+        // total: int32 = 0
         int32_t total = 0;
         // for x in s:
         auto& __obj_0 = s;

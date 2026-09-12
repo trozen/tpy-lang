@@ -1,8 +1,8 @@
 # Unknown type names are rejected during semantic analysis.
-from tpy import Int32
+from tpy import int32
 
 class Foo:
-    x: Int32
+    x: int32
 
 def main() -> None:
     bar: UnknownType = Foo(1)  # tpyc: error(/Unknown type: UnknownType/)

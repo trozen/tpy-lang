@@ -1,14 +1,14 @@
 # `cls` carries no type -- it names the defining class -- so annotating it is
 # rejected (the slot a future `type[T]` would use).
-from tpy import Int32
+from tpy import int32
 
 
 class P:
-    def __init__(self, x: Int32):
+    def __init__(self, x: int32):
         self.x = x
 
     @classmethod
-    def make(cls: type) -> Int32:  # tpyc: error(/'cls' cannot be annotated/)
+    def make(cls: type) -> int32:  # tpyc: error(/'cls' cannot be annotated/)
         return 1
 
 

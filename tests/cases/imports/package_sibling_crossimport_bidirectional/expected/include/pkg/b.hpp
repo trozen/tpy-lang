@@ -21,7 +21,7 @@ int32_t use_a(const ::tpyapp::pkg::a::A& a);
 struct B {
 
 
-    // def kind(self) -> Int32:
+    // def kind(self) -> int32:
     int32_t kind() const;
     static constexpr std::string_view __tpy_class_name__ = "pkg.b.B";
 };

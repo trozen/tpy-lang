@@ -51,7 +51,7 @@ template<::tpy::ValueType T>
 struct Ring {
     // data: Array[T, 4]
     std::array<T, 4> data;
-    // size: Int32
+    // size: int32
     int32_t size;
 
     // def __init__(self, fill: T) -> None:
@@ -66,7 +66,7 @@ struct Ring {
         this->size = ::tpy::add_check<int32_t>(this->size, 1);
     }
 
-    // def get(self, i: Int32) -> T:
+    // def get(self, i: int32) -> T:
     ::tpy::val_or_cref_t<T> get(int32_t i) const {
         // return self.data[i]
         return ::tpy::__getitem__(this->data, i);

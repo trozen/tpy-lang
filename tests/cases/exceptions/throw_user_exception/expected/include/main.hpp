@@ -16,12 +16,12 @@ void main();
 
 // class AppError(Exception):
 struct AppError : ::tpy::Exception {
-    // code: Int32
+    // code: int32
     int32_t code;
     // detail: str
     std::string detail;
 
-    // def __init__(self, code: Int32, detail: str) -> None:
+    // def __init__(self, code: int32, detail: str) -> None:
     AppError() = default;
     explicit AppError(int32_t code, std::string_view detail);
 
@@ -37,7 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const AppError& obj) {
 }
 
 
-// def __init__(self, code: Int32, detail: str) -> None:
+// def __init__(self, code: int32, detail: str) -> None:
 inline AppError::AppError(int32_t code, std::string_view detail) : code(code), detail(detail) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -1,5 +1,5 @@
 # Old-style type alias with builtin type names
-from tpy import Int32
+from tpy import int32
 
 
 Num = int | bool

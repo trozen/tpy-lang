@@ -2,11 +2,11 @@
 # `__anext__` awaits before each iteration, so field-path narrow facts
 # established outside die at the suspension.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
 class Ticks:
-    n: Int32
+    n: int32
 
     def __init__(self) -> None:
         self.n = 0
@@ -14,7 +14,7 @@ class Ticks:
     def __aiter__(self) -> "Ticks":
         return self
 
-    async def __anext__(self) -> Int32:
+    async def __anext__(self) -> int32:
         await asyncio.sleep(0)
         if self.n >= 2:
             raise StopAsyncIteration
@@ -23,12 +23,12 @@ class Ticks:
 
 
 class Holder:
-    f: Int32 | None
+    f: int32 | None
 
     def __init__(self) -> None:
         self.f = 3
 
-    async def read_in_for(self, t: Ticks) -> Int32:
+    async def read_in_for(self, t: Ticks) -> int32:
         if self.f is not None:
             async for _i in t:
                 return self.f  # tpyc: error(/Type mismatch in return value/)

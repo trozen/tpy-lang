@@ -16,12 +16,12 @@ void main();
 
 // class Holder:
 struct Holder {
-    // data: list[Int32]
+    // data: list[int32]
     std::vector<int32_t> data;
-    // cb: Callable[[list[Int32]], None]
+    // cb: Callable[[list[int32]], None]
     std::function<void(std::vector<int32_t>&)> cb;
 
-    // def __init__(self, cb: Callable[[list[Int32]], None]) -> None:
+    // def __init__(self, cb: Callable[[list[int32]], None]) -> None:
     explicit Holder(std::function<void(std::vector<int32_t>&)> cb);
 
     // def poke(self) -> None:
@@ -35,7 +35,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 }
 
 
-// def __init__(self, cb: Callable[[list[Int32]], None]) -> None:
+// def __init__(self, cb: Callable[[list[int32]], None]) -> None:
 inline Holder::Holder(std::function<void(std::vector<int32_t>&)> cb) : data(std::vector<int32_t>{0}), cb(cb) {}
 
 // def poke(self) -> None:

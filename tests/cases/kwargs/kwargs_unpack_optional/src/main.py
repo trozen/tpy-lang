@@ -1,10 +1,10 @@
 # **kwargs with total=False TypedDict: optional keyword arguments
 from typing import TypedDict, Unpack
-from tpy import Int32
+from tpy import int32
 
 class Config(TypedDict, total=False):
     host: str
-    port: Int32
+    port: int32
 
 def start(**kwargs: Unpack[Config]) -> None:
     print(kwargs["host"])
@@ -15,7 +15,7 @@ def start_safe(**kwargs: Unpack[Config]) -> None:
 
 def main() -> None:
     # All fields provided
-    start(host="localhost", port=Int32(8080))
+    start(host="localhost", port=int32(8080))
     # Partial -- only host (port access would panic)
     start_safe(host="example.com")
     # Zero kwargs

@@ -11,13 +11,13 @@ Helper::Helper() {
     // def __init__(self) -> None: pass
 }
 
-// def work(self) -> Int32:
+// def work(self) -> int32:
 int32_t Helper::work() const {
     // return 5
     return 5;
 }
 
-// def caller(self, x: Other) -> Int32:
+// def caller(self, x: Other) -> int32:
 int32_t Helper::caller(const ::tpyapp::a::A& x) const {
     // # Uses the cycle-peer record under its alias and dispatches
     // # a method call on it -- exercises both alias resolution and

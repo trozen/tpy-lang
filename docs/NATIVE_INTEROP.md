@@ -66,11 +66,11 @@ def calc_force(mass: float, accel: float) -> float: ...
 
 # C function
 @native("SDL_Init", binding="C")
-def sdl_init(flags: Int32) -> Int32: ...
+def sdl_init(flags: int32) -> int32: ...
 
 # Bare @native -- uses Python name as C++ name
 @native
-def global_func(x: Int32) -> Int32: ...
+def global_func(x: int32) -> int32: ...
 ```
 
 Functions must have a `...` (stub) body. The optional string argument specifies the C/C++ symbol name. See [Rename resolution](#rename-resolution) below for how the string interacts with `cpp_namespace`.
@@ -95,10 +95,10 @@ class Vec2:
 # C struct (aggregate initialization)
 @native("SDL_Rect", binding="C")
 class Rect:
-    x: Int32
-    y: Int32
-    w: Int32
-    h: Int32
+    x: int32
+    y: int32
+    w: int32
+    h: int32
 
 # Opaque handle -- no fields
 @native("SDL_Window")
@@ -127,10 +127,10 @@ The class-level `@native(name)` is enough for both `MyClass(args)` (call form) a
 @native("::tpy::Bytes")
 class bytes:
     @native("tpy::bytes_from_size", function=True)
-    def __init__(self, n: Int32) -> None: ...
+    def __init__(self, n: int32) -> None: ...
 
     @native("tpy::bytes_from_int_iterable", function=True)
-    def __init__(self, x: Iterable[Int32]) -> None: ...
+    def __init__(self, x: Iterable[int32]) -> None: ...
 ```
 
 Generated code: `bytes(10)` -> `tpy::bytes_from_size(10)`. Multiple `__init__` overloads each pick their own factory. Reach for this when the class's natural C++ constructor doesn't exist or doesn't match Python's call shape; otherwise the bare class-level `@native` is sufficient.
@@ -143,15 +143,15 @@ from tpy.extern import native, native_field
 # C++ class: friendlier Python names over m_-prefixed C++ members
 @native
 class Vec2:
-    x: Int32 = native_field("m_x")
-    y: Int32 = native_field("m_y")
+    x: int32 = native_field("m_x")
+    y: int32 = native_field("m_y")
 
 # C struct binding (e.g. under lib/tpy/_bindings/): expose POSIX field names
 # under idiomatic Python names
 @native("sockaddr_in", binding="C")
 class SockAddrIn:
-    family: UInt16 = native_field("sin_family")
-    port:   UInt16 = native_field("sin_port")
+    family: uint16 = native_field("sin_family")
+    port:   uint16 = native_field("sin_port")
 ```
 
 Field reads and writes emit the renamed C/C++ member (`v.x` -> `v.m_x`, `a.port` -> `a.sin_port`). The rename is inherited: accessing the field through a TPy-level subclass of the `@native` class resolves it too (e.g. a user subclass of `OSError` reads `.errno` -> `error_number`); a subclass redeclaring the same field name shadows the rename and binds its own plain member (sema warns). Constructor calls are positional (aggregate init for C structs, constructor args for C++ classes) so the rename does not affect construction. `native_field` is rejected on non-`@native` classes and requires exactly one positional string literal argument.
@@ -162,18 +162,18 @@ Field reads and writes emit the renamed C/C++ member (`v.x` -> `v.m_x`, `a.port`
 from tpy.extern import native_global
 
 # C++ global
-score: Int32 = native_global("engine::score")
+score: int32 = native_global("engine::score")
 
 # C global
-frame_count: Int32 = native_global("DG_FrameCount", binding="C")
+frame_count: int32 = native_global("DG_FrameCount", binding="C")
 
 # C global array (decays to pointer)
-data: Ptr[Int32] = native_global("shared_data", binding="C", array=True)
+data: Ptr[int32] = native_global("shared_data", binding="C", array=True)
 
 # Bare -- uses Python name as the global C++ symbol
 # (native globals emit at :: regardless of the module's cpp_namespace,
 # matching C ABI conventions for externally-linked variables)
-tick: Int32 = native_global()
+tick: int32 = native_global()
 ```
 
 Global imports must be at module level and require a type annotation. Generated C++:
@@ -231,7 +231,7 @@ class Tag(Enum):
 - Only `@native` is allowed on enum classes; other decorators and any `@native` kwargs (`binding=`, `function=`, `cpp_return_type=`) are rejected.
 - `auto()` is idiomatic; `native_member("cpp_name")` is also implicit. Explicit integer values are accepted and are verified against the C++ side via a per-member `static_assert` in the generated `.cpp`. Mixing `auto()`/`native_member()` with explicit integers in the same body is rejected.
 - Nested `@native` enums (inside a class body) are not supported. Declare them at module top level using the fully-qualified C++ name (e.g. `@native("ns::Container::Kind") class Kind(Enum): ...`) -- the qname encodes the C++ nesting, so TPy structure does not need to mirror C++ structure.
-- `IntEnum` with an explicit mixin (`class E(Int8, Enum):`) selects the underlying integer type; it must match the C++ side's underlying type.
+- `IntEnum` with an explicit mixin (`class E(int8, Enum):`) selects the underlying integer type; it must match the C++ side's underlying type.
 - Multiple TPy modules binding to the same C++ enum produce duplicate `EnumUtil<E>` definitions at link time (same constraint as duplicate `@native` records). Declare each binding in one TPy module and import from there.
 
 ### Generic classes
@@ -240,7 +240,7 @@ class Tag(Enum):
 @native("std::vector")
 class StdVector(Generic[T]):
     def push_back(self, val: T) -> None: ...
-    def size(self) -> Int32: ...
+    def size(self) -> int32: ...
 ```
 
 ### Declaring heap indirection: `indirecting=True`
@@ -259,19 +259,19 @@ Used in the stdlib by `list`/`dict`/`set` (see `lib/tpy/tpy/_builtins/_{list,dic
 
 ### Narrowing C++ returns: `cpp_return_type=T`
 
-`@native` declares an exact-match binding to a C++ symbol -- the TPy signature must match the C++ side. When the C++ side returns a wider type than the TPy declared return (e.g. `std::vector::capacity()` returns `size_t`, but the user wants an `Int32` view), use `cpp_return_type=T` to tell codegen the underlying type:
+`@native` declares an exact-match binding to a C++ symbol -- the TPy signature must match the C++ side. When the C++ side returns a wider type than the TPy declared return (e.g. `std::vector::capacity()` returns `size_t`, but the user wants an `int32` view), use `cpp_return_type=T` to tell codegen the underlying type:
 
 ```python
 @native("std::vector")
 class Vec[T]:
     @property
-    @native("capacity", cpp_return_type=UInt64)  # capacity() returns size_t
-    def cap(self) -> Int32: ...
+    @native("capacity", cpp_return_type=uint64)  # capacity() returns size_t
+    def cap(self) -> int32: ...
 
 # Codegen emits:  static_cast<int32_t>(v.capacity())
 ```
 
-Without `cpp_return_type`, the implicit narrowing would trip `-Wconversion` / `-Wsign-conversion` at the use site. With it, codegen wraps the call in `static_cast<DECLARED_TPY_RETURN>(...)` so the conversion is explicit. Works on both methods and free functions. The annotated value is a TPy type name (e.g. `UInt64`); the cast target is always the declared TPy return type.
+Without `cpp_return_type`, the implicit narrowing would trip `-Wconversion` / `-Wsign-conversion` at the use site. With it, codegen wraps the call in `static_cast<DECLARED_TPY_RETURN>(...)` so the conversion is explicit. Works on both methods and free functions. The annotated value is a TPy type name (e.g. `uint64`); the cast target is always the declared TPy return type.
 
 For more involved transformations (computed expressions, multi-step conversions), use `@cpp_template` instead -- it gives full control over the emitted call expression.
 
@@ -286,7 +286,7 @@ For more involved transformations (computed expressions, multi-step conversions)
 
 ```python
 @cpp_template("std::rotl<uint32_t>({0}, {1})")
-def rotl32(x: UInt32, n: Int32) -> UInt32: ...
+def rotl32(x: uint32, n: int32) -> uint32: ...
 ```
 
 To emit a **literal** C++ brace (aggregate-init, a lambda body, a scope, a GCC statement-expression), double it -- `{{` -> `{` and `}}` -> `}`, matching Python's `str.format` convention:
@@ -294,7 +294,7 @@ To emit a **literal** C++ brace (aggregate-init, a lambda body, a scope, a GCC s
 ```python
 # Emits: []() { return a + b; }()
 @cpp_template("[]() {{ return {0} + {1}; }}()")
-def lambda_sum(a: Int32, b: Int32) -> Int32: ...
+def lambda_sum(a: int32, b: int32) -> int32: ...
 ```
 
 A lone unescaped brace (or an out-of-range `{N}`) is a compile-time diagnostic, not an internal error.
@@ -323,7 +323,7 @@ def app_tick(dt: float) -> None:
 
 The function must have a body (not `...`). The optional string argument specifies the C symbol name. `binding="C"` is required.
 
-Every type in the signature must be C-representable -- see "C-linkage signatures" under [Supported types](#supported-types). In particular `str`, `bytes`, containers and TPy classes are rejected; strings and buffers cross as `Ptr[readonly[UInt8]]` and are converted explicitly.
+Every type in the signature must be C-representable -- see "C-linkage signatures" under [Supported types](#supported-types). In particular `str`, `bytes`, containers and TPy classes are rejected; strings and buffers cross as `Ptr[readonly[uint8]]` and are converted explicitly.
 
 Generated C++:
 
@@ -340,12 +340,12 @@ Export a TPy class with C-compatible layout:
 ```python
 @export(binding="C")
 class GameState:
-    score: Int32
-    level: Int32
+    score: int32
+    level: int32
 
     def reset(self) -> None:
-        self.score = Int32(0)
-        self.level = Int32(1)
+        self.score = int32(0)
+        self.level = int32(1)
 ```
 
 Would generate:
@@ -414,7 +414,7 @@ Native entities imported in one module can be used in another via normal Python 
 @native
 class Player:
     name: str
-    score: Int32
+    score: int32
 ```
 
 ```python
@@ -435,11 +435,11 @@ All decorators accept an optional string argument for the C/C++ symbol name:
 
 ```python
 @native("SDL_Init", binding="C")      # Python: sdl_init, C: SDL_Init
-def sdl_init(flags: Int32) -> Int32: ...
+def sdl_init(flags: int32) -> int32: ...
 
 @export("Helper_Add", binding="C")     # Python: helper_add, C: Helper_Add
-def helper_add(x: Int32) -> Int32:
-    return x + Int32(1)
+def helper_add(x: int32) -> int32:
+    return x + int32(1)
 ```
 
 ### Rename resolution
@@ -503,10 +503,10 @@ Native functions can use any type with a direct C++ mapping:
 
 | TPy type | C/C++ type |
 |----------|-----------|
-| `Int8/16/32/64` | `int8_t/16/32/64_t` |
-| `UInt8/16/32/64` | `uint8_t/16/32/64_t` |
-| `float` / `Float64` | `double` |
-| `Float32` | `float` |
+| `int8/16/32/64` | `int8_t/16/32/64_t` |
+| `uint8/16/32/64` | `uint8_t/16/32/64_t` |
+| `float` / `float64` | `double` |
+| `float32` | `float` |
 | `bool` | `bool` |
 | `str` | `std::string` (param: `std::string_view`) |
 | `None` (return) | `void` |
@@ -515,7 +515,7 @@ Native functions can use any type with a direct C++ mapping:
 | `Span[T]` | `std::span<T>` |
 
 **Fixed-width arguments from unbounded values:** converting a BigInt (or any
-wider value) into a fixed-width native argument (`Int64(x)`, `Int32(x)`, ...)
+wider value) into a fixed-width native argument (`int64(x)`, `int32(x)`, ...)
 panics uncatchably when out of range. Stdlib code calling `@native` functions
 must range-check the value and raise the appropriate catchable exception
 BEFORE the conversion -- the same validate-in-BigInt-first discipline used
@@ -527,7 +527,7 @@ guard there was a review-caught uncatchable-panic bug).
 
 The table above is the C++-linkage surface. A `binding="C"` signature -- `@native(binding="C")`, `@export(binding="C")`, `native_global(..., binding="C")` -- is emitted verbatim into an `extern "C"` declaration, so it is restricted further: sema rejects any type a C caller cannot spell.
 
-**Permitted:** fixed-width integers (`Int8`..`UInt64`), `Float32`, `float`, `bool`, `Char`, `Ptr[T]` for any `T` (including `Ptr[None]` -> `void*` and a pointer to a `@native(binding="C")` struct), `@native` enums (the bound C/C++ header owns the spelling), and `None` in return position (`void`). `readonly[...]` around any of these is permitted.
+**Permitted:** fixed-width integers (`int8`..`uint64`), `float32`, `float`, `bool`, `char`, `Ptr[T]` for any `T` (including `Ptr[None]` -> `void*` and a pointer to a `@native(binding="C")` struct), `@native` enums (the bound C/C++ header owns the spelling), and `None` in return position (`void`). `readonly[...]` around any of these is permitted.
 
 **Rejected:** `int` (`BigInt`), `str` / `StrView` / `String`, `bytes` / `bytearray`, `list` / `Span` / `Array`, `tuple`, `Optional`, unions, TPy classes, a plain (non-`@native`) enum, a `@native(binding="C")` struct passed **by value** (it emits `S&`, a C++ reference), `Own[S]` (`S&&`), and `*args`.
 
@@ -537,19 +537,19 @@ Without the gate these emitted C++ types no C header can express (`const ::tpy::
 
 #### Strings and buffers by hand
 
-There is no marshaling layer, so the conversion is explicit and visible in the signature. A C string crosses as `Ptr[readonly[UInt8]]`, converted through `tpy.unsafe`:
+There is no marshaling layer, so the conversion is explicit and visible in the signature. A C string crosses as `Ptr[readonly[uint8]]`, converted through `tpy.unsafe`:
 
 ```python
-from tpy import Int32, Ptr, String, UInt8, readonly
+from tpy import int32, Ptr, String, uint8, readonly
 from tpy.extern import export, native
 from tpy.unsafe import unsafe_cstr, unsafe_str_from_cstr
 
 @export(binding="C")
-def greet(name: Ptr[readonly[UInt8]]) -> None:
+def greet(name: Ptr[readonly[uint8]]) -> None:
     print(unsafe_str_from_cstr(name))    # const char* -> owned str
 
 @native("puts", binding="C")
-def puts(s: Ptr[readonly[UInt8]]) -> Int32: ...
+def puts(s: Ptr[readonly[uint8]]) -> int32: ...
 
 def shout(msg: String) -> None:
     puts(unsafe_cstr(msg))               # String -> null-terminated const char*
@@ -557,7 +557,7 @@ def shout(msg: String) -> None:
 
 `unsafe_cstr` takes `String` (owned), not `str`, because only the owned form carries the null terminator `std::string` guarantees; `unsafe_ptr`'s `str` overload points into view storage that has none. The returned pointer is valid only while the `String` lives, so bind the string to a name before the call rather than building it inline.
 
-A byte buffer or a sequence takes the ordinary C shape, written out: `Ptr[readonly[UInt8]]` / `Ptr[T]` plus an explicit length parameter. Generating that shape (and the return direction, which needs an ownership policy) is the deferred marshaling work tracked in `TODO.md`.
+A byte buffer or a sequence takes the ordinary C shape, written out: `Ptr[readonly[uint8]]` / `Ptr[T]` plus an explicit length parameter. Generating that shape (and the return direction, which needs an ownership policy) is the deferred marshaling work tracked in `TODO.md`.
 
 ---
 
@@ -599,8 +599,8 @@ Pass TPy functions as C callbacks:
 
 ```python
 @native("qsort", binding="C")
-def qsort(base: Ptr[None], count: Int32, size: Int32,
-           cmp: CCallback[[Ptr[readonly[None]], Ptr[readonly[None]]], Int32]) -> None: ...
+def qsort(base: Ptr[None], count: int32, size: int32,
+           cmp: CCallback[[Ptr[readonly[None]], Ptr[readonly[None]]], int32]) -> None: ...
 ```
 
 ### Variadic C functions

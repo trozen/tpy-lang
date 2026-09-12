@@ -15,11 +15,11 @@ void main();
 
 // class Res:
 struct Res {
-    // fd: Int32
+    // fd: int32
     int32_t fd;
     bool __tpy_owned_ = true;
 
-    // def __init__(self, fd: Int32) -> None:
+    // def __init__(self, fd: int32) -> None:
     explicit Res(int32_t fd);
     Res(const Res&) = delete;
     Res& operator=(const Res&) = delete;
@@ -37,7 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const Res& obj) {
 }
 
 
-// def __init__(self, fd: Int32) -> None:
+// def __init__(self, fd: int32) -> None:
 inline Res::Res(int32_t fd) : fd(fd) {}
 
 inline Res::Res(Res&& other) noexcept : fd(std::move(other.fd)) {

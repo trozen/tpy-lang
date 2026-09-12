@@ -1,1 +1,1 @@
-main.py:12: error: Cannot yield tuple local 'pair': element 0 ('Tree[Int32]') owns a freshly constructed value that is yielded by reference and would dangle. Use Own[Tree[Int32]] for this tuple element to yield by value.
+main.py:12: error: Cannot yield tuple local 'pair': element 0 ('Tree[int32]') owns a freshly constructed value that is yielded by reference and would dangle. Use Own[Tree[int32]] for this tuple element to yield by value.

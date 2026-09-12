@@ -1,12 +1,12 @@
 import asyncio
-from tpy import Int32
+from tpy import int32
 
-async def add(x: Int32, y: Int32) -> Int32:
+async def add(x: int32, y: int32) -> int32:
     return x + y
 
-async def compute() -> Int32:
-    a = await add(Int32(3), Int32(4))
-    b = await add(a, Int32(10))
+async def compute() -> int32:
+    a = await add(int32(3), int32(4))
+    b = await add(a, int32(10))
     return b
 
 async def main() -> None:

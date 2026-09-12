@@ -1,5 +1,5 @@
 # while isinstance() condition narrows inside loop body
-from tpy import Int32
+from tpy import int32
 
 class Circle:
     radius: float
@@ -16,7 +16,7 @@ class Rect:
         self.height = height
 
 def drain_circles(s: Circle | Rect) -> None:
-    count: Int32 = 0
+    count: int32 = 0
     while isinstance(s, Circle):
         print(s.radius)
         count += 1

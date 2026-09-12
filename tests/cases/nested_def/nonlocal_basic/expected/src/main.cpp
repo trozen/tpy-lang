@@ -6,9 +6,9 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
-    // def accumulate(x: Int32) -> None:
+    // def accumulate(x: int32) -> None:
     auto accumulate = [&total](int32_t x) {
         // nonlocal total
         // total += x

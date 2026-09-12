@@ -4,27 +4,27 @@
 namespace tpyapp::main {
 
 
-// def use(a: A, k: Int32, f: Float64) -> Int32:
+// def use(a: A, k: int32, f: float64) -> int32:
 int32_t use(A& a, int32_t k, double f) {
     // # Each scalar argument hoists its own variant temp.
     // r = a.tag(k)
-    ::tpy::Union<int32_t, double> __tmp_1 = k;
+    ::tpy::Union<double, int32_t> __tmp_1 = k;
     int32_t r = a.tag(__tmp_1);
     // r = a.tag(f)
-    ::tpy::Union<int32_t, double> __tmp_2 = f;
+    ::tpy::Union<double, int32_t> __tmp_2 = f;
     r = a.tag(__tmp_2);
     // return r
     return r;
 }
 
-// def use_inherited(c: Child, k: Int32) -> Int32:
+// def use_inherited(c: Child, k: int32) -> int32:
 int32_t use_inherited(Child& c, int32_t k) {
     // return c.tag(k)
-    ::tpy::Union<int32_t, double> __tmp_3 = k;
+    ::tpy::Union<double, int32_t> __tmp_3 = k;
     return c.tag(__tmp_3);
 }
 
-// def use_lit(a: A) -> Int32:
+// def use_lit(a: A) -> int32:
 int32_t use_lit(A& a) {
     // # A coerced literal needs no temp.
     // return a.tag(5)

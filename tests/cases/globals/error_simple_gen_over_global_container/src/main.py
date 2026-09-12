@@ -7,12 +7,12 @@
 # local a simple generator CAN iterate is a param, pinned by
 # tests/cases/iterators/gen_proto_param_aliased_local.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 xs = [1, 2, 3]
 
 
-def over_global() -> Iterator[Int32]:  # tpyc: error(/sgen\.iterable_global_slot/)
+def over_global() -> Iterator[int32]:  # tpyc: error(/sgen\.iterable_global_slot/)
     for v in xs:
         yield v
 

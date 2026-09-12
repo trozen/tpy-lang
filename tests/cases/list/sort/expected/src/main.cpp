@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def test_list_sort() -> None:
 void test_list_sort() {
-    // a: list[Int32] = [5, 3, 1, 4, 2]
+    // a: list[int32] = [5, 3, 1, 4, 2]
     std::vector<int32_t> a = {5, 3, 1, 4, 2};
     // a.sort()
     ::tpy::sort_in_place(a);
@@ -16,7 +16,7 @@ void test_list_sort() {
 
 // def test_arraylist_sort() -> None:
 void test_arraylist_sort() {
-    // a = ArrayList[Int32, 8]()
+    // a = ArrayList[int32, 8]()
     ::tpystd::tplib::array_list::ArrayList<int32_t, 8> a = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
     // a.append(5)
     a.append(5);
@@ -77,9 +77,9 @@ void test_stable_sort() {
 // def test_span_sort() -> None:
 void test_span_sort() {
     // # Sorting a Span mutates the aliased backing list (view, not a copy).
-    // lst: list[Int32] = [5, 3, 1, 4, 2]
+    // lst: list[int32] = [5, 3, 1, 4, 2]
     std::vector<int32_t> lst = {5, 3, 1, 4, 2};
-    // s: Span[Int32] = Span[Int32](lst)
+    // s: Span[int32] = Span[int32](lst)
     std::span<int32_t> s = std::span<int32_t>(lst);
     // s.sort()
     ::tpy::sort_in_place(s);
@@ -87,7 +87,7 @@ void test_span_sort() {
     std::cout << ::tpy::ListPrinter(lst) << "\n";
 }
 
-// def key() -> Int32:
+// def key() -> int32:
 int32_t key() {
     // # A side-effecting subscript index: must run once per sort receiver.
     // print("k")
@@ -98,7 +98,7 @@ int32_t key() {
 
 // def test_sort_receiver_evaluated_once() -> None:
 void test_sort_receiver_evaluated_once() {
-    // rows: list[list[Int32]] = [[3, 1, 2]]
+    // rows: list[list[int32]] = [[3, 1, 2]]
     std::vector<std::vector<int32_t>> rows = {{3, 1, 2}};
     // rows[key()].sort()
     ::tpy::sort_in_place(::tpy::__getitem__(rows, key()));

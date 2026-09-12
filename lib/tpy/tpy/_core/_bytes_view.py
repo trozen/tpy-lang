@@ -3,13 +3,13 @@
 from .._typing import Iterator, Iterable
 from .._bootstrap._decorators import readonly, pure, dispatch
 from .._bootstrap._decorators import Own
-from ._types import UInt8, UInt64, Int32, Comparable, Equatable, NativeIterable
+from ._types import uint8, uint64, int32, Comparable, Equatable, NativeIterable
 from .._bootstrap._extern import native, cpp_template, builtin_type
 
 
 @builtin_type("tpy.BytesView")
 @native("::tpy::BytesView")
-class BytesView(NativeIterable[UInt8], Iterable[UInt8], Comparable, Equatable):
+class BytesView(NativeIterable[uint8], Iterable[uint8], Comparable, Equatable):
     @dispatch
     @cpp_template("::tpy::BytesView()")
     def __init__(self) -> None: ...
@@ -17,18 +17,18 @@ class BytesView(NativeIterable[UInt8], Iterable[UInt8], Comparable, Equatable):
     @native("tpy::__iter__", function=True)
     @readonly
     @pure
-    def __iter__(self) -> Iterator[UInt8]: ...
+    def __iter__(self) -> Iterator[uint8]: ...
 
     @native("tpy::__len__", function=True)
     @readonly
     @pure
-    def __len__(self) -> Int32: ...
+    def __len__(self) -> int32: ...
 
     @dispatch
     @native("tpy::bytes_getitem", function=True)
     @readonly
     @pure
-    def __getitem__(self, index: Int32) -> UInt8: ...
+    def __getitem__(self, index: int32) -> uint8: ...
 
     @dispatch
     @cpp_template("::tpy::bytes_slice({self}, {0})")
@@ -45,7 +45,7 @@ class BytesView(NativeIterable[UInt8], Iterable[UInt8], Comparable, Equatable):
     @native("tpy::bytes_contains", function=True)
     @readonly
     @pure
-    def __contains__(self, value: UInt8) -> bool: ...
+    def __contains__(self, value: uint8) -> bool: ...
 
     @cpp_template("{self} == {0}")
     @readonly
@@ -60,7 +60,7 @@ class BytesView(NativeIterable[UInt8], Iterable[UInt8], Comparable, Equatable):
     @cpp_template("::tpy::__hash__({self})")
     @readonly
     @pure
-    def __hash__(self) -> UInt64: ...
+    def __hash__(self) -> uint64: ...
 
     @native("tpy::bytes_decode", function=True)
     @readonly
@@ -75,17 +75,17 @@ class BytesView(NativeIterable[UInt8], Iterable[UInt8], Comparable, Equatable):
     @native("tpy::bytes_find", function=True)
     @readonly
     @pure
-    def find(self, sub: BytesView) -> Int32: ...
+    def find(self, sub: BytesView) -> int32: ...
 
     @native("tpy::bytes_rfind", function=True)
     @readonly
     @pure
-    def rfind(self, sub: BytesView) -> Int32: ...
+    def rfind(self, sub: BytesView) -> int32: ...
 
     @native("tpy::bytes_count", function=True)
     @readonly
     @pure
-    def count(self, sub: BytesView) -> Int32: ...
+    def count(self, sub: BytesView) -> int32: ...
 
     @native("tpy::bytes_startswith", function=True)
     @readonly

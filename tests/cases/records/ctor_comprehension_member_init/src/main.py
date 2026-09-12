@@ -1,10 +1,10 @@
 # A comprehension IS the member-init value: the cell spells its
 # statement-expression verbatim, with no body demotion and no temp.
-from tpy import Int32
+from tpy import int32
 
 
 class Rows:
-    items: list[Int32]
+    items: list[int32]
 
     def __init__(self) -> None:
         self.items = [i for i in range(3)]  # spelled into the init list

@@ -71,8 +71,8 @@ known. They reduce the "everything is `Any`, narrow before use" friction.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| TypedNamespace | possible | Per-attr-name static types -- TypedDict but for attribute access. `class N(TypedNamespace): host: str; port: Int32` makes `n.host` typed `str` without narrowing. Big design effort; replaces heterogeneous-`Any` proxies when schema is known |
-| Compile-time attribute schema | possible | Lighter than TypedNamespace: a `__attrs__ = {"host": str, "port": Int32}` declaration consulted when typing dyn-attr access. Stepping stone to TypedNamespace |
+| TypedNamespace | possible | Per-attr-name static types -- TypedDict but for attribute access. `class N(TypedNamespace): host: str; port: int32` makes `n.host` typed `str` without narrowing. Big design effort; replaces heterogeneous-`Any` proxies when schema is known |
+| Compile-time attribute schema | possible | Lighter than TypedNamespace: a `__attrs__ = {"host": str, "port": int32}` declaration consulted when typing dyn-attr access. Stepping stone to TypedNamespace |
 | `__getattr__` body inlining | possible | When `__getattr__` body is a simple lookup (`return self._data[name]`) and storage has known schema, inline dispatch at compile time. Optimization, not a user-facing feature |
 | Macro-based per-name typing | done (in spirit) | Already exists via `@class_macro` / `@builder_macro` -- argparse, `@dataclass`, JSON `@model` synthesize typed records. The compile-time route to "typed dynamic attrs" -- D16 is the runtime route |
 
@@ -141,7 +141,7 @@ class Config:
 
 cfg = Config({...})
 host = cast(str, cfg.host)        # narrow on use
-cfg.port = Int32(8080)            # writes to dict
+cfg.port = int32(8080)            # writes to dict
 ```
 
 ```python
@@ -227,7 +227,7 @@ def __delattr__(self, name: str) -> None: ...     # return must be None
   `__setattr__` / `__delattr__` mutating).
 - `@native` records cannot declare these dunders (out of scope, see limitations).
 - `__getattr__` return type in v1 must be one of: a value type (primitives,
-  `Char`, value-type user records, tuples), `Any`, or an explicit `Own[T]`
+  `char`, value-type user records, tuples), `Any`, or an explicit `Own[T]`
   ownership transfer. Bare reference types are rejected -- including
   user records / `list` / `dict` / `set` / `bytes` / `bytearray` (which
   default to reference-return at the boundary), and views (`Span[T]`,
@@ -351,8 +351,8 @@ dyn-readable.
 
 `__getattr__ -> T`: in v1, `T` must be one of:
 
-- a value type. Per TPy's terminology, that includes primitives (`Int32`,
-  `Float64`, `bool`), `Char`, `str`, `BigInt` (`int`), tuples, and user
+- a value type. Per TPy's terminology, that includes primitives (`int32`,
+  `float64`, `bool`), `char`, `str`, `BigInt` (`int`), tuples, and user
   records that implement `ValueType`.
 - `Any`.
 - an explicit `Own[T]` for owning transfer of a non-value type.
@@ -369,7 +369,7 @@ ownership transfer (`Own[T]`) is the only well-defined non-value return
 shape in v1.
 
 Call sites consume `T`. With `T = Any`, the usual narrow-required UX applies.
-With concrete value `T` (`str`, `Int32`), the result is directly typed.
+With concrete value `T` (`str`, `int32`), the result is directly typed.
 With `Own[T]`, ownership transfers to the caller.
 
 `__setattr__(self, name: str, value: V)`: `V` may be any TPy type. Assignment

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def bump(d: dict[Int32, C]) -> Iterator[Int32]:
+// def bump(d: dict[int32, C]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_bump::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -40,7 +40,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_bump::__next__() {
 }
 
 
-// def bump(d: dict[Int32, C]) -> Iterator[Int32]:
+// def bump(d: dict[int32, C]) -> Iterator[int32]:
 __gen_bump bump(::tpy::ordered_map<int32_t, C>& d) {
     return __gen_bump(d);
 }

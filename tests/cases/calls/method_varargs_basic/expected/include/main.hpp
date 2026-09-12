@@ -15,14 +15,14 @@ void main();
 
 // class Calculator:
 struct Calculator {
-    // base: Int32
+    // base: int32
     int32_t base;
 
-    // def __init__(self, base: Int32) -> None:
+    // def __init__(self, base: int32) -> None:
     Calculator() = default;
     explicit Calculator(int32_t base);
 
-    // def sum_with_base(self, *xs: Int32) -> Int32:
+    // def sum_with_base(self, *xs: int32) -> int32:
     int32_t sum_with_base(::tpy::varargs<const int32_t> xs) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Calculator";
 };
@@ -33,12 +33,12 @@ inline std::ostream& operator<<(std::ostream& os, const Calculator& obj) {
 }
 
 
-// def __init__(self, base: Int32) -> None:
+// def __init__(self, base: int32) -> None:
 inline Calculator::Calculator(int32_t base) : base(base) {}
 
-// def sum_with_base(self, *xs: Int32) -> Int32:
+// def sum_with_base(self, *xs: int32) -> int32:
 inline int32_t Calculator::sum_with_base(::tpy::varargs<const int32_t> xs) const {
-    // total: Int32 = self.base
+    // total: int32 = self.base
     int32_t total = this->base;
     // for x in xs:
     auto& __obj_0 = xs;

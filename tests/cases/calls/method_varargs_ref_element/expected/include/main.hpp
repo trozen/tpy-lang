@@ -16,10 +16,10 @@ void main();
 
 // class Box:
 struct Box {
-    // value: Int32
+    // value: int32
     int32_t value;
 
-    // def __init__(self, value: Int32) -> None:
+    // def __init__(self, value: int32) -> None:
     Box() = default;
     explicit Box(int32_t value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
@@ -34,7 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 struct Pile {
 
 
-    // def total(self, *boxes: Box) -> Int32:
+    // def total(self, *boxes: Box) -> int32:
     int32_t total(::tpy::varargs<const Box> boxes) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pile";
 };
@@ -45,12 +45,12 @@ inline std::ostream& operator<<(std::ostream& os, const Pile& obj) {
 }
 
 
-// def __init__(self, value: Int32) -> None:
+// def __init__(self, value: int32) -> None:
 inline Box::Box(int32_t value) : value(value) {}
 
-// def total(self, *boxes: Box) -> Int32:
+// def total(self, *boxes: Box) -> int32:
 inline int32_t Pile::total(::tpy::varargs<const Box> boxes) const {
-    // s: Int32 = Int32(0)
+    // s: int32 = int32(0)
     int32_t s = 0;
     // for b in boxes:
     auto& __obj_0 = boxes;

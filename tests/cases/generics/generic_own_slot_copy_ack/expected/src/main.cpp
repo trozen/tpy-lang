@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def dup_bounded_twin(h: IntHolder) -> Own[Int32]:
+// def dup_bounded_twin(h: IntHolder) -> Own[int32]:
 int32_t dup_bounded_twin(IntHolder& h) {
     // return h.borrow()  # tpyc: ok
     return h.borrow();
@@ -12,7 +12,7 @@ int32_t dup_bounded_twin(IntHolder& h) {
 
 // def sec_value_bound() -> None:
 void sec_value_bound() {
-    // b = VHolder[Int32](7)
+    // b = VHolder[int32](7)
     VHolder<int32_t> b = VHolder<int32_t>(7);
     // t = IntHolder(7)
     IntHolder t = IntHolder(7);
@@ -22,7 +22,7 @@ void sec_value_bound() {
 
 // def sec_callable_value() -> None:
 void sec_callable_value() {
-    // xs: list[Int32] = [1]
+    // xs: list[int32] = [1]
     std::vector<int32_t> xs = {1};
     // g: list[Cell] = []
     std::vector<Cell> g = std::vector<Cell>{};

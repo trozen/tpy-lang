@@ -2,13 +2,13 @@
 # runs on the try body's fall-through path, so the raise reaches the fail-fast
 # wrap and aborts. The compile warning does not fire here -- it skips `try`
 # subtrees (tracked in BUGS.md), so the abort is this shape's only signal.
-from tpy import Int32
+from tpy import int32
 
 
 class Fussy:
-    _id: Int32
+    _id: int32
 
-    def __init__(self, id: Int32):
+    def __init__(self, id: int32):
         self._id = id
 
     def __del__(self):

@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def make() -> Own[list[Int32]]:
+// def make() -> Own[list[int32]]:
 std::vector<int32_t> make() {
     // return [1, 2, 2]
     return {1, 2, 2};
 }
 
-// def uniq() -> Own[set[Int32]]:
+// def uniq() -> Own[set[int32]]:
 ::tpy::ordered_set<int32_t> uniq() {
     // return {x for x in make()}  # call iterable at a return-position comp
     return ({

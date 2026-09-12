@@ -1,7 +1,7 @@
 # Direct exercise of the Copyable marker protocol as a shadow bound on a
 # user-defined generic. Mirrors generic_method_per_method_bound but for the
 # metadata-checked Copyable marker rather than the structural Comparable.
-from tpy import Int32, Own, Copyable
+from tpy import int32, Own, Copyable
 
 
 class Cell[T]:
@@ -15,7 +15,7 @@ class Cell[T]:
 
 
 def main() -> None:
-    c = Cell[Int32](42)
+    c = Cell[int32](42)
     print(c.duplicate())
 
 

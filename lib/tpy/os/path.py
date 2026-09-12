@@ -2,7 +2,7 @@
 # tpy: cpp_namespace("tpystd::os::path")
 # tpy: include("<tpy/stdlib/os.hpp>")
 from typing import Final
-from tpy import Char, Own
+from tpy import char, Own
 from ._native import (
     getcwd, exists, lexists, isfile, isdir, islink, getsize, realpath,
     path_getmtime as getmtime, path_getatime as getatime,
@@ -212,7 +212,7 @@ def relpath(p: str, start: str = ".") -> str:
     return "/".join(rel)
 
 
-def _is_var_char(c: Char) -> bool:
+def _is_var_char(c: char) -> bool:
     return (c >= "a" and c <= "z") or (c >= "A" and c <= "Z") or (
         c >= "0" and c <= "9") or c == "_"
 

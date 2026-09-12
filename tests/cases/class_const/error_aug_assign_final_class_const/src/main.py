@@ -1,10 +1,10 @@
 # Aug-assign on a Final class constant is reassignment too -- reject like `=`.
 from typing import Final
-from tpy import Int32
+from tpy import int32
 
 
 class C:
-    LIMIT: Final[Int32] = 10
+    LIMIT: Final[int32] = 10
 
 
 def bump() -> None:

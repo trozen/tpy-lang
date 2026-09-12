@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def bump(t: tuple[Int32, Box]) -> None:
+// def bump(t: tuple[int32, Box]) -> None:
 void bump(const std::tuple<int32_t, Box*>& t) {
     // t[1].val = t[1].val + 10
     std::get<1>(t)->val = (::tpy::add_check<int32_t>(std::get<1>(t)->val, 10));

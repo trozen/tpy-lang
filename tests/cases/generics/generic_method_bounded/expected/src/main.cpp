@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // w = Wrapper[Int32](Int32(5))
+    // w = Wrapper[int32](int32(5))
     Wrapper<int32_t> w = Wrapper<int32_t>(5);
     // print(w.is_less(1, 2))
     std::cout << ::tpy::print_bool(w.is_less<int32_t>(1, 2)) << "\n";

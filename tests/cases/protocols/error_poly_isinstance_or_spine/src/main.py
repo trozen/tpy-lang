@@ -2,7 +2,7 @@
 # fact for its right operand, but `or` installs nothing, so the read after it
 # has no proven cast to render.
 from typing import Protocol
-from tpy import Int32, dynamic
+from tpy import int32, dynamic
 
 
 @dynamic
@@ -26,7 +26,7 @@ class Dog(Pet):
         return "woof"
 
 
-def check_or(p: Pet, threshold: Int32) -> bool:
+def check_or(p: Pet, threshold: int32) -> bool:
     return isinstance(p, Dog) or len(p.name()) > threshold  # tpyc: error(/expr\.call/)
 
 

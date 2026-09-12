@@ -7,16 +7,16 @@ namespace tpyapp::main {
 // def main():
 void main() {
     // # Annotated var_decl: T inferred from annotation
-    // s: UninitHeapStorage[Int32] = UninitHeapStorage(1)  # tpyc: ok
+    // s: UninitHeapStorage[int32] = UninitHeapStorage(1)  # tpyc: ok
     ::tpy::UninitHeapStorage<int32_t> s = ::tpy::UninitHeapStorage<int32_t>(1);
-    // s.init0(Int32(42))
+    // s.init0(int32(42))
     s.init0(42);
     // print("var_decl:", s.load0())
     std::cout << "var_decl:" << " " << s.load0() << "\n";
     // s.drop0()
     s.drop0();
     // # Field assignment via generic class
-    // w = Wrapper[Int32](Int32(99))
+    // w = Wrapper[int32](int32(99))
     Wrapper<int32_t> w = Wrapper<int32_t>(99);
     // print("field:", w.get())
     std::cout << "field:" << " " << w.get() << "\n";

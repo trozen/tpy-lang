@@ -1,0 +1,12 @@
+main.py:15: warning: 'uint16' shadows the tpy type 'uint16' for the rest of this module; consider renaming
+main.py:16: warning: 'float64' shadows the tpy type 'float64' for the rest of this module; consider renaming
+main.py:42: warning: 'uint8' shadows the tpy type 'uint8' for the rest of this function; consider renaming
+main.py:48: warning: 'char' shadows the tpy type 'char' for the rest of this function; consider renaming
+main.py:54: warning: 'int64' shadows the tpy type 'int64' for the rest of this function; consider renaming
+main.py:60: warning: 'uint32' shadows the tpy type 'uint32' for the rest of this function; consider renaming
+main.py:68: warning: 'uint64' shadows the tpy type 'uint64' for the rest of this function; consider renaming
+main.py:83: warning: 'float32' shadows the tpy type 'float32' for the rest of this function; consider renaming
+main.py:90: warning: 'int8' shadows the tpy type 'int8' for the rest of this function; consider renaming
+main.py:98: warning: 'int32' shadows the tpy type 'int32' within its scope; consider renaming
+main.py:107: warning: 'int32' shadows the tpy type 'int32' within its scope; consider renaming
+main.py:119: warning: 'i16' shadows the tpy type 'int16' for the rest of this function; consider renaming

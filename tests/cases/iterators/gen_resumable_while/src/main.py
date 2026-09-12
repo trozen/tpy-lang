@@ -3,10 +3,10 @@
 # is live across the in-loop suspension, so it must persist in the coro frame
 # rather than a C++ local that resets on resume.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
-def countdown(n: Int32) -> Iterator[Int32]:
+def countdown(n: int32) -> Iterator[int32]:
     i = n
     while i > 0:
         yield i

@@ -29,30 +29,30 @@ def _kills(source: str):
 
 class TestCollectFactKills:
     def test_plain_assign_and_decl(self):
-        k = _kills("def f():\n    x = 1\n    x = 2\n    y: Int32 = 3\n")
+        k = _kills("def f():\n    x = 1\n    x = 2\n    y: int32 = 3\n")
         assert {"x", "y"} <= k.names
 
     def test_aug_assign(self):
-        k = _kills("def f(i: Int32):\n    i += 1\n")
+        k = _kills("def f(i: int32):\n    i += 1\n")
         assert "i" in k.names
 
     def test_field_write_is_path_not_name(self):
-        k = _kills("from tpy import *\ndef f(h: Int32):\n    h.opt = None\n")
+        k = _kills("from tpy import *\ndef f(h: int32):\n    h.opt = None\n")
         assert "h.opt" in k.paths
         assert "h" not in k.names
 
     def test_subscript_write_is_receiver(self):
-        k = _kills("from tpy import *\ndef f(xs: list[Int32]):\n    xs[0] = 1\n")
+        k = _kills("from tpy import *\ndef f(xs: list[int32]):\n    xs[0] = 1\n")
         assert "xs" in k.receivers
         assert "xs" not in k.names
 
     def test_walrus_in_expr(self):
-        k = _kills("from tpy import *\ndef f(g: Int32):\n    print((p := g))\n")
+        k = _kills("from tpy import *\ndef f(g: int32):\n    print((p := g))\n")
         assert "p" in k.names
 
     def test_for_with_unpack_del_targets(self):
         src = (
-            "from tpy import *\ndef f(items: list[Int32], cm: Int32):\n"
+            "from tpy import *\ndef f(items: list[int32], cm: int32):\n"
             "    for v in items:\n"
             "        pass\n"
             "    a, b = items[0], items[1]\n"
@@ -64,7 +64,7 @@ class TestCollectFactKills:
         assert {"v", "a", "b", "m"} <= k.names
 
     def test_method_call_receiver_and_args(self):
-        k = _kills("from tpy import *\ndef f(xs: list[Int32], ys: Int32):\n    xs.append(ys)\n")
+        k = _kills("from tpy import *\ndef f(xs: list[int32], ys: int32):\n    xs.append(ys)\n")
         assert "xs" in k.receivers
         assert "ys" in k.receivers
         assert "xs" not in k.names
@@ -94,7 +94,7 @@ class TestCollectFactKills:
         assert "x" in k.names
 
     def test_reads_do_not_kill(self):
-        k = _kills("from tpy import *\ndef f(p: Int32, q: Int32):\n    print(p.x + q.y)\n")
+        k = _kills("from tpy import *\ndef f(p: int32, q: int32):\n    print(p.x + q.y)\n")
         assert not k.names
         assert not k.paths
         # print(p...) passes no bare names mutably here; field reads only.
@@ -107,7 +107,7 @@ class TestSuspendsFlag:
         assert k.suspends
 
     def test_nested_yield_in_loop_sets_suspends(self):
-        k = _kills("def f(n: Int32):\n    for i in range(n):\n        yield i\n")
+        k = _kills("def f(n: int32):\n    for i in range(n):\n        yield i\n")
         assert k.suspends
 
     def test_await_in_decl_init_sets_suspends(self):
@@ -115,7 +115,7 @@ class TestSuspendsFlag:
         assert k.suspends
 
     def test_async_with_sets_suspends_without_body_suspension(self):
-        k = _kills("def f(m: Int32):\n    async with m:\n        pass\n")
+        k = _kills("def f(m: int32):\n    async with m:\n        pass\n")
         assert k.suspends
 
     def test_nested_def_does_not_count(self):

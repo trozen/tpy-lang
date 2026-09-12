@@ -7,13 +7,13 @@
 import asyncio
 from typing import Iterator
 
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class A:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 
@@ -21,17 +21,17 @@ def make() -> Own[A]:
     return A(7)
 
 
-def make_pair() -> Own[tuple[A, Int32]]:
+def make_pair() -> Own[tuple[A, int32]]:
     return (A(7), 3)
 
 
 # per-element ownership in the return type, not `Own[tuple[...]]`
-def own_elem_pair() -> tuple[Own[A], Int32]:
+def own_elem_pair() -> tuple[Own[A], int32]:
     return (A(7), 3)
 
 
 # all-fresh literal: the frame owns both elements
-def fresh() -> Iterator[Int32]:
+def fresh() -> Iterator[int32]:
     t = (A(1), 2)  # tpyc: ok
     yield t[0].v
     t[0].v = 42
@@ -39,7 +39,7 @@ def fresh() -> Iterator[Int32]:
 
 
 # an Own-returning call is a fresh element too
-def own_call() -> Iterator[Int32]:
+def own_call() -> Iterator[int32]:
     t = (1, make())  # tpyc: ok
     yield t[1].v
     t[1].v = 42
@@ -48,7 +48,7 @@ def own_call() -> Iterator[Int32]:
 
 # plain lvalue element: the frame points at the caller's object, so the
 # caller's later mutation is visible through the tuple
-def lvalue(a: A) -> Iterator[Int32]:
+def lvalue(a: A) -> Iterator[int32]:
     t = (a, 2)  # tpyc: ok
     yield t[0].v
     a.v = 99
@@ -56,7 +56,7 @@ def lvalue(a: A) -> Iterator[Int32]:
 
 
 # mixed, fresh element first: element 0 is owned, element 1 aliases `a`
-def mixed_fresh_first(a: A) -> Iterator[Int32]:
+def mixed_fresh_first(a: A) -> Iterator[int32]:
     t = (A(1), a)  # tpyc: ok
     yield t[0].v
     a.v = 99
@@ -64,7 +64,7 @@ def mixed_fresh_first(a: A) -> Iterator[Int32]:
 
 
 # mixed, lvalue element first -- the same verdict, other order
-def mixed_lvalue_first(a: A) -> Iterator[Int32]:
+def mixed_lvalue_first(a: A) -> Iterator[int32]:
     t = (a, A(1))  # tpyc: ok
     yield t[1].v
     a.v = 99
@@ -72,7 +72,7 @@ def mixed_lvalue_first(a: A) -> Iterator[Int32]:
 
 
 # a fresh local dead after the literal is MOVED into the owned element
-def moved_last_use() -> Iterator[Int32]:
+def moved_last_use() -> Iterator[int32]:
     a = A(1)
     t = (A(2), a)  # tpyc: ok
     yield t[0].v
@@ -80,7 +80,7 @@ def moved_last_use() -> Iterator[Int32]:
 
 
 # reassigned once per iteration: the per-element verdict joins across inits
-def loop_reassigned() -> Iterator[Int32]:
+def loop_reassigned() -> Iterator[int32]:
     i = 0
     while i < 2:
         t = (i, A(i * 10))  # tpyc: ok
@@ -92,7 +92,7 @@ def loop_reassigned() -> Iterator[Int32]:
 
 # a fresh literal in one branch and an OWNING CALL in the other: both hand the
 # frame the element storage, so the join agrees and one owning slot serves both
-def literal_then_call(c: bool) -> Iterator[Int32]:
+def literal_then_call(c: bool) -> Iterator[int32]:
     if c:
         t = (A(1), 2)  # tpyc: ok
     else:
@@ -103,7 +103,7 @@ def literal_then_call(c: bool) -> Iterator[Int32]:
 
 
 # the same two inits, other order -- the join is order-independent
-def call_then_literal(c: bool) -> Iterator[Int32]:
+def call_then_literal(c: bool) -> Iterator[int32]:
     if c:
         t = make_pair()  # tpyc: ok
     else:
@@ -115,7 +115,7 @@ def call_then_literal(c: bool) -> Iterator[Int32]:
 
 # an owning call REASSIGNED across a suspension: every init emplaces fresh
 # storage into the one slot, so the second binding is not a dangling borrow
-def call_reassigned() -> Iterator[Int32]:
+def call_reassigned() -> Iterator[int32]:
     t = make_pair()  # tpyc: ok
     yield t[0].v
     t = make_pair()
@@ -123,10 +123,10 @@ def call_reassigned() -> Iterator[Int32]:
     yield t[0].v
 
 
-# a call whose return type spells ownership PER ELEMENT (`tuple[Own[A], Int32]`)
+# a call whose return type spells ownership PER ELEMENT (`tuple[Own[A], int32]`)
 # rather than over the whole tuple: the Own slot is the frame's, so the
 # post-suspension mutation lands in the frame's own storage
-def own_elem_call() -> Iterator[Int32]:
+def own_elem_call() -> Iterator[int32]:
     t = own_elem_pair()  # tpyc: ok
     yield t[0].v
     t[0].v = 42
@@ -134,7 +134,7 @@ def own_elem_call() -> Iterator[Int32]:
 
 
 # branch-nested decl: the try body's arm takes the same classification
-def try_body() -> Iterator[Int32]:
+def try_body() -> Iterator[int32]:
     try:
         t = (A(1), 2)  # tpyc: ok
         yield t[0].v
@@ -145,13 +145,13 @@ def try_body() -> Iterator[Int32]:
 
 
 class H:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     # generator method: same classification behind a receiver
-    def g(self) -> Iterator[Int32]:
+    def g(self) -> Iterator[int32]:
         t = (A(self.n), 2)  # tpyc: ok
         yield t[0].v
         t[0].v = 42
@@ -159,7 +159,7 @@ class H:
 
 
 # async def: the coroutine frame takes the same slot
-async def coro(a: A) -> Int32:
+async def coro(a: A) -> int32:
     t = (A(1), a)  # tpyc: ok
     await asyncio.sleep(0)
     t[0].v = 42

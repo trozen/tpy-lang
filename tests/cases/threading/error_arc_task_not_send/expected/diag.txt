@@ -1,4 +1,4 @@
 main.py:24: error: 'Task' is not Send -- cannot use it where 'Send[Own[Task]]' is expected in argument 'task'
 Task is not Send
-+-- field 'shared: Arc[list[Int32]]'
-    +-- type parameter 'T' = list[Int32] is not Send (the bound also requires Sync, which list[Int32] lacks)
++-- field 'shared: Arc[list[int32]]'
+    +-- type parameter 'T' = list[int32] is not Send (the bound also requires Sync, which list[int32] lacks)

@@ -13,7 +13,7 @@ void main() {
         // print(n)
         std::cout << n << "\n";
     }
-    // x: Int32 | None = 5
+    // x: int32 | None = 5
     std::optional<int32_t> x = 5;
     // if (x := None) is None:
     if ((!(x = std::nullopt).has_value())) {
@@ -38,7 +38,7 @@ void main() {
     }
     // # Comprehension walrus rebinds the enclosing-scope local; the rebind must
     // # still assign in place across the comprehension's scope handling.
-    // m: Int32 = 10
+    // m: int32 = 10
     int32_t m = 10;
     // xs = [m for _ in range(3) if (m := m - 1) > 0]
     std::vector<int32_t> xs = ({

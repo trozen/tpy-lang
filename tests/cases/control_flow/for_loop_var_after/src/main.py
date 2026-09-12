@@ -1,5 +1,5 @@
 # Loop variable and body-declared variables visible after the loop
-from tpy import Int32
+from tpy import int32
 
 
 def test_range_var() -> None:
@@ -10,7 +10,7 @@ def test_range_var() -> None:
 
 def test_body_var() -> None:
     for i in range(3):
-        x: Int32 = i * 10
+        x: int32 = i * 10
     print(x)
 
 

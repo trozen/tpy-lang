@@ -98,7 +98,7 @@ int PyArg_ParseTupleAndKeywords(PyObject *args, PyObject *kwargs,
 
 // int marshalling (the fixed-width int types + BigInt). The signed path and
 // the unsigned widths <= 32 bits go through the long long accessors (range
-// checked against the narrower target); UInt64 needs the unsigned long long
+// checked against the narrower target); uint64 needs the unsigned long long
 // accessors because its top half does not fit a signed long long.
 PyObject *PyLong_FromLongLong(long long v);
 long long PyLong_AsLongLongAndOverflow(PyObject *o, int *overflow);

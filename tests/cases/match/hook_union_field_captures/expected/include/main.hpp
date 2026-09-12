@@ -33,10 +33,10 @@ void main();
 
 // class Cat:
 struct Cat {
-    // lives: Int32
+    // lives: int32
     int32_t lives;
 
-    // def __init__(self, lives: Int32) -> None:
+    // def __init__(self, lives: int32) -> None:
     Cat() = default;
     explicit Cat(int32_t lives);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cat";
@@ -49,10 +49,10 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 
 // class Dog:
 struct Dog {
-    // lives: Int32
+    // lives: int32
     int32_t lives;
 
-    // def __init__(self, lives: Int32) -> None:
+    // def __init__(self, lives: int32) -> None:
     Dog() = default;
     explicit Dog(int32_t lives);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
@@ -240,10 +240,10 @@ struct __gen_nested_shadow : public ::tpy::next_iter_mixin<__gen_nested_shadow, 
 };
 
 
-// def __init__(self, lives: Int32) -> None:
+// def __init__(self, lives: int32) -> None:
 inline Cat::Cat(int32_t lives) : lives(lives) {}
 
-// def __init__(self, lives: Int32) -> None:
+// def __init__(self, lives: int32) -> None:
 inline Dog::Dog(int32_t lives) : lives(lives) {}
 
 // def __init__(self, pet: Cat | Dog) -> None:

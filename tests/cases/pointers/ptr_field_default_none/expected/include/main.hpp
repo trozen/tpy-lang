@@ -16,7 +16,7 @@ void main();
 
 // class Counter:
 struct Counter {
-    // x: Int32 = 0
+    // x: int32 = 0
     int32_t x = 0;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
@@ -31,7 +31,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 struct Slot {
     // p: Ptr[Counter] = None  # tpyc: ok
     Counter* p = nullptr;
-    // tag: Int32 = 0
+    // tag: int32 = 0
     int32_t tag = 0;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.Slot";

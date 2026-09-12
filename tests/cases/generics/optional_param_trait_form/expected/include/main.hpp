@@ -61,10 +61,10 @@ inline std::ostream& operator<<(std::ostream& os, const Stop& obj) {
 
 // class Cell:
 struct Cell {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Cell() = default;
     explicit Cell(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cell";
@@ -83,10 +83,10 @@ struct Pinned {
     // # holding a borrow is a build-time fact, not an inference from output --
     // # which matters because a generic body cannot read an open `T` back out
     // # (every spelling of that rejects today, so `is None` is all it can print).
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Pinned() = default;
     explicit Pinned(int32_t n);
     // non-copyable (@nocopy)
@@ -152,14 +152,14 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
 
 // class ContainerTwin:
 struct ContainerTwin {
-    // _val: Int32 | None
+    // _val: int32 | None
     std::optional<int32_t> _val;
 
-    // def __init__(self, val: Int32 | None) -> None:
+    // def __init__(self, val: int32 | None) -> None:
     ContainerTwin() = default;
     explicit ContainerTwin(std::optional<int32_t> val);
 
-    // def probe(self, val: Int32 | None) -> bool:
+    // def probe(self, val: int32 | None) -> bool:
     bool probe(std::optional<int32_t> val) const;
 
     // def held(self) -> bool:
@@ -364,10 +364,10 @@ struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, bool> {
 };
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Cell::Cell(int32_t n) : n(n) {}
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Pinned::Pinned(int32_t n) : n(n) {}
 
 // def __enter__(self) -> "Guard":
@@ -381,10 +381,10 @@ inline void Guard::__exit__(std::monostate exc_type, const ::tpy::BaseException*
     // pass
 }
 
-// def __init__(self, val: Int32 | None) -> None:
+// def __init__(self, val: int32 | None) -> None:
 inline ContainerTwin::ContainerTwin(std::optional<int32_t> val) : _val(val) {}
 
-// def probe(self, val: Int32 | None) -> bool:
+// def probe(self, val: int32 | None) -> bool:
 inline bool ContainerTwin::probe(std::optional<int32_t> val) const {
     // return val is not None
     return (val.has_value());

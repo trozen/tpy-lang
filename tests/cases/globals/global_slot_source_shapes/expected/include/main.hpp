@@ -25,10 +25,10 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
 
-    // def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: int32) -> None:
     Point() = default;
     explicit Point(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
@@ -56,7 +56,7 @@ inline std::ostream& operator<<(std::ostream& os, const Line& obj) {
 
 // class Holder:
 struct Holder {
-    // xs: list[Int32]
+    // xs: list[int32]
     std::vector<int32_t> xs;
     // inner: Point
     Point inner;
@@ -75,7 +75,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 // class Base:
 struct Base {
-    // n: Int32
+    // n: int32
     int32_t n;
 
     // def __init__(self) -> None:
@@ -90,7 +90,7 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
 
 // class Child(Base):
 struct Child : Base {
-    // extra: Int32
+    // extra: int32
     int32_t extra;
 
     // def __init__(self) -> None:
@@ -104,7 +104,7 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 }
 
 
-// def __init__(self, x: Int32) -> None:
+// def __init__(self, x: int32) -> None:
 inline Point::Point(int32_t x) : x(x) {}
 
 // def __init__(self) -> None:

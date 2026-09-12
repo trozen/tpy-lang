@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def sum_span(values: Span[Int32]) -> Int32:
+// def sum_span(values: Span[int32]) -> int32:
 int32_t sum_span(std::span<int32_t> values) {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for v in values:
     auto& __obj_0 = values;
@@ -41,12 +41,12 @@ int32_t sum_span(std::span<int32_t> values) {
 // def main() -> None:
 void main() {
     // # Array coerces to Span
-    // arr: Array[Int32, 4] = [1, 2, 3, 4]
+    // arr: Array[int32, 4] = [1, 2, 3, 4]
     std::array<int32_t, 4> arr = {1, 2, 3, 4};
     // print(sum_span(arr))  # 10
     std::cout << sum_span(::tpy::as_mut_span(arr)) << "\n";
     // # ArrayList coerces to Span (user type with __span__)
-    // al = ArrayList[Int32, 8]()
+    // al = ArrayList[int32, 8]()
     ::tpystd::tplib::array_list::ArrayList<int32_t, 8> al = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
     // al.append(10)
     al.append(10);
@@ -57,7 +57,7 @@ void main() {
     // print(sum_span(al))  # 60
     std::cout << sum_span(al.__span__()) << "\n";
     // # list coerces to Span
-    // lst: list[Int32] = [100, 200, 300, 400]
+    // lst: list[int32] = [100, 200, 300, 400]
     std::vector<int32_t> lst = {100, 200, 300, 400};
     // print(sum_span(lst))  # 1000
     std::cout << sum_span(::tpy::as_mut_span(lst)) << "\n";

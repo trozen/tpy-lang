@@ -19,9 +19,9 @@ void main();
 // @dataclass
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
-    // y: Int32
+    // y: int32
     int32_t y;
 
     Point() = default;
@@ -71,7 +71,7 @@ inline std::ostream& operator<<(std::ostream& os, const DictOfDC& obj) {
 // @dataclass
 // class TupleOfDC:
 struct TupleOfDC {
-    // pair: tuple[Point, Int32]
+    // pair: tuple[Point, int32]
     std::tuple<Point, int32_t> pair;
 
     TupleOfDC() = default;

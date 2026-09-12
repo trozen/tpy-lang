@@ -24,17 +24,17 @@ void main();
 
 // class SimpleCalc:
 struct SimpleCalc {
-    // base: Int32
+    // base: int32
     int32_t base;
 
-    // def __init__(self, b: Int32) -> None:
+    // def __init__(self, b: int32) -> None:
     SimpleCalc() = default;
     explicit SimpleCalc(int32_t b);
 
-    // def add(self, x: Int32) -> Int32:
+    // def add(self, x: int32) -> int32:
     int32_t add(int32_t x) const;
 
-    // def multiply(self, x: Int32, y: Int32) -> Int32:
+    // def multiply(self, x: int32, y: int32) -> int32:
     int32_t multiply(int32_t x, int32_t y) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.SimpleCalc";
 };
@@ -45,16 +45,16 @@ inline std::ostream& operator<<(std::ostream& os, const SimpleCalc& obj) {
 }
 
 
-// def __init__(self, b: Int32) -> None:
+// def __init__(self, b: int32) -> None:
 inline SimpleCalc::SimpleCalc(int32_t b) : base(b) {}
 
-// def add(self, x: Int32) -> Int32:
+// def add(self, x: int32) -> int32:
 inline int32_t SimpleCalc::add(int32_t x) const {
     // return self.base + x
     return (::tpy::add_check<int32_t>(this->base, x));
 }
 
-// def multiply(self, x: Int32, y: Int32) -> Int32:
+// def multiply(self, x: int32, y: int32) -> int32:
 inline int32_t SimpleCalc::multiply(int32_t x, int32_t y) const {
     // return x * y
     return (::tpy::mul_check<int32_t>(x, y));
@@ -62,7 +62,7 @@ inline int32_t SimpleCalc::multiply(int32_t x, int32_t y) const {
 // def use_calc(c: Calculator) -> None:
 template<Calculator T_c>
 void use_calc(T_c& c) {
-    // # Test: Literal coercion to Int32 in protocol method calls
+    // # Test: Literal coercion to int32 in protocol method calls
     // result1 = c.add(10)
     int32_t result1 = c.add(10);
     // print(result1)

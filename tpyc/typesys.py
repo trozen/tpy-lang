@@ -2,7 +2,7 @@
 TurboPython Type System
 
 Defines the core types available in TurboPython:
-- Int32: 32-bit integer (maps to int32_t)
+- int32: 32-bit integer (maps to int32_t)
 - Ptr[T]: Mutable pointer (maps to T*)
 - Ptr[readonly[T]]: Read-only pointer (maps to const T*)
 - Array[T, N], Span[T], list[T], dict[K, V]: Container types
@@ -509,7 +509,7 @@ class TpyType:
     def is_value_type(self) -> bool:
         """Return True if this is a value type (copy semantics).
 
-        Value types include primitive types like Int32, BigInt, Bool, Char, str.
+        Value types include primitive types like int32, BigInt, Bool, char, str.
         These types should be copied when accessed from containers.
 
         Object types (RecordType, etc.) return False and should
@@ -743,13 +743,13 @@ class VoidType(TpyType):
 
 @dataclass(frozen=True)
 class IntLiteralType(TpyType):
-    """Unresolved integer literal - can coerce to Int32 or BigInt.
+    """Unresolved integer literal - can coerce to int32 or BigInt.
 
     This type represents integer literals before they're resolved to a
-    concrete type. It coerces to Int32 or BigInt based on context:
-    - Int32 + IntLiteral -> Int32
+    concrete type. It coerces to int32 or BigInt based on context:
+    - int32 + IntLiteral -> int32
     - BigInt + IntLiteral -> BigInt
-    - IntLiteral + IntLiteral -> configured default (Int32 by default)
+    - IntLiteral + IntLiteral -> configured default (int32 by default)
 
     value tracks the known literal value (including computed results from
     constant-folded binops like 2+3). None means the value is unknown.
@@ -880,12 +880,12 @@ class LiteralType(TpyType):
 
 @dataclass(frozen=True)
 class FloatLiteralType(TpyType):
-    """Unresolved float literal - adapts to Float32 or float64 based on context.
+    """Unresolved float literal - adapts to float32 or float64 based on context.
 
     Like IntLiteralType, this represents a float literal (2.0, 1.5) before context
-    determines whether it's float64 or Float32. Default is float64.
+    determines whether it's float64 or float32. Default is float64.
 
-    - Float32 * FloatLiteral -> Float32 (literal adapts to context)
+    - float32 * FloatLiteral -> float32 (literal adapts to context)
     - float * FloatLiteral -> float
     - FloatLiteral * FloatLiteral -> float (default)
     """
@@ -927,7 +927,7 @@ class TypeParamRef(TpyType):
     For INT kind:
     - Represents a compile-time integer constant (e.g., N in Matrix[T, N: int])
     - Maps to std::size_t in C++
-    - Can be used as values in expressions (e.g., Int32(N))
+    - Can be used as values in expressions (e.g., int32(N))
 
     Bounded type parameters (e.g., T: Comparable) store the bound protocol.
     """
@@ -1000,10 +1000,10 @@ class NominalType(TpyType):
     After registration in sema, is_protocol is set correctly.
 
     For generic types like Stack[T] or Sequence[T]:
-    - type_args stores the concrete type arguments (e.g., (Int32,) for Stack[Int32])
+    - type_args stores the concrete type arguments (e.g., (int32,) for Stack[int32])
 
     For generic records with integer type parameters like Matrix[T, N: int]:
-    - type_args can contain both TpyType and int values (e.g., (Int32, 8))
+    - type_args can contain both TpyType and int values (e.g., (int32, 8))
 
     For module-defined types (e.g. user-library generics):
     - _module_qname stores the qualified name
@@ -1518,8 +1518,8 @@ class SelfType(TpyType):
     """Self type for method signatures.
 
     In protocol method signatures, Self represents the implementing type.
-    When checking if Int32 conforms to a protocol with Self, Self is
-    substituted with Int32.
+    When checking if int32 conforms to a protocol with Self, Self is
+    substituted with int32.
 
     In record method signatures, Self represents the record's own type
     (e.g. Self in class Foo -> NominalType("Foo")). Substituted at
@@ -1889,7 +1889,7 @@ def coro_struct_owner(owning_type_qname: 'str | None',
 
     A generic base needs its concrete type args too (`__coro_Box_fetch<int32_t>`,
     not a bare `__coro_Box_fetch`). The receiver's MRO carries that binding --
-    `IntBox(Box[Int32])` records `Box[Int32]` in `mro_ancestors` -- so when a
+    `IntBox(Box[int32])` records `Box[int32]` in `mro_ancestors` -- so when a
     `receiver_record` is supplied, re-base onto the matching bound ancestor.
     Without it (or for a non-generic base, where the ancestor has no type args)
     fall back to the bare base name.
@@ -2689,7 +2689,7 @@ def is_any_int_type(t: 'TpyType | None') -> bool:
 
 
 def is_float_type(t: 'TpyType | None') -> bool:
-    """True for concrete float types (float, Float32). Excludes FloatLiteralType."""
+    """True for concrete float types (float, float32). Excludes FloatLiteralType."""
     if t is None:
         return False
     from .type_def_registry import is_float_category
@@ -2711,7 +2711,7 @@ def is_numeric_type(t: 'TpyType | None') -> bool:
 
 
 def is_primitive_type(t: 'TpyType | None') -> bool:
-    """True for fundamental C++ scalar types: Bool, Char, FixedInt, Float, Float32.
+    """True for fundamental C++ scalar types: Bool, char, FixedInt, Float, float32.
     Register-sized, trivially copyable, no heap. Excludes BigInt (heap) and StrView (internal pointer)."""
     if t is None:
         return False
@@ -2769,7 +2769,7 @@ def is_classvar_allowed_inner(typ: 'TpyType') -> bool:
     Tighter than `is_final_allowed_inner` because mutation is permitted:
     StrView is excluded (a write `C.X = make_string()` would store a view
     into a temporary's storage and dangle). Tuples are admitted only when
-    every element is itself ClassVar-allowed -- so `tuple[Int32, StrView]`
+    every element is itself ClassVar-allowed -- so `tuple[int32, StrView]`
     is rejected.
     """
     from .type_def_registry import is_char_type
@@ -2781,13 +2781,13 @@ def is_classvar_allowed_inner(typ: 'TpyType') -> bool:
 
 
 FINAL_INNER_TYPE_ERROR = (
-    "only primitive types (int, float, bool, str, StrView, Char, IntN) "
+    "only primitive types (int, float, bool, str, StrView, char, IntN) "
     "and tuple are allowed"
 )
 
 
 CLASSVAR_INNER_TYPE_ERROR = (
-    "only primitive types (int, float, bool, Char, IntN) and tuple are "
+    "only primitive types (int, float, bool, char, IntN) and tuple are "
     "allowed; StrView is rejected because mutation can store a view into "
     "a temporary -- use `Final[StrView]` for read-only string constants"
 )
@@ -2839,12 +2839,12 @@ def c_abi_type_hint(typ: 'TpyType') -> str:
     from .type_def_registry import is_big_int_type, is_enum_type
     t = unwrap_readonly(typ)
     if is_big_int_type(t):
-        return "use a fixed-width integer type (Int32, Int64, ...)"
+        return "use a fixed-width integer type (int32, int64, ...)"
     if is_any_str_type(t):
-        return ("use Ptr[readonly[UInt8]] and convert with "
+        return ("use Ptr[readonly[uint8]] and convert with "
                 "tpy.unsafe.unsafe_str_from_cstr() / unsafe_cstr()")
     if is_byte_buffer_c_abi(t):
-        return "use Ptr[readonly[UInt8]] plus an explicit length parameter"
+        return "use Ptr[readonly[uint8]] plus an explicit length parameter"
     if is_sequence_c_abi(t):
         return "use Ptr[T] plus an explicit length parameter"
     if is_enum_type(t):
@@ -3121,7 +3121,7 @@ class OptionalType(TpyType):
     The flag locks codegen to T* even when the concrete inner is a value type.
     It is set by `sema/type_ops.py::substitute_type_params` when a generic
     template committed to T* ABI (unbounded TypeParamRef param/return) is
-    instantiated with a value-typed concrete T (e.g. Container[Int32].get()
+    instantiated with a value-typed concrete T (e.g. Container[int32].get()
     must return int32_t*, not std::optional<int32_t>, to match the emitted
     C++ template's signature).
 
@@ -3194,9 +3194,9 @@ class OptionalType(TpyType):
         """Whether this Optional uses T* (pointer) repr instead of std::optional<T>.
 
         True when inner is not a value type: records, unbounded TypeParamRef.
-        False for value types (Int32, bool) and ValueType-bounded TypeParamRef.
+        False for value types (int32, bool) and ValueType-bounded TypeParamRef.
         force_pointer_repr overrides: set during generic substitution when the
-        template used T* but the concrete inner is a value type (e.g. Container[Int32]
+        template used T* but the concrete inner is a value type (e.g. Container[int32]
         where the template committed to T* for all instantiations).
         """
         if self.force_pointer_repr:
@@ -3425,7 +3425,7 @@ _evaluating_alias_value: set[tuple] = set()
 @dataclass(frozen=True)
 class RecursiveAliasInstanceType(TpyType):
     """A use of a generic recursive type alias at a concrete instantiation
-    (`Tree[Int32]`, or `Tree[T]` inside a generic function/alias body).
+    (`Tree[int32]`, or `Tree[T]` inside a generic function/alias body).
 
     The semantic carrier for a generic recursive alias value. Unlike a
     non-generic recursive alias -- whose use site is an eagerly-expanded
@@ -4754,7 +4754,7 @@ def unify_literal_types(
             on_pending_pair(a, b)
         return a
     # A concrete builtin container can still wrap a pending leaf (a non-empty
-    # dict literal `{1: [2, 3]}` is a concrete dict[Int32, PendingList...]).
+    # dict literal `{1: [2, 3]}` is a concrete dict[int32, PendingList...]).
     # Recurse its type args so a pending list nested under it is reached and
     # converged on the same pass. Gated on an actual pending leaf, so fully
     # concrete generics keep their exact a==b / None behaviour above; and
@@ -4920,14 +4920,14 @@ class ViewVarInfo:
 
 
 # Singleton instances for built-in types
-INT8 = NominalType("Int8", (), _module_qname="tpy.Int8")
-INT16 = NominalType("Int16", (), _module_qname="tpy.Int16")
-INT32 = NominalType("Int32", (), _module_qname="tpy.Int32")
-INT64 = NominalType("Int64", (), _module_qname="tpy.Int64")
-UINT8 = NominalType("UInt8", (), _module_qname="tpy.UInt8")
-UINT16 = NominalType("UInt16", (), _module_qname="tpy.UInt16")
-UINT32 = NominalType("UInt32", (), _module_qname="tpy.UInt32")
-UINT64 = NominalType("UInt64", (), _module_qname="tpy.UInt64")
+INT8 = NominalType("int8", (), _module_qname="tpy.int8")
+INT16 = NominalType("int16", (), _module_qname="tpy.int16")
+INT32 = NominalType("int32", (), _module_qname="tpy.int32")
+INT64 = NominalType("int64", (), _module_qname="tpy.int64")
+UINT8 = NominalType("uint8", (), _module_qname="tpy.uint8")
+UINT16 = NominalType("uint16", (), _module_qname="tpy.uint16")
+UINT32 = NominalType("uint32", (), _module_qname="tpy.uint32")
+UINT64 = NominalType("uint64", (), _module_qname="tpy.uint64")
 ALL_FIXED_INTS = [INT8, INT16, INT32, INT64, UINT8, UINT16, UINT32, UINT64]
 
 VOID = VoidType()
@@ -4935,13 +4935,13 @@ STR = NominalType("str", (), _module_qname="builtins.str")
 STRING = NominalType("String", (), _module_qname="tpy.String")
 STRVIEW = NominalType("StrView", (), _module_qname="tpy.StrView")
 FSTR = NominalType("FStr", (), _module_qname="tpy.FStr")
-CHAR = NominalType("Char", (), _module_qname="tpy.Char")
+CHAR = NominalType("char", (), _module_qname="tpy.char")
 BYTES = NominalType("bytes", (), _module_qname="builtins.bytes")
 BYTEARRAY = NominalType("bytearray", (), _module_qname="builtins.bytearray")
 BYTESVIEW = NominalType("BytesView", (), _module_qname="tpy.BytesView")
 BOOL = NominalType("bool", (), _module_qname="builtins.bool")
 FLOAT = NominalType("float", (), _module_qname="builtins.float")
-FLOAT32 = NominalType("Float32", (), _module_qname="tpy.Float32")
+FLOAT32 = NominalType("float32", (), _module_qname="tpy.float32")
 
 BIGINT = NominalType("int", (), _module_qname="builtins.int")
 NONE = NoneType()
@@ -5009,7 +5009,7 @@ def view_family_for_type(var_type: 'TpyType') -> Optional[ViewTypeFamily]:
     return _VIEW_OWNED_QNAME_TO_FAMILY.get(qn) if qn else None
 
 
-# Int32 range limits (for runtime-constant checks). Use int_traits_of(t) for
+# int32 range limits (for runtime-constant checks). Use int_traits_of(t) for
 # other widths.
 INT32_MIN = -(2 ** 31)
 INT32_MAX = 2 ** 31 - 1
@@ -6627,7 +6627,7 @@ class TypeRegistry:
         """Check if child is a strict subclass of parent (walking the MRO).
 
         Compares name + type_args at each level so generic parents are
-        matched correctly (e.g. IntContainer -> Container[Int32]).
+        matched correctly (e.g. IntContainer -> Container[int32]).
         Returns False for child == parent; use `is_subclass_of_or_equal`
         when same-type should count.
         """

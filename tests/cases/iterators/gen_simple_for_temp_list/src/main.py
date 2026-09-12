@@ -2,15 +2,15 @@
 # rvalue list: the source is evaluated exactly once -- and lazily, on the
 # first pull, not at generator construction (CPython body-deferral timing).
 from typing import Iterator
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
-def make() -> Own[list[Int32]]:
+def make() -> Own[list[int32]]:
     print("making")
     return [10, 20, 30]
 
 
-def g() -> Iterator[Int32]:
+def g() -> Iterator[int32]:
     for x in make():  # tpyc: ok
         yield x
 

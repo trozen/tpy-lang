@@ -1,19 +1,19 @@
 # Error: a @dispatch set has no trailing implementation; each variant is
 # its own implementation.
-from tpy import dispatch, Int32
+from tpy import dispatch, int32
 
 
 @dispatch
-def f(x: Int32) -> Int32:
+def f(x: int32) -> int32:
     return x + 1
 
 
 @dispatch
-def f(x: str) -> Int32:
+def f(x: str) -> int32:
     return len(x)
 
 
-def f(x: Int32 | str) -> Int32:  # tpyc: error(/@dispatch variants of 'f' cannot be followed by a trailing implementation/)
+def f(x: int32 | str) -> int32:  # tpyc: error(/@dispatch variants of 'f' cannot be followed by a trailing implementation/)
     return 0
 
 

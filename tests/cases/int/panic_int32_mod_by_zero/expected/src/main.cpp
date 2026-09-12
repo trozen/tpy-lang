@@ -3,11 +3,11 @@
 
 namespace tpyapp::main {
 
-// x: Int32 = 42
+// x: int32 = 42
 int32_t x{};
-// y: Int32 = 0
+// y: int32 = 0
 int32_t y{};
-// z: Int32 = x % y  # Should panic
+// z: int32 = x % y  # Should panic
 int32_t z{};
 
 void __tpy_init() {
@@ -15,11 +15,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // x: Int32 = 42
+    // x: int32 = 42
     x = 42;
-    // y: Int32 = 0
+    // y: int32 = 0
     y = 0;
-    // z: Int32 = x % y  # Should panic
+    // z: int32 = x % y  # Should panic
     z = (::tpy::mod_check<int32_t>(x, y));
     // print(z)
     std::cout << z << "\n";

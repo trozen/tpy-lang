@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def and_not(u: A | B, flag: bool) -> Int32:
+// def and_not(u: A | B, flag: bool) -> int32:
 int32_t and_not(const ::tpy::Union<A, B>& u, bool flag) {
     // t = 0
     int32_t t = 0;
@@ -21,7 +21,7 @@ int32_t and_not(const ::tpy::Union<A, B>& u, bool flag) {
     return t;
 }
 
-// def not_or(u: A | B, flag: bool) -> Int32:
+// def not_or(u: A | B, flag: bool) -> int32:
 int32_t not_or(const ::tpy::Union<A, B>& u, bool flag) {
     // t = 0
     int32_t t = 0;
@@ -38,7 +38,7 @@ int32_t not_or(const ::tpy::Union<A, B>& u, bool flag) {
     return t;
 }
 
-// def ref_union(u: Node | Leaf, flag: bool) -> Int32:
+// def ref_union(u: Node | Leaf, flag: bool) -> int32:
 int32_t ref_union(::tpy::Union<Leaf*, Node*> u, bool flag) {
     // # The reference-union twin: the alias borrows the pointer variant, so the
     // # mutation inside the loop is visible on the caller`s object afterwards.

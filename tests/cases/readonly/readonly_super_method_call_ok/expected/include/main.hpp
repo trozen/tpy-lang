@@ -17,7 +17,7 @@ struct Base {
 
 
     // @readonly
-    // def value(self) -> Int32:
+    // def value(self) -> int32:
     int32_t value() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
@@ -32,7 +32,7 @@ struct Child : Base {
 
 
     // @readonly
-    // def value_plus_one(self) -> Int32:
+    // def value_plus_one(self) -> int32:
     int32_t value_plus_one() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
@@ -44,14 +44,14 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 
 
 // @readonly
-// def value(self) -> Int32:
+// def value(self) -> int32:
 inline int32_t Base::value() const {
     // return 7
     return 7;
 }
 
 // @readonly
-// def value_plus_one(self) -> Int32:
+// def value_plus_one(self) -> int32:
 inline int32_t Child::value_plus_one() const {
     // return super().value() + 1  # tpyc: ok
     return (::tpy::add_check<int32_t>(this->Base::value(), 1));

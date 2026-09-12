@@ -93,13 +93,13 @@ void __tpy_init() {
     // # Fixed-width conversion sanity around boundary values.
     // print("fixed_width_conversions")
     std::cout << "fixed_width_conversions" << "\n";
-    // print(Int64(SMALL_MAX))
+    // print(int64(SMALL_MAX))
     std::cout << (SMALL_MAX).to_fixed_check<int64_t>() << "\n";
-    // print(Int64(SMALL_MIN))
+    // print(int64(SMALL_MIN))
     std::cout << (SMALL_MIN).to_fixed_check<int64_t>() << "\n";
-    // print(Int64(BIG_POS - 1))
+    // print(int64(BIG_POS - 1))
     std::cout << (((BIG_POS) - (::tpy::BigInt(1)))).to_fixed_check<int64_t>() << "\n";
-    // print(Int64(BIG_NEG + 1))
+    // print(int64(BIG_NEG + 1))
     std::cout << (((BIG_NEG) + (::tpy::BigInt(1)))).to_fixed_check<int64_t>() << "\n";
 }
 

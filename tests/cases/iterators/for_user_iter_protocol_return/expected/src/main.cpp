@@ -8,7 +8,7 @@ namespace tpyapp::main {
 void main() {
     // s = Stack()
     Stack s = Stack();
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for x in s:
     auto& __src_0 = s;

@@ -1,12 +1,12 @@
 """Test user-defined record with __lt__ satisfies Comparable bound."""
 from __future__ import annotations
-from tpy import Int32, Comparable
+from tpy import int32, Comparable
 
 
 class MyInt:
-    value: Int32
+    value: int32
 
-    def __init__(self, v: Int32):
+    def __init__(self, v: int32):
         self.value = v
 
     def __lt__(self, other: MyInt) -> bool:

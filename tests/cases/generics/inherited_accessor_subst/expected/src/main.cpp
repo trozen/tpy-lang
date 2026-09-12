@@ -8,7 +8,7 @@ namespace tpyapp::main {
 void main() {
     // h = Sub(5, Rec(7))
     Sub h = Sub(5, Rec(7));
-    // print(h.key)          # inherited getter, K substituted to Int32
+    // print(h.key)          # inherited getter, K substituted to int32
     std::cout << h.key() << "\n";
     // h.key = 6             # inherited setter, value param substituted
     h.set_key(6);

@@ -1,4 +1,4 @@
-from tpy import Int32, copy
+from tpy import int32, copy
 def main() -> None:
     xs = [1, 2]
     ys = copy(xs)

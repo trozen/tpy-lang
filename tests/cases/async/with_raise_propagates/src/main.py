@@ -1,11 +1,11 @@
 # Body raises -> __aexit__ runs -> exception propagates out (cleanup-only
 # v1.5 M5 path -- no suppression in scope).
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
 class CM:
-    async def __aenter__(self) -> Int32:
+    async def __aenter__(self) -> int32:
         print("aenter")
         return 0
 

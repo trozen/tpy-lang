@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 xs = [1, 2, 3]
 it = iter(xs)
 it2 = it

@@ -1,26 +1,26 @@
 # Own[Dog | Cat] returns value variant by value (no pointer variant)
-from tpy import Int32, Own
+from tpy import int32, Own
 
 class Dog:
     name: str
-    age: Int32
+    age: int32
 
-    def __init__(self, name: str, age: Int32) -> None:
+    def __init__(self, name: str, age: int32) -> None:
         self.name = name
         self.age = age
 
 class Cat:
     name: str
-    lives: Int32
+    lives: int32
 
-    def __init__(self, name: str, lives: Int32) -> None:
+    def __init__(self, name: str, lives: int32) -> None:
         self.name = name
         self.lives = lives
 
-def make_dog(name: str, age: Int32) -> Own[Dog | Cat]:
+def make_dog(name: str, age: int32) -> Own[Dog | Cat]:
     return Dog(name, age)
 
-def make_cat(name: str, lives: Int32) -> Own[Dog | Cat]:
+def make_cat(name: str, lives: int32) -> Own[Dog | Cat]:
     return Cat(name, lives)
 
 def main() -> None:

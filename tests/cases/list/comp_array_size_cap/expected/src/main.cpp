@@ -9,7 +9,7 @@ namespace tpyapp::main {
 // # the cap it stays a stack Array.
 // def main():
 void main() {
-    // big = [i for i in range(2000)]  # tpyc: type(/list\[Int32\]/)
+    // big = [i for i in range(2000)]  # tpyc: type(/list\[int32\]/)
     std::vector<int32_t> big = ({
         std::vector<int32_t> __result;
         const int32_t __stop_0 = 2000;
@@ -19,7 +19,7 @@ void main() {
         }
         std::move(__result);
     });
-    // edge = [i for i in range(1024)]  # tpyc: type(/Array\[Int32, 1024\]/)
+    // edge = [i for i in range(1024)]  # tpyc: type(/Array\[int32, 1024\]/)
     std::array<int32_t, 1024> edge = ::tpy::array_from_index<int32_t, 1024>([&](std::size_t __i_1) -> int32_t {
         int32_t i = int32_t(__i_1);
         return i;

@@ -3,10 +3,10 @@
 
 namespace tpyapp::main {
 
-// result: Int32 | None = maybe_int(True)
+// result: int32 | None = maybe_int(True)
 std::optional<int32_t> result;
 
-// def maybe_int(flag: bool) -> Int32 | None:
+// def maybe_int(flag: bool) -> int32 | None:
 std::optional<int32_t> maybe_int(bool flag) {
     // if flag:
     if (flag) {
@@ -17,7 +17,7 @@ std::optional<int32_t> maybe_int(bool flag) {
     return std::nullopt;
 }
 
-// def pass_through(val: Int32 | None) -> Int32 | None:
+// def pass_through(val: int32 | None) -> int32 | None:
 std::optional<int32_t> pass_through(std::optional<int32_t> val) {
     // return val
     return val;
@@ -32,7 +32,7 @@ void __tpy_init() {
     std::cout << ::tpy::print_optional_val(maybe_int(true)) << "\n";
     // print(maybe_int(False))
     std::cout << ::tpy::print_optional_val(maybe_int(false)) << "\n";
-    // result: Int32 | None = maybe_int(True)
+    // result: int32 | None = maybe_int(True)
     result = maybe_int(true);
     // if result is not None:
     if ((result.has_value())) {

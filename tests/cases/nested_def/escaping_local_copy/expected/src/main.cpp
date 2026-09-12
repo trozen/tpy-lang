@@ -4,11 +4,11 @@
 namespace tpyapp::main {
 
 
-// def make_getter() -> Callable[[], Int32]:
+// def make_getter() -> Callable[[], int32]:
 std::function<int32_t()> make_getter() {
     // cfg = Config(42)
     Config cfg = Config(42);
-    // def get_value() -> Int32:  # tpyc: warning(/copies local 'cfg'.*used after closure/)
+    // def get_value() -> int32:  # tpyc: warning(/copies local 'cfg'.*used after closure/)
     auto get_value = [cfg]() -> int32_t {
         // return cfg.value
         return cfg.value;

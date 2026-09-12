@@ -6,19 +6,19 @@ namespace tpyapp::main {
 
 // def read_base(b: readonly[Base]) -> None:
 void read_base(const Base& b) {
-    // s = b.items()  # tpyc: type(Span[readonly[Int32]])
+    // s = b.items()  # tpyc: type(Span[readonly[int32]])
     std::span<const int32_t> s = b.items();
-    // print(s[Int32(0)])
+    // print(s[int32(0)])
     std::cout << ::tpy::__getitem__(s, 0) << "\n";
 }
 
 // def read_child(c: readonly[Child]) -> None:
 void read_child(const Child& c) {
-    // s = c.items()  # tpyc: type(Span[readonly[Int32]])
+    // s = c.items()  # tpyc: type(Span[readonly[int32]])
     std::span<const int32_t> s = c.items();
-    // print(s[Int32(0)])
+    // print(s[int32(0)])
     std::cout << ::tpy::__getitem__(s, 0) << "\n";
-    // print(s[Int32(1)])
+    // print(s[int32(1)])
     std::cout << ::tpy::__getitem__(s, 1) << "\n";
 }
 
@@ -26,17 +26,17 @@ void read_child(const Child& c) {
 void main() {
     // b = Base()
     Base b = Base();
-    // s = b.items()  # tpyc: type(Span[Int32])
+    // s = b.items()  # tpyc: type(Span[int32])
     std::span<int32_t> s = b.items();
-    // print(s[Int32(0)])
+    // print(s[int32(0)])
     std::cout << ::tpy::__getitem__(s, 0) << "\n";
     // read_base(b)
     read_base(b);
     // c = Child()
     Child c = Child();
-    // s2 = c.items()  # tpyc: type(Span[Int32])
+    // s2 = c.items()  # tpyc: type(Span[int32])
     std::span<int32_t> s2 = c.items();
-    // print(s2[Int32(0)])
+    // print(s2[int32(0)])
     std::cout << ::tpy::__getitem__(s2, 0) << "\n";
     // read_child(c)
     read_child(c);

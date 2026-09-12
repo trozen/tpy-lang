@@ -1,6 +1,6 @@
 import tpy.unsafe
-from tpy import Int32, Ptr, UInt32, Array
+from tpy import int32, Ptr, uint32, Array
 
-tpy: Int32 = Int32(1)
-arr: Array[Int32, 2] = [Int32(1), Int32(2)]
-p: Ptr[Int32] = tpy.unsafe.unsafe_ptr(arr)  # tpyc: error(/has no field/)
+tpy: int32 = int32(1)
+arr: Array[int32, 2] = [int32(1), int32(2)]
+p: Ptr[int32] = tpy.unsafe.unsafe_ptr(arr)  # tpyc: error(/has no field/)

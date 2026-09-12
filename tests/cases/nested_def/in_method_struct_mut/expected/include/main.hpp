@@ -15,13 +15,13 @@ void main();
 
 // class Bag:
 struct Bag {
-    // items: list[Int32]
+    // items: list[int32]
     std::vector<int32_t> items;
 
     // def __init__(self) -> None:
     Bag();
 
-    // def fill(self, v: Int32) -> None:
+    // def fill(self, v: int32) -> None:
     void fill(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";
 };
@@ -35,7 +35,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 // def __init__(self) -> None:
 inline Bag::Bag() : items(std::vector<int32_t>{}) {}
 
-// def fill(self, v: Int32) -> None:
+// def fill(self, v: int32) -> None:
 inline void Bag::fill(int32_t v) {
     // def add() -> None:
     auto add = [this, &v]() {

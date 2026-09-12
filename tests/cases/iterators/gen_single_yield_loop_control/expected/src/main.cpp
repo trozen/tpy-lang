@@ -4,11 +4,11 @@
 namespace tpyapp::main {
 
 
-// def take(items: list[Int32], n: Int32) -> Iterator[Int32]:
+// def take(items: list[int32], n: int32) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_take::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // i: Int32 = 0
+        // i: int32 = 0
         i = 0;
         __for_it_0.emplace((items).begin());
         __for_end_0.emplace((items).end());
@@ -46,12 +46,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_take::__next__() {
 }
 
 
-// def take(items: list[Int32], n: Int32) -> Iterator[Int32]:
+// def take(items: list[int32], n: int32) -> Iterator[int32]:
 __gen_take take(std::vector<int32_t>& items, int32_t n) {
     return __gen_take(items, n);
 }
 
-// def evens(items: list[Int32]) -> Iterator[Int32]:
+// def evens(items: list[int32]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_evens::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -85,12 +85,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_evens::__next__() {
 }
 
 
-// def evens(items: list[Int32]) -> Iterator[Int32]:
+// def evens(items: list[int32]) -> Iterator[int32]:
 __gen_evens evens(std::vector<int32_t>& items) {
     return __gen_evens(items);
 }
 
-// def stride() -> Iterator[Int32]:
+// def stride() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_stride::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -131,12 +131,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_stride::__next__() {
 }
 
 
-// def stride() -> Iterator[Int32]:
+// def stride() -> Iterator[int32]:
 __gen_stride stride() {
     return __gen_stride();
 }
 
-// def upto_range(n: Int32) -> Iterator[Int32]:
+// def upto_range(n: int32) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_upto_range::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -174,16 +174,16 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_upto_range::__next__() {
 }
 
 
-// def upto_range(n: Int32) -> Iterator[Int32]:
+// def upto_range(n: int32) -> Iterator[int32]:
 __gen_upto_range upto_range(int32_t n) {
     return __gen_upto_range(n);
 }
 
-// def upto_while() -> Iterator[Int32]:
+// def upto_while() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_upto_while::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // n: Int32 = 0
+        // n: int32 = 0
         n = 0;
         __state = S_JOIN_0;
         continue;
@@ -219,12 +219,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_upto_while::__next__() {
 }
 
 
-// def upto_while() -> Iterator[Int32]:
+// def upto_while() -> Iterator[int32]:
 __gen_upto_while upto_while() {
     return __gen_upto_while();
 }
 
-// def iter_post_break(items: list[Int32]) -> Iterator[Int32]:
+// def iter_post_break(items: list[int32]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_iter_post_break::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -262,12 +262,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_iter_post_break::__next__() {
 }
 
 
-// def iter_post_break(items: list[Int32]) -> Iterator[Int32]:
+// def iter_post_break(items: list[int32]) -> Iterator[int32]:
 __gen_iter_post_break iter_post_break(std::vector<int32_t>& items) {
     return __gen_iter_post_break(items);
 }
 
-// def post_continue(items: list[Int32]) -> Iterator[Int32]:
+// def post_continue(items: list[int32]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_post_continue::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -303,7 +303,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_post_continue::__next__() {
 }
 
 
-// def post_continue(items: list[Int32]) -> Iterator[Int32]:
+// def post_continue(items: list[int32]) -> Iterator[int32]:
 __gen_post_continue post_continue(std::vector<int32_t>& items) {
     return __gen_post_continue(items);
 }
@@ -400,7 +400,7 @@ void main() {
     }
     // lim = Limiter(2)
     Limiter lim = Limiter(2);
-    // nums: list[Int32] = [-1, 5, -2, 7, 9]
+    // nums: list[int32] = [-1, 5, -2, 7, 9]
     std::vector<int32_t> nums = {-1, 5, -2, 7, 9};
     // for v in lim.first_positives(nums):
     {
@@ -416,11 +416,11 @@ void main() {
     }
 }
 
-// def first_positives(self, items: list[Int32]) -> Iterator[Int32]:
+// def first_positives(self, items: list[int32]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_Limiter_first_positives::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // c: Int32 = 0
+        // c: int32 = 0
         c = 0;
         __for_it_0.emplace((items).begin());
         __for_end_0.emplace((items).end());

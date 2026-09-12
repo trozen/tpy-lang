@@ -1,14 +1,14 @@
 # Mutually-recursive records where both carry __del__: the dtor/move ops must
 # define after both structs (the ctor sibling is recursive_record_mutual).
 from __future__ import annotations
-from tpy import Int32
+from tpy import int32
 
 
 class A:
-    val: Int32
+    val: int32
     bs: list[B]
 
-    def __init__(self, val: Int32) -> None:
+    def __init__(self, val: int32) -> None:
         self.val = val
         self.bs = []
 
@@ -17,10 +17,10 @@ class A:
 
 
 class B:
-    val: Int32
+    val: int32
     as_: list[A]
 
-    def __init__(self, val: Int32) -> None:
+    def __init__(self, val: int32) -> None:
         self.val = val
         self.as_ = []
 

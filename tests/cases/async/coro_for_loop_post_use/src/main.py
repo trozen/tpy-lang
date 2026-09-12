@@ -10,13 +10,13 @@
 # undeclared `it`. The fix preserves the original stmt object when
 # sub-body lifting produced no actual changes.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
 class Item:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
@@ -28,7 +28,7 @@ class Container:
         self.items.append(Item(1))
         self.items.append(Item(99))
 
-    async def last_n(self) -> Int32:
+    async def last_n(self) -> int32:
         await asyncio.sleep(0)
         for it in self.items:
             pass

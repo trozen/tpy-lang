@@ -1,11 +1,11 @@
 # A SELF-capturing lambda as a callable member-init source: the `this` receiver
 # spelling is not part of the routed slice.
 from typing import Callable
-from tpy import Int32
+from tpy import int32
 
 
 class Handler:
-    n: Int32
+    n: int32
     action: Callable[[], None]
 
     def __init__(self) -> None:

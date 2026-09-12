@@ -2,22 +2,22 @@
 # directly consumes its `@nocopy` locals. _gen_tuple_literal recurses through
 # elem_target so each level emits std::move correctly. This is the recommended
 # workaround for the "ref-tuple of @nocopy" sema reject.
-from tpy import nocopy, Int32, Own
+from tpy import nocopy, int32, Own
 
 
 @nocopy
 class Handle:
-    fd: Int32
+    fd: int32
 
-    def __init__(self, fd: Int32) -> None:
+    def __init__(self, fd: int32) -> None:
         self.fd = fd
 
 
 def two_pairs() -> tuple[tuple[Own[Handle], Own[Handle]], tuple[Own[Handle], Own[Handle]]]:
-    a = Handle(Int32(1))
-    b = Handle(Int32(2))
-    c = Handle(Int32(3))
-    d = Handle(Int32(4))
+    a = Handle(int32(1))
+    b = Handle(int32(2))
+    c = Handle(int32(3))
+    d = Handle(int32(4))
     return ((a, b), (c, d))
 
 

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def describe(x: Int32) -> None:
+// def describe(x: int32) -> None:
 void describe(int32_t x) {
     // print("int:", x)
     std::cout << "int:" << " " << x << "\n";

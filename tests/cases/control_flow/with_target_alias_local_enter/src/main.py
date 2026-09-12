@@ -7,20 +7,20 @@
 # so a copy at the boundary would show the stale value instead.
 from typing import Iterator
 
-from tpy import Int32
+from tpy import int32
 
 
 class Item:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
 
 class Holder:
     item: Item
 
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.item = Item(n)
 
     def __enter__(self) -> Item:
@@ -30,11 +30,11 @@ class Holder:
     def __exit__(self, et, ev, tb) -> None:
         pass
 
-    def total(self) -> Int32:
+    def total(self) -> int32:
         return self.item.n
 
 
-def steps(start: Int32) -> Iterator[Int32]:
+def steps(start: int32) -> Iterator[int32]:
     h = Holder(start)
     with h as it:
         pass

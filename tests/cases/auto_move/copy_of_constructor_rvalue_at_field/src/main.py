@@ -1,14 +1,14 @@
 # `copy()` of a constructor prvalue written into a record field: the copy peels
 # away and the constructor's own value is stored, so later writes to the source
 # record are not visible through the field.
-from tpy import Int32, copy
+from tpy import int32, copy
 
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32) -> None:
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 

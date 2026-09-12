@@ -31,7 +31,7 @@ inline constexpr int32_t SLICE_END = INT32_MAX;
 /// Sentinel for omitted slice bound in stepped slicing (distinct from SLICE_END
 /// because stepped slicing needs to distinguish None from 0 -- negative step
 /// reverses the default start/stop direction).
-/// Note: collides with INT32_MIN as a valid Int32 value. In practice this is
+/// Note: collides with INT32_MIN as a valid int32 value. In practice this is
 /// harmless -- no container can have 2^31 elements, so the clamped result is
 /// identical whether the bound is treated as "absent" or as -2147483648.
 inline constexpr int32_t SLICE_NONE = INT32_MIN;

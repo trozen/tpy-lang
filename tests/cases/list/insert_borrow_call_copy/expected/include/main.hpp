@@ -16,10 +16,10 @@ void main();
 
 // class Payload:
 struct Payload {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Payload() = default;
     explicit Payload(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Payload";
@@ -34,7 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const Payload& obj) {
 struct Holder {
     // p: Payload
     Payload p;
-    // items: list[Int32]
+    // items: list[int32]
     std::vector<int32_t> items;
 
     // def __init__(self) -> None:
@@ -43,7 +43,7 @@ struct Holder {
     // def brec(self) -> Payload:
     Payload& brec();
 
-    // def bctr(self) -> list[Int32]:
+    // def bctr(self) -> list[int32]:
     std::vector<int32_t>& bctr();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
@@ -54,7 +54,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Payload::Payload(int32_t v) : v(v) {}
 
 // def __init__(self) -> None:
@@ -66,7 +66,7 @@ inline Payload& Holder::brec() {
     return this->p;
 }
 
-// def bctr(self) -> list[Int32]:
+// def bctr(self) -> list[int32]:
 inline std::vector<int32_t>& Holder::bctr() {
     // return self.items
     return this->items;

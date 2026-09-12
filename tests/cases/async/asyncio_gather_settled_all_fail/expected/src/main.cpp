@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def fail(tag: Int32) -> Int32:
+// async def fail(tag: int32) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_fail::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -27,7 +27,7 @@ namespace tpyapp::main {
 }
 
 
-// async def fail(tag: Int32) -> Int32:
+// async def fail(tag: int32) -> int32:
 __coro_fail fail(int32_t tag) {
     return __coro_fail(tag);
 }
@@ -36,13 +36,13 @@ __coro_fail fail(int32_t tag) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // tasks: list[asyncio.Task[Int32]] = []
+        // tasks: list[asyncio.Task[int32]] = []
         tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<int32_t>>{});
-        // tasks.append(asyncio.create_task(fail(Int32(0))))
+        // tasks.append(asyncio.create_task(fail(int32(0))))
         (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fail(0))));
-        // tasks.append(asyncio.create_task(fail(Int32(1))))
+        // tasks.append(asyncio.create_task(fail(int32(1))))
         (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fail(1))));
-        // tasks.append(asyncio.create_task(fail(Int32(2))))
+        // tasks.append(asyncio.create_task(fail(int32(2))))
         (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fail(2))));
         // results = await asyncio.gather_list_settled(tasks)
         __sub_0.emplace((*tasks));

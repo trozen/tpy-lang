@@ -12,14 +12,14 @@
 | - | Cross-module overload import | Done |
 | - | Method overloads | Done |
 | - | Generic function/method overloads | Done |
-| - | `slice` type integration (`__getitem__` with `Int32 \| slice`) | Done |
+| - | `slice` type integration (`__getitem__` with `int32 \| slice`) | Done |
 
 ## Future Extensions
 
 | Feature | Notes |
 |---------|-------|
 | Partial union stubs | Stub takes `Dog \| Cat` when impl has `Dog \| Cat \| Bird`. Needs `resolve_overload` to match concrete arg against union stub params via member containment. |
-| Non-union overloads | Overloads distinguished by coercion-compatible types (e.g., `Int32` vs `float`). Needs a different dispatch mechanism since isinstance doesn't apply. Start with union-only -- it's the natural pattern. |
+| Non-union overloads | Overloads distinguished by coercion-compatible types (e.g., `int32` vs `float`). Needs a different dispatch mechanism since isinstance doesn't apply. Start with union-only -- it's the natural pattern. |
 | Overload on arity | Different parameter counts per stub. Maps to C++ overloads with different parameter counts. |
 | Dead branch elimination generalization | Extend dead-branch elimination beyond overload dispatch -- e.g. when isinstance/match has only a single possible type, eliminate the check entirely even without `@overload`. |
 | `register`-style `@dispatch` variants; `singledispatch` | A `@area.variant` registration form (variants named `_`, as in `functools.singledispatch`) is the only spelling type checkers accept for self-contained variants; `singledispatch` itself maps onto a first-argument-only `@dispatch` set with a generic fallback variant. Low priority; tracked in TODO.md. |
@@ -42,8 +42,8 @@ def describe(x: Dog) -> str: ...
 @overload
 def describe(x: Cat) -> str: ...
 @overload
-def describe(x: Bird) -> Int32: ...
-def describe(x: Dog | Cat | Bird) -> str | Int32:
+def describe(x: Bird) -> int32: ...
+def describe(x: Dog | Cat | Bird) -> str | int32:
     if isinstance(x, Dog):
         return "woof: " + x.name
     elif isinstance(x, Cat):
@@ -89,7 +89,7 @@ Works for:
 - Static methods
 - Generic functions/methods (type params preserved per overload)
 
-Current scope is union-typed parameters only. Non-union overloads (e.g., `Int32` vs
+Current scope is union-typed parameters only. Non-union overloads (e.g., `int32` vs
 `float` via coercion) are a future extension.
 
 ## Syntax and Semantics
@@ -122,11 +122,11 @@ and run under stock CPython.
 from tpy import dispatch
 
 @dispatch
-def area(w: Int32) -> Int32:
+def area(w: int32) -> int32:
     return w * w
 
 @dispatch
-def area(w: Int32, h: Int32) -> Int32:
+def area(w: int32, h: int32) -> int32:
     return w * h
 ```
 
@@ -236,7 +236,7 @@ declaration order of the stubs does not affect the winner.
 ```python
 d = Dog("Rex")
 result = describe(d)  # resolves to stub 1: describe(Dog) -> str
-# result type: str (not str | Int32)
+# result type: str (not str | int32)
 ```
 
 #### First pass: strict tier-ranked matching
@@ -253,7 +253,7 @@ lower numeric value beats higher):
 | # | Tier | Matches |
 |---|------|---------|
 | 1 | `EXACT_CONCRETE` | `arg == param` after stripping `Readonly` / `Own` / `Ref` / `Optional`; also `IntLiteral` -> fixed-int in range, `None` -> `Void`, `Callable` -> `Fn`, pending views -> resolved views. |
-| 2 | `EXACT_GENERIC_SHAPE` | Generic param with concrete outer container and `TypeParamRef` inside: `list[T]` matching `list[Int32]`, `Ptr[T]`, `tuple[T, T]`, etc. The outer shape pins the match before `T` is substituted. |
+| 2 | `EXACT_GENERIC_SHAPE` | Generic param with concrete outer container and `TypeParamRef` inside: `list[T]` matching `list[int32]`, `Ptr[T]`, `tuple[T, T]`, etc. The outer shape pins the match before `T` is substituted. |
 | 3 | `PROTOCOL_EXPLICIT` | Protocol conformance via declared `extends` / `implemented_protocols` / protocol-to-protocol inheritance, plus compiler-intrinsic short-circuits: `GenExpr` / `CopyIter` / `OwnIter` satisfying `Iterable`; `Enum` satisfying `Hashable` / `Comparable` / `Equatable`; `Tuple` satisfying `Hashable`; `ValueType` / `Default` marker protocols; `Stringable` (satisfied by any type with `__str__` **or** `__repr__`, mirroring Python's `object.__str__ -> __repr__` fallback). |
 | 4 | `PROTOCOL_STRUCTURAL` | Protocol conformance proved only by walking required methods/fields. |
 | 5 | `GENERIC_PROTOCOL_EXPLICIT` | Generic overload whose protocol param contains `TypeParamRef`, matching via an explicit (tier 3) conformance path after inference. |
@@ -275,13 +275,13 @@ at the same tier:
 - Float -> wider float: 1.
 - `IntLiteralType` and `UnknownElementType` (empty-list element) bias toward
   `default_int_type`: the cost is computed as if the source were
-  `default_int_type`. This is how `sum([])` resolves to the `Iterable[Int32]`
+  `default_int_type`. This is how `sum([])` resolves to the `Iterable[int32]`
   overload at cost 0 under the default config, matching CPython's
   `sum([]) == 0` (int).
 - For protocol params, cost is aggregated over matched type-arg positions
-  (e.g. `list[Int32]` vs `Iterable[Int64]` scores 4 on the single element
+  (e.g. `list[int32]` vs `Iterable[int64]` scores 4 on the single element
   slot). Non-parameterised containers fall back to their `get_element_type()`,
-  so `bytearray` vs `Iterable[UInt8]` scores 0 and vs `Iterable[Int32]` scores
+  so `bytearray` vs `Iterable[uint8]` scores 0 and vs `Iterable[int32]` scores
   positive.
 
 **Concrete-over-generic invariant.** Because generic tiers (2, 5, 6, 7) all
@@ -312,7 +312,7 @@ narrowing conversions, with an `IntLiteralType` penalty derived from
 #### Worked example: `sum([])`
 
 1. Arg type is `PendingListType(UnknownElement, size=0)`.
-2. Candidates after pre-substitution: `sum(Iterable[Int32|Int64|int|float|Float32])`.
+2. Candidates after pre-substitution: `sum(Iterable[int32|int64|int|float|float32])`.
    The generic `sum[T: AnyFixedInt](Iterable[T])` fails inference (no element
    info) and is dropped.
 3. Each candidate classifies as `PROTOCOL_EXPLICIT` (the empty
@@ -320,13 +320,13 @@ narrowing conversions, with an `IntLiteralType` penalty derived from
    returns `EXPLICIT` for any single-type-arg protocol).
 4. `_type_args_widening_cost` extracts the element via `get_element_type()`
    (returns `UnknownElement`), then `_scalar_widening_cost(UnknownElement, <elem>,
-   default_int=Int32)` gives 0 for `Int32`, 4 for `Int64`, 8 for `int`
-   (`BigInt`), 16 for `float` / `Float32`.
+   default_int=int32)` gives 0 for `int32`, 4 for `int64`, 8 for `int`
+   (`BigInt`), 16 for `float` / `float32`.
 5. Score vectors: all tie on tier counts (one `PROTOCOL_EXPLICIT` each) and
-   differ only on total cost. The `Int32` candidate wins at cost 0.
+   differ only on total cost. The `int32` candidate wins at cost 0.
 6. Codegen emits `tpy::builtin_sum<int32_t>(std::vector<int32_t>{})`.
 
-The same mechanism makes `sum([1, 2, 3])` resolve to `Int32` via the
+The same mechanism makes `sum([1, 2, 3])` resolve to `int32` via the
 `IntLiteralType` branch of `_scalar_widening_cost`.
 
 #### Keyword arguments
@@ -390,7 +390,7 @@ can't reason over synthesized callable types. Lambda body errors raised
 during a trial propagate through `_build_regime_c_evidence` into
 `saved_dry_error`, surfaced via `result.first_contextual_error` when no
 candidate passes -- the user sees the body diagnostic (e.g. "Invalid
-operand types for '+': Int32 and str") instead of a generic
+operand types for '+': int32 and str") instead of a generic
 "no matching overload" message.
 
 #### Testing
@@ -402,7 +402,7 @@ operand types for '+': Int32 and str") instead of a generic
   (ambiguity -> diagnostic), `tests/cases/calls/overload_iterable_empty_literal`
   and `tests/cases/builtins/sum_basic` (empty-list default-int biasing),
   `tests/cases/bytes/from_iterable` (non-parameterised container element-type
-  fallback for `bytearray` -> `Iterable[UInt8]`),
+  fallback for `bytearray` -> `Iterable[uint8]`),
   `tests/cases/str/str_repr_only` (Stringable broadening),
   `tests/cases/calls/overload_kwarg_disambig` (kwarg type breaks positional
   tie on free functions), `tests/cases/calls/overload_kwarg_method` (same
@@ -506,11 +506,11 @@ for arm in match.arms:
 ```python
 class Container[T]:
     @overload
-    def get(self, index: Int32) -> T: ...
+    def get(self, index: int32) -> T: ...
     @overload
     def get(self, name: str) -> T: ...
-    def get(self, key: Int32 | str) -> T:
-        if isinstance(key, Int32):
+    def get(self, key: int32 | str) -> T:
+        if isinstance(key, int32):
             return self._items[key]
         else:
             return self._named[key]

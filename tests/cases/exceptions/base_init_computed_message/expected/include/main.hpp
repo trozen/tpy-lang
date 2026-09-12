@@ -18,10 +18,10 @@ void main();
 
 // class Tagged(Exception):
 struct Tagged : ::tpy::Exception {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Tagged() = default;
     explicit Tagged(int32_t n);
 
@@ -56,10 +56,10 @@ inline std::ostream& operator<<(std::ostream& os, const Labelled& obj) {
 
 // class Numbered(Exception):
 struct Numbered : ::tpy::Exception {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Numbered() = default;
     explicit Numbered(int32_t n);
 
@@ -76,10 +76,10 @@ inline std::ostream& operator<<(std::ostream& os, const Numbered& obj) {
 
 // class Formatted(Exception):
 struct Formatted : ::tpy::Exception {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Formatted() = default;
     explicit Formatted(int32_t n);
 
@@ -95,16 +95,16 @@ inline std::ostream& operator<<(std::ostream& os, const Formatted& obj) {
 }
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Tagged::Tagged(int32_t n) : ::tpy::Exception((::tpy::str_concat("tag", ::tpy::fixed_to_str<int32_t>(n)))), n(n) {}
 
 // def __init__(self, prefix: str, t: Tagged) -> None:
 inline Labelled::Labelled(std::string_view prefix, const Tagged& t) : ::tpy::Exception((::tpy::str_concat((::tpy::str_concat(prefix, "-")), ::tpy::fixed_to_str<int32_t>(t.n)))) {}
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Numbered::Numbered(int32_t n) : ::tpy::Exception(::tpy::fixed_to_str<int32_t>(n)), n(n) {}
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Formatted::Formatted(int32_t n) : ::tpy::Exception(std::format("tag{}", n)), n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

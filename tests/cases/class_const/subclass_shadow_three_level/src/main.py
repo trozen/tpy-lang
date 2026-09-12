@@ -2,19 +2,19 @@
 # the same ClassVar. Phase 8's BFS-with-discard validates Child against
 # the nearest declaring ancestor (Parent) only -- not against Grandparent.
 from typing import ClassVar
-from tpy import Int32
+from tpy import int32
 
 
 class Grandparent:
-    counter: ClassVar[Int32] = 0
+    counter: ClassVar[int32] = 0
 
 
 class Parent(Grandparent):
-    counter: ClassVar[Int32] = 0
+    counter: ClassVar[int32] = 0
 
 
 class Child(Parent):
-    counter: ClassVar[Int32] = 0
+    counter: ClassVar[int32] = 0
 
 
 def main() -> None:

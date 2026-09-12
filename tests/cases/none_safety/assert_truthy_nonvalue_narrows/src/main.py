@@ -1,14 +1,14 @@
-from tpy import Int32
+from tpy import int32
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32):
+    def __init__(self, x: int32):
         self.x = x
 
 
-def get_x(p: Point | None) -> Int32:
+def get_x(p: Point | None) -> int32:
     assert p  # tpyc: ok
     return p.x  # tpyc: ok
 

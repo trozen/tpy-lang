@@ -1,14 +1,14 @@
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 class Cat:
-    lives: Int32
-    def __init__(self, lives: Int32) -> None:
+    lives: int32
+    def __init__(self, lives: int32) -> None:
         self.lives = lives
 
 class Dog:
-    lives: Int32
-    def __init__(self, lives: Int32) -> None:
+    lives: int32
+    def __init__(self, lives: int32) -> None:
         self.lives = lives
 
 class Holder:
@@ -16,7 +16,7 @@ class Holder:
     def __init__(self, pet: Cat | Dog) -> None:
         self.pet = pet
 
-def gen(h: Holder) -> Iterator[Int32]:
+def gen(h: Holder) -> Iterator[int32]:
     match h:
         case Holder(pet=Cat(lives=v)):
             yield v

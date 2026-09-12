@@ -4,12 +4,12 @@
 # body; (2) out-of-line method-body codegen letting the inline reference
 # to a synth record (`__tpy_builder_counter_1`) compile even though the
 # synth record is declared after `Holder` in the .hpp.
-from tpy import Int32
+from tpy import int32
 from _method_builder import Counter
 
 
 class Holder:
-    def make(self) -> Int32:
+    def make(self) -> int32:
         c = Counter()
         c.add(7)
         c.add(35)
@@ -17,7 +17,7 @@ class Holder:
         return res.total()
 
 
-def main() -> Int32:
+def main() -> int32:
     h = Holder()
     print(h.make())
     return 0

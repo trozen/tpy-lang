@@ -10,13 +10,13 @@
 # on MyHandle without an explicit specialization.
 # tpy: cpp_namespace("tpyapp::myns")
 # tpy: include("native_types.hpp")
-from tpy import Int32, ValueType
+from tpy import int32, ValueType
 from tpy.extern import native
 
 
 @native("::MyHandle")
 class Handle(ValueType):
-    val: Int32
+    val: int32
 
 
 def identity[T: ValueType](x: T) -> T:

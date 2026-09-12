@@ -1,18 +1,18 @@
 # An explicitly-annotated alias binding (u: tuple[...] = t) shares the durable
 # member like a plain alias: returning u aliases it, so a post-boundary mutation
 # reaches the caller's object.
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    val: Int32
-    def __init__(self, v: Int32) -> None:
+    val: int32
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 
-def f(b: Box) -> tuple[Int32, Box]:
+def f(b: Box) -> tuple[int32, Box]:
     t = (1, b)
-    u: tuple[Int32, Box] = t
+    u: tuple[int32, Box] = t
     return u
 
 

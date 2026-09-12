@@ -809,7 +809,7 @@ def _seed_readonly_globals(
 def _seed_int_kind_tparams(func: TpyFunction, record_name: 'str | None',
                            analyzer, params_set: dict[str, TpyType]) -> None:
     """Template VALUE params (`[N: int]`, a C++ `std::size_t N`) read as
-    bare names in the body (`return Int32(N * 2)` -> `mul_check(N, 2)`);
+    bare names in the body (`return int32(N * 2)` -> `mul_check(N, 2)`);
     seed each -- the function's own and the owning record's -- as an
     INT-kind TypeParamRef binding so the name reads route."""
     if record_name:
@@ -1316,7 +1316,7 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
     would also admit `other_record.field = ...`, which is not a member init. The
     own-field test is the same one the ctor driver applies. Routed shapes:
 
-      * **scalar** (M3a): an eligible-scalar or Char value (`f(value)`).
+      * **scalar** (M3a): an eligible-scalar or char value (`f(value)`).
       * **own-param move** (M3b-move): an `Own[...]` source consumed at its last use
         moves into a record / Optional[record] field (`f(std::move(p))`); checked
         before the copy arms because the cascade applies the move first and never
@@ -1375,7 +1375,7 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
     if (_eligible_scalar(ftype) or _eligible_char(ftype)
             or _eligible_enum(ftype, analyzer) is not None
             or _eligible_ptr_value(ftype, analyzer)):
-        # A str-literal source into a Char field is a sema type error; the
+        # A str-literal source into a char field is a sema type error; the
         # reject is defensive (the target-typed `'x'` render would diverge).
         if _eligible_char(ftype) and isinstance(stmt.value, TpyStrLiteral):
             return False
@@ -1496,7 +1496,7 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
                 and analyzer.get_expr_type(source) in pu.members)
     if isinstance(ftype, RecursiveAliasInstanceType):
         # A generic-instance wrapper field (`self.t = t` at `t:
-        # Own[Tree[Int32]]`): the own-param move rides the type-agnostic
+        # Own[Tree[int32]]`): the own-param move rides the type-agnostic
         # M3b-move arm verbatim (`t(std::move(t))`); a container literal
         # takes the ru-instance spelled render (the decl row's
         # `_lower_ru_literal` twin). Other sources ride later cells.
@@ -1523,7 +1523,7 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
         # F4 U1: bare renders only -- the variant converting ctor absorbs a
         # same-union param name, a member-typed param name, a scalar literal
         # (`u(u)` / `u(x)` / `u(5)`; lowering retypes a top-level literal to
-        # the union so the BigInt/Float32 slot wraps never fire -- the union
+        # the union so the BigInt/float32 slot wraps never fire -- the union
         # is the render target, which takes neither), and
         # the monostate `None`. Classification peels sema coerces (a literal
         # source arrives coerce-wrapped); eligibility checks the full expr.
@@ -1798,7 +1798,7 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
         note("ctor.unregistered")
         return None
     if any(not _f1_record(p, analyzer) for p in ri.parents):
-        # A builtin-CONTAINER base (`class MyList(list[Int32])`) is not F1 --
+        # A builtin-CONTAINER base (`class MyList(list[int32])`) is not F1 --
         # its `to_cpp()` is the formatter spelling -- but it only ever reaches
         # the emitted ctor through a base initializer, and the struct header
         # naming it belongs to the printer layer. With no base-init call in the
@@ -2409,7 +2409,7 @@ def _lower_ctor_mil_init(
 
       * an **own-param at last use** moves (`move=True`, plain source -- never
         `ptr_to_optional`, per the cascade) [M3b-move];
-      * a **scalar / Char** -> the lowered value [M3a];
+      * a **scalar / char** -> the lowered value [M3a];
       * a pointer-repr **Optional[F1-record]** -> a STORAGE `None` literal
         (`std::nullopt`), a non-own borrow `T*` lifted via `ptr_to_optional` [M3b-copy],
         or a record-value source (ctor-call / field-read / param copy) that constructs
@@ -2566,7 +2566,7 @@ def _lower_ctor_mil_init(
         # F4 U1 cells render bare (the variant converting ctor does the work);
         # `None` is the monostate member. A top-level int/float literal
         # (possibly coerce-wrapped by sema) retypes to the union so the
-        # BigInt wrap / Float32 suffix keyed on the literal's own scalar type
+        # BigInt wrap / float32 suffix keyed on the literal's own scalar type
         # never fires -- the union is the render target, which takes neither.
         peeled = source
         while isinstance(peeled, TpyCoerce):

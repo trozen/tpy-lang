@@ -11,11 +11,11 @@
 from enum import IntEnum
 from typing import Final
 
-from tpy import Int32, Int64
+from tpy import int32, int64
 from tpy.extern import export
 
-STEP: Final[Int64] = 7
-ORIGIN: Final[tuple[Int32, Int32]] = (10, 20)
+STEP: Final[int64] = 7
+ORIGIN: Final[tuple[int32, int32]] = (10, 20)
 
 
 @export
@@ -33,7 +33,7 @@ def greet(name: str, greeting: str = "Hello", *, excited: bool = False) -> str:
 
 
 @export
-def advance(n: Int64, by: Int64 = STEP) -> Int64:
+def advance(n: int64, by: int64 = STEP) -> int64:
     """A Final module constant as a default -- one shared constant, not a
     per-call rebuild."""
     return n + by
@@ -45,36 +45,36 @@ def scale(x: float, factor: float = 0.5) -> float:
 
 
 @export
-def tag(data: bytes = b"ab") -> Int32:
+def tag(data: bytes = b"ab") -> int32:
     return len(data)
 
 
 @export
-def offset(at: tuple[Int32, Int32] = ORIGIN) -> Int32:
+def offset(at: tuple[int32, int32] = ORIGIN) -> int32:
     return at[0] + at[1]
 
 
 @export
-def paint(shade: Color = Color.BLUE) -> Int32:
+def paint(shade: Color = Color.BLUE) -> int32:
     return 100 if shade == Color.BLUE else 200
 
 
 @export
-def combine(a: Int64, *, b: Int64, c: Int64 = 5) -> Int64:
+def combine(a: int64, *, b: int64, c: int64 = 5) -> int64:
     """`b` is keyword-only and REQUIRED -- `$` is only legal after `|`, so the
     wrapper parses it as optional and reports the omission itself."""
     return a * 100 + b * 10 + c
 
 
 @export
-def blend(*, red: Int64, green: Int64, blue: Int64) -> Int64:
+def blend(*, red: int64, green: int64, blue: int64) -> int64:
     """Three required keyword-only params: omitting all three exercises the
     report's 3+-name join, which uses an Oxford comma like CPython's."""
     return red * 10000 + green * 100 + blue
 
 
 @export
-def initial(text: str, idx: Int32 = 0, /) -> str:
+def initial(text: str, idx: int32 = 0, /) -> str:
     """Both params are positional-only: their kwlist entries are empty, so
     CPython refuses to match them by name."""
     return text[idx]
@@ -82,14 +82,14 @@ def initial(text: str, idx: Int32 = 0, /) -> str:
 
 @export
 class Counter:
-    n: Int64
-    step: Int64
+    n: int64
+    step: int64
 
-    def __init__(self, n: Int64 = 0, *, step: Int64 = 1) -> None:
+    def __init__(self, n: int64 = 0, *, step: int64 = 1) -> None:
         self.n = n
         self.step = step
 
-    def bump(self, by: Int64 = 1, *, twice: bool = False) -> Int64:
+    def bump(self, by: int64 = 1, *, twice: bool = False) -> int64:
         self.n = self.n + by * self.step
         if twice:
             self.n = self.n + by * self.step
@@ -98,19 +98,19 @@ class Counter:
 
 @export
 class Base:
-    lo: Int64
-    hi: Int64
-    scale: Int64
+    lo: int64
+    hi: int64
+    scale: int64
 
     # `scale`'s default trails the required `hi` on purpose: a default placed
     # BEFORE a required keyword-only param does not currently build (a
     # plain-TPy limitation tracked in BUGS.md, unrelated to the boundary).
-    def __init__(self, lo: Int64, *, hi: Int64, scale: Int64 = 2) -> None:
+    def __init__(self, lo: int64, *, hi: int64, scale: int64 = 2) -> None:
         self.lo = lo
         self.hi = hi
         self.scale = scale
 
-    def span(self) -> Int64:
+    def span(self) -> int64:
         return (self.hi - self.lo) * self.scale
 
 
@@ -128,12 +128,12 @@ class Pair:
     -1 rather than the wrapper's null sentinel when the check trips, and the
     method wrapper is a third emit site again."""
 
-    a: Int64
-    b: Int64
+    a: int64
+    b: int64
 
-    def __init__(self, *, a: Int64, b: Int64) -> None:
+    def __init__(self, *, a: int64, b: int64) -> None:
         self.a = a
         self.b = b
 
-    def weigh(self, *, factor: Int64) -> Int64:
+    def weigh(self, *, factor: int64) -> int64:
         return (self.a + self.b) * factor

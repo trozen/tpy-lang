@@ -1,14 +1,14 @@
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 class Node:
-    v: Int32
-    def __init__(self, v: Int32) -> None:
+    v: int32
+    def __init__(self, v: int32) -> None:
         self.v = v
-def value_of(n: Node | None) -> Int32:
+def value_of(n: Node | None) -> int32:
     if n is not None:
         return n.v
     return -9
-def g(nodes: list[Node], flag: bool) -> Iterator[Int32]:
+def g(nodes: list[Node], flag: bool) -> Iterator[int32]:
     yield -1
     i = 0
     while i < 2:

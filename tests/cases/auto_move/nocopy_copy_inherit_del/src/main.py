@@ -1,12 +1,12 @@
 # __copy__ on child class with parent __del__: each copy gets its own resource
 from __future__ import annotations
-from tpy import Int32, Own, copy
+from tpy import int32, Own, copy
 
 
 class Resource:
-    id: Int32
+    id: int32
 
-    def __init__(self, id: Int32):
+    def __init__(self, id: int32):
         self.id = id
         print("alloc", id)
 
@@ -15,7 +15,7 @@ class Resource:
 
 
 class CopyableResource(Resource):
-    def __init__(self, id: Int32):
+    def __init__(self, id: int32):
         super().__init__(id)
 
     def __copy__(self) -> Own[CopyableResource]:

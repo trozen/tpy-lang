@@ -1,10 +1,10 @@
 # filter over rvalue iterable (owning iterator prevents dangling)
-from tpy import Int32, Own
+from tpy import int32, Own
 
-def make_nums() -> Own[list[Int32]]:
+def make_nums() -> Own[list[int32]]:
     return [1, 2, 3, 4, 5, 6]
 
-def is_even(x: Int32) -> bool:
+def is_even(x: int32) -> bool:
     return x % 2 == 0
 
 def main() -> None:

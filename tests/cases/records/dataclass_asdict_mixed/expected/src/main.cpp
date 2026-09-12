@@ -6,20 +6,20 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // # Mixed types: dict[str, str|Int32]
-    // p = Person("Alice", Int32(30))
+    // # Mixed types: dict[str, str|int32]
+    // p = Person("Alice", int32(30))
     Person p = Person("Alice", 30);
     // print(asdict(p))
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::string, int32_t>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, int32_t>>({{"name", p.name}, {"age", p.age}}))) << "\n";
     // print(astuple(p))
     std::cout << ::tpy::TuplePrinter(std::tuple<std::string, int32_t>{p.name, p.age}) << "\n";
     // # Mixed with nested dataclass
-    // np = NamedPoint("origin", Point(Int32(0), Int32(0)))
+    // np = NamedPoint("origin", Point(int32(0), int32(0)))
     NamedPoint np = NamedPoint("origin", Point(0, 0));
     // print(asdict(np))
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::string, ::tpy::ordered_map<std::string, int32_t>>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, ::tpy::ordered_map<std::string, int32_t>>>({{"name", np.name}, {"pos", ::tpy::ordered_map<std::string, int32_t>({{"x", np.pos.x}, {"y", np.pos.y}})}}))) << "\n";
     // # List of dataclasses: recursed into list of dicts
-    // g = Group("pts", [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))])
+    // g = Group("pts", [Point(int32(1), int32(2)), Point(int32(3), int32(4))])
     Group g = Group("pts", {Point(1, 2), Point(3, 4)});
     // print(asdict(g))
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>>({{"label", g.label}, {"members", ({

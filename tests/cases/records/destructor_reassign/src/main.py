@@ -1,7 +1,7 @@
 # Tests that reassigning a variable with __del__ properly destroys intermediate values.
 # The move-assignment operator uses destroy-and-reconstruct to ensure cleanup runs.
 # Covers straight-line, loop, and conditional reassignment patterns.
-from tpy import Int32
+from tpy import int32
 
 class Resource:
     name: str
@@ -22,7 +22,7 @@ def test_loop():
         r = Resource("loop")
     print("alive:", r.name)
 
-def test_conditional(flag: Int32):
+def test_conditional(flag: int32):
     r = Resource("start")
     if flag > 0:
         r = Resource("branch")

@@ -1,12 +1,12 @@
 # @dataclass(frozen=True, order=True) combines ordering, equality, and hashing
 from dataclasses import dataclass
-from tpy import Int32
+from tpy import int32
 
 @dataclass(frozen=True, order=True)
 class Version:
-    major: Int32
-    minor: Int32
-    patch: Int32
+    major: int32
+    minor: int32
+    patch: int32
 
 def main() -> None:
     v1 = Version(1, 0, 0)

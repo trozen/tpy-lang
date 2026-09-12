@@ -3,14 +3,14 @@
 # source keeps the zero-copy view and an explicit StrView annotation keeps
 # the user's view contract.
 from typing import Iterator
-from tpy import Int32, StrView
+from tpy import int32, StrView
 
 
-def pair(n: Int32) -> tuple[str, str]:
+def pair(n: int32) -> tuple[str, str]:
     return ("host-" + str(n), "port-" + str(n))
 
 
-def unpack_across_yield() -> Iterator[Int32]:
+def unpack_across_yield() -> Iterator[int32]:
     # The tuple temp dies at the first yield; the promoted owned fields
     # must survive to the post-suspension read.
     host, port = pair(7)
@@ -19,7 +19,7 @@ def unpack_across_yield() -> Iterator[Int32]:
     yield 2
 
 
-def dict_keys(d: dict[str, Int32]) -> Iterator[str]:
+def dict_keys(d: dict[str, int32]) -> Iterator[str]:
     # A dict-key loop var yielded into an owned Iterator[str] slot: the
     # promoted local converts cleanly where a view field failed the build.
     for k in d:
@@ -27,7 +27,7 @@ def dict_keys(d: dict[str, Int32]) -> Iterator[str]:
     yield "end"
 
 
-def blob_slices(blobs: list[bytes]) -> Iterator[Int32]:
+def blob_slices(blobs: list[bytes]) -> Iterator[int32]:
     # bytes sibling: a container-element view local crossing a yield.
     for b in blobs:
         yield len(b)
@@ -36,7 +36,7 @@ def blob_slices(blobs: list[bytes]) -> Iterator[Int32]:
     yield len(total)
 
 
-def static_sources() -> Iterator[Int32]:
+def static_sources() -> Iterator[int32]:
     # A literal-sourced local has static storage: stays a zero-copy view.
     lit = "static"  # tpyc: type(StrView)
     view: StrView = "explicit"  # tpyc: type(StrView)

@@ -1,7 +1,7 @@
 # Send/Sync trait derivation for built-in type forms (marker layer only,
 # no enforcement sites). Asserts the compiler's answers via
 # tpyc: is_send/is_sync annotations on declarations.
-from tpy import Int32
+from tpy import int32
 from tplib.rc import Rc
 
 def main() -> None:
@@ -12,8 +12,8 @@ def main() -> None:
     # Same literal, two types, opposite Sync: an explicit list is mutable
     # (Sync no); an unmutated literal deduces to the value-type Array (Sync
     # yes). Mutating `ar` would deduce list and flip it to is_sync(no).
-    xs: list[Int32] = [1, 2, 3]  # tpyc: type(list[Int32]) is_send(yes) is_sync(no)
-    ar = [1, 2, 3]              # tpyc: type(Array[Int32, 3]) is_send(yes) is_sync(yes)
+    xs: list[int32] = [1, 2, 3]  # tpyc: type(list[int32]) is_send(yes) is_sync(no)
+    ar = [1, 2, 3]              # tpyc: type(Array[int32, 3]) is_send(yes) is_sync(yes)
     st = {1, 2}                 # tpyc: is_send(yes) is_sync(no)
     d = {1: 2}                  # tpyc: is_send(yes) is_sync(no)
     t = (1, 2.5)                # tpyc: is_send(yes) is_sync(yes)

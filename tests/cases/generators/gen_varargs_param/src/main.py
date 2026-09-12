@@ -4,7 +4,7 @@
 # them into the frame. Covers every element family and every body position.
 from typing import Iterator, Protocol
 
-from tpy import Comparable, Int32, readonly
+from tpy import Comparable, int32, readonly
 
 
 class Counter(Protocol):
@@ -15,16 +15,16 @@ class Counter(Protocol):
     has no members.
     """
 
-    def bump(self) -> Int32: ...
+    def bump(self) -> int32: ...
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
-    def bump(self) -> Int32:
+    def bump(self) -> int32:
         self.x += 1
         return self.x
 
@@ -41,7 +41,7 @@ class Trace:
 
 
 # free function / scalar element: the pack is a value-element varargs.
-def scalars(*xs: Int32) -> Iterator[Int32]:  # tpyc: ok
+def scalars(*xs: int32) -> Iterator[int32]:  # tpyc: ok
     n = 0
     for x in xs:
         n += x
@@ -50,7 +50,7 @@ def scalars(*xs: Int32) -> Iterator[Int32]:  # tpyc: ok
 
 
 # free function / str element: the pack views the caller's string_view array.
-def strings(*ss: str) -> Iterator[Int32]:  # tpyc: ok
+def strings(*ss: str) -> Iterator[int32]:  # tpyc: ok
     n = 0
     for s in ss:
         n += len(s)
@@ -60,7 +60,7 @@ def strings(*ss: str) -> Iterator[Int32]:  # tpyc: ok
 
 # free function / container element in the `heapq.merge` shape: a
 # NON-suspending loop over the pack, then a suspending `while`.
-def merge_shape[T: Comparable](*xs: list[T]) -> Iterator[Int32]:  # tpyc: ok
+def merge_shape[T: Comparable](*xs: list[T]) -> Iterator[int32]:  # tpyc: ok
     total = 0
     for s in xs:
         total += len(s)
@@ -73,7 +73,7 @@ def merge_shape[T: Comparable](*xs: list[T]) -> Iterator[Int32]:  # tpyc: ok
 
 # free function / record element, MUTATED through a suspending loop: the loop
 # var must alias the caller's record, so the mutation is visible afterwards.
-def bump(*ps: Point) -> Iterator[Int32]:  # tpyc: ok
+def bump(*ps: Point) -> Iterator[int32]:  # tpyc: ok
     for p in ps:
         p.x += 1
         yield p.x
@@ -83,7 +83,7 @@ def bump(*ps: Point) -> Iterator[Int32]:  # tpyc: ok
 # free function / record element, read-only: sema flips the pack to
 # `varargs[readonly[Point]]`, so the loop var is a `const Point*` borrow --
 # a source mutated between two pulls must be seen on the next pull.
-def read_pack(*ps: Point) -> Iterator[Int32]:  # tpyc: ok
+def read_pack(*ps: Point) -> Iterator[int32]:  # tpyc: ok
     for p in ps:
         yield p.x
     yield -1
@@ -91,18 +91,18 @@ def read_pack(*ps: Point) -> Iterator[Int32]:  # tpyc: ok
 
 # generator METHOD: the pack rides beside the `self` capture.
 class Collector:
-    base: Int32
+    base: int32
 
-    def __init__(self, base: Int32) -> None:
+    def __init__(self, base: int32) -> None:
         self.base = base
 
-    def sizes(self, *xs: list[Int32]) -> Iterator[Int32]:  # tpyc: ok
+    def sizes(self, *xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
         for s in xs:
             yield self.base + len(s)
         yield -1
 
 
-def total_of(*xs: Int32) -> Int32:
+def total_of(*xs: int32) -> int32:
     n = 0
     for x in xs:
         n += x
@@ -110,13 +110,13 @@ def total_of(*xs: Int32) -> Int32:
 
 
 # whole-pack forward out of the frame.
-def forward(*xs: Int32) -> Iterator[Int32]:  # tpyc: ok
+def forward(*xs: int32) -> Iterator[int32]:  # tpyc: ok
     yield total_of(*xs)
     yield -1
 
 
 # subscript + len on the frame's pack (the reads `heapq.merge` makes).
-def indexed(*xs: Int32) -> Iterator[Int32]:  # tpyc: ok
+def indexed(*xs: int32) -> Iterator[int32]:  # tpyc: ok
     i = 0
     while i < len(xs):
         yield xs[i]
@@ -125,7 +125,7 @@ def indexed(*xs: Int32) -> Iterator[Int32]:  # tpyc: ok
 
 
 # a suspending pack loop inside try/finally.
-def in_finally(*xs: list[Int32]) -> Iterator[Int32]:  # tpyc: ok
+def in_finally(*xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
     try:
         for s in xs:
             yield len(s)
@@ -135,7 +135,7 @@ def in_finally(*xs: list[Int32]) -> Iterator[Int32]:  # tpyc: ok
 
 
 # a suspending pack loop inside a `with` body.
-def in_with(*xs: list[Int32]) -> Iterator[Int32]:  # tpyc: ok
+def in_with(*xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
     with Trace():
         for s in xs:
             yield len(s)
@@ -144,7 +144,7 @@ def in_with(*xs: list[Int32]) -> Iterator[Int32]:  # tpyc: ok
 
 # Sibling shape with no varargs: a `readonly` CONTAINER param puts the const on
 # the source, not the element, and the frame loop var must take it from there.
-def readonly_param(ps: readonly[list[Point]]) -> Iterator[Int32]:  # tpyc: ok
+def readonly_param(ps: readonly[list[Point]]) -> Iterator[int32]:  # tpyc: ok
     for p in ps:
         yield p.x
     yield -1
@@ -159,7 +159,7 @@ class Album:
     def __init__(self) -> None:
         self.items = [Point(1), Point(2)]
 
-    def each(self) -> Iterator[Int32]:  # tpyc: ok
+    def each(self) -> Iterator[int32]:  # tpyc: ok
         for p in self.items:
             yield p.x
             yield p.x + 100
@@ -168,7 +168,7 @@ class Album:
 # free function / bare generic pack element: the frame loop var borrows the
 # element instead of copying it into an owning slot, so the bump is seen by
 # the caller. The bound is a protocol so the body can call through `T`.
-def bump_generic[T: Counter](*xs: T) -> Iterator[Int32]:  # tpyc: ok
+def bump_generic[T: Counter](*xs: T) -> Iterator[int32]:  # tpyc: ok
     for x in xs:
         yield x.bump()
     yield -1
@@ -187,9 +187,9 @@ def points(ps: readonly[list[Point]]) -> Iterator[readonly[Point]]:  # tpyc: ok
 # the loop var is a `const Point*` reaching through the producer's yield slot
 # to the ORIGINAL list. Read twice around a suspension so the caller can mutate
 # the source in between: a copying slot would repeat the first read.
-def readonly_next(it: Iterator[readonly[Point]]) -> Iterator[Int32]:  # tpyc: ok
+def readonly_next(it: Iterator[readonly[Point]]) -> Iterator[int32]:  # tpyc: ok
     for p in it:
-        # `yield p.x` copies an Int32, but the ephemeral-borrow escape check
+        # `yield p.x` copies an int32, but the ephemeral-borrow escape check
         # roots on `p` and refuses it -- BUGS.md#ephemeral-value-read-escape.
         before = p.x
         yield before
@@ -201,7 +201,7 @@ def readonly_next(it: Iterator[readonly[Point]]) -> Iterator[Int32]:  # tpyc: ok
 
 # Producer for the multi-root section: the pack element is yielded straight
 # out, so the consumer's loop var borrows EVERY operand of the one pack slot.
-def each_pack(*xs: list[list[Int32]]) -> Iterator[list[list[Int32]]]:  # tpyc: ok
+def each_pack(*xs: list[list[int32]]) -> Iterator[list[list[int32]]]:  # tpyc: ok
     for s in xs:
         yield s
 
@@ -209,7 +209,7 @@ def each_pack(*xs: list[list[Int32]]) -> Iterator[list[list[Int32]]]:  # tpyc: o
 # Consumer whose two params are the pack's operands: a structural mutation
 # through the loop var must be recorded against BOTH of them, not just the
 # last operand of the slot.
-def grow_both(p: list[list[Int32]], q: list[list[Int32]]) -> None:  # tpyc: ok
+def grow_both(p: list[list[int32]], q: list[list[int32]]) -> None:  # tpyc: ok
     for v in each_pack(p, q):
         v.append([9])
 
@@ -218,16 +218,16 @@ def grow_both(p: list[list[Int32]], q: list[list[Int32]]) -> None:  # tpyc: ok
 # METHOD's params, so the mutation has to be recorded self-relative against
 # both of them -- the generator producing the pack is a method too.
 class Grower:
-    tag: Int32
+    tag: int32
 
-    def __init__(self, tag: Int32) -> None:
+    def __init__(self, tag: int32) -> None:
         self.tag = tag
 
-    def each_pack(self, *xs: list[list[Int32]]) -> Iterator[list[list[Int32]]]:  # tpyc: ok
+    def each_pack(self, *xs: list[list[int32]]) -> Iterator[list[list[int32]]]:  # tpyc: ok
         for s in xs:
             yield s
 
-    def grow_both(self, p: list[list[Int32]], q: list[list[Int32]]) -> None:  # tpyc: ok
+    def grow_both(self, p: list[list[int32]], q: list[list[int32]]) -> None:  # tpyc: ok
         for v in self.each_pack(p, q):
             v.append([self.tag])
 
@@ -239,9 +239,9 @@ def main() -> None:
     for v in strings("ab", "cde"):
         print("str:", v)
 
-    # Annotated: a bare list literal infers Array[Int32, N], not list.
-    la: list[Int32] = [1, 2]
-    lb: list[Int32] = [3]
+    # Annotated: a bare list literal infers Array[int32, N], not list.
+    la: list[int32] = [1, 2]
+    lb: list[int32] = [3]
     for v in merge_shape(la, lb):
         print("container:", v)
 
@@ -263,8 +263,8 @@ def main() -> None:
     # Own lists per suspending section: each grows its second element between
     # two pulls, so a frame that COPIED the element would print the stale
     # length on the second pull.
-    ma: list[Int32] = [1]
-    mb: list[Int32] = [3]
+    ma: list[int32] = [1]
+    mb: list[int32] = [3]
     coll = Collector(10)
     for v in coll.sizes(ma, mb):
         print("method:", v)
@@ -276,14 +276,14 @@ def main() -> None:
     for v in indexed(7, 8):
         print("subscript:", v)
 
-    fa: list[Int32] = [1]
-    fb: list[Int32] = [3]
+    fa: list[int32] = [1]
+    fb: list[int32] = [3]
     for v in in_finally(fa, fb):
         print("tryfinally:", v)
         fb.append(0)  # tpyc: warning(/while iterating/)
 
-    wa: list[Int32] = [1]
-    wb: list[Int32] = [3]
+    wa: list[int32] = [1]
+    wb: list[int32] = [3]
     for v in in_with(wa, wb):
         print("with:", v)
         wb.append(0)  # tpyc: warning(/while iterating/)
@@ -317,8 +317,8 @@ def main() -> None:
             # print 7 again.
             rp[0].x = 70
 
-    ga: list[list[Int32]] = [[1]]
-    gb: list[list[Int32]] = [[2]]
+    ga: list[list[int32]] = [[1]]
+    gb: list[list[int32]] = [[2]]
     ea = ga[0]
     eb = gb[0]
     print("multi-root:", len(ea), len(eb))
@@ -334,8 +334,8 @@ def main() -> None:
     print("multi-root swapped:", len(ga), len(gb))
 
     gr = Grower(7)
-    ha: list[list[Int32]] = [[1]]
-    hb: list[list[Int32]] = [[2]]
+    ha: list[list[int32]] = [[1]]
+    hb: list[list[int32]] = [[2]]
     ha_e = ha[0]
     hb_e = hb[0]
     print("method-multi-root:", len(ha_e), len(hb_e))

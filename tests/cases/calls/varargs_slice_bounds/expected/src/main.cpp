@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def sum_slice(start: Int32, stop: Int32, *items: Box) -> Int32:
+// def sum_slice(start: int32, stop: int32, *items: Box) -> int32:
 int32_t sum_slice(int32_t start, int32_t stop, ::tpy::varargs<const Box> items) {
-    // n: Int32 = 0
+    // n: int32 = 0
     int32_t n = 0;
     // for b in items[start:stop]:
     auto __obj_0 = ::tpy::list_slice(items, ::tpy::BasicSlice{start, stop});

@@ -6,11 +6,11 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // a = (Int32(1), "hello")
+    // a = (int32(1), "hello")
     std::tuple<int32_t, std::string> a = std::tuple<int32_t, std::string>{1, "hello"};
-    // b = (Int32(1), "hello")
+    // b = (int32(1), "hello")
     std::tuple<int32_t, std::string> b = std::tuple<int32_t, std::string>{1, "hello"};
-    // c = (Int32(2), "world")
+    // c = (int32(2), "world")
     std::tuple<int32_t, std::string> c = std::tuple<int32_t, std::string>{2, "world"};
     // print(a == b)
     std::cout << ::tpy::print_bool((a == b)) << "\n";

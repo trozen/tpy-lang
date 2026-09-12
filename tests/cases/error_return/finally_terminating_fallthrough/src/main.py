@@ -1,7 +1,7 @@
 # The return-tier (goto-dispatched) try/except/finally shares the normal-path
 # elision decision, so an always-raising finally must still run on the try
 # body's fall-through path.
-from tpy import Int32, error_return, ReturnException
+from tpy import int32, error_return, ReturnException
 
 
 class E(Exception, ReturnException):
@@ -9,14 +9,14 @@ class E(Exception, ReturnException):
 
 
 @error_return(E)
-def may_fail(x: Int32) -> Int32:
+def may_fail(x: int32) -> int32:
     if x < 0:
         raise E
     return x
 
 
 @error_return(E)
-def falls_through() -> Int32:
+def falls_through() -> int32:
     try:
         v = may_fail(5)
         print("try body ran, v =", v)
@@ -29,7 +29,7 @@ def falls_through() -> Int32:
 
 
 @error_return(E)
-def returns_from_finally() -> Int32:
+def returns_from_finally() -> int32:
     """The finally's return is this tier's only exit on the fall-through path.
 
     The return tier dispatches through goto + a return slot, so the elided

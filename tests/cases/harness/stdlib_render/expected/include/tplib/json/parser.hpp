@@ -51,10 +51,10 @@ inline constexpr std::string_view __name__ = "tplib.json.parser";
 
 // class JsonError(Exception, ReturnException):
 struct JsonError : ::tpy::Exception {
-    // pos: Int32
+    // pos: int32
     int32_t pos;
 
-    // def __init__(self, message: str = "", pos: Int32 = -1) -> None:
+    // def __init__(self, message: str = "", pos: int32 = -1) -> None:
     explicit JsonError(std::string_view message = "", int32_t pos = -1);
 
     // def describe(self, data: str) -> str:
@@ -75,16 +75,16 @@ inline std::ostream& operator<<(std::ostream& os, const JsonError& obj) {
 struct JsonReader {
     // _data: StrView
     std::string_view _data;
-    // _pos: Int32
+    // _pos: int32
     int32_t _pos;
-    // _len: Int32
+    // _len: int32
     int32_t _len;
 
     // def __init__(self, data: str) -> None:
     JsonReader() = default;
     explicit JsonReader(std::string_view data);
 
-    // def position(self) -> Int32:
+    // def position(self) -> int32:
     int32_t position() const;
 
     // def _skip_ws(self) -> None:
@@ -129,11 +129,11 @@ struct JsonReader {
     std::expected<std::string_view, JsonError> read_str_raw();
 
     // @error_return(JsonError)
-    // def read_int(self) -> Int64:
+    // def read_int(self) -> int64:
     std::expected<int64_t, JsonError> read_int();
 
     // @error_return(JsonError)
-    // def read_float(self) -> Float64:
+    // def read_float(self) -> float64:
     std::expected<double, JsonError> read_float();
 
     // @error_return(JsonError)
@@ -171,10 +171,10 @@ struct JsonReader {
     // def _read_raw_str(self) -> str:
     std::expected<std::string, JsonError> _read_raw_str();
 
-    // def _unescape(self, start: Int32, end: Int32) -> str:
+    // def _unescape(self, start: int32, end: int32) -> str:
     std::string _unescape(int32_t start, int32_t end) const;
 
-    // def _parse_hex4(self, pos: Int32) -> Int32:
+    // def _parse_hex4(self, pos: int32) -> int32:
     int32_t _parse_hex4(int32_t pos) const;
 
     // # TODO: shape validation is loose -- accepts malformed numbers like
@@ -192,7 +192,7 @@ inline std::ostream& operator<<(std::ostream& os, const JsonReader& obj) {
 }
 
 
-// def __init__(self, message: str = "", pos: Int32 = -1) -> None:
+// def __init__(self, message: str = "", pos: int32 = -1) -> None:
 inline JsonError::JsonError(std::string_view message, int32_t pos) : pos(pos) {
     // self.message = message
     this->message = message;
@@ -201,7 +201,7 @@ inline JsonError::JsonError(std::string_view message, int32_t pos) : pos(pos) {
 // def __init__(self, data: str) -> None:
 inline JsonReader::JsonReader(std::string_view data) : _data(data), _pos(0), _len(::tpy::__len__(data)) {}
 
-// def position(self) -> Int32:
+// def position(self) -> int32:
 inline int32_t JsonReader::position() const {
     // return self._pos
     return this->_pos;
@@ -314,7 +314,7 @@ inline std::expected<std::string, JsonError> JsonReader::read_str() {
 }
 
 // @error_return(JsonError)
-// def read_float(self) -> Float64:
+// def read_float(self) -> float64:
 inline std::expected<double, JsonError> JsonReader::read_float() {
     // raw: StrView = self._read_number_raw()
     std::string_view raw;

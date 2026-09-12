@@ -4,8 +4,8 @@
  * TPy `String`, `bytes`, `bytearray` and `BytesView` each own a C++ type
  * here, so a trait keyed on the C++ type answers per TPy type: `std::string`
  * then means TPy `str` and nothing else, `std::vector<uint8_t>` means
- * `list[UInt8]` and nothing else, and `std::span<const uint8_t>` means
- * `Span[readonly[UInt8]]` and nothing else. Without that, one generic
+ * `list[uint8]` and nothing else, and `std::span<const uint8_t>` means
+ * `Span[readonly[uint8]]` and nothing else. Without that, one generic
  * instantiation serves two TPy types whose monomorphic twins take different
  * parameter forms, and the caller has to buy an owned temp to reach a slot
  * spelled for the other type.
@@ -96,7 +96,7 @@ struct ByteArray : std::vector<std::uint8_t> {
 // view copies nothing, so nothing is silently duplicated through it. They
 // are ENUMERATED rather than inherited: the span's range constructor would
 // read any contiguous byte range as this view, a bare `std::vector` --
-// `list[UInt8]` -- included, in every reference qualification.
+// `list[uint8]` -- included, in every reference qualification.
 struct BytesView : std::span<const std::uint8_t> {
     using Base = std::span<const std::uint8_t>;
     BytesView() = default;
@@ -129,7 +129,7 @@ struct BytesView : std::span<const std::uint8_t> {
 
 // The invariant the split rests on: no TPy buffer type converts into another
 // behind the programmer's back, in either direction, and neither converts from
-// a bare `list[UInt8]`. A conversion between them is a TPy-level coercion the
+// a bare `list[uint8]`. A conversion between them is a TPy-level coercion the
 // front end decides -- and at an OWNING sink it decides both directions are a
 // sema error asking for the explicit `bytes(...)` / `bytearray(...)`; the
 // surviving `bytearray_to_bytes` coercion is identity at a BORROWING `bytes`

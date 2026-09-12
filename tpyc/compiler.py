@@ -132,9 +132,9 @@ def _is_template_emitted_in_header(func) -> bool:
 
 def parse_default_int_type(name: str) -> TpyType:
     """Parse CLI/compiler default-int setting into a concrete semantic type."""
-    if name == "Int32":
+    if name == "int32":
         return INT32
-    if name == "Int64":
+    if name == "int64":
         return INT64
     if name == "BigInt":
         return BIGINT
@@ -607,7 +607,7 @@ class Compiler:
     Handles module discovery, dependency resolution, and compilation order.
     """
 
-    def __init__(self, entry_point: Path, default_int: str = "Int32",
+    def __init__(self, entry_point: Path, default_int: str = "int32",
                  lib_dirs: list[Path] | None = None,
                  frontend_registry: 'FrontendRegistry | None' = None):
         """Initialize compiler with entry point path.
@@ -760,7 +760,7 @@ class Compiler:
         cls,
         source: str,
         module_name: str = "main",
-        default_int: str = "Int32",
+        default_int: str = "int32",
         lib_dirs: list[Path] | None = None,
         frontend_registry: 'FrontendRegistry | None' = None,
     ) -> "Compiler":
@@ -2155,7 +2155,7 @@ class Compiler:
         # module type references can find them; fields/methods/parents
         # fill in during sub-phase 2 via in-place mutation in
         # register_record (which adopts the skeleton via _adopt_skeleton).
-        # Skip @builtin_type records (Int32, Float32, list, dict, ...) --
+        # Skip @builtin_type records (int32, float32, list, dict, ...) --
         # those already have authoritative TypeDef entries; pre-mining a
         # skeleton would pollute `_user_qname_index` via the implicit
         # stdlib registration loop and shadow the real RecordInfo at
@@ -2438,7 +2438,7 @@ class Compiler:
         only canonical *type* names mint a `_module_qname` in
         `parser_imports.canonicalize_name_index`. Adding non-type
         names there would mark them `is_canonical` and short-circuit
-        downstream resolution (e.g. Float64-the-alias would gain a
+        downstream resolution (e.g. float64-the-alias would gain a
         spurious qname before its alias body is resolved).
 
         The `_seen` set guards against rare re-export-chain cycles.
@@ -3127,7 +3127,7 @@ class Compiler:
              functions / enums / protocols / variables (post-pre-pop
              and post-sema).
           2. `ast.imports` covers parser-keyword / builtin re-exports
-             (like `from tpy import Int32`) that have no .py-level
+             (like `from tpy import int32`) that have no .py-level
              Info payload and so don't end up in `module_attributes`.
 
         Both passes target the same `imports[src_module]` bucket, so
@@ -3182,7 +3182,7 @@ class Compiler:
         `_name_index` is rerouted to the ultimate definer when known
         (pass 1 binding) or the public stdlib module (pass 2 builtin
         names) so cross-module canonicalization lands at e.g.
-        `tpy.Int32` rather than the private `tpy._core._types.Int32`.
+        `tpy.int32` rather than the private `tpy._core._types.int32`.
         """
         ast = compiled.ast
         if ast is None:

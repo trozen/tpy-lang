@@ -1,21 +1,21 @@
 # Subject-storage mutation in a GUARD warns when a non-scalar binding (here a
 # record field) aliases the subject. Runtime: the guard's pop empties only the
 # tail, so the bound head stays valid.
-from tpy import Int32
+from tpy import int32
 
 
 class Tag:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
 class Item:
     tag: Tag
-    v: Int32
+    v: int32
 
-    def __init__(self, n: Int32, v: Int32) -> None:
+    def __init__(self, n: int32, v: int32) -> None:
         self.tag = Tag(n)
         self.v = v
 

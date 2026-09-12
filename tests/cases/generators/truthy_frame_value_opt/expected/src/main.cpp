@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def branch_suspends(v: Int32 | None) -> Iterator[Int32]:
+// def branch_suspends(v: int32 | None) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_branch_suspends::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -36,12 +36,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_branch_suspends::__next__() {
 }
 
 
-// def branch_suspends(v: Int32 | None) -> Iterator[Int32]:
+// def branch_suspends(v: int32 | None) -> Iterator[int32]:
 __gen_branch_suspends branch_suspends(std::optional<int32_t> v) {
     return __gen_branch_suspends(v);
 }
 
-// def branch_no_suspend(v: Int32 | None) -> Iterator[Int32]:
+// def branch_no_suspend(v: int32 | None) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_branch_no_suspend::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -68,12 +68,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_branch_no_suspend::__next__()
 }
 
 
-// def branch_no_suspend(v: Int32 | None) -> Iterator[Int32]:
+// def branch_no_suspend(v: int32 | None) -> Iterator[int32]:
 __gen_branch_no_suspend branch_no_suspend(std::optional<int32_t> v) {
     return __gen_branch_no_suspend(v);
 }
 
-// def not_form(v: Int32 | None) -> Iterator[Int32]:
+// def not_form(v: int32 | None) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_not_form::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -105,12 +105,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_not_form::__next__() {
 }
 
 
-// def not_form(v: Int32 | None) -> Iterator[Int32]:
+// def not_form(v: int32 | None) -> Iterator[int32]:
 __gen_not_form not_form(std::optional<int32_t> v) {
     return __gen_not_form(v);
 }
 
-// def while_suspends(v: Int32 | None) -> Iterator[Int32]:
+// def while_suspends(v: int32 | None) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_while_suspends::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -144,12 +144,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_while_suspends::__next__() {
 }
 
 
-// def while_suspends(v: Int32 | None) -> Iterator[Int32]:
+// def while_suspends(v: int32 | None) -> Iterator[int32]:
 __gen_while_suspends while_suspends(std::optional<int32_t> v) {
     return __gen_while_suspends(v);
 }
 
-// def frame_local(b: Box) -> Iterator[Int32]:
+// def frame_local(b: Box) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_frame_local::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -184,12 +184,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_frame_local::__next__() {
 }
 
 
-// def frame_local(b: Box) -> Iterator[Int32]:
+// def frame_local(b: Box) -> Iterator[int32]:
 __gen_frame_local frame_local(Box& b) {
     return __gen_frame_local(b);
 }
 
-// def drive(label: str, v: Int32 | None) -> None:
+// def drive(label: str, v: int32 | None) -> None:
 void drive(std::string_view label, std::optional<int32_t> v) {
     // print(label, "branch", list(branch_suspends(v)))
     std::cout << label << " " << "branch" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(branch_suspends(v))) << "\n";

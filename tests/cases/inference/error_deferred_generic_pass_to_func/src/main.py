@@ -1,12 +1,12 @@
 # Deferred generic inference: passing pending type to non-constraining parameter
-from tpy import Int32
+from tpy import int32
 
 class Container[T]:
     val: T
     def __init__(self) -> None:
         pass
 
-def consume_int(x: Int32) -> None:
+def consume_int(x: int32) -> None:
     pass
 
 def main() -> None:

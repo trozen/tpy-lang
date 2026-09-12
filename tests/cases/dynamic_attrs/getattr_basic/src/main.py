@@ -1,5 +1,5 @@
 # D16 Phase 1: __getattr__ -> Any routes undeclared attribute reads through the dunder.
-from tpy import Int32
+from tpy import int32
 from typing import Any, cast
 
 class Config:
@@ -12,9 +12,9 @@ class Config:
         return self._data[name]
 
 def main() -> None:
-    cfg = Config({"host": "localhost", "port": Int32(8080)})
+    cfg = Config({"host": "localhost", "port": int32(8080)})
     host = cast(str, cfg.host)
-    port = cast(Int32, cfg.port)
+    port = cast(int32, cfg.port)
     print(host)
     print(port)
 

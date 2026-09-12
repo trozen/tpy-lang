@@ -85,7 +85,7 @@ inline std::int64_t from_py<std::int64_t>(cpy::PyObject *o) {
     cpy::Py_DecRef(idx);
     if (overflow != 0) {
         cpy::PyErr_SetString(cpy::PyExc_OverflowError,
-                             "Python int too large to convert to Int64");
+                             "Python int too large to convert to int64");
         throw MarshalError{};
     }
     if (v == -1 && cpy::PyErr_Occurred() != nullptr) {
@@ -142,7 +142,7 @@ inline double from_py<double>(cpy::PyObject *o) {
 // Shared narrow-int path: read a long long (an out-of-long-long value trips the
 // overflow flag), then range-check against T's [min, max] -- covers every
 // signed width and the unsigned widths <= 32 bits, all of which fit a signed
-// long long. UInt64 is the exception (its top half overflows long long) and has
+// long long. uint64 is the exception (its top half overflows long long) and has
 // its own specialization below.
 template <class T>
 inline T from_py_bounded(cpy::PyObject *o) {
@@ -407,7 +407,7 @@ inline cpy::PyObject *to_py(std::int64_t v) {
 }
 
 // The remaining fixed-width ints: signed and <= 32-bit-unsigned widen into the
-// signed long long accessor; UInt64 needs the unsigned one. Constrained so it
+// signed long long accessor; uint64 needs the unsigned one. Constrained so it
 // never competes with the int64_t / double overloads (an exact-match non-
 // template wins) and never swallows bool.
 template <class T>
@@ -488,7 +488,7 @@ inline cpy::PyObject *to_py(const tpy::BigInt &b) {
 // passes a per-element conversion callable; these helpers own only the
 // container-shaped traversal + refcounting. Keying off the C++ type alone is
 // impossible for a container of containers -- so the leaf choice (e.g. the
-// element callable for list[bytes] vs list[list[UInt8]]) must come from the
+// element callable for list[bytes] vs list[list[uint8]]) must come from the
 // glue, never from a template specialization here.
 //
 // Direction mirrors the scalars: from_* THROWS MarshalError on failure (a

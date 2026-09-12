@@ -11,13 +11,13 @@ void main() {
     Base<std::string, 10> b = Base<std::string, 10>("base");
     // print(b.value)
     std::cout << b.value << "\n";
-    // c: Child[str, 20] = Child[str, 20]("child", Int32(42))
+    // c: Child[str, 20] = Child[str, 20]("child", int32(42))
     Child<std::string, 20> c = Child<std::string, 20>("child", 42);
     // print(c.value)
     std::cout << c.value << "\n";
     // print(c.extra)
     std::cout << c.extra << "\n";
-    // g: GrandChild[str, 30] = GrandChild[str, 30]("grand", Int32(100), "test")
+    // g: GrandChild[str, 30] = GrandChild[str, 30]("grand", int32(100), "test")
     GrandChild<std::string, 30> g = GrandChild<std::string, 30>("grand", 100, "test");
     // print(g.value)
     std::cout << g.value << "\n";

@@ -1,7 +1,7 @@
 { M18: procedural types -- `type Fn = procedure(x: integer);`
   declares a procedure-pointer type; values of that type can hold
   a named procedure and be called through. Maps to TPy `Callable[
-  [Int32], None]`. Function-typed callbacks (`function(...): R`)
+  [int32], None]`. Function-typed callbacks (`function(...): R`)
   parse but the parameterless-bare-name rewrite suppresses
   function-reference assignment for now; this test exercises only
   the procedure form. }

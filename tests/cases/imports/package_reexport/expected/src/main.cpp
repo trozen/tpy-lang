@@ -4,15 +4,15 @@
 namespace tpyapp::main {
 
 
-// def main() -> Int32:
+// def main() -> int32:
 int32_t main() {
     // print(VERSION)
     std::cout << ::tpyapp::mypackage::VERSION << "\n";
-    // result: Int32 = add(Int32(5), Int32(7))
+    // result: int32 = add(int32(5), int32(7))
     int32_t result = ::tpyapp::mypackage::utils::add(5, 7);
     // print(result)
     std::cout << result << "\n";
-    // return Int32(0)
+    // return int32(0)
     return 0;
 }
 

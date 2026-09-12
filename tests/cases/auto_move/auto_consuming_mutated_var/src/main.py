@@ -1,11 +1,11 @@
 # For-loop consuming triggers only when the loop var is mutated
 # AND the element type is non-value (move != copy).
-from tpy import Int32
+from tpy import int32
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32) -> None:
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 

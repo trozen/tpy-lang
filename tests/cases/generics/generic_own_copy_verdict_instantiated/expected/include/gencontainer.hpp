@@ -13,7 +13,7 @@ inline constexpr std::string_view __name__ = "gencontainer";
 template<typename T>
 int32_t cross_slot(::tpy::param_val_or_ref_t<T> v);
 
-// def cross_slot[T](v: T) -> Int32:
+// def cross_slot[T](v: T) -> int32:
 template<typename T>
 int32_t cross_slot(::tpy::param_val_or_ref_t<T> v) {
     // xs: list[T] = []

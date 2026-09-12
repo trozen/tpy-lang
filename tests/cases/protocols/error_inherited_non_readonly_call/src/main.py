@@ -1,5 +1,5 @@
 # Non-readonly method inherited from parent protocol is rejected in readonly context.
-from tpy import Int32, readonly
+from tpy import int32, readonly
 from typing import Protocol
 
 
@@ -10,7 +10,7 @@ class Base(Protocol):
 
 class Child(Base, Protocol):
     @readonly
-    def read(self) -> Int32:
+    def read(self) -> int32:
         ...
 
 

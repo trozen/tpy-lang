@@ -8,7 +8,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // v = Vec2(Int32(3), Int32(4))
+    // v = Vec2(int32(3), int32(4))
     ::Vec2 v = ::Vec2(3, 4);
     // print(v.x)
     std::cout << v.x << "\n";
@@ -18,7 +18,7 @@ void main() {
     std::cout << ::vec2_sum(&v) << "\n";
     // print(v.sum())
     std::cout << v.sum() << "\n";
-    // print(v.dot(Vec2(Int32(1), Int32(2))))
+    // print(v.dot(Vec2(int32(1), int32(2))))
     std::cout << v.dot(::Vec2(1, 2)) << "\n";
     // z = Vec2.zero()
     ::Vec2 z = ::Vec2::zero();
@@ -26,7 +26,7 @@ void main() {
     std::cout << z.x << "\n";
     // print(z.y)
     std::cout << z.y << "\n";
-    // c = Color(Int32(100), Int32(150), Int32(200))
+    // c = Color(int32(100), int32(150), int32(200))
     ::ns::Color c = ::ns::Color(100, 150, 200);
     // print(c.r)
     std::cout << c.r << "\n";

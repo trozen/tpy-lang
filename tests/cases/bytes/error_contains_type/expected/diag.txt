@@ -1,1 +1,1 @@
-main.py:4: error: Type mismatch in membership test: expected UInt8 or bytes, got str
+main.py:4: error: Type mismatch in membership test: expected uint8 or bytes, got str

@@ -1,11 +1,11 @@
 # Phase 5 doesn't open a write path: `obj.X = ...` on a Final class constant
 # routes through the same reassignment guard as `Class.X = ...`.
 from typing import Final
-from tpy import Int32
+from tpy import int32
 
 
 class C:
-    LIMIT: Final[Int32] = 10
+    LIMIT: Final[int32] = 10
 
     def __init__(self) -> None:
         pass

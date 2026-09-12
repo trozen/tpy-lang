@@ -18,14 +18,14 @@ inline constexpr std::string_view __name__ = "__main__";
 struct Config {
     // name: str
     std::string name;
-    // max_retries: Int32 | None
+    // max_retries: int32 | None
     std::optional<int32_t> max_retries;
 
     // def __init__(self, name: str):
     Config() = default;
     explicit Config(std::string_view name);
 
-    // def get_retries(self) -> Int32 | None:
+    // def get_retries(self) -> int32 | None:
     std::optional<int32_t> get_retries() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Config";
 };
@@ -39,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
 // def __init__(self, name: str):
 inline Config::Config(std::string_view name) : name(name), max_retries(std::nullopt) {}
 
-// def get_retries(self) -> Int32 | None:
+// def get_retries(self) -> int32 | None:
 inline std::optional<int32_t> Config::get_retries() const {
     // return self.max_retries
     return this->max_retries;

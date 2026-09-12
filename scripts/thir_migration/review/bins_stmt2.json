@@ -6,7 +6,7 @@
   "reason": "stmt_reject_reason(ret)",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "BREAKS_AT_CUTOVER; fallback 'resumable:stmt.return:return.empty_container_literal' traced to this line. An async `-> Own[list[Int32]]` body returning an EMPTY container literal (test_thir_resumable.py:3842 fixture).",
+  "evidence": "BREAKS_AT_CUTOVER; fallback 'resumable:stmt.return:return.empty_container_literal' traced to this line. An async `-> Own[list[int32]]` body returning an EMPTY container literal (test_thir_resumable.py:3842 fixture).",
   "probe": "scripts/thir_migration/review/probes/stmt2/b1_empty_container.py",
   "plain_raise": false,
   "known_shape": null
@@ -18,7 +18,7 @@
   "reason": "stmt_reject_reason(ret)",
   "bin": "UNSURE",
   "confidence": "low",
-  "evidence": "`_peel_coerce(ret.value)` must be a value-opt param/scalar binding wrapped in a sema COERCE at an async return. Every widening spelling I tried (Int32|None -> Int64|None, Int32|None -> int|None, bool|None -> Int32|None) is refused by sema as a return type mismatch (probes b2_optval_coerced_param, b3_optval_coerce, b6_optval_bool). MISSING: which Optional-scalar conversion sema actually inserts a TpyCoerce for.",
+  "evidence": "`_peel_coerce(ret.value)` must be a value-opt param/scalar binding wrapped in a sema COERCE at an async return. Every widening spelling I tried (int32|None -> int64|None, int32|None -> int|None, bool|None -> int32|None) is refused by sema as a return type mismatch (probes b2_optval_coerced_param, b3_optval_coerce, b6_optval_bool). MISSING: which Optional-scalar conversion sema actually inserts a TpyCoerce for.",
   "probe": null,
   "plain_raise": false,
   "known_shape": null
@@ -90,7 +90,7 @@
   "reason": "\"res.unpack\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "BREAKS_AT_CUTOVER; fallback 'resumable:res.unpack' traced to this line (unpack.source_elems). `s, k = mk(n)` at `tuple[Own[str], Int32]` in an async body.",
+  "evidence": "BREAKS_AT_CUTOVER; fallback 'resumable:res.unpack' traced to this line (unpack.source_elems). `s, k = mk(n)` at `tuple[Own[str], int32]` in an async body.",
   "probe": "scripts/thir_migration/review/probes/stmt2/b5_async_unpack_str.py",
   "plain_raise": false,
   "known_shape": null
@@ -426,7 +426,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "BREAKS_AT_CUTOVER; fallback 'body:stmt.var_decl:decl.no_init' traced to this line. `t: tuple[Int32, Int32]` annotation-only local (outside the scalar/char/str families).",
+  "evidence": "BREAKS_AT_CUTOVER; fallback 'body:stmt.var_decl:decl.no_init' traced to this line. `t: tuple[int32, int32]` annotation-only local (outside the scalar/char/str families).",
   "probe": "scripts/thir_migration/review/probes/stmt2/b4_no_init_tuple.py",
   "plain_raise": false,
   "known_shape": null
@@ -774,7 +774,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "DEAD",
   "confidence": "medium",
-  "evidence": "Both legs are refused by sema first. A local/global REASSIGN of a Char from a str literal: 'Type mismatch in reassignment to c: expected Char, got str' (tpyc/sema/statements.py:4538) -- probes b3_char_global_reassign and b7_char_global_fn (the latter with `global c`, so top_level_scope is False). A multi-character literal at a Char slot: 'Type mismatch in variable c: expected Char, got str' -- probe b3_char_two. A top-level 1-char assign routes (probe b4_char_global).",
+  "evidence": "Both legs are refused by sema first. A local/global REASSIGN of a char from a str literal: 'Type mismatch in reassignment to c: expected char, got str' (tpyc/sema/statements.py:4538) -- probes b3_char_global_reassign and b7_char_global_fn (the latter with `global c`, so top_level_scope is False). A multi-character literal at a char slot: 'Type mismatch in variable c: expected char, got str' -- probe b3_char_two. A top-level 1-char assign routes (probe b4_char_global).",
   "probe": null,
   "plain_raise": false,
   "known_shape": null
@@ -798,7 +798,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "BREAKS_AT_CUTOVER; fallback 'body:stmt.var_decl:decl.container_call_borrow' traced to this line. `items = ident(t)` where ident returns `readonly[list[Int32]]`.",
+  "evidence": "BREAKS_AT_CUTOVER; fallback 'body:stmt.var_decl:decl.container_call_borrow' traced to this line. `items = ident(t)` where ident returns `readonly[list[int32]]`.",
   "probe": "scripts/thir_migration/review/probes/stmt2/b3_container_call_borrow_ro.py",
   "plain_raise": false,
   "known_shape": null

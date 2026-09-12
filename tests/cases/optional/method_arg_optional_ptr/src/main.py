@@ -1,19 +1,19 @@
 # A record method taking a pointer-repr Optional[record] param, exercising the
 # non-ctor arg faces: &(name), None, bare-pass param, optional_to_ptr field lift
 # (@nocopy Node forbids a silent copy).
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 
 
 @nocopy
 class Node:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 
 class Graph:
-    total: Int32
+    total: int32
     slot: Node | None
 
     def __init__(self) -> None:

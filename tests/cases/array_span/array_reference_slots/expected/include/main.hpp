@@ -21,9 +21,9 @@ void main();
 
 // class Grid:
 struct Grid {
-    // cells: Array[Int32, 3]
+    // cells: Array[int32, 3]
     std::array<int32_t, 3> cells;
-    // spare: Array[Int32, 3] | None
+    // spare: Array[int32, 3] | None
     std::optional<std::array<int32_t, 3>> spare;
 
     // def __init__(self) -> None:
@@ -32,7 +32,7 @@ struct Grid {
     // def same_cells(self, other: Grid) -> bool:
     bool same_cells(const Grid& other) const;
 
-    // def spare_total(self) -> Int32:
+    // def spare_total(self) -> int32:
     int32_t spare_total() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Grid";
 };
@@ -52,7 +52,7 @@ inline bool Grid::same_cells(const Grid& other) const {
     return (this->cells == other.cells);
 }
 
-// def spare_total(self) -> Int32:
+// def spare_total(self) -> int32:
 inline int32_t Grid::spare_total() const {
     // n = 0
     int32_t n = 0;

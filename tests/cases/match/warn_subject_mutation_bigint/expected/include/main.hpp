@@ -34,10 +34,10 @@ inline std::ostream& operator<<(std::ostream& os, const Big& obj) {
 
 // class Small:
 struct Small {
-    // v: Int32
+    // v: int32
     int32_t v;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Small() = default;
     explicit Small(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Small";
@@ -67,7 +67,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 // def __init__(self, n: int) -> None:
 inline Big::Big(const ::tpy::BigInt& n) : n(n) {}
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Small::Small(int32_t v) : v(v) {}
 
 // def __init__(self) -> None:

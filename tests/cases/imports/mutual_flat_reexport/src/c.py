@@ -1,6 +1,6 @@
-from tpy import Int32
+from tpy import int32
 
 class Cls:
-    val: Int32
-    def __init__(self, v: Int32) -> None:
+    val: int32
+    def __init__(self, v: int32) -> None:
         self.val = v

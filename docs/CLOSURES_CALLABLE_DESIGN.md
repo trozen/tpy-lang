@@ -28,7 +28,7 @@
 | Variadic `Callable` | `Callable[..., R]` accepting any args -- needs `*args` (D17) |
 | Method references | `obj.method` as a value -- partial application binding `self` |
 | `Fn \| None` (optional zero-cost) | Template-based optional callable via `Optional[Protocol]` pattern (`std::nullptr_t` default). Currently an error -- use `Callable \| None` instead. |
-| `Fn` as local variable annotation | `f: Fn[[Int32], Int32] = lambda x: x + 1` -- use `Fn` as type context for a named lambda, codegen as `auto` (zero-cost). Only valid when not reassigned (reassignment would need `std::function`). Currently an error. |
+| `Fn` as local variable annotation | `f: Fn[[int32], int32] = lambda x: x + 1` -- use `Fn` as type context for a named lambda, codegen as `auto` (zero-cost). Only valid when not reassigned (reassignment would need `std::function`). Currently an error. |
 
 ---
 
@@ -86,7 +86,7 @@ types spell MUTABLE in the C++ signature (`std::function<void(std::vector<
 int32_t>&)>`), args run the normal coercion pipeline, and reference args
 are conservatively marked mutated for const inference and borrow warnings.
 The explicit non-mutating contract is `readonly[...]` inside the param list
-(`Callable[[readonly[list[Int32]]], None]` keeps `const&` and exempts the
+(`Callable[[readonly[list[int32]]], None]` keeps `const&` and exempts the
 call from the conservative marks). Signature compatibility is contravariant
 in params, covariant in returns; bare generic slots (`Fn[[T], R]`) are
 exempt from the conservative mutation marks so generic combinators keep
@@ -121,7 +121,7 @@ behavior and differed only in rendering.)
 ```python
 from tpy import Fn
 
-def apply(f: Fn[[Int32], Int32], x: Int32) -> Int32:
+def apply(f: Fn[[int32], int32], x: int32) -> int32:
     return f(x)
 
 apply(lambda x: x + 1, 42)        # lambda inlined
@@ -150,9 +150,9 @@ is a compile error:
 
 ```python
 class Bad:
-    handler: Fn[[Int32], None]  # ERROR: Fn is only valid in parameter position
+    handler: Fn[[int32], None]  # ERROR: Fn is only valid in parameter position
 
-def bad() -> Fn[[Int32], Int32]:  # ERROR: cannot return Fn (use Callable)
+def bad() -> Fn[[int32], int32]:  # ERROR: cannot return Fn (use Callable)
     ...
 ```
 
@@ -164,7 +164,7 @@ allows passing different concrete callables to the same function.
 
 **Return type constraint**: The `requires` clause uses `std::convertible_to`
 (not `std::same_as`) to allow numeric coercions (e.g., a callable returning
-`Int32` satisfies `Fn[[...], int]`).
+`int32` satisfies `Fn[[...], int]`).
 
 ### `Callable` -- Type-Erased Callable (`std::function`)
 
@@ -173,14 +173,14 @@ from typing import Callable
 
 # Field -- must be type-erased
 class Button:
-    on_click: Callable[[Int32], None]
+    on_click: Callable[[int32], None]
 
 # Return type -- must be type-erased
-def make_adder(n: Int32) -> Callable[[Int32], Int32]:
+def make_adder(n: int32) -> Callable[[int32], int32]:
     return lambda x: x + n
 
 # Parameter -- works but pays type-erasure cost
-def register(cb: Callable[[Int32], None]) -> None:
+def register(cb: Callable[[int32], None]) -> None:
     self.on_click = cb
 ```
 
@@ -202,7 +202,7 @@ elements, function parameters. When used as a parameter, it's less efficient
 than `Fn` but necessary when the callable must be stored:
 
 ```python
-def register(cb: Callable[[Int32], None]) -> None:
+def register(cb: Callable[[int32], None]) -> None:
     self.on_click = cb  # cb is stored -- must be std::function already
 ```
 
@@ -242,7 +242,7 @@ uses type erasure (even in param position) since templates can't represent
 "optional callable." The `| None` makes the cost explicit.
 
 A lambda literal, a function by name, or `None` may be passed directly to a
-`Callable[...] | None` *parameter* (`def f(cb: Callable[[Int32], None] | None
+`Callable[...] | None` *parameter* (`def f(cb: Callable[[int32], None] | None
 = None)`): the optional wrapper is peeled to recover the callable shape for
 arg inference, then the value coerces back into the optional slot. (A
 `Send[Callable[...]] | None` param does not yet accept a lambda/name -- the
@@ -269,10 +269,10 @@ includes lambdas, named functions, and objects with `__call__`:
 
 ```python
 class Doubler:
-    def __call__(self, x: Int32) -> Int32:
+    def __call__(self, x: int32) -> int32:
         return x * 2
 
-def apply(f: Fn[[Int32], Int32], x: Int32) -> Int32:
+def apply(f: Fn[[int32], int32], x: int32) -> int32:
     return f(x)
 
 apply(Doubler(), 5)  # works -- Doubler has matching __call__
@@ -293,10 +293,10 @@ a `Callable` field (wrapping in `std::function`). The reverse is not possible --
 `Callable` cannot become `Fn` (the concrete type is erased).
 
 ```python
-def process(f: Fn[[Int32], Int32], x: Int32) -> None:
+def process(f: Fn[[int32], int32], x: int32) -> None:
     store_callback(f)  # OK: Fn coerces to Callable (wraps in std::function)
 
-def store_callback(cb: Callable[[Int32], None]) -> None:
+def store_callback(cb: Callable[[int32], None]) -> None:
     self.handler = cb
 ```
 
@@ -324,11 +324,11 @@ Both `Fn` and `Callable` parameter types provide context (including a
 `Callable[...] | None` param -- the Optional is peeled to recover the shape):
 
 ```python
-def apply(f: Fn[[Int32], Int32], x: Int32) -> Int32:
+def apply(f: Fn[[int32], int32], x: int32) -> int32:
     return f(x)
 
 apply(lambda x: x + 1, 42)
-# x is inferred as Int32 from the Fn[[Int32], Int32] parameter type
+# x is inferred as int32 from the Fn[[int32], int32] parameter type
 
 handler: Callable[[str], None] = lambda s: print(s)
 # s is inferred as str from the Callable[[str], None] annotation
@@ -379,7 +379,7 @@ free variables in the closure body (variables referenced but not defined locally
 This is the same approach as Rust.
 
 ```python
-def make_scaler(factor: Int32) -> Callable[[Int32], Int32]:
+def make_scaler(factor: int32) -> Callable[[int32], int32]:
     return lambda x: x * factor  # captures 'factor'
 ```
 
@@ -398,7 +398,7 @@ The capture mode depends on the variable's type and whether the closure escapes:
 
 | Captured type | Non-escaping | Escaping |
 |--------------|-------------|---------|
-| Value types (`Int32`, `bool`, `float`, `Char`) | by copy `[v]` | by copy `[v]` |
+| Value types (`int32`, `bool`, `float`, `char`) | by copy `[v]` | by copy `[v]` |
 | `str` (local `std::string`) | by ref `[&s]` | by copy `[s]` |
 | `StrView` (`std::string_view`) | by copy `[sv]` | by copy `[sv]` -- but may dangle! |
 | `Ptr[T]` | by copy `[p]` | by copy `[p]` -- lifetime must be valid |
@@ -528,8 +528,8 @@ Closures created inside `@readonly` functions propagate const to captures:
 
 ```python
 @readonly
-def compute(items: list[Int32], f: Fn[[Int32], Int32]) -> Int32:
-    total: Int32 = 0
+def compute(items: list[int32], f: Fn[[int32], int32]) -> int32:
+    total: int32 = 0
     g = lambda x: f(x) + total  # captures 'total' (const) and 'f' (const)
     return g(items[0])
 ```
@@ -544,10 +544,10 @@ use `const&`, pointer captures use `const T*`.
 Named functions can be used as values where `Fn` or `Callable` is expected:
 
 ```python
-def double(x: Int32) -> Int32:
+def double(x: int32) -> int32:
     return x * 2
 
-def apply(f: Fn[[Int32], Int32], x: Int32) -> Int32:
+def apply(f: Fn[[int32], int32], x: int32) -> int32:
     return f(x)
 
 result = apply(double, 42)  # zero-cost via Fn
@@ -577,7 +577,7 @@ conformance. The codegen emits explicit template instantiation:
 def identity[T](x: T) -> T:
     return x
 
-apply(identity, 42)  # hint Fn[[Int32], Int32] -> infers T=Int32
+apply(identity, 42)  # hint Fn[[int32], int32] -> infers T=int32
 ```
 
 ```cpp
@@ -598,7 +598,7 @@ support this:
 
 ```python
 class Formatter:
-    def format(self, x: Int32) -> str:
+    def format(self, x: int32) -> str:
         return str(x)
 
 fmt = Formatter()
@@ -612,8 +612,8 @@ apply(fmt.format, 42)  # captures 'fmt', binds 'self'
 ### Syntax
 
 ```python
-def make_adder(n: Int32) -> Callable[[Int32], Int32]:
-    def add(x: Int32) -> Int32:
+def make_adder(n: int32) -> Callable[[int32], int32]:
+    def add(x: int32) -> int32:
         return x + n    # captures 'n' from enclosing scope
     return add
 ```
@@ -628,9 +628,9 @@ Python's `nonlocal` keyword declares that a variable is from an enclosing scope
 and should be mutable:
 
 ```python
-def make_counter(start: Int32) -> Callable[[], Int32]:
+def make_counter(start: int32) -> Callable[[], int32]:
     count = start
-    def next_val() -> Int32:
+    def next_val() -> int32:
         nonlocal count
         count += 1
         return count
@@ -667,9 +667,9 @@ a clear diagnostic suggesting alternatives. Support non-escaping `nonlocal`
 Non-escaping nested function:
 
 ```python
-def process(items: list[Int32]) -> Int32:
-    total: Int32 = 0
-    def accumulate(x: Int32) -> None:
+def process(items: list[int32]) -> int32:
+    total: int32 = 0
+    def accumulate(x: int32) -> None:
         nonlocal total
         total += x
     for item in items:
@@ -691,8 +691,8 @@ int32_t process(std::vector<int32_t>& items) {
 Escaping nested function (read-only captures):
 
 ```python
-def make_adder(n: Int32) -> Callable[[Int32], Int32]:
-    def add(x: Int32) -> Int32:
+def make_adder(n: int32) -> Callable[[int32], int32]:
+    def add(x: int32) -> int32:
         return x + n
     return add
 ```
@@ -747,8 +747,8 @@ def fibonacci() -> Iterator[int]:
         yield a
         a, b = b, a + b
 
-def count_up(n: Int32) -> Iterator[Int32]:
-    i: Int32 = 0
+def count_up(n: int32) -> Iterator[int32]:
+    i: int32 = 0
     while i < n:
         yield i
         i += 1
@@ -791,8 +791,8 @@ allocation is acceptable.
 Given:
 
 ```python
-def count_up(n: Int32) -> Iterator[Int32]:
-    i: Int32 = 0
+def count_up(n: int32) -> Iterator[int32]:
+    i: int32 = 0
     while i < n:
         yield i
         i += 1
@@ -849,7 +849,7 @@ point** are promoted to struct fields. Variables used only between consecutive
 yields can remain stack-local within the `__next__()` method:
 
 ```python
-def gen() -> Iterator[Int32]:
+def gen() -> Iterator[int32]:
     for i in range(10):
         temp = i * i      # 'temp' is NOT live across yield
         yield temp + 1    # only 'i' is live across yield
@@ -869,7 +869,7 @@ Yield inside control flow requires careful state decomposition:
 **Yield in if/else:**
 
 ```python
-def gen(flag: bool) -> Iterator[Int32]:
+def gen(flag: bool) -> Iterator[int32]:
     if flag:
         yield 1
     else:
@@ -883,7 +883,7 @@ correct continuation point.
 **Yield in nested loops:**
 
 ```python
-def matrix_gen(rows: list[list[Int32]]) -> Iterator[Int32]:
+def matrix_gen(rows: list[list[int32]]) -> Iterator[int32]:
     for row in rows:
         for val in row:
             yield val
@@ -915,8 +915,8 @@ For simple generators (single loop, no complex control flow), the existing
 `tpy::generator_wrapper<T, F>` + lambda pattern could be used as a shortcut:
 
 ```python
-def squares(n: Int32) -> Iterator[Int32]:
-    i: Int32 = 0
+def squares(n: int32) -> Iterator[int32]:
+    i: int32 = 0
     while i < n:
         yield i * i
         i += 1
@@ -964,8 +964,8 @@ In `@noalloc` functions, `Callable` is forbidden -- use `Fn` for callable
 parameters instead:
 
 ```
-error: 'Callable[[Int32], Int32]' in @noalloc function 'hot_path' --
-       std::function may heap-allocate. Use 'Fn[[Int32], Int32]' for
+error: 'Callable[[int32], int32]' in @noalloc function 'hot_path' --
+       std::function may heap-allocate. Use 'Fn[[int32], int32]' for
        zero-cost callable parameters.
 ```
 

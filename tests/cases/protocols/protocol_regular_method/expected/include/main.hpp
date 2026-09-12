@@ -23,10 +23,10 @@ void main();
 
 // class Value:
 struct Value {
-    // x: Int32
+    // x: int32
     int32_t x;
 
-    // def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: int32) -> None:
     Value() = default;
     explicit Value(int32_t x);
 
@@ -41,7 +41,7 @@ inline std::ostream& operator<<(std::ostream& os, const Value& obj) {
 }
 
 
-// def __init__(self, x: Int32) -> None:
+// def __init__(self, x: int32) -> None:
 inline Value::Value(int32_t x) : x(x) {}
 
 // def duplicate(self) -> Own[Value]:

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def return_from_try() -> Int32:
+// def return_from_try() -> int32:
 int32_t return_from_try() {
     // try:
     {
@@ -26,7 +26,7 @@ int32_t return_from_try() {
     }
 }
 
-// def return_from_except() -> Int32:
+// def return_from_except() -> int32:
 int32_t return_from_except() {
     // try:
     {
@@ -96,7 +96,7 @@ std::string return_from_multiple_paths(bool flag) {
     }
 }
 
-// def return_optional(flag: bool) -> Int32 | None:
+// def return_optional(flag: bool) -> int32 | None:
 std::optional<int32_t> return_optional(bool flag) {
     // try:
     {
@@ -104,7 +104,7 @@ std::optional<int32_t> return_optional(bool flag) {
         try {
             // if flag:
             if (flag) {
-                // return Int32(7)
+                // return int32(7)
                 std::optional<int32_t> __tpy_ret_0 = 7;
                 __fin_ran_4 = true;
                 // print("finally 4")

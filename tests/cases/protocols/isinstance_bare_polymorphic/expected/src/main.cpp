@@ -61,7 +61,7 @@ std::string assert_dog(const Pet& p) {
     return (::tpy::str_concat("ASSERT: ", __p.bark()));
 }
 
-// def short_circuit(p: Pet, threshold: Int32) -> bool:
+// def short_circuit(p: Pet, threshold: int32) -> bool:
 bool short_circuit(const Pet& p, int32_t threshold) {
     // # Inline isinstance fact on `&&` RHS: the narrowed read `p.bark()` on the
     // # right of the short-circuit emits `(*static_cast<const Dog*>(&p)).bark()`,

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def peek(p: P | None) -> Int32:
+// def peek(p: P | None) -> int32:
 int32_t peek(const P* p) {
     // return -1 if p is None else p.x
     return (((p == nullptr)) ? (-1) : (p->x));

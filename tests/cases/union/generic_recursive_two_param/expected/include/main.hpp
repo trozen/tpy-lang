@@ -33,7 +33,7 @@ struct DictTree {
     }
 };
 
-// def leaf_count[K, V](t: DictTree[K, V]) -> Int32:
+// def leaf_count[K, V](t: DictTree[K, V]) -> int32:
 template<typename K, typename V>
 int32_t leaf_count(const DictTree<K, V>& t) {
     // match t:

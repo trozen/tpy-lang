@@ -5,22 +5,22 @@
 
 import asyncio
 from typing import Iterator
-from tpy import Int32, readonly
+from tpy import int32, readonly
 
 
-def tail(xs: readonly[list[Int32]]) -> Iterator[Int32]:
+def tail(xs: readonly[list[int32]]) -> Iterator[int32]:
     yield -1
     for x in xs:
         yield x
 
 
 class Holder:
-    lst: list[Int32] | None
+    lst: list[int32] | None
 
     def __init__(self):
         self.lst = [1, 2, 3]
 
-    async def total(self) -> Int32:
+    async def total(self) -> int32:
         n = 0
         if self.lst is not None:
             for x in self.lst:
@@ -30,7 +30,7 @@ class Holder:
 
 
 async def amain() -> None:
-    data: list[Int32] = [10, 20]
+    data: list[int32] = [10, 20]
     print(sum(tail(data)))
     h = Holder()
     print(await h.total())

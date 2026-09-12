@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def observe(items: readonly[list[Int32]]) -> None:
+// def observe(items: readonly[list[int32]]) -> None:
 void observe(const std::vector<int32_t>& items) {
     // print(get_len(items))
     std::cout << get_len(items) << "\n";
@@ -14,7 +14,7 @@ void observe(const std::vector<int32_t>& items) {
 
 // def main() -> None:
 void main() {
-    // xs: list[Int32] = [Int32(10), Int32(20), Int32(30)]
+    // xs: list[int32] = [int32(10), int32(20), int32(30)]
     std::vector<int32_t> xs = {10, 20, 30};
     // observe(xs)
     observe(xs);

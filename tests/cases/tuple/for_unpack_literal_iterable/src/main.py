@@ -1,7 +1,7 @@
 # `for a, b in [<tuple literals>]:` -- the unpack head over a list LITERAL
 # iterable. The literal is captured target-less, so its tuple elements have to
 # spell their own type to render at all.
-from tpy import Int32
+from tpy import int32
 
 
 def main() -> None:

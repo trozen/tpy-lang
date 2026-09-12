@@ -465,7 +465,7 @@ def _returns_open_type_param(fi: 'FunctionInfo | None') -> bool:
     A callable VALUE is excluded: its signature is the `Fn` type's, not a
     declaration anyone checked, and the body that runs may build a fresh
     value -- so `f(x)` at an `Fn[[T], K]` slot is an rvalue exactly as its
-    monomorphic twin `Fn[[Int32], Cell]` is, and reading K as a borrow would
+    monomorphic twin `Fn[[int32], Cell]` is, and reading K as a borrow would
     warn on the generic where the twin is silent.
     """
     if fi is None or fi.is_constructor or fi.is_callable_value:

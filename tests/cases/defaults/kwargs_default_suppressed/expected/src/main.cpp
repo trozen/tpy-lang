@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def scaled(a: Int64, b: Int64 = 5, **kwargs: Unpack[Options]) -> Int64:
+// def scaled(a: int64, b: int64 = 5, **kwargs: Unpack[Options]) -> int64:
 int64_t scaled(int64_t a, int64_t b, const Options& kwargs) {
     // return a * 10 + b
     return (::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(a, 10)), b));
 }
 
-// def spanned(a: Int64, b: Int64 = 2, c: Int64 = 3, **kwargs: Unpack[Options]) -> Int64:
+// def spanned(a: int64, b: int64 = 2, c: int64 = 3, **kwargs: Unpack[Options]) -> int64:
 int64_t spanned(int64_t a, int64_t b, int64_t c, const Options& kwargs) {
     // return a * 100 + b * 10 + c
     return (::tpy::add_check<int64_t>((::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(a, 100)), (::tpy::mul_check<int64_t>(b, 10)))), c));

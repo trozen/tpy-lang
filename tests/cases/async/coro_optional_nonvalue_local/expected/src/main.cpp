@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def maybe_p(items: list[P], i: Int32) -> P | None:
+// def maybe_p(items: list[P], i: int32) -> P | None:
 P* maybe_p(std::vector<P>& items, int32_t i) {
     // if i < len(items):
     if ((i < ::tpy::__len__(items))) {
@@ -15,7 +15,7 @@ P* maybe_p(std::vector<P>& items, int32_t i) {
     return nullptr;
 }
 
-// async def pick(items: list[P], i: Int32, drop: bool) -> Int32:
+// async def pick(items: list[P], i: int32, drop: bool) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_pick::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -55,7 +55,7 @@ P* maybe_p(std::vector<P>& items, int32_t i) {
 }
 
 
-// async def pick(items: list[P], i: Int32, drop: bool) -> Int32:
+// async def pick(items: list[P], i: int32, drop: bool) -> int32:
 __coro_pick pick(std::vector<P>& items, int32_t i, bool drop) {
     return __coro_pick(items, i, drop);
 }

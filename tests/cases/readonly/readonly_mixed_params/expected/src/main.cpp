@@ -14,9 +14,9 @@ void copy_into(const Point& src, Point& dest) {
 
 // def main() -> None:
 void main() {
-    // a = Point(Int32(10), Int32(20))
+    // a = Point(int32(10), int32(20))
     Point a = Point(10, 20);
-    // b = Point(Int32(0), Int32(0))
+    // b = Point(int32(0), int32(0))
     Point b = Point(0, 0);
     // copy_into(a, b)
     copy_into(a, b);

@@ -2,7 +2,7 @@
 # acyclic-strong-only would leak (see rc_cycle_leak); using Weak for the
 # back-edge lets the chain drop cleanly when the root Rc is released.
 from __future__ import annotations
-from tpy import Int32
+from tpy import int32
 from tplib.rc import Rc, Weak
 
 

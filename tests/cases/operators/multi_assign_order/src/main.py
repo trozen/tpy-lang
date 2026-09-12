@@ -1,10 +1,10 @@
 # Multi-target assignment evaluates the value once, then assigns
 # targets left-to-right (CPython order); aliasing is preserved.
-from tpy import Int32
+from tpy import int32
 
 
 def main() -> None:
-    a: list[Int32] = [0, 0]
+    a: list[int32] = [0, 0]
     b = 0
     a[(b := 1)] = b = 7
     print(a, b)

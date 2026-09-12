@@ -17,10 +17,10 @@ void main();
 
 // class Container:
 struct Container {
-    // value: Int32
+    // value: int32
     int32_t value;
 
-    // def __init__(self, value: Int32) -> None:
+    // def __init__(self, value: int32) -> None:
     Container() = default;
     explicit Container(int32_t value);
 
@@ -35,7 +35,7 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
 }
 
 
-// def __init__(self, value: Int32) -> None:
+// def __init__(self, value: int32) -> None:
 inline Container::Container(int32_t value) : value(value) {}
 
 // def clone(self) -> Own["Container"]:

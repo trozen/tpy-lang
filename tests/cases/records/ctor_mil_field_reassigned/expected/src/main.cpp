@@ -3,7 +3,7 @@
 
 namespace tpyapp::main {
 
-// SCALE: Int32 = 4
+// SCALE: int32 = 4
 int32_t SCALE{};
 
 // def main() -> None:
@@ -19,7 +19,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // SCALE: Int32 = 4
+    // SCALE: int32 = 4
     SCALE = 4;
     // main()
     main();

@@ -2,14 +2,14 @@
 # clear the trust so the subsequent return is rejected. The unclobbered
 # chain -- bind the trusted return, then return it -- is pinned by
 # tests/cases/pointers/ptr_return_trusted_call.
-from tpy import Int32, Ptr
+from tpy import int32, Ptr
 
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32) -> None:
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 

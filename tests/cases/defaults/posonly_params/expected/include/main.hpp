@@ -19,7 +19,7 @@ void main();
 struct Calc {
 
 
-    // def scale(self, a: Int32, /, k: Int32 = 2) -> Int32:
+    // def scale(self, a: int32, /, k: int32 = 2) -> int32:
     int32_t scale(int32_t a, int32_t k = 2) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Calc";
 };
@@ -30,7 +30,7 @@ inline std::ostream& operator<<(std::ostream& os, const Calc& obj) {
 }
 
 
-// def scale(self, a: Int32, /, k: Int32 = 2) -> Int32:
+// def scale(self, a: int32, /, k: int32 = 2) -> int32:
 inline int32_t Calc::scale(int32_t a, int32_t k) const {
     // return a * k
     return (::tpy::mul_check<int32_t>(a, k));

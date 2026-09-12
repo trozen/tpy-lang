@@ -21,7 +21,7 @@ struct Counter {
     // self.n = start
     int32_t n;
 
-    // def __init__(self, start: Int32):
+    // def __init__(self, start: int32):
     Counter() = default;
     explicit Counter(int32_t start);
 
@@ -84,7 +84,7 @@ struct __gen_steps : public ::tpy::next_iter_mixin<__gen_steps, int32_t> {
 };
 
 
-// def __init__(self, start: Int32):
+// def __init__(self, start: int32):
 inline Counter::Counter(int32_t start) : n(start) {}
 
 // def __enter__(self) -> "Counter":

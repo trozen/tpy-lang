@@ -1,11 +1,11 @@
-from tpy import Int32
+from tpy import int32
 class Circle:
-    r: Int32
-    def __init__(self, r: Int32) -> None:
+    r: int32
+    def __init__(self, r: int32) -> None:
         self.r = r
 class Square:
-    s: Int32
-    def __init__(self, s: Int32) -> None:
+    s: int32
+    def __init__(self, s: int32) -> None:
         self.s = s
 type Shape = Circle | Square
 class Holder:

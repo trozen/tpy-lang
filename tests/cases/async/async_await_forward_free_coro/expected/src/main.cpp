@@ -34,7 +34,7 @@ __coro_driver driver() {
     return __coro_driver();
 }
 
-// async def helper() -> Int32:
+// async def helper() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_helper::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -59,7 +59,7 @@ __coro_driver driver() {
 }
 
 
-// async def helper() -> Int32:
+// async def helper() -> int32:
 __coro_helper helper() {
     return __coro_helper();
 }

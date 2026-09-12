@@ -1,10 +1,10 @@
 # map() builtin with named functions and lambdas
-from tpy import Int32
+from tpy import int32
 
-def double(x: Int32) -> Int32:
+def double(x: int32) -> int32:
     return x * 2
 
-def to_str(x: Int32) -> str:
+def to_str(x: int32) -> str:
     return "v:" + str(x)
 
 def main() -> None:
@@ -18,12 +18,12 @@ def main() -> None:
     for x in map(lambda x: x + 10, nums):
         print(x)
 
-    # type-changing map (Int32 -> str)
+    # type-changing map (int32 -> str)
     for s in map(to_str, nums):
         print(s)
 
     # map over empty list
-    empty: list[Int32] = []
+    empty: list[int32] = []
     for x in map(double, empty):
         print(x)
 

@@ -6,36 +6,36 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // r = Rc.new(State(Int32(10)))
+    // r = Rc.new(State(int32(10)))
     ::tpystd::tplib::rc::Rc<State> r = Rc<State>::new_<State>(State(10));
     // print(r.x)            # auto-deref: 10
     std::cout << r.__deref__().x << "\n";
     // print(r.doubled())    # auto-deref method: 20
     std::cout << r.__deref__().doubled() << "\n";
-    // r.x = Int32(99)       # auto-deref write
+    // r.x = int32(99)       # auto-deref write
     r.__deref__().x = 99;
     // print(r.x)            # 99
     std::cout << r.__deref__().x << "\n";
     // r2 = r.clone()
     ::tpystd::tplib::rc::Rc<State> r2 = r.clone();
-    // r2.x = Int32(5)       # mutation through clone visible via r
+    // r2.x = int32(5)       # mutation through clone visible via r
     r2.__deref__().x = 5;
     // print(r.x, r2.x)      # 5 5
     std::cout << r.__deref__().x << " " << r2.__deref__().x << "\n";
     // # Arc auto-derefs identically (the atomic-refcount sibling of Rc).
-    // a = Arc.new(State(Int32(10)))
+    // a = Arc.new(State(int32(10)))
     ::tpystd::tplib::arc::Arc<State> a = Arc<State>::new_<State>(State(10));
     // print(a.x)            # auto-deref: 10
     std::cout << a.__deref__().x << "\n";
     // print(a.doubled())    # auto-deref method: 20
     std::cout << a.__deref__().doubled() << "\n";
-    // a.x = Int32(99)       # auto-deref write
+    // a.x = int32(99)       # auto-deref write
     a.__deref__().x = 99;
     // print(a.x)            # 99
     std::cout << a.__deref__().x << "\n";
     // a2 = a.clone()
     ::tpystd::tplib::arc::Arc<State> a2 = a.clone();
-    // a2.x = Int32(5)       # mutation through clone visible via a
+    // a2.x = int32(5)       # mutation through clone visible via a
     a2.__deref__().x = 5;
     // print(a.x, a2.x)      # 5 5
     std::cout << a.__deref__().x << " " << a2.__deref__().x << "\n";

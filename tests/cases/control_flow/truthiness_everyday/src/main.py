@@ -1,14 +1,14 @@
 # Everyday truthiness: a condition is decided by the operand's TYPE, so the
 # same scalar renders the same test whether it is read from a container, a
 # field, a call, an arithmetic expression or a literal.
-from tpy import Char, Int32
+from tpy import char, int32
 
 
 class Holder:
-    n: Int32
+    n: int32
     ratio: float
     tag: str
-    rows: list[Int32]
+    rows: list[int32]
 
     def __init__(self) -> None:
         self.n = 2
@@ -16,19 +16,19 @@ class Holder:
         self.tag = "t"
         self.rows = [7]
 
-    def size(self) -> Int32:
+    def size(self) -> int32:
         return self.n
 
 
-def width() -> Int32:
+def width() -> int32:
     return 3
 
 
-def zero() -> Int32:
+def zero() -> int32:
     return 0
 
 
-def scalar_shapes(h: Holder, xs: list[Int32], c: Char) -> Int32:
+def scalar_shapes(h: Holder, xs: list[int32], c: char) -> int32:
     seen = 0
     if xs[0]:  # scalar ELEMENT read
         seen += 1
@@ -48,13 +48,13 @@ def scalar_shapes(h: Holder, xs: list[Int32], c: Char) -> Int32:
         seen += 128
     if 1:  # numeric LITERAL
         seen += 256
-    if c:  # Char local
+    if c:  # char local
         seen += 512
     return seen
 
 
 def moded_shapes(h: Holder, names: list[str],
-                 rows: list[list[Int32]]) -> Int32:
+                 rows: list[list[int32]]) -> int32:
     seen = 0
     if h.tag:  # str field: the empty-test wraps a field read too
         seen += 16
@@ -69,7 +69,7 @@ def moded_shapes(h: Holder, names: list[str],
     return seen
 
 
-def operand_positions(xs: list[Int32], n: Int32) -> Int32:
+def operand_positions(xs: list[int32], n: int32) -> int32:
     seen = 0
     if n and xs[0]:  # a scalar condition composes as a logical OPERAND
         seen += 1
@@ -83,7 +83,7 @@ def operand_positions(xs: list[Int32], n: Int32) -> Int32:
     return seen
 
 
-def guard_shapes(h: Holder, xs: list[Int32], names: list[str]) -> Int32:
+def guard_shapes(h: Holder, xs: list[int32], names: list[str]) -> int32:
     # A match guard is a boolean context too, so the same shapes hold there.
     match h.n:
         case 1 if xs[0]:
@@ -101,7 +101,7 @@ def guard_shapes(h: Holder, xs: list[Int32], names: list[str]) -> Int32:
     return 0
 
 
-def drain(xs: list[Int32]) -> Int32:
+def drain(xs: list[int32]) -> int32:
     popped = 0
     while len(xs):  # int-returning call in a loop head
         xs.pop()
@@ -121,11 +121,11 @@ def main() -> None:
     h = Holder()
     xs = [1, 0]
     names = ["", "a"]
-    rows: list[list[Int32]] = []
+    rows: list[list[int32]] = []
     rows.append([1])
-    blank: list[Int32] = []
+    blank: list[int32] = []
     rows.append(blank)
-    print("scalar", scalar_shapes(h, xs, Char("x")))
+    print("scalar", scalar_shapes(h, xs, char("x")))
     print("moded", moded_shapes(h, names, rows))
     print("operands", operand_positions(xs, 1))
     print("guards", guard_shapes(h, xs, names))

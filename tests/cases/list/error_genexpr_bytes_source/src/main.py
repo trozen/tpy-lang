@@ -1,6 +1,6 @@
 # The str source's sibling: a BYTES genexpr source keeps rejecting -- its
 # element read has no admitted loop-var binding.
-from tpy import Int32
+from tpy import int32
 
 
 def main() -> None:

@@ -60,9 +60,9 @@ inline constexpr std::string_view __name__ = "tplib.rc";
 // class _RcCell[U](_RcCellBase):
 template<typename U>
 struct _RcCell : _RcCellBase {
-    // strong: UInt32
+    // strong: uint32
     uint32_t strong;
-    // weak: UInt32
+    // weak: uint32
     uint32_t weak;
     // # A single owning slot: tracks its own liveness and moves correctly, so a
     // # cell over a payload with SSO-`str`/non-relocatable fields survives the
@@ -344,7 +344,7 @@ struct Rc {
         return (!((this->get() < other.get())));
     }
 
-    // def __hash__[T: Hashable](self) -> UInt64:
+    // def __hash__[T: Hashable](self) -> uint64:
     uint64_t __hash__() const
       requires ::tpystd::tpy::Hashable<T> {
         // return hash(self.get())

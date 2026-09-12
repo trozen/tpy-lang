@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // c = C[Int32]()
+    // c = C[int32]()
     C<int32_t> c = C<int32_t>();
     // print(c.MAX)
     std::cout << C<int32_t>::MAX << "\n";

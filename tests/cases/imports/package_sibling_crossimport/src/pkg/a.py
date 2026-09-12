@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 from pkg.b import B
 
 
@@ -8,7 +8,7 @@ class A:
     def __init__(self) -> None:
         self.b = B()
 
-    def value(self) -> Int32:
+    def value(self) -> int32:
         return self.b.value()
 
 
@@ -25,5 +25,5 @@ class Container[T]:
         return self.item
 
 
-def f(n: Int32) -> Int32:
-    return n * Int32(2)
+def f(n: int32) -> int32:
+    return n * int32(2)

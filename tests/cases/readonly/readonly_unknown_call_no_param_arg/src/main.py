@@ -1,12 +1,12 @@
 # @readonly: passing a locally-constructed object (not param-rooted) to a
 # non-readonly function is allowed.
-from tpy import Int32, readonly
+from tpy import int32, readonly
 
 
 class Box:
-    value: Int32
+    value: int32
 
-    def __init__(self, v: Int32):
+    def __init__(self, v: int32):
         self.value = v
 
 
@@ -15,7 +15,7 @@ def mutate(b: Box) -> None:
 
 
 @readonly
-def ok(b: Box) -> Int32:
+def ok(b: Box) -> int32:
     local = Box(b.value)
     mutate(local)  # tpyc: ok
     return local.value

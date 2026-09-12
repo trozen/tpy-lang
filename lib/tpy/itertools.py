@@ -4,7 +4,7 @@
 # TODO.md entries that gate them) are tracked in docs/STDLIB_ROADMAP.md.
 # tpy: cpp_namespace("tpystd::itertools")
 from typing import Iterator, Iterable, Optional, overload
-from tpy import Fn, Int32
+from tpy import Fn, int32
 
 
 def count(start: int = 0, step: int = 1) -> Iterator[int]:
@@ -22,8 +22,8 @@ def count(start: int = 0, step: int = 1) -> Iterator[int]:
 @overload
 def repeat[T](object: T) -> Iterator[T]: ...
 @overload
-def repeat[T](object: T, times: Int32) -> Iterator[T]: ...
-def repeat[T](object: T, times: Optional[Int32] = None) -> Iterator[T]:
+def repeat[T](object: T, times: int32) -> Iterator[T]: ...
+def repeat[T](object: T, times: Optional[int32] = None) -> Iterator[T]:
     if times is None:
         while True:
             yield object
@@ -44,8 +44,8 @@ def cycle[T](it: Iterable[T]) -> Iterator[T]:
 
 # Single-argument `islice(it, stop)` only; the `islice(it, start, stop[, step])`
 # form needs a second overload (see docs/STDLIB_ROADMAP.md).
-def islice[T](it: Iterable[T], stop: Int32) -> Iterator[T]:
-    i: Int32 = 0
+def islice[T](it: Iterable[T], stop: int32) -> Iterator[T]:
+    i: int32 = 0
     for x in it:
         if i >= stop:
             break

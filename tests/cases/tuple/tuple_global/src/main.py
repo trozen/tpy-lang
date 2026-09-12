@@ -1,8 +1,8 @@
 # Tuple at module level (global scope) with type inference
-from tpy import Int32
+from tpy import int32
 
-t1 = (Int32(1), "hello")
-t2 = (Int32(42), True)
+t1 = (int32(1), "hello")
+t2 = (int32(42), True)
 
 def main() -> None:
     print(t1)

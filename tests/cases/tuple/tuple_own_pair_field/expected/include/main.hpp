@@ -16,12 +16,12 @@ void main();
 
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
-    // y: Int32
+    // y: int32
     int32_t y;
 
-    // def __init__(self, x: Int32, y: Int32) -> None:
+    // def __init__(self, x: int32, y: int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y);
 
@@ -51,7 +51,7 @@ inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
 }
 
 
-// def __init__(self, x: Int32, y: Int32) -> None:
+// def __init__(self, x: int32, y: int32) -> None:
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __repr__(self) -> str:
@@ -62,9 +62,9 @@ inline std::string Point::__repr__() const {
 
 // def __init__(self) -> None:
 inline Pair::Pair() {
-    // a = Point(Int32(1), Int32(2))
+    // a = Point(int32(1), int32(2))
     Point a = Point(1, 2);
-    // b = Point(Int32(3), Int32(4))
+    // b = Point(int32(3), int32(4))
     Point b = Point(3, 4);
     // self.points = (a, b)
     this->points = ::tpy::tuple_to_storage<std::tuple<Point, Point>>(std::tuple<Point, Point>{std::move(a), std::move(b)});

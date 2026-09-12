@@ -3,11 +3,11 @@
 # The @builder_macro lookup must walk the re-export chain to find
 # the macro under the registry's canonical (argparse, ArgumentParser)
 # key.
-from tpy import Int32
+from tpy import int32
 from utils import ArgumentParser
 
 
-def main() -> Int32:
+def main() -> int32:
     parser = ArgumentParser()
     parser.add_argument("name")
     args = parser.parse_args(["alice"])

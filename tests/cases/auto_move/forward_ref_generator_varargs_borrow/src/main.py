@@ -3,15 +3,15 @@
 # packed element must demote to a copy, exactly as the non-varargs sibling
 # (auto_move/forward_ref_generator_borrow) does.
 from typing import Iterator
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Caller:
     # Defined BEFORE Collector, so the method generator is forward-referenced
     # and only the registration-time borrow stamp can see the pack.
-    def run(self) -> Int32:
-        a: list[Int32] = [1, 2, 3]
-        b: list[Int32] = [4]
+    def run(self) -> int32:
+        a: list[int32] = [1, 2, 3]
+        b: list[int32] = [4]
         c = Collector()
         g = c.sizes(a, b)
         # the method frame views the caller's arg array just as a free
@@ -24,7 +24,7 @@ class Caller:
 
 
 class Collector:
-    def sizes(self, *xs: list[Int32]) -> Iterator[Int32]:
+    def sizes(self, *xs: list[int32]) -> Iterator[int32]:
         n = 0
         for s in xs:
             n += len(s)
@@ -35,9 +35,9 @@ class Collector:
 def main():
     # forward-referenced generator: the frame views the caller's arg array,
     # so the pack elements stay borrowed while the generator is alive.
-    # Annotated: a bare list literal infers Array[Int32, N], not list.
-    a: list[Int32] = [1, 2, 3]
-    b: list[Int32] = [4]
+    # Annotated: a bare list literal infers Array[int32, N], not list.
+    a: list[int32] = [1, 2, 3]
+    b: list[int32] = [4]
     g = gen(a, b)
     print("gen:", drop(a))  # tpyc: warning(/copies/)
     for v in g:
@@ -45,8 +45,8 @@ def main():
 
     # plain function (no frame): the returned borrow of a pack element keeps
     # the whole pack borrowed just the same.
-    c: list[Int32] = [5, 6]
-    d: list[Int32] = [7]
+    c: list[int32] = [5, 6]
+    d: list[int32] = [7]
     r = first(c, d)
     print("plain:", drop(c))  # tpyc: warning(/copies/)
     # mutate through the returned borrow and read the SOURCE: a copy at the
@@ -59,18 +59,18 @@ def main():
 
     # keyword-only borrow behind the pack: its borrow index is the one the
     # pack would shift, so the sink on it must still demote
-    e: list[Int32] = [1, 2]
-    f: list[Int32] = [3]
-    h: list[Int32] = [4, 5, 6, 7]
+    e: list[int32] = [1, 2]
+    f: list[int32] = [3]
+    h: list[int32] = [4, 5, 6, 7]
     gk = kwgen(e, f, extra=h)
     print("kwonly:", drop(h))  # tpyc: warning(/copies/)
     for v in gk:
         print("kwonly:", v)
 
     # ... and the pack elements in front of it keep their own indices
-    p: list[Int32] = [1, 2]
-    q: list[Int32] = [3]
-    s: list[Int32] = [9]
+    p: list[int32] = [1, 2]
+    q: list[int32] = [3]
+    s: list[int32] = [9]
     gp = kwgen(p, q, extra=s)
     print("kwpack:", drop(p))  # tpyc: warning(/copies/)
     for v in gp:
@@ -78,8 +78,8 @@ def main():
 
     # transitive return: forward's result borrows a pack element of first(),
     # which reaches the caller's argument through the forwarded pack
-    t: list[Int32] = [8, 9, 10]
-    u: list[Int32] = [11]
+    t: list[int32] = [8, 9, 10]
+    u: list[int32] = [11]
     fr = forward(t, u)
     print("fwd:", drop(t))  # tpyc: warning(/copies/)
     # same aliasing check as the plain section, one hop further out
@@ -88,15 +88,15 @@ def main():
 
     # two hops of forwarding: the pack is re-spelled at every hop, so the
     # borrow must still land on the caller's own argument.
-    w: list[Int32] = [1, 2]
-    y: list[Int32] = [3]
+    w: list[int32] = [1, 2]
+    y: list[int32] = [3]
     f2 = forward2(w, y)
     print("fwd2:", drop(w))  # tpyc: warning(/copies/)
     f2.append(99)
     print("fwd2:", len(w), len(f2))
 
 
-def gen(*xs: list[Int32]) -> Iterator[Int32]:
+def gen(*xs: list[int32]) -> Iterator[int32]:
     n = 0
     for s in xs:
         n += len(s)
@@ -104,7 +104,7 @@ def gen(*xs: list[Int32]) -> Iterator[Int32]:
     yield -1
 
 
-def kwgen(*xs: list[Int32], extra: list[Int32]) -> Iterator[Int32]:
+def kwgen(*xs: list[int32], extra: list[int32]) -> Iterator[int32]:
     n = 0
     for s in xs:
         n += len(s)
@@ -112,20 +112,20 @@ def kwgen(*xs: list[Int32], extra: list[Int32]) -> Iterator[Int32]:
     yield len(extra)
 
 
-def first(*xs: list[Int32]) -> list[Int32]:
+def first(*xs: list[int32]) -> list[int32]:
     return xs[0]
 
 
-def forward(*xs: list[Int32]) -> list[Int32]:
+def forward(*xs: list[int32]) -> list[int32]:
     return first(*xs)
 
 
-def forward2(*zs: list[Int32]) -> list[Int32]:
+def forward2(*zs: list[int32]) -> list[int32]:
     return forward(*zs)
 
 
-def drop(xs: Own[list[Int32]]) -> Int32:
-    store: list[list[Int32]] = []
+def drop(xs: Own[list[int32]]) -> int32:
+    store: list[list[int32]] = []
     store.append(xs)
     return len(store[0])
 

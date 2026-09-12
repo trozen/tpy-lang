@@ -1,7 +1,7 @@
-"""Test Int32 modulo by zero panic at runtime."""
-from tpy import Int32
+"""Test int32 modulo by zero panic at runtime."""
+from tpy import int32
 
-x: Int32 = 42
-y: Int32 = 0
-z: Int32 = x % y  # Should panic
+x: int32 = 42
+y: int32 = 0
+z: int32 = x % y  # Should panic
 print(z)

@@ -15,7 +15,7 @@ print(bools.both(False, True))
 print(bools.identity(True))
 print(bools.identity(False))
 
-# void-return: tally returns None; its effect is read back as an Int64.
+# void-return: tally returns None; its effect is read back as an int64.
 print(repr(bools.tally(True)))
 print(repr(bools.tally(False)))
 bools.tally(True)

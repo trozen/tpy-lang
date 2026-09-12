@@ -2,7 +2,7 @@
 # tpy: cpp_namespace("tpystd::builtins")
 from .._typing import Self, Iterator, Iterable
 from .._bootstrap._decorators import readonly, pure, Own, dispatch
-from .._core._types import Int32, Equatable, Comparable, NativeIterable, NativeRangeConstructible, Spannable
+from .._core._types import int32, Equatable, Comparable, NativeIterable, NativeRangeConstructible, Spannable
 from .._core._containers import Span
 from .._bootstrap._extern import native, cpp_template, native_preserves_refs, builtin_type
 
@@ -28,7 +28,7 @@ class list[T](Iterable[T], NativeIterable[T], NativeRangeConstructible[T], Spann
     @native("tpy::__len__", function=True)
     @pure
     @readonly
-    def __len__(self) -> Int32: ...
+    def __len__(self) -> int32: ...
 
     @native("push_back")
     def append(self, value: Own[T]) -> None: ...
@@ -39,7 +39,7 @@ class list[T](Iterable[T], NativeIterable[T], NativeRangeConstructible[T], Spann
 
     @dispatch
     @native("tpy::list_pop_at", function=True)
-    def pop(self, index: Int32) -> Own[T]: ...
+    def pop(self, index: int32) -> Own[T]: ...
 
     @native
     def clear(self) -> None: ...
@@ -47,13 +47,13 @@ class list[T](Iterable[T], NativeIterable[T], NativeRangeConstructible[T], Spann
     @cpp_template("{self}[{0}]")
     @pure
     @readonly
-    def unchecked_get(self, index: Int32) -> T: ...
+    def unchecked_get(self, index: int32) -> T: ...
 
     @dispatch
     @native("tpy::__getitem__", function=True)
     @pure
     @readonly
-    def __getitem__(self, index: Int32) -> T: ...
+    def __getitem__(self, index: int32) -> T: ...
 
     @dispatch
     @cpp_template("::tpy::list_slice({self}, {0})")
@@ -70,7 +70,7 @@ class list[T](Iterable[T], NativeIterable[T], NativeRangeConstructible[T], Spann
     @dispatch
     @native("tpy::__setitem__", function=True)
     @native_preserves_refs
-    def __setitem__(self, index: Int32, value: Own[T]) -> None: ...
+    def __setitem__(self, index: int32, value: Own[T]) -> None: ...
 
     @dispatch
     @native("tpy::list_set_slice", function=True)
@@ -81,10 +81,10 @@ class list[T](Iterable[T], NativeIterable[T], NativeRangeConstructible[T], Spann
     def __setitem__(self, index: slice, value: Iterable[Own[T]]) -> None: ...
 
     @native("tpy::__delitem__", function=True)
-    def __delitem__(self, index: Int32) -> None: ...
+    def __delitem__(self, index: int32) -> None: ...
 
     @native("tpy::list_insert", function=True)
-    def insert(self, index: Int32, value: Own[T]) -> None: ...
+    def insert(self, index: int32, value: Own[T]) -> None: ...
 
     @native("tpy::list_remove", function=True)
     def remove[T: Equatable](self, value: T) -> None: ...
@@ -95,12 +95,12 @@ class list[T](Iterable[T], NativeIterable[T], NativeRangeConstructible[T], Spann
     @native("tpy::list_index", function=True)
     @pure
     @readonly
-    def index[T: Equatable](self, value: T) -> Int32: ...
+    def index[T: Equatable](self, value: T) -> int32: ...
 
     @native("tpy::list_count", function=True)
     @pure
     @readonly
-    def count[T: Equatable](self, value: T) -> Int32: ...
+    def count[T: Equatable](self, value: T) -> int32: ...
 
     @native("tpy::list_reverse", function=True)
     def reverse(self) -> None: ...

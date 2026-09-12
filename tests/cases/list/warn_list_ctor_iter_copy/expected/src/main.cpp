@@ -16,7 +16,7 @@ Point clone_point(const Point& p) {
     return Point(p);
 }
 
-// def double(x: Int32) -> Int32:
+// def double(x: int32) -> int32:
 int32_t double_(int32_t x) {
     // return x * 2
     return (::tpy::mul_check<int32_t>(x, 2));
@@ -26,7 +26,7 @@ int32_t double_(int32_t x) {
 void main() {
     // pts: list[Point] = [Point(1, 2), Point(3, 4)]
     std::vector<Point> pts = {Point(1, 2), Point(3, 4)};
-    // vals: list[Int32] = [Int32(1), Int32(2)]
+    // vals: list[int32] = [int32(1), int32(2)]
     std::vector<int32_t> vals = {1, 2};
     // # map returning Ref[Point] -> list copies on materialization
     // a = list(map(identity, pts))  # tpyc: warning(/copies Point elements/)

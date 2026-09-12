@@ -16,10 +16,10 @@ void main();
 
 // class Priority:
 struct Priority {
-    // level: Int32
+    // level: int32
     int32_t level;
 
-    // def __init__(self, level: Int32) -> None:
+    // def __init__(self, level: int32) -> None:
     Priority() = default;
     explicit Priority(int32_t level);
 
@@ -56,7 +56,7 @@ inline std::ostream& operator<<(std::ostream& os, const Task& obj) {
 }
 
 
-// def __init__(self, level: Int32) -> None:
+// def __init__(self, level: int32) -> None:
 inline Priority::Priority(int32_t level) : level(level) {}
 
 // def __lt__(self, other: Priority) -> bool:

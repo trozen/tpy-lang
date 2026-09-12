@@ -2,7 +2,7 @@
 # `const W*` -- a mutable Ptr[W] slot is unsound and must be rejected (only
 # the readonly form is allowed). Guards the value-bounded arm of the
 # generic-param address-of coercion.
-from tpy import Ptr, ValueType, Int32
+from tpy import Ptr, ValueType, int32
 
 
 class Holder[W: ValueType]:

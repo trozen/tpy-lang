@@ -489,7 +489,7 @@ class _ExprUse:
     # the SLOT TYPE and not the sink picks. None takes the sink's row.
     forms: 'frozenset[SinkForm] | None' = None
     # The SLOT this expression renders into -- the annotated decl / param /
-    # element / return type. A Char slot spells `'x'`, a Float32 one the `f`
+    # element / return type. A char slot spells `'x'`, a float32 one the `f`
     # suffix, a fixed-int one the checked operator template; a both-literal
     # sub-binop renders the FULL operator there rather than folding, which
     # is why the resolved-binop operand and fixed-int arg slots name it even
@@ -556,7 +556,7 @@ class _Prescan:
             if isinstance((_otp := unwrap_readonly(unwrap_send_sync(t))),
                           OwnType)
             and isinstance(unwrap_readonly(_otp.wrapped), TupleType)}
-        # Value-repr Optional[cheap scalar] params (`Int32 | None`): a
+        # Value-repr Optional[cheap scalar] params (`int32 | None`): a
         # `return <param>` into a value-optional return slot passes the WHOLE
         # optional bare (deref-on-narrow stripped), so return lowering keys on
         # this to admit a narrowed param name the generic tail would deref.
@@ -635,7 +635,7 @@ class _Prescan:
         # pointee-typed name -> `&(name)` (_optional_pointer_form_value's
         # admitted subset; every render is pointee-shape-blind).
         self.ret_ptr_opt = _optional_ptr_borrow_wide(rt, analyzer)
-        # The value-repr Optional[cheap scalar] return slot (`-> Int32 | None`
+        # The value-repr Optional[cheap scalar] return slot (`-> int32 | None`
         # -> `std::optional<T>`): `return None` -> `std::nullopt`, a value-opt
         # param name passes the whole optional bare, every other scalar source
         # rides the generic return tail (type-exact or coerce-wrapped).
@@ -703,7 +703,7 @@ class _Prescan:
         # (`-> Own[tuple[str, Resource]]`): a tuple LITERAL of storage-direct
         # members returns the spelled brace-init.
         self.ret_own_storage_tuple = _own_storage_tuple_return(rt, analyzer)
-        # The REFERENCE-element tuple return slot (`-> tuple[Tree, Int32]`
+        # The REFERENCE-element tuple return slot (`-> tuple[Tree, int32]`
         # -> `std::tuple<Tree&, int32_t>`): literal-of-lvalue-names sources
         # only, gated at the return arm.
         self.ret_wrapper_ref_tuple = _wrapper_ref_tuple_return(rt, analyzer)
@@ -724,7 +724,7 @@ class _Prescan:
                 self.ret_str = own_viewfam
             else:
                 self.ret_bytes = own_viewfam
-        # S4: a Char return slot -- `return "x"` needs a target-typed char
+        # S4: a char return slot -- `return "x"` needs a target-typed char
         # literal (`'x'`), a shape the return arm rejects.
         self.ret_char = _eligible_char(rt)
         # F4 U1: a value-union return slot -- `return None` renders
@@ -748,7 +748,7 @@ class _Prescan:
         # storage `std::variant<A, B>`): a member-record ctor rvalue
         # returns bare (the converting ctor absorbs it).
         self.ret_own_union = _own_storage_union_return(rt, analyzer)
-        # The generic-instance sibling: an `Own[Tree[Int32]]` slot returns
+        # The generic-instance sibling: an `Own[Tree[int32]]` slot returns
         # the wrapper struct by value; source rows gate at the return arm.
         self.ret_genrec = _own_genrec_return(rt)
         # The non-generic wrapper-union sibling (`-> Own[V]` -> `V` by
@@ -776,7 +776,7 @@ class _Prescan:
         self.ret_callable = bool(
             isinstance(rt, CallableType) and not rt.is_template)
         # `Own[T]` on a VALUE scalar is a no-op spelling (resolves to plain
-        # T -- `auto_own[Int32]` returns `int32_t`); unwrap for the scalar
+        # T -- `auto_own[int32]` returns `int32_t`); unwrap for the scalar
         # rows only, the non-value Own families keep their own fields.
         own_v = (unwrap_readonly(rt.wrapped)
                  if isinstance(rt, OwnType) else None)

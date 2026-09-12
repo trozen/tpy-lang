@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 
 
-def stale_after_write(items: list[Int32 | None], i: Int32) -> Int32:
+def stale_after_write(items: list[int32 | None], i: int32) -> int32:
     while items[i] is not None:
         items[i] = items[i]
         if i < 0:
@@ -10,6 +10,6 @@ def stale_after_write(items: list[Int32 | None], i: Int32) -> Int32:
     return 0
 
 
-vals: list[Int32 | None] = list()
+vals: list[int32 | None] = list()
 vals.append(8)
 print(stale_after_write(vals, 0))

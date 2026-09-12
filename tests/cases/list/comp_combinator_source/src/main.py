@@ -9,25 +9,25 @@
 # category; `reversed()` (BUGS.md#reversed-yields-element-copies) and every other
 # argument shape (BUGS.md#nested-combinator-yields-element-copies) are rejected
 # there, so the legs here that use one stay on value elements.
-from tpy import Int32, Own, Span
+from tpy import int32, Own, Span
 
 
 class Node:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
-    def bump(self, d: Int32) -> Int32:
+    def bump(self, d: int32) -> int32:
         self.v += d
         return self.v
 
 
-def dbl(v: Int32) -> Int32:
+def dbl(v: int32) -> int32:
     return v * 2
 
 
-def odd(v: Int32) -> bool:
+def odd(v: int32) -> bool:
     return v % 2 == 1
 
 
@@ -40,8 +40,8 @@ def make_nodes() -> Own[list[Node]]:
 
 
 def main() -> None:
-    xs: list[Int32] = [1, 2, 3]
-    ys: list[Int32] = [10, 20, 30]
+    xs: list[int32] = [1, 2, 3]
+    ys: list[int32] = [10, 20, 30]
     ws = ["a", "bb"]
     # zip / enumerate reach the comp through the tuple-unpack head.
     print([a + b for a, b in zip(xs, ys)])  # tpyc: ok

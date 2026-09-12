@@ -15,7 +15,7 @@ void main();
 
 // class InfiniteCounter:
 struct InfiniteCounter {
-    // current: Int32
+    // current: int32
     int32_t current;
 
     // def __init__(self) -> None:
@@ -25,7 +25,7 @@ struct InfiniteCounter {
     InfiniteCounter& __iter__();
 
     // # tpyc: warning(/no 'raise StopIteration'/)
-    // def __next__(self) -> Int32:
+    // def __next__(self) -> int32:
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     static constexpr std::string_view __tpy_class_name__ = "__main__.InfiniteCounter";
 };
@@ -46,7 +46,7 @@ inline InfiniteCounter& InfiniteCounter::__iter__() {
 }
 
 // # tpyc: warning(/no 'raise StopIteration'/)
-// def __next__(self) -> Int32:
+// def __next__(self) -> int32:
 inline std::expected<int32_t, ::tpy::StopIteration> InfiniteCounter::__next__() {
     // val = self.current
     int32_t val = this->current;

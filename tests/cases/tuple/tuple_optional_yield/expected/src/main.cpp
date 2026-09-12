@@ -46,7 +46,7 @@ void main() {
         }
         }
     }
-    // for a, b in gen_while(items, Int32(2)):
+    // for a, b in gen_while(items, int32(2)):
     {
         auto __src_4 = gen_while(items, 2);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
@@ -54,7 +54,7 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_5);
-        // for a, b in gen_while(items, Int32(2)):
+        // for a, b in gen_while(items, int32(2)):
         auto& __tup_3 = __for_tup_2;
         P* a = std::get<0>(__tup_3);
         P* b = std::get<1>(__tup_3);

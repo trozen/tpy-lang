@@ -1,8 +1,8 @@
 # Complex generator with break and continue in for-loop
-from tpy import Int32
+from tpy import int32
 from typing import Iterator
 
-def filtered(items: list[Int32], limit: Int32) -> Iterator[Int32]:
+def filtered(items: list[int32], limit: int32) -> Iterator[int32]:
     yield -1
     for x in items:
         if x < 0:

@@ -5,26 +5,26 @@
 # sync caller -- a hoist must fix a dangle, not widen what the language accepts.
 from typing import Iterator
 
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Summer:
-    base: Int32
+    base: int32
 
-    def __init__(self, base: Int32) -> None:
+    def __init__(self, base: int32) -> None:
         self.base = base
 
-    def pair(self, xs: list[Int32]) -> Iterator[Int32]:
+    def pair(self, xs: list[int32]) -> Iterator[int32]:
         yield self.base + xs[0]
         yield self.base + xs[len(xs) - 1]
 
 
-def make_summer(base: Int32) -> Own[Summer]:
+def make_summer(base: int32) -> Own[Summer]:
     return Summer(base)
 
 
 # The reject is reported at the body's owner, so the annotation sits here.
-def outer(xs: list[Int32]) -> Iterator[Int32]:  # tpyc: error(/not yet supported/)
+def outer(xs: list[int32]) -> Iterator[int32]:  # tpyc: error(/not yet supported/)
     yield 0
     # The receiver is a call rvalue, not a ctor rvalue: no lift in either
     # position, so the for head is rejected rather than silently dangling.

@@ -4,12 +4,12 @@
 namespace tpyapp::main {
 
 
-// async def sub() -> Int32:
+// async def sub() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_sub::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // return Int32(42)
+        // return int32(42)
         __state = S_DONE;
         int32_t __tpy_async_ret = 42;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -20,12 +20,12 @@ namespace tpyapp::main {
 }
 
 
-// async def sub() -> Int32:
+// async def sub() -> int32:
 __coro_sub sub() {
     return __coro_sub();
 }
 
-// async def main_coro() -> Int32:
+// async def main_coro() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
@@ -72,7 +72,7 @@ void __coro_main_coro::__finally_0() {
     std::cout << "finally-ran" << "\n";
 }
 
-// async def main_coro() -> Int32:
+// async def main_coro() -> int32:
 __coro_main_coro main_coro() {
     return __coro_main_coro();
 }

@@ -1,15 +1,15 @@
 from __future__ import annotations
 from typing import Protocol, Self
-from tpy import Int32, Own
+from tpy import int32, Own
 
 class Addable(Protocol):
     def __add__(self, other: Self) -> Own[Self]: ...
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32) -> None:
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 

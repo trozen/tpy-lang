@@ -5,13 +5,13 @@
 # spellings; the `copy()` twin says it explicitly and is silent. The copy is
 # the ACKNOWLEDGED CPython divergence (CPython hands back the very Obj), so
 # main prints only what both sides agree on.
-from tpy import Int32, Own, Ptr, copy, take_ptr
+from tpy import int32, Own, Ptr, copy, take_ptr
 
 
 class Obj:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 

@@ -21,10 +21,10 @@ void main();
 
 // class Cell:
 struct Cell {
-    // val: Int32
+    // val: int32
     int32_t val;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Cell() = default;
     explicit Cell(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cell";
@@ -36,7 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Cell::Cell(int32_t v) : val(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

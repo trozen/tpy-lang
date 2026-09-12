@@ -1,6 +1,6 @@
 # A for-loop over an existing local rebinds it: post-loop reads see the
 # last element (CPython), not a stale pre-loop value.
-from tpy import Int32
+from tpy import int32
 
 
 def scalar() -> None:
@@ -10,7 +10,7 @@ def scalar() -> None:
     print(x)
 
 
-def param_rebind(x: Int32) -> None:
+def param_rebind(x: int32) -> None:
     for x in range(2):
         pass
     print(x)

@@ -1,1 +1,1 @@
-main.py:7: error: Cannot compare tuple element 1: str vs Int32
+main.py:7: error: Cannot compare tuple element 1: str vs int32

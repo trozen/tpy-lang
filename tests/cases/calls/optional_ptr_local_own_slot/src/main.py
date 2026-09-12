@@ -16,11 +16,11 @@
 # past the single-yield peephole -- where the local is a frame field
 # (BUGS.md#opt-ptr-local-own-slot-resumable-body).
 from typing import Iterator, Optional
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Pic:
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
@@ -62,12 +62,12 @@ def take_own_opt(p: Own[Pic | None], sink: list[Pic | None]) -> None:
 # through; writing through the narrowed param is its own gap
 # (BUGS.md#opt-own-param-forward-into-own-opt-slot), and the by-value slot
 # drops the payload at return (BUGS.md#opt-own-by-value-param-early-del).
-def take_opt_own(p: Own[Pic] | None) -> Int32:
+def take_opt_own(p: Own[Pic] | None) -> int32:
     return 0 if p is None else p.n
 
 
 # The doom shape: declared None, reassigned inside a try, appended per iteration.
-def append_try_reassigned(d: dict[bytes, Int32]) -> None:
+def append_try_reassigned(d: dict[bytes, int32]) -> None:
     patches: list[Pic | None] = []
     for name in [b"a", b"b"]:
         patch: Pic | None = None
@@ -143,7 +143,7 @@ def setdefault_slot(c: bool) -> None:
 
 
 # Generator body.
-def gen(k: Int32) -> Iterator[Int32]:
+def gen(k: int32) -> Iterator[int32]:
     patches: list[Pic | None] = []
     for j in range(k):
         patch: Pic | None = None

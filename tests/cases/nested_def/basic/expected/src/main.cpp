@@ -6,9 +6,9 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // x: Int32 = 10
+    // x: int32 = 10
     int32_t x = 10;
-    // def add_x(n: Int32) -> Int32:
+    // def add_x(n: int32) -> int32:
     auto add_x = [&x](int32_t n) -> int32_t {
         // return n + x
         return (::tpy::add_check<int32_t>(n, x));

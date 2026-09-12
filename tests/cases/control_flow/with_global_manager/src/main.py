@@ -2,16 +2,16 @@
 # `CM*` pointer slot, so the manager bind must deref it). The manager
 # mutates its own state inside the with; observing the count through the
 # global afterward forces the borrow -- a silent copy would lose it.
-from tpy import Int32
+from tpy import int32
 
 
 class Counter:
-    opens: Int32
+    opens: int32
 
     def __init__(self) -> None:
         self.opens = 0
 
-    def __enter__(self) -> Int32:
+    def __enter__(self) -> int32:
         self.opens += 1
         return self.opens
 

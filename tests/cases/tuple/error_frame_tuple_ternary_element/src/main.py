@@ -4,17 +4,17 @@
 # than owning the element.
 from typing import Iterator
 
-from tpy import Int32
+from tpy import int32
 
 
 class A:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 
-def g(a: A, c: bool) -> Iterator[Int32]:
+def g(a: A, c: bool) -> Iterator[int32]:
     t = (a if c else A(9), 2)  # tpyc: error(/expr\.ifexpr/)
     yield t[0].v
     a.v = 42

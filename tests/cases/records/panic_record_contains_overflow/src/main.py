@@ -1,16 +1,16 @@
-# A BigInt needle beyond a user __contains__'s declared Int32 param width
+# A BigInt needle beyond a user __contains__'s declared int32 param width
 # takes the checked call-arg narrow and panics (the declared-param
 # convention; CPython would call the method with the big int).
-from tpy import Int32
+from tpy import int32
 
 
 class Bag:
-    xs: list[Int32]
+    xs: list[int32]
 
     def __init__(self):
         self.xs = [1, 2]
 
-    def __contains__(self, item: Int32) -> bool:
+    def __contains__(self, item: int32) -> bool:
         return item in self.xs
 
 

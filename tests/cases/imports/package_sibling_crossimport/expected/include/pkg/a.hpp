@@ -26,7 +26,7 @@ struct A {
     // def __init__(self) -> None:
     A();
 
-    // def value(self) -> Int32:
+    // def value(self) -> int32:
     int32_t value() const;
     static constexpr std::string_view __tpy_class_name__ = "pkg.a.A";
 };
@@ -67,7 +67,7 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
 // def __init__(self) -> None:
 inline A::A() : b(::tpyapp::pkg::b::B()) {}
 
-// def value(self) -> Int32:
+// def value(self) -> int32:
 inline int32_t A::value() const {
     // return self.b.value()
     return this->b.value();

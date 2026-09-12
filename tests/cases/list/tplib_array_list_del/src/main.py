@@ -1,10 +1,10 @@
 # Test del on ArrayList: __delitem__ removes element and shifts remaining
-from tpy import Int32
+from tpy import int32
 from tplib import ArrayList
 
 
 def main() -> None:
-    a = ArrayList[Int32, 8]()
+    a = ArrayList[int32, 8]()
     a.append(10)
     a.append(20)
     a.append(30)

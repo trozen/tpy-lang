@@ -91,34 +91,34 @@ std::string with_capture(const Point& p) {
 
 // def main() -> None:
 void main() {
-    // print(describe(Point(Int32(0), Int32(0))))
+    // print(describe(Point(int32(0), int32(0))))
     Point __tmp_1 = Point(0, 0);
     std::cout << describe(__tmp_1) << "\n";
-    // print(describe(Point(Int32(3), Int32(0))))
+    // print(describe(Point(int32(3), int32(0))))
     Point __tmp_2 = Point(3, 0);
     std::cout << describe(__tmp_2) << "\n";
-    // print(describe(Point(Int32(0), Int32(5))))
+    // print(describe(Point(int32(0), int32(5))))
     Point __tmp_3 = Point(0, 5);
     std::cout << describe(__tmp_3) << "\n";
-    // print(describe(Point(Int32(3), Int32(4))))
+    // print(describe(Point(int32(3), int32(4))))
     Point __tmp_4 = Point(3, 4);
     std::cout << describe(__tmp_4) << "\n";
-    // print(check_quadrant(Point(Int32(0), Int32(0))))
+    // print(check_quadrant(Point(int32(0), int32(0))))
     Point __tmp_5 = Point(0, 0);
     std::cout << check_quadrant(__tmp_5) << "\n";
-    // print(check_quadrant(Point(Int32(1), Int32(2))))
+    // print(check_quadrant(Point(int32(1), int32(2))))
     Point __tmp_6 = Point(1, 2);
     std::cout << check_quadrant(__tmp_6) << "\n";
-    // print(positional(Point(Int32(0), Int32(0))))
+    // print(positional(Point(int32(0), int32(0))))
     Point __tmp_7 = Point(0, 0);
     std::cout << positional(__tmp_7) << "\n";
-    // print(positional(Point(Int32(5), Int32(0))))
+    // print(positional(Point(int32(5), int32(0))))
     Point __tmp_8 = Point(5, 0);
     std::cout << positional(__tmp_8) << "\n";
-    // print(positional(Point(Int32(1), Int32(2))))
+    // print(positional(Point(int32(1), int32(2))))
     Point __tmp_9 = Point(1, 2);
     std::cout << positional(__tmp_9) << "\n";
-    // print(with_capture(Point(Int32(7), Int32(8))))
+    // print(with_capture(Point(int32(7), int32(8))))
     Point __tmp_10 = Point(7, 8);
     std::cout << with_capture(__tmp_10) << "\n";
 }

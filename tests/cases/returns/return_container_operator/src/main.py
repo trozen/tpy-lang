@@ -1,26 +1,26 @@
 # A container OPERATOR rvalue at an owning-container return: the builtin
 # operator builds a fresh container by value, so the return takes its render
 # bare.
-from tpy import Own, Int32
+from tpy import Own, int32
 
 
-def cat(a: list[Int32], b: list[Int32]) -> Own[list[Int32]]:
+def cat(a: list[int32], b: list[int32]) -> Own[list[int32]]:
     return a + b  # the concat is a fresh list, not an alias of either operand
 
 
-def uni(a: set[Int32], b: set[Int32]) -> Own[set[Int32]]:
+def uni(a: set[int32], b: set[int32]) -> Own[set[int32]]:
     return a | b
 
 
-def inter(a: set[Int32], b: set[Int32]) -> Own[set[Int32]]:
+def inter(a: set[int32], b: set[int32]) -> Own[set[int32]]:
     return a & b
 
 
-def diff(a: set[Int32], b: set[Int32]) -> Own[set[Int32]]:
+def diff(a: set[int32], b: set[int32]) -> Own[set[int32]]:
     return a - b
 
 
-def sym(a: set[Int32], b: set[Int32]) -> Own[set[Int32]]:
+def sym(a: set[int32], b: set[int32]) -> Own[set[int32]]:
     return a ^ b
 
 

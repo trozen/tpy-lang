@@ -1,16 +1,16 @@
 # Test quote/add_method_from_source macro APIs.
-from tpy import Int32
+from tpy import int32
 from builder import builder
 
 @builder
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 @builder
 class Person:
     name: str
-    age: Int32
+    age: int32
 
 def test_basic() -> None:
     p = Point(1, 2)

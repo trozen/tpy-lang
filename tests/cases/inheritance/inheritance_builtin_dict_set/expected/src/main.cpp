@@ -12,7 +12,7 @@ void bump(Counter& c, std::string_view key) {
     ::tpy::__setitem__(c, key, (::tpy::add_check<int32_t>(::tpy::dict_get_default(c, key, 0), 1)));
 }
 
-// def add_tag(t: Tags, tag: Int32) -> None:
+// def add_tag(t: Tags, tag: int32) -> None:
 void add_tag(Tags& t, int32_t tag) {
     // t.add(tag)
     t.insert(tag);

@@ -2,10 +2,10 @@
 # member) must NOT be flagged -- the hazard fact only propagates a real borrow
 # hazard, so plain value-tuple aliases (including a chain) yield/return freely.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
-def gen() -> Iterator[tuple[Int32, Int32]]:
+def gen() -> Iterator[tuple[int32, int32]]:
     t = (1, 2)
     u = t
     v = u

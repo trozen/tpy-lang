@@ -1,11 +1,11 @@
 # For-loop tuple unpacking where some elements are non-value (reference) types.
 # The tuple alias must be non-const so that T& bindings work.
-from tpy import Int32
+from tpy import int32
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32) -> None:
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
     def __repr__(self) -> str:

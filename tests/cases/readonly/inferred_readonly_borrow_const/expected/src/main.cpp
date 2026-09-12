@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def read_param(s: readonly[Store]) -> Int32:
+// def read_param(s: readonly[Store]) -> int32:
 int32_t read_param(const Store& s) {
     // # The pre-existing healthy path: declared-readonly receiver.
     // p = s[5]
@@ -18,7 +18,7 @@ int32_t read_param(const Store& s) {
     return -1;
 }
 
-// def read_call(o: readonly[Outer]) -> Int32:
+// def read_call(o: readonly[Outer]) -> int32:
 int32_t read_call(const Outer& o) {
     // # A method call on a const-rooted receiver (`s` aliases a field off the
     // # readonly param) returning a bare reference type binds `const Cell&`.

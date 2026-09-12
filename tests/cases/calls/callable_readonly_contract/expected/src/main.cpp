@@ -4,15 +4,15 @@
 namespace tpyapp::main {
 
 
-// def total(xs: readonly[list[Int32]]) -> None:
+// def total(xs: readonly[list[int32]]) -> None:
 void total(const std::vector<int32_t>& xs) {
     // print(len(xs))
     std::cout << ::tpy::__len__(xs) << "\n";
 }
 
-// def use_callable(f: Callable[[readonly[list[Int32]]], None]) -> None:
+// def use_callable(f: Callable[[readonly[list[int32]]], None]) -> None:
 void use_callable(const std::function<void(const std::vector<int32_t>&)>& f) {
-    // xs: list[Int32] = [3, 4]
+    // xs: list[int32] = [3, 4]
     std::vector<int32_t> xs = {3, 4};
     // p = xs[0]
     int32_t p = ::tpy::__getitem__(xs, 0);

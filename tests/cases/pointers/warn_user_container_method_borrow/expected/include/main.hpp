@@ -15,7 +15,7 @@ void main();
 
 // class NumberList:
 struct NumberList {
-    // _items: list[Int32]
+    // _items: list[int32]
     std::vector<int32_t> _items;
     // _label: str
     std::string _label;
@@ -24,13 +24,13 @@ struct NumberList {
     NumberList() = default;
     explicit NumberList(std::string_view label);
 
-    // def add(self, val: Int32) -> None:
+    // def add(self, val: int32) -> None:
     void add(int32_t val);
 
     // def set_label(self, label: str) -> None:
     void set_label(std::string_view label);
 
-    // def __iter__(self) -> Iterator[Int32]:
+    // def __iter__(self) -> Iterator[int32]:
     auto __iter__() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.NumberList";
 };
@@ -44,7 +44,7 @@ inline std::ostream& operator<<(std::ostream& os, const NumberList& obj) {
 // def __init__(self, label: str) -> None:
 inline NumberList::NumberList(std::string_view label) : _items(std::vector<int32_t>{}), _label(label) {}
 
-// def add(self, val: Int32) -> None:
+// def add(self, val: int32) -> None:
 inline void NumberList::add(int32_t val) {
     // self._items.append(val)
     this->_items.push_back(val);
@@ -56,7 +56,7 @@ inline void NumberList::set_label(std::string_view label) {
     this->_label = label;
 }
 
-// def __iter__(self) -> Iterator[Int32]:
+// def __iter__(self) -> Iterator[int32]:
 inline auto NumberList::__iter__() const {
     // return iter(self._items)
     return ::tpy::__iter__(this->_items);

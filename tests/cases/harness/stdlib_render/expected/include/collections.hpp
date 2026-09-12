@@ -56,7 +56,7 @@ struct Counter {
         ::tpy::__setitem__(this->_data, key, count);
     }
 
-    // def __len__(self) -> Int32:
+    // def __len__(self) -> int32:
     int32_t __len__() const {
         // return len(self._data)
         return ::tpy::__len__(this->_data);
@@ -85,7 +85,7 @@ struct Counter {
         return s;
     }
 
-    // def most_common(self, n: Int32) -> Own[list[tuple[T, int]]]:
+    // def most_common(self, n: int32) -> Own[list[tuple[T, int]]]:
     std::vector<std::tuple<T, ::tpy::BigInt>> most_common(int32_t n) const {
         // pairs: list[tuple[T, int]] = []
         std::vector<std::tuple<T, ::tpy::BigInt>> pairs = std::vector<std::tuple<T, ::tpy::BigInt>>{};

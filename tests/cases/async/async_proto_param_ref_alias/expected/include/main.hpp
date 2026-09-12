@@ -24,10 +24,10 @@ __coro_amain amain();
 
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
 
-    // def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: int32) -> None:
     Point() = default;
     explicit Point(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
@@ -67,7 +67,7 @@ struct __coro_bump {
         return os << "<coroutine bump>";
     }
 };
-// async def bump(items: Iterable[Point]) -> Int32:
+// async def bump(items: Iterable[Point]) -> int32:
 template <::tpystd::typing::Iterable<Point> T_items>
 ::tpystd::tpy::Poll<int32_t> __coro_bump<T_items>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
@@ -110,7 +110,7 @@ template <::tpystd::typing::Iterable<Point> T_items>
 }
 
 
-// async def bump(items: Iterable[Point]) -> Int32:
+// async def bump(items: Iterable[Point]) -> int32:
 template <::tpystd::typing::Iterable<Point> T_items>
 __coro_bump<T_items> bump(T_items&& items) {
     return __coro_bump<T_items>(std::forward<T_items>(items));
@@ -142,7 +142,7 @@ struct __coro_amain {
 };
 
 
-// def __init__(self, x: Int32) -> None:
+// def __init__(self, x: int32) -> None:
 inline Point::Point(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

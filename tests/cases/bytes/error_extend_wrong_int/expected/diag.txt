@@ -1,1 +1,1 @@
-main.py:9: error: No matching overload for 'extend' with argument types (PendingList[Int64, 2]#0)
+main.py:9: error: No matching overload for 'extend' with argument types (PendingList[int64, 2]#0)

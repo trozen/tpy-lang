@@ -3,18 +3,18 @@
 # `std::optional<T>&`; the call site must apply `&` lift on the arg to
 # match the new factory shape.
 import asyncio
-from tpy import nocopy, Int32
+from tpy import nocopy, int32
 
 
 @nocopy
 class P:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 
-async def takes_optional(p: P | None) -> Int32:
+async def takes_optional(p: P | None) -> int32:
     if p is not None:
         return p.n
     return -1

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def pick(rows: list[list[Int32]], k: Int32) -> list[Int32]:
+// def pick(rows: list[list[int32]], k: int32) -> list[int32]:
 std::vector<int32_t>& pick(std::vector<std::vector<int32_t>>& rows, int32_t k) {
     // # The same element lvalue off a plain container parameter.
     // return rows[k]  # tpyc: ok
@@ -22,7 +22,7 @@ void main() {
     // # The borrow return aliases the field's element -- a copy would print 3.
     // print(f.data[1][0])
     std::cout << ::tpy::__getitem__(::tpy::__getitem__(f.data, 1), 0) << "\n";
-    // rows: list[list[Int32]] = [[5, 6], [7, 8]]
+    // rows: list[list[int32]] = [[5, 6], [7, 8]]
     std::vector<std::vector<int32_t>> rows = {{5, 6}, {7, 8}};
     // got = pick(rows, 0)
     std::vector<int32_t>& got = pick(rows, 0);

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def first_after_bump(g: Grid) -> Int32:
+// def first_after_bump(g: Grid) -> int32:
 int32_t first_after_bump(Grid& g) {
     // # The decl under test: `xs` binds `std::array<int32_t, 2>*` off the
     // # storage-form optional field, so `g.bump()` is visible through it.
@@ -21,7 +21,7 @@ int32_t first_after_bump(Grid& g) {
     return ::tpy::__getitem__((*xs), 0);
 }
 
-// def size_of(g: Grid) -> Int32:
+// def size_of(g: Grid) -> int32:
 int32_t size_of(const Grid& g) {
     // ys = g.cells
     const std::array<int32_t, 2>* ys = ::tpy::optional_to_ptr(g.cells);

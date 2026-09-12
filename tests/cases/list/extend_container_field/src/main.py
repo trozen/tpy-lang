@@ -1,14 +1,14 @@
 # A container FIELD read at a builtin-stub method's structural Iterable slot.
 # The stub receiver families share one arg-row list, so one field row serves a
 # container receiver and a str-view receiver alike.
-from tpy import Int32
+from tpy import int32
 
 
 class Holder:
-    nums: list[Int32]
-    tags: set[Int32]
+    nums: list[int32]
+    tags: set[int32]
     parts: list[str]
-    ages: dict[str, Int32]
+    ages: dict[str, int32]
 
     def __init__(self) -> None:
         self.nums = [1, 2]
@@ -19,7 +19,7 @@ class Holder:
 
 def main() -> None:
     h = Holder()
-    out: list[Int32] = []
+    out: list[int32] = []
     out.extend(h.nums)  # tpyc: ok
     # The field is READ, not consumed: appending to it after the call must
     # show up in a second extend, and `out` must not alias it.
@@ -29,7 +29,7 @@ def main() -> None:
     print(h.nums)
 
     # ... a SET field at the same slot.
-    from_set: list[Int32] = []
+    from_set: list[int32] = []
     from_set.extend(h.tags)  # tpyc: ok
     print(from_set)
 
@@ -45,9 +45,9 @@ def main() -> None:
     # ... and the CONCRETE container slot (`dict.update` / `set.update` take
     # a dict / set, not a structural Iterable): the field read binds it
     # exactly as the bare name does.
-    d: dict[str, Int32] = {}
+    d: dict[str, int32] = {}
     d.update(h.ages)  # tpyc: ok
-    st: set[Int32] = set()
+    st: set[int32] = set()
     st.update(h.tags)  # tpyc: ok
     # update COPIES the entries, in TPy as in CPython: writing the field
     # afterwards leaves the updated containers alone.

@@ -76,7 +76,7 @@ std::optional<::tpyapp::main::Level> EnumUtil<::tpyapp::main::Level>::try_parse(
 namespace tpyapp::main {
 
 
-// def str_branch(t: str) -> Iterator[Int32]:
+// def str_branch(t: str) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_str_branch::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -108,12 +108,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_str_branch::__next__() {
 }
 
 
-// def str_branch(t: str) -> Iterator[Int32]:
+// def str_branch(t: str) -> Iterator[int32]:
 __gen_str_branch str_branch(std::string_view t) {
     return __gen_str_branch(t);
 }
 
-// def bytes_branch(b: bytes) -> Iterator[Int32]:
+// def bytes_branch(b: bytes) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_bytes_branch::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -145,12 +145,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_bytes_branch::__next__() {
 }
 
 
-// def bytes_branch(b: bytes) -> Iterator[Int32]:
+// def bytes_branch(b: bytes) -> Iterator[int32]:
 __gen_bytes_branch bytes_branch(::tpy::BytesView b) {
     return __gen_bytes_branch(b);
 }
 
-// def record_len_branch(g: Bag) -> Iterator[Int32]:
+// def record_len_branch(g: Bag) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_record_len_branch::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -182,12 +182,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_record_len_branch::__next__()
 }
 
 
-// def record_len_branch(g: Bag) -> Iterator[Int32]:
+// def record_len_branch(g: Bag) -> Iterator[int32]:
 __gen_record_len_branch record_len_branch(Bag& g) {
     return __gen_record_len_branch(g);
 }
 
-// def record_bool_branch(f: Flag) -> Iterator[Int32]:
+// def record_bool_branch(f: Flag) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_record_bool_branch::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -219,12 +219,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_record_bool_branch::__next__(
 }
 
 
-// def record_bool_branch(f: Flag) -> Iterator[Int32]:
+// def record_bool_branch(f: Flag) -> Iterator[int32]:
 __gen_record_bool_branch record_bool_branch(Flag& f) {
     return __gen_record_bool_branch(f);
 }
 
-// def enum_branch(c: Color) -> Iterator[Int32]:
+// def enum_branch(c: Color) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_enum_branch::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -256,12 +256,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_enum_branch::__next__() {
 }
 
 
-// def enum_branch(c: Color) -> Iterator[Int32]:
+// def enum_branch(c: Color) -> Iterator[int32]:
 __gen_enum_branch enum_branch(Color c) {
     return __gen_enum_branch(c);
 }
 
-// def int_enum_branch(lv: Level) -> Iterator[Int32]:
+// def int_enum_branch(lv: Level) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_int_enum_branch::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -293,12 +293,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_int_enum_branch::__next__() {
 }
 
 
-// def int_enum_branch(lv: Level) -> Iterator[Int32]:
+// def int_enum_branch(lv: Level) -> Iterator[int32]:
 __gen_int_enum_branch int_enum_branch(Level lv) {
     return __gen_int_enum_branch(lv);
 }
 
-// def plain_record_branch(p: Plain) -> Iterator[Int32]:
+// def plain_record_branch(p: Plain) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_plain_record_branch::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -330,12 +330,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_plain_record_branch::__next__
 }
 
 
-// def plain_record_branch(p: Plain) -> Iterator[Int32]:
+// def plain_record_branch(p: Plain) -> Iterator[int32]:
 __gen_plain_record_branch plain_record_branch(Plain& p) {
     return __gen_plain_record_branch(p);
 }
 
-// def any_branch(v: Any) -> Iterator[Int32]:
+// def any_branch(v: Any) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_any_branch::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -367,12 +367,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_any_branch::__next__() {
 }
 
 
-// def any_branch(v: Any) -> Iterator[Int32]:
+// def any_branch(v: Any) -> Iterator[int32]:
 __gen_any_branch any_branch(::tpy::Any v) {
     return __gen_any_branch(v);
 }
 
-// def and_branch(xs: list[Int32], t: str) -> Iterator[Int32]:
+// def and_branch(xs: list[int32], t: str) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_and_branch::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -404,7 +404,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_and_branch::__next__() {
 }
 
 
-// def and_branch(xs: list[Int32], t: str) -> Iterator[Int32]:
+// def and_branch(xs: list[int32], t: str) -> Iterator[int32]:
 __gen_and_branch and_branch(std::vector<int32_t>& xs, std::string_view t) {
     return __gen_and_branch(xs, t);
 }

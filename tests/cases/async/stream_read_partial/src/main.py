@@ -3,11 +3,11 @@
 # stays open; a read(10) that blocked for 10 would deadlock (server then
 # waits on the client's reply that never comes).
 import asyncio
-from tpy import Int32
+from tpy import int32
 from socket import socket, AF_INET, SOCK_STREAM
 
 
-async def client_role(port: Int32) -> None:
+async def client_role(port: int32) -> None:
     reader, writer = await asyncio.open_connection("127.0.0.1", port)
     data = await reader.read(10)        # only 3 available, peer open -> returns 3
     print("got: " + data.decode())

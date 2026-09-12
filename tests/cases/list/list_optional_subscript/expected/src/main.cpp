@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // pairs: list[P | None] = [P(Int32(1)), None, P(Int32(3))]
+    // pairs: list[P | None] = [P(int32(1)), None, P(int32(3))]
     std::vector<std::optional<P>> pairs = {P(1), std::nullopt, P(3)};
     // # Subscript-then-access (narrowing path -- runtime null check inserted)
     // if pairs[0] is not None:

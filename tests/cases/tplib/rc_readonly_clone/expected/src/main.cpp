@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def observe(r: readonly[Rc[Counter]]) -> Int32:
+// def observe(r: readonly[Rc[Counter]]) -> int32:
 int32_t observe(const ::tpystd::tplib::rc::Rc<Counter>& r) {
     // shared = r.clone()  # tpyc: type(/readonly\[Counter\]/)
     ::tpystd::tplib::rc::Rc<Counter> shared = r.clone();
@@ -12,7 +12,7 @@ int32_t observe(const ::tpystd::tplib::rc::Rc<Counter>& r) {
     return shared.get().n;
 }
 
-// def via_readonly_weak(w: readonly[Weak[Counter]]) -> Int32:
+// def via_readonly_weak(w: readonly[Weak[Counter]]) -> int32:
 int32_t via_readonly_weak(const ::tpystd::tplib::rc::Weak<Counter>& w) {
     // w2 = w.clone()      # Weak.clone on a readonly receiver
     ::tpystd::tplib::rc::Weak<Counter> w2 = w.clone();
@@ -29,7 +29,7 @@ int32_t via_readonly_weak(const ::tpystd::tplib::rc::Weak<Counter>& w) {
     return (*a2).get().n;
 }
 
-// def downgrade_readonly(r: readonly[Rc[Counter]]) -> Int32:
+// def downgrade_readonly(r: readonly[Rc[Counter]]) -> int32:
 int32_t downgrade_readonly(const ::tpystd::tplib::rc::Rc<Counter>& r) {
     // w = r.downgrade()
     ::tpystd::tplib::rc::Weak<Counter> w = r.downgrade();

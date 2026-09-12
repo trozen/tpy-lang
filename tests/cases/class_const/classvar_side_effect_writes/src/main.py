@@ -2,11 +2,11 @@
 # subscript), codegen evaluates the receiver exactly once before emitting the
 # qualified `<owner>::<member>` lvalue -- no GCC stmt-expr wrap on the LHS.
 from typing import ClassVar
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Counter:
-    instances: ClassVar[Int32] = 0
+    instances: ClassVar[int32] = 0
 
     def __init__(self) -> None:
         pass

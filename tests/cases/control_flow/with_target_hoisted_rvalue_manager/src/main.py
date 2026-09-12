@@ -9,13 +9,13 @@
 # still pointing at a destroyed manager reads that sentinel instead of the value.
 # CPython does not guarantee WHEN the manager is dropped, only that the target
 # keeps it reachable, so outliving the block is not observable there.
-from tpy import Int32
+from tpy import int32
 
 
 class Reg:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
     def __enter__(self) -> "Reg":
@@ -28,7 +28,7 @@ class Reg:
         self.n = -999
 
 
-def rvalue_manager(flag: bool) -> Int32:
+def rvalue_manager(flag: bool) -> int32:
     if flag:
         with Reg(11) as view:
             pass
@@ -38,7 +38,7 @@ def rvalue_manager(flag: bool) -> Int32:
     return view.n
 
 
-def lvalue_manager(flag: bool) -> Int32:
+def lvalue_manager(flag: bool) -> int32:
     keep = Reg(33)
     if flag:
         with keep as view:

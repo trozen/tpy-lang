@@ -3,11 +3,11 @@
 
 namespace tpystd::io {
 
-// _SEEK_SET: Int32 = 0
+// _SEEK_SET: int32 = 0
 int32_t _SEEK_SET{};
-// _SEEK_CUR: Int32 = 1
+// _SEEK_CUR: int32 = 1
 int32_t _SEEK_CUR{};
-// _SEEK_END: Int32 = 2
+// _SEEK_END: int32 = 2
 int32_t _SEEK_END{};
 
 // def __iter__(self) -> Iterator[str]:
@@ -116,11 +116,11 @@ std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_BufferedReader___iter__:
 
 
 
-// def write(self, s: str) -> Int32:
+// def write(self, s: str) -> int32:
 int32_t StringIO::write(std::string_view s) {
     // self._check_open()
     this->_check_open();
-    // n: Int32 = Int32(len(s))
+    // n: int32 = int32(len(s))
     int32_t n = ::tpy::__len__(s);
     // if n == 0:
     if ((n == 0)) {
@@ -151,11 +151,11 @@ int32_t StringIO::write(std::string_view s) {
     this->_collapse();
     // buf: str = self._chunks[0]
     std::string buf = ::tpy::__getitem__(this->_chunks, 0);
-    // end: Int32 = self._pos + n
+    // end: int32 = self._pos + n
     int32_t end = (::tpy::add_check<int32_t>(this->_pos, n));
     // prefix: str = buf[:self._pos]
     std::string prefix = std::string(::tpy::str_slice(buf, ::tpy::BasicSlice{std::nullopt, this->_pos}));
-    // if end < Int32(len(buf)):
+    // if end < int32(len(buf)):
     std::string new_buf;
     if ((end < ::tpy::__len__(buf))) {
         // tail: str = buf[end:]
@@ -169,7 +169,7 @@ int32_t StringIO::write(std::string_view s) {
     }
     // self._chunks = [new_buf]
     this->_chunks = {new_buf};
-    // self._total = Int32(len(new_buf))
+    // self._total = int32(len(new_buf))
     this->_total = ::tpy::__len__(new_buf);
     // self._pos = end
     this->_pos = end;
@@ -177,7 +177,7 @@ int32_t StringIO::write(std::string_view s) {
     return n;
 }
 
-// def read(self, size: Int32 = -1) -> str:
+// def read(self, size: int32 = -1) -> str:
 std::string StringIO::read(int32_t size) {
     // self._check_open()
     this->_check_open();
@@ -190,7 +190,7 @@ std::string StringIO::read(int32_t size) {
     this->_collapse();
     // # Byte-indexed slice (codepoint vs byte divergence for non-ASCII is
     // # TPy-wide str indexing, not specific to read). `_total - _pos` instead
-    // # of `_pos + size` avoids Int32 overflow when both are large.
+    // # of `_pos + size` avoids int32 overflow when both are large.
     // if size < 0 or size >= self._total - self._pos:
     std::string out;
     if (((size < 0) || (size >= (::tpy::sub_check<int32_t>(this->_total, this->_pos))))) {
@@ -200,7 +200,7 @@ std::string StringIO::read(int32_t size) {
         this->_pos = this->_total;
     // else:
     } else {
-        // stop: Int32 = self._pos + size
+        // stop: int32 = self._pos + size
         int32_t stop = (::tpy::add_check<int32_t>(this->_pos, size));
         // out = self._chunks[0][self._pos:stop]
         out = ::tpy::str_slice(::tpy::__getitem__(this->_chunks, 0), ::tpy::BasicSlice{this->_pos, stop});
@@ -228,7 +228,7 @@ std::string StringIO::readline() {
     // # search the suffix and adjust the offset back into buf.
     // suffix: str = buf[self._pos:]
     std::string suffix = std::string(::tpy::str_slice(buf, ::tpy::BasicSlice{this->_pos, std::nullopt}));
-    // rel: Int32 = suffix.find("\n")
+    // rel: int32 = suffix.find("\n")
     int32_t rel = ::tpy::str_find(suffix, "\n");
     // if rel < 0:
     std::string out;
@@ -239,7 +239,7 @@ std::string StringIO::readline() {
         this->_pos = this->_total;
     // else:
     } else {
-        // stop: Int32 = self._pos + rel + 1
+        // stop: int32 = self._pos + rel + 1
         int32_t stop = (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(this->_pos, rel)), 1));
         // out = buf[self._pos:stop]
         out = ::tpy::str_slice(buf, ::tpy::BasicSlice{this->_pos, stop});
@@ -250,11 +250,11 @@ std::string StringIO::readline() {
     return out;
 }
 
-// def seek(self, pos: Int32, whence: Int32 = 0) -> Int32:
+// def seek(self, pos: int32, whence: int32 = 0) -> int32:
 int32_t StringIO::seek(int32_t pos, int32_t whence) {
     // self._check_open()
     this->_check_open();
-    // new_pos: Int32 = 0
+    // new_pos: int32 = 0
     int32_t new_pos = 0;
     // if whence == _SEEK_SET:
     if ((whence == _SEEK_SET)) {
@@ -291,11 +291,11 @@ int32_t StringIO::seek(int32_t pos, int32_t whence) {
     return this->_pos;
 }
 
-// def truncate(self, size: Int32 = -1) -> Int32:
+// def truncate(self, size: int32 = -1) -> int32:
 int32_t StringIO::truncate(int32_t size) {
     // self._check_open()
     this->_check_open();
-    // n: Int32 = size if size >= 0 else self._pos
+    // n: int32 = size if size >= 0 else self._pos
     int32_t n = (((size >= 0)) ? (size) : (this->_pos));
     // if n >= self._total:
     if ((n >= this->_total)) {
@@ -324,11 +324,11 @@ int32_t StringIO::truncate(int32_t size) {
     return n;
 }
 
-// def write(self, data: bytes) -> Int32:
+// def write(self, data: bytes) -> int32:
 int32_t BytesIO::write(::tpy::BytesView data) {
     // self._check_open()
     this->_check_open();
-    // n: Int32 = Int32(len(data))
+    // n: int32 = int32(len(data))
     int32_t n = ::tpy::__len__(data);
     // if n == 0:
     if ((n == 0)) {
@@ -354,13 +354,13 @@ int32_t BytesIO::write(::tpy::BytesView data) {
     this->_collapse();
     // buf: bytes = self._chunks[0]
     ::tpy::Bytes buf = ::tpy::__getitem__(this->_chunks, 0);
-    // end: Int32 = self._pos + n
+    // end: int32 = self._pos + n
     int32_t end = (::tpy::add_check<int32_t>(this->_pos, n));
     // # bytes slicing: basic_slice returns BytesView; concat needs bytes.
     // # Wrap each slice with bytes(...) so '+' resolves to bytes+bytes.
     // prefix: bytes = bytes(buf[:self._pos])
     ::tpy::Bytes prefix = ::tpy::Bytes(::tpy::bytes_slice(buf, ::tpy::BasicSlice{std::nullopt, this->_pos}));
-    // if end < Int32(len(buf)):
+    // if end < int32(len(buf)):
     ::tpy::Bytes new_buf;
     if ((end < ::tpy::__len__(buf))) {
         // tail: bytes = bytes(buf[end:])
@@ -374,7 +374,7 @@ int32_t BytesIO::write(::tpy::BytesView data) {
     }
     // self._chunks = [new_buf]
     this->_chunks = {new_buf};
-    // self._total = Int32(len(new_buf))
+    // self._total = int32(len(new_buf))
     this->_total = ::tpy::__len__(new_buf);
     // self._pos = end
     this->_pos = end;
@@ -382,7 +382,7 @@ int32_t BytesIO::write(::tpy::BytesView data) {
     return n;
 }
 
-// def read(self, size: Int32 = -1) -> bytes:
+// def read(self, size: int32 = -1) -> bytes:
 ::tpy::Bytes BytesIO::read(int32_t size) {
     // self._check_open()
     this->_check_open();
@@ -393,7 +393,7 @@ int32_t BytesIO::write(::tpy::BytesView data) {
     }
     // self._collapse()
     this->_collapse();
-    // # `_total - _pos` instead of `_pos + size` avoids Int32 overflow.
+    // # `_total - _pos` instead of `_pos + size` avoids int32 overflow.
     // if size < 0 or size >= self._total - self._pos:
     ::tpy::Bytes out;
     if (((size < 0) || (size >= (::tpy::sub_check<int32_t>(this->_total, this->_pos))))) {
@@ -403,7 +403,7 @@ int32_t BytesIO::write(::tpy::BytesView data) {
         this->_pos = this->_total;
     // else:
     } else {
-        // stop: Int32 = self._pos + size
+        // stop: int32 = self._pos + size
         int32_t stop = (::tpy::add_check<int32_t>(this->_pos, size));
         // out = bytes(self._chunks[0][self._pos:stop])
         out = ::tpy::Bytes(::tpy::bytes_slice(::tpy::__getitem__(this->_chunks, 0), ::tpy::BasicSlice{this->_pos, stop}));
@@ -430,7 +430,7 @@ int32_t BytesIO::write(::tpy::BytesView data) {
     // # Same start-arg gap as str.find: search the suffix and adjust.
     // suffix: bytes = bytes(buf[self._pos:])
     ::tpy::Bytes suffix = ::tpy::Bytes(::tpy::bytes_slice(buf, ::tpy::BasicSlice{this->_pos, std::nullopt}));
-    // rel: Int32 = suffix.find(b"\n")
+    // rel: int32 = suffix.find(b"\n")
     int32_t rel = ::tpy::bytes_find(suffix, ::tpy::bytes_literal("\n", 1));
     // if rel < 0:
     ::tpy::Bytes out;
@@ -441,7 +441,7 @@ int32_t BytesIO::write(::tpy::BytesView data) {
         this->_pos = this->_total;
     // else:
     } else {
-        // stop: Int32 = self._pos + rel + 1
+        // stop: int32 = self._pos + rel + 1
         int32_t stop = (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(this->_pos, rel)), 1));
         // out = bytes(buf[self._pos:stop])
         out = ::tpy::Bytes(::tpy::bytes_slice(buf, ::tpy::BasicSlice{this->_pos, stop}));
@@ -452,11 +452,11 @@ int32_t BytesIO::write(::tpy::BytesView data) {
     return out;
 }
 
-// def seek(self, pos: Int32, whence: Int32 = 0) -> Int32:
+// def seek(self, pos: int32, whence: int32 = 0) -> int32:
 int32_t BytesIO::seek(int32_t pos, int32_t whence) {
     // self._check_open()
     this->_check_open();
-    // new_pos: Int32 = 0
+    // new_pos: int32 = 0
     int32_t new_pos = 0;
     // if whence == _SEEK_SET:
     if ((whence == _SEEK_SET)) {
@@ -491,11 +491,11 @@ int32_t BytesIO::seek(int32_t pos, int32_t whence) {
     return this->_pos;
 }
 
-// def truncate(self, size: Int32 = -1) -> Int32:
+// def truncate(self, size: int32 = -1) -> int32:
 int32_t BytesIO::truncate(int32_t size) {
     // self._check_open()
     this->_check_open();
-    // n: Int32 = size if size >= 0 else self._pos
+    // n: int32 = size if size >= 0 else self._pos
     int32_t n = (((size >= 0)) ? (size) : (this->_pos));
     // if n >= self._total:
     if ((n >= this->_total)) {
@@ -524,7 +524,7 @@ int32_t BytesIO::truncate(int32_t size) {
     return n;
 }
 
-// def read(self, size: Int32 = -1) -> bytes:
+// def read(self, size: int32 = -1) -> bytes:
 ::tpy::Bytes BufferedReader::read(int32_t size) {
     // self._check_open()
     this->_check_open();
@@ -549,7 +549,7 @@ int32_t BytesIO::truncate(int32_t size) {
     return this->_take(take);
 }
 
-// def readline(self, size: Int32 = -1) -> bytes:
+// def readline(self, size: int32 = -1) -> bytes:
 ::tpy::Bytes BufferedReader::readline(int32_t size) {
     // self._check_open()
     this->_check_open();
@@ -587,12 +587,12 @@ void __tpy_init() {
     // # BufferedReader buffer.
     // # SEEK_SET/CUR/END names are <cstdio> macros, so they can't be emitted as C++
     // # symbols; bind via native_global to the os runtime's int32 seek globals (same
-    // # POSIX 0/1/2, Int32 to match io.seek's whence; always linked).
-    // _SEEK_SET: Int32 = 0
+    // # POSIX 0/1/2, int32 to match io.seek's whence; always linked).
+    // _SEEK_SET: int32 = 0
     _SEEK_SET = 0;
-    // _SEEK_CUR: Int32 = 1
+    // _SEEK_CUR: int32 = 1
     _SEEK_CUR = 1;
-    // _SEEK_END: Int32 = 2
+    // _SEEK_END: int32 = 2
     _SEEK_END = 2;
 }
 

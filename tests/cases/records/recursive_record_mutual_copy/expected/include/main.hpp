@@ -17,13 +17,13 @@ void main();
 
 // class A:
 struct A {
-    // val: Int32
+    // val: int32
     int32_t val;
     // bs: list[B]
     std::vector<B> bs;
     bool __tpy_owned_ = true;
 
-    // def __init__(self, val: Int32) -> None:
+    // def __init__(self, val: int32) -> None:
     explicit A(int32_t val);
     // copyable via __copy__
     A(const A& other);
@@ -46,12 +46,12 @@ inline std::ostream& operator<<(std::ostream& os, const A& obj) {
 
 // class B:
 struct B {
-    // val: Int32
+    // val: int32
     int32_t val;
     // as_: list[A]
     std::vector<A> as_;
 
-    // def __init__(self, val: Int32) -> None:
+    // def __init__(self, val: int32) -> None:
     B() = default;
     explicit B(int32_t val);
     // copyable via __copy__
@@ -71,7 +71,7 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 }
 
 
-// def __init__(self, val: Int32) -> None:
+// def __init__(self, val: int32) -> None:
 inline A::A(int32_t val) : val(val), bs(std::vector<B>{}) {}
 
 inline A::A(const A& other) : A(other.__copy__()) {}
@@ -86,7 +86,7 @@ inline A A::__copy__() const {
     return A((::tpy::add_check<int32_t>(this->val, 100)));
 }
 
-// def __init__(self, val: Int32) -> None:
+// def __init__(self, val: int32) -> None:
 inline B::B(int32_t val) : val(val), as_(std::vector<A>{}) {}
 
 inline B::B(const B& other) : B(other.__copy__()) {}

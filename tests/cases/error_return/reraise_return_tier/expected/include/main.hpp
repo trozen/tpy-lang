@@ -17,10 +17,10 @@ void main();
 
 // class NotFound(Exception, ReturnException):
 struct NotFound : ::tpy::Exception {
-    // code: Int32
+    // code: int32
     int32_t code;
 
-    // def __init__(self, code: Int32) -> None:
+    // def __init__(self, code: int32) -> None:
     NotFound() = default;
     explicit NotFound(int32_t code);
 
@@ -36,7 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const NotFound& obj) {
 }
 
 
-// def __init__(self, code: Int32) -> None:
+// def __init__(self, code: int32) -> None:
 inline NotFound::NotFound(int32_t code) : code(code) {}
 void __tpy_init();
 } // namespace tpyapp::main

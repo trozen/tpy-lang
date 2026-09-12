@@ -4,19 +4,19 @@
 # Distinct exception messages per index verify the arrival-order arrays
 # reassemble by input index correctly.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
-async def fail(tag: Int32) -> Int32:
+async def fail(tag: int32) -> int32:
     await asyncio.sleep(0.001)
     raise ValueError(f"boom-{tag}")
 
 
 async def main_coro() -> None:
-    tasks: list[asyncio.Task[Int32]] = []
-    tasks.append(asyncio.create_task(fail(Int32(0))))
-    tasks.append(asyncio.create_task(fail(Int32(1))))
-    tasks.append(asyncio.create_task(fail(Int32(2))))
+    tasks: list[asyncio.Task[int32]] = []
+    tasks.append(asyncio.create_task(fail(int32(0))))
+    tasks.append(asyncio.create_task(fail(int32(1))))
+    tasks.append(asyncio.create_task(fail(int32(2))))
     results = await asyncio.gather_list_settled(tasks)
     print("count", len(results))
     for r in results:

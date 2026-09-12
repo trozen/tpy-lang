@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def take(t: tuple[Own[P], Own[P]]) -> Int32:
+// def take(t: tuple[Own[P], Own[P]]) -> int32:
 int32_t take(std::tuple<P, P>&& t) {
     // a, b = t
     auto&& __tup_1 = std::move(t);
@@ -14,7 +14,7 @@ int32_t take(std::tuple<P, P>&& t) {
     return (::tpy::add_check<int32_t>(a.x, b.x));
 }
 
-// def take_opt(t: tuple[Own[P] | None, Own[P] | None]) -> Int32:
+// def take_opt(t: tuple[Own[P] | None, Own[P] | None]) -> int32:
 int32_t take_opt(const std::tuple<std::optional<P>, std::optional<P>>& t) {
     // a, b = t
     const auto& __tup_1 = t;
@@ -30,7 +30,7 @@ int32_t take_opt(const std::tuple<std::optional<P>, std::optional<P>>& t) {
         // return a.x
         return (*a).x;
     }
-    // return Int32(0)
+    // return int32(0)
     return 0;
 }
 

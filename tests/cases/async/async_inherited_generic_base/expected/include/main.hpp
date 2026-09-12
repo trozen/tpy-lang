@@ -63,7 +63,7 @@ template<typename T>
 struct Guard {
     // val: T
     T val;
-    // entered: Int32
+    // entered: int32
     int32_t entered;
 
     // def __init__(self, val: T) -> None:
@@ -85,14 +85,14 @@ inline std::ostream& operator<<(std::ostream& os, const Guard<T>& obj) {
 // class Counter[T]:
 template<typename T>
 struct Counter {
-    // cur: Int32
+    // cur: int32
     int32_t cur;
-    // limit: Int32
+    // limit: int32
     int32_t limit;
     // seed: T
     T seed;
 
-    // def __init__(self, limit: Int32, seed: T) -> None:
+    // def __init__(self, limit: int32, seed: T) -> None:
     Counter() = default;
     explicit Counter(int32_t limit, ::tpy::readonly_form_t<T> seed) : cur(0), limit(limit), seed(seed) {}
 
@@ -112,10 +112,10 @@ inline std::ostream& operator<<(std::ostream& os, const Counter<T>& obj) {
     return os;
 }
 
-// class IntBox(Box[Int32]):
+// class IntBox(Box[int32]):
 struct IntBox : Box<int32_t> {
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     IntBox() = default;
     explicit IntBox(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.IntBox";
@@ -126,10 +126,10 @@ inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
     return os;
 }
 
-// class IntGuard(Guard[Int32]):
+// class IntGuard(Guard[int32]):
 struct IntGuard : Guard<int32_t> {
 
-    // def __init__(self, val: Int32) -> None:
+    // def __init__(self, val: int32) -> None:
     IntGuard() = default;
     explicit IntGuard(int32_t val);
     static constexpr std::string_view __tpy_class_name__ = "__main__.IntGuard";
@@ -140,10 +140,10 @@ inline std::ostream& operator<<(std::ostream& os, const IntGuard& obj) {
     return os;
 }
 
-// class IntCounter(Counter[Int32]):
+// class IntCounter(Counter[int32]):
 struct IntCounter : Counter<int32_t> {
 
-    // def __init__(self, limit: Int32, seed: Int32) -> None:
+    // def __init__(self, limit: int32, seed: int32) -> None:
     IntCounter() = default;
     explicit IntCounter(int32_t limit, int32_t seed);
     static constexpr std::string_view __tpy_class_name__ = "__main__.IntCounter";
@@ -436,13 +436,13 @@ struct __coro_main_coro {
 };
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline IntBox::IntBox(int32_t v) {
     // self.v = v
     this->v = v;
 }
 
-// def __init__(self, val: Int32) -> None:
+// def __init__(self, val: int32) -> None:
 inline IntGuard::IntGuard(int32_t val) {
     // self.val = val
     this->val = val;
@@ -450,7 +450,7 @@ inline IntGuard::IntGuard(int32_t val) {
     this->entered = 0;
 }
 
-// def __init__(self, limit: Int32, seed: Int32) -> None:
+// def __init__(self, limit: int32, seed: int32) -> None:
 inline IntCounter::IntCounter(int32_t limit, int32_t seed) {
     // self.cur = 0
     this->cur = 0;

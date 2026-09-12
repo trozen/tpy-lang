@@ -1,13 +1,13 @@
 # A FREE function whose parameter is merely NAMED `self`: it is not a receiver,
 # so the borrow-return's self arm cannot claim it and the bare-name source
 # stays unadmitted -- returning it is rejected today.
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
 

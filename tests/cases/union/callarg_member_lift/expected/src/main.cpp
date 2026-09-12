@@ -29,7 +29,7 @@ void bump_counter(::tpy::Union<A*, Counter*> u) {
     }
 }
 
-// def describe(u: A | B | None) -> Int32:
+// def describe(u: A | B | None) -> int32:
 int32_t describe(::tpy::Union<std::monostate, const A*, const B*> u) {
     // if u is None:
     if ((std::holds_alternative<std::monostate>(u))) {
@@ -47,7 +47,7 @@ int32_t describe(::tpy::Union<std::monostate, const A*, const B*> u) {
     return __u.y;
 }
 
-// def via_param(a: A) -> Int32:
+// def via_param(a: A) -> int32:
 int32_t via_param(A& a) {
     // bump(a)
     bump(::tpy::Union<A*, B*>{&(a)});

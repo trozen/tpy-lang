@@ -19,7 +19,7 @@ Point& identity(Point& p) {
 }
 
 // # No borrow: returns a newly constructed value
-// def make_point(x: Int32) -> Own[Point]:
+// def make_point(x: int32) -> Own[Point]:
 Point make_point(int32_t x) {
     // return Point(x, x)  # tpyc: ok
     return Point(x, x);
@@ -42,7 +42,7 @@ void main() {
     // print(q.x)
     std::cout << q.x << "\n";
     // # r owns its own storage (return_borrows_from = frozenset())
-    // r = make_point(Int32(5))
+    // r = make_point(int32(5))
     Point r = make_point(5);
     // print(r.x)
     std::cout << r.x << "\n";

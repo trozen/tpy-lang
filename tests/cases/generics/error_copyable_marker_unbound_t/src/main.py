@@ -7,7 +7,7 @@
 # eliminate. The conformance check is now authoritative for type variables:
 # an unbound type param does not conform to any marker protocol whose
 # predicate would otherwise default to "conforms".
-from tpy import Int32, Own
+from tpy import int32, Own
 from tplib import Box
 
 
@@ -25,7 +25,7 @@ class Wrapper[T]:
 # and at a concrete monomorphization call site so a future refactor that
 # defers body checking until instantiation still trips the regression.
 def main() -> None:
-    w = Wrapper[Int32](Box(Int32(7)))
+    w = Wrapper[int32](Box(int32(7)))
     _ = w.dup()
 
 

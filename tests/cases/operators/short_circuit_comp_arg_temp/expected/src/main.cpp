@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def take(p: Probe | None) -> Int32:
+// def take(p: Probe | None) -> int32:
 int32_t take(const Probe* p) {
     // return 1 if p is not None else 0
     return (((p != nullptr)) ? (1) : (0));
 }
 
-// def comp_in_ternary(c: Counter, cond: bool, xs: list[Int32]) -> Int32:
+// def comp_in_ternary(c: Counter, cond: bool, xs: list[int32]) -> int32:
 int32_t comp_in_ternary(Counter& c, bool cond, const std::vector<int32_t>& xs) {
     // # The comprehension sits in the `then` arm; its per-element temp must not
     // # run when `cond` is false.
@@ -32,7 +32,7 @@ int32_t comp_in_ternary(Counter& c, bool cond, const std::vector<int32_t>& xs) {
     return ::tpy::__len__(ys);
 }
 
-// def comp_in_and(c: Counter, cond: bool, xs: list[Int32]) -> bool:
+// def comp_in_and(c: Counter, cond: bool, xs: list[int32]) -> bool:
 bool comp_in_and(Counter& c, bool cond, const std::vector<int32_t>& xs) {
     // # Same shape one level down, in an `and` RHS.
     // return cond and len([take(Probe(c, i)) for i in xs]) > 0

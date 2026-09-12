@@ -3,29 +3,29 @@
 # the enclosing record's field types and annotate body locals. On a
 # @staticmethod self_type is None; free functions keep the old behavior.
 from methmod import probe
-from tpy import Int32
+from tpy import int32
 
 
 class Counter:
-    n: Int32
+    n: int32
 
     def __init__(self):
         self.n = 0
 
     @probe
-    def bump(self) -> Int32:  # tpyc: warning(/method macro on Counter.bump: field n is Int32/)
+    def bump(self) -> int32:  # tpyc: warning(/method macro on Counter.bump: field n is int32/)
         doubled = self.n + self.n
         self.n = self.n + 1
         return doubled
 
     @staticmethod
     @probe
-    def seed() -> Int32:  # tpyc: warning(/macro on seed: no self \(is_method=True\)/)
+    def seed() -> int32:  # tpyc: warning(/macro on seed: no self \(is_method=True\)/)
         return 3
 
 
 @probe
-def free(x: Int32) -> Int32:  # tpyc: warning(/macro on free: no self \(is_method=False\)/)
+def free(x: int32) -> int32:  # tpyc: warning(/macro on free: no self \(is_method=False\)/)
     return x + 1
 
 

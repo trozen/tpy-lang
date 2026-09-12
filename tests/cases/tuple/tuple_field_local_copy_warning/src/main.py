@@ -3,14 +3,14 @@
 # Parallel of `auto_move/warn_own_local_field_copy::test_non_last_use` for
 # the tuple case, and complement of `tuple_field_copy_warning` (which uses
 # params for both elements).
-from tpy import Int32
+from tpy import int32
 
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32) -> None:
+    def __init__(self, x: int32, y: int32) -> None:
         self.x = x
         self.y = y
 
@@ -19,8 +19,8 @@ class Mixed:
     pp: tuple[Point, Point]
 
     def __init__(self) -> None:
-        a = Point(Int32(1), Int32(2))
-        b = Point(Int32(3), Int32(4))
+        a = Point(int32(1), int32(2))
+        b = Point(int32(3), int32(4))
         self.pp = (a, b)  # tpyc: warning(/copies Point into field \(tuple element 0\)/)
         print(a.x)  # later use of `a` -- forces element 0 to copy
 

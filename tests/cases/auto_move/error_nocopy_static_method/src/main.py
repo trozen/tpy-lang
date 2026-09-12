@@ -1,19 +1,19 @@
 # Test: @nocopy type passed to static method Own[T] param -- non-last-use should error
-from tpy import Int32, Own, nocopy
+from tpy import int32, Own, nocopy
 
 @nocopy
 class Handle:
-    fd: Int32
+    fd: int32
 
 class Factory:
     @staticmethod
-    def consume(h: Own[Handle]) -> Int32:
+    def consume(h: Own[Handle]) -> int32:
         return h.fd
 
 def main() -> None:
     h: Handle = Handle()
     h.fd = 42
-    result: Int32 = Factory.consume(h)  # tpyc: error(/@nocopy.*used after/)
+    result: int32 = Factory.consume(h)  # tpyc: error(/@nocopy.*used after/)
     print(h.fd)
 
 main()

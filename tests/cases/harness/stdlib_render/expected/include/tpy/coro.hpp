@@ -95,13 +95,13 @@ bool task_poll_cancelled(T_aw& aw);
 struct Waker {
     // awaker: Ptr[Awaker]
     Awaker* awaker;
-    // task_id: Int32
+    // task_id: int32
     int32_t task_id;
-    // generation: Int32
+    // generation: int32
     int32_t generation;
 
-    // def __init__(self, awaker: Ptr[Awaker] = None, task_id: Int32 = 0,
-    // generation: Int32 = 0) -> None:
+    // def __init__(self, awaker: Ptr[Awaker] = None, task_id: int32 = 0,
+    // generation: int32 = 0) -> None:
     explicit Waker(Awaker* awaker = nullptr, int32_t task_id = 0, int32_t generation = 0);
 
     // # Not @readonly: wake() doesn't mutate self, but it dispatches into
@@ -161,8 +161,8 @@ struct tpy::RefAdapter<tpystd::coro::Cancellable<T>, __tpy_Impl> : tpystd::coro:
 namespace tpystd::coro {
 
 
-// def __init__(self, awaker: Ptr[Awaker] = None, task_id: Int32 = 0,
-// generation: Int32 = 0) -> None:
+// def __init__(self, awaker: Ptr[Awaker] = None, task_id: int32 = 0,
+// generation: int32 = 0) -> None:
 inline Waker::Waker(Awaker* awaker, int32_t task_id, int32_t generation) : awaker(awaker), task_id(task_id), generation(generation) {}
 
 // # Not @readonly: wake() doesn't mutate self, but it dispatches into

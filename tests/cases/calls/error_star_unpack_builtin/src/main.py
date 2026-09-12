@@ -2,11 +2,11 @@
 # cleanly by the analyze_expr safety net, rather than crashing with
 # "Unknown expression type: TpyStarUnpack". Spreading into variadic
 # builtins is a separate unimplemented feature (see TODO.md).
-from tpy import Int32
+from tpy import int32
 
 
 def main() -> None:
-    xs: list[Int32] = [1, 2, 3]
+    xs: list[int32] = [1, 2, 3]
     print(*xs)  # tpyc: error(/Cannot use \*unpacking/)
 
 

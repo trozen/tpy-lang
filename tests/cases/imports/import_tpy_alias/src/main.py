@@ -1,7 +1,7 @@
 import tpy as t
 
-x = t.Int32(42)
-y = t.Int32(123)
+x = t.int32(42)
+y = t.int32(123)
 
 print(x)
 print(y)

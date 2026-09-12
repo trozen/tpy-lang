@@ -21,10 +21,10 @@ template<::tpystd::typing::Iterable<int32_t> T_items>
 bool contains_value(const T_items& items, int32_t target);
 void main();
 
-// def sum_iter(items: Iterable[Int32]) -> Int32:
+// def sum_iter(items: Iterable[int32]) -> int32:
 template<::tpystd::typing::Iterable<int32_t> T_items>
 int32_t sum_iter(T_items& items) {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for x in items:
     auto& __src_0 = items;
@@ -39,7 +39,7 @@ int32_t sum_iter(T_items& items) {
     // return total
     return total;
 }
-// def print_all(items: Iterable[Int32]) -> None:
+// def print_all(items: Iterable[int32]) -> None:
 template<::tpystd::typing::Iterable<int32_t> T_items>
 void print_all(T_items& items) {
     // for x in items:
@@ -53,7 +53,7 @@ void print_all(T_items& items) {
         std::cout << x << "\n";
     }
 }
-// def process_and_sum(items: Iterable[Int32]) -> Int32:
+// def process_and_sum(items: Iterable[int32]) -> int32:
 template<::tpystd::typing::Iterable<int32_t> T_items>
 int32_t process_and_sum(T_items& items) {
     // # Protocol-to-protocol passing: Iterable[T] -> Iterable[T]
@@ -62,11 +62,11 @@ int32_t process_and_sum(T_items& items) {
     // return sum_iter(items)
     return sum_iter(items);
 }
-// def nested_iteration(outer: Iterable[Int32], inner: Iterable[Int32]) -> Int32:
+// def nested_iteration(outer: Iterable[int32], inner: Iterable[int32]) -> int32:
 template<::tpystd::typing::Iterable<int32_t> T_outer, ::tpystd::typing::Iterable<int32_t> T_inner>
 int32_t nested_iteration(T_outer& outer, T_inner& inner) {
     // # Nested for loops over two different protocol-typed params
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for x in outer:
     auto& __src_0 = outer;
@@ -89,7 +89,7 @@ int32_t nested_iteration(T_outer& outer, T_inner& inner) {
     // return total
     return total;
 }
-// def contains_value(items: Iterable[Int32], target: Int32) -> bool:
+// def contains_value(items: Iterable[int32], target: int32) -> bool:
 template<::tpystd::typing::Iterable<int32_t> T_items>
 bool contains_value(const T_items& items, int32_t target) {
     // # `in` operator on protocol-typed param

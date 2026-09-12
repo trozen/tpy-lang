@@ -1,14 +1,14 @@
 # `tuple[T, T]` field with @nocopy elements: same shape works because
 # field-tuple assignment auto-moves last-use owned locals (no `Own[T]`
 # annotation needed -- mirrors scalar `field: T` semantics).
-from tpy import nocopy, Int32
+from tpy import nocopy, int32
 
 
 @nocopy
 class Handle:
-    fd: Int32
+    fd: int32
 
-    def __init__(self, fd: Int32) -> None:
+    def __init__(self, fd: int32) -> None:
         self.fd = fd
 
 
@@ -16,8 +16,8 @@ class Container:
     pair: tuple[Handle, Handle]
 
     def __init__(self) -> None:
-        a = Handle(Int32(1))
-        b = Handle(Int32(2))
+        a = Handle(int32(1))
+        b = Handle(int32(2))
         self.pair = (a, b)
 
 

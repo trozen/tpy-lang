@@ -8,11 +8,11 @@ namespace tpyapp::main {
 void main() {
     // p = Point()
     Point p = Point();
-    // p.x = Int32(1)
+    // p.x = int32(1)
     p.x = 1;
-    // p.y = Int32(2)
+    // p.y = int32(2)
     p.y = 2;
-    // w = Wrapper(p, Int32(42))
+    // w = Wrapper(p, int32(42))
     Wrapper w = Wrapper(std::move(p), 42);
     // print(w.tag)
     std::cout << w.tag << "\n";

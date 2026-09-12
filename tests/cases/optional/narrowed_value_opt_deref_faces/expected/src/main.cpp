@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def reassign(p: Int32 | None) -> Int32:
+// def reassign(p: int32 | None) -> int32:
 int32_t reassign(std::optional<int32_t> p) {
     // q = 0
     int32_t q = 0;
@@ -30,7 +30,7 @@ std::string reassign_view(std::optional<std::string_view> p) {
     return std::string(t);
 }
 
-// def aug_param(p: Int32 | None) -> Int32:
+// def aug_param(p: int32 | None) -> int32:
 int32_t aug_param(std::optional<int32_t> p) {
     // t = 10
     int32_t t = 10;
@@ -43,7 +43,7 @@ int32_t aug_param(std::optional<int32_t> p) {
     return t;
 }
 
-// def aug_loopvar(d: dict[str, Int32 | None]) -> Int32:
+// def aug_loopvar(d: dict[str, int32 | None]) -> int32:
 int32_t aug_loopvar(const ::tpy::ordered_map<std::string, std::optional<int32_t>>& d) {
     // total = 0
     int32_t total = 0;
@@ -63,9 +63,9 @@ int32_t aug_loopvar(const ::tpy::ordered_map<std::string, std::optional<int32_t>
     return total;
 }
 
-// def whole_copy(p: Int32 | None) -> Int32:
+// def whole_copy(p: int32 | None) -> int32:
 int32_t whole_copy(std::optional<int32_t> p) {
-    // q2: Int32 | None = None
+    // q2: int32 | None = None
     std::optional<int32_t> q2 = std::nullopt;
     // if p is not None:
     if ((p.has_value())) {
@@ -95,7 +95,7 @@ void main() {
     std::cout << aug_param(3) << "\n";
     // print(aug_param(None))
     std::cout << aug_param(std::nullopt) << "\n";
-    // d: dict[str, Int32 | None] = {"a": 1, "b": None, "c": 2}
+    // d: dict[str, int32 | None] = {"a": 1, "b": None, "c": 2}
     ::tpy::ordered_map<std::string, std::optional<int32_t>> d = ::tpy::ordered_map<std::string, std::optional<int32_t>>({{"a", 1}, {"b", std::nullopt}, {"c", 2}});
     // print(aug_loopvar(d))
     std::cout << aug_loopvar(d) << "\n";

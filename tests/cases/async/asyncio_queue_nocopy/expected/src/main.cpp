@@ -8,9 +8,9 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // q: Queue[Box[Int32]] = Queue(0)
+        // q: Queue[Box[int32]] = Queue(0)
         q.emplace(::tpystd::asyncio::Queue<::tpystd::tplib::box::Box<int32_t>>(0));
-        // await q.put(Box(Int32(10)))
+        // await q.put(Box(int32(10)))
         __sub_0.emplace((*q), ::tpystd::tplib::box::Box<int32_t>(10));
         __state = S_RESUME_0;
         continue;
@@ -20,7 +20,7 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // q.put_nowait(Box(Int32(20)))
+        // q.put_nowait(Box(int32(20)))
         (*q).put_nowait(::tpystd::tplib::box::Box<int32_t>(20));
         // a = await q.get()
         __sub_1.emplace((*q));

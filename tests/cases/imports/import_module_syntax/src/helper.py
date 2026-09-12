@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 
-def get_value() -> Int32:
-    return Int32(55)
+def get_value() -> int32:
+    return int32(55)

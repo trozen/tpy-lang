@@ -40,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const NegBig& obj) {
 struct NegI32 {
 
 
-    // def __len__(self) -> Int32:
+    // def __len__(self) -> int32:
     int32_t __len__() const;
 
     size_t size() const {
@@ -80,7 +80,7 @@ inline std::ostream& operator<<(std::ostream& os, const Empty& obj) {
 struct Full {
 
 
-    // def __len__(self) -> Int32:
+    // def __len__(self) -> int32:
     int32_t __len__() const;
 
     size_t size() const {
@@ -103,7 +103,7 @@ inline ::tpy::BigInt NegBig::__len__() const {
     return ::tpy::BigInt(-1);
 }
 
-// def __len__(self) -> Int32:
+// def __len__(self) -> int32:
 inline int32_t NegI32::__len__() const {
     // return -1
     return -1;
@@ -115,7 +115,7 @@ inline ::tpy::BigInt Empty::__len__() const {
     return ::tpy::BigInt(0);
 }
 
-// def __len__(self) -> Int32:
+// def __len__(self) -> int32:
 inline int32_t Full::__len__() const {
     // return 3
     return 3;

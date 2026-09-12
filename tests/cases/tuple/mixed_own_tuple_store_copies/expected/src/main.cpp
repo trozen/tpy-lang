@@ -10,7 +10,7 @@ std::tuple<Box, Box*> make_mixed(Box& b) {
     return std::tuple<Box, Box*>{Box(1), &(b)};
 }
 
-// def via_list_literal(b: Box) -> Int32:
+// def via_list_literal(b: Box) -> int32:
 int32_t via_list_literal(Box& b) {
     // xs = [make_mixed(b)]  # tpyc: warning(/copies Box into owned storage/)
     std::array<std::tuple<Box, Box>, 1> xs = {::tpy::tuple_to_storage<std::tuple<Box, Box>>(make_mixed(b))};
@@ -20,7 +20,7 @@ int32_t via_list_literal(Box& b) {
     return b.val;
 }
 
-// def via_append(b: Box) -> Int32:
+// def via_append(b: Box) -> int32:
 int32_t via_append(Box& b) {
     // xs: list[tuple[Box, Box]] = []
     std::vector<std::tuple<Box, Box>> xs = std::vector<std::tuple<Box, Box>>{};
@@ -32,7 +32,7 @@ int32_t via_append(Box& b) {
     return b.val;
 }
 
-// def via_dict_literal(b: Box) -> Int32:
+// def via_dict_literal(b: Box) -> int32:
 int32_t via_dict_literal(Box& b) {
     // d = {1: make_mixed(b)}  # tpyc: warning(/copies Box into owned storage/)
     ::tpy::ordered_map<int32_t, std::tuple<Box, Box>> d = ::tpy::ordered_map<int32_t, std::tuple<Box, Box>>({{1, ::tpy::tuple_to_storage<std::tuple<Box, Box>>(make_mixed(b))}});
@@ -42,9 +42,9 @@ int32_t via_dict_literal(Box& b) {
     return b.val;
 }
 
-// def via_setitem(b: Box) -> Int32:
+// def via_setitem(b: Box) -> int32:
 int32_t via_setitem(Box& b) {
-    // d: dict[Int32, tuple[Box, Box]] = {}
+    // d: dict[int32, tuple[Box, Box]] = {}
     ::tpy::ordered_map<int32_t, std::tuple<Box, Box>> d = ::tpy::ordered_map<int32_t, std::tuple<Box, Box>>();
     // d[1] = make_mixed(b)  # tpyc: warning(/copies Box into container/)
     ::tpy::__setitem__(d, 1, ::tpy::tuple_to_storage<std::tuple<Box, Box>>(make_mixed(b)));
@@ -54,7 +54,7 @@ int32_t via_setitem(Box& b) {
     return b.val;
 }
 
-// def via_nested_tuple(b: Box) -> Int32:
+// def via_nested_tuple(b: Box) -> int32:
 int32_t via_nested_tuple(Box& b) {
     // # The member is itself a value tuple, so its borrowed element sits a level
     // # below the direct members; the check walks in and names the depth in the
@@ -67,7 +67,7 @@ int32_t via_nested_tuple(Box& b) {
     return b.val;
 }
 
-// def via_dict_comprehension(b: Box) -> Int32:
+// def via_dict_comprehension(b: Box) -> int32:
 int32_t via_dict_comprehension(Box& b) {
     // d = {i: make_mixed(b) for i in range(1)}  # tpyc: warning(/copies Box into owned storage/)
     ::tpy::ordered_map<int32_t, std::tuple<Box, Box>> d = ({
@@ -84,7 +84,7 @@ int32_t via_dict_comprehension(Box& b) {
     return b.val;
 }
 
-// def via_ternary_source(b: Box, c: Box, flag: bool) -> Int32:
+// def via_ternary_source(b: Box, c: Box, flag: bool) -> int32:
 int32_t via_ternary_source(Box& b, Box& c, bool flag) {
     // # C++ evaluates one arm, so the ternary carries a borrow iff both arms do --
     // # and the warning has to compose the same way the copy does, or the store is
@@ -97,7 +97,7 @@ int32_t via_ternary_source(Box& b, Box& c, bool flag) {
     return b.val;
 }
 
-// def via_comprehension(b: Box) -> Int32:
+// def via_comprehension(b: Box) -> int32:
 int32_t via_comprehension(Box& b) {
     // xs = [make_mixed(b) for _ in range(1)]  # tpyc: warning(/copies Box into owned storage/)
     std::array<std::tuple<Box, Box>, 1> xs = ::tpy::array_from_index<std::tuple<Box, Box>, 1>([&](std::size_t __i_0) -> std::tuple<Box, Box> {
@@ -110,7 +110,7 @@ int32_t via_comprehension(Box& b) {
     return b.val;
 }
 
-// def via_loop_var(b: Box) -> Int32:
+// def via_loop_var(b: Box) -> int32:
 int32_t via_loop_var(Box& b) {
     // xs = [make_mixed(b)]  # tpyc: warning(/copies Box into owned storage/)
     std::array<std::tuple<Box, Box>, 1> xs = {::tpy::tuple_to_storage<std::tuple<Box, Box>>(make_mixed(b))};
@@ -127,7 +127,7 @@ int32_t via_loop_var(Box& b) {
     return b.val;
 }
 
-// def via_field(b: Box) -> Int32:
+// def via_field(b: Box) -> int32:
 int32_t via_field(Box& b) {
     // h = Holder(b)
     Holder h = Holder(b);

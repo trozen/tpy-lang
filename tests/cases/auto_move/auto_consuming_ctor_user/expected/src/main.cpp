@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // # Borrowing (nums used after)
-    // nums: list[Int32] = [10, 20, 30]
+    // nums: list[int32] = [10, 20, 30]
     std::vector<int32_t> nums = {10, 20, 30};
     // b1 = Bag(nums)
     Bag b1 = Bag(nums);
@@ -16,7 +16,7 @@ void main() {
     // print(len(nums))
     std::cout << ::tpy::__len__(nums) << "\n";
     // # Consuming (nums2 at last use)
-    // nums2: list[Int32] = [40, 50]
+    // nums2: list[int32] = [40, 50]
     std::vector<int32_t> nums2 = {40, 50};
     // b2 = Bag(nums2)
     Bag b2 = Bag(::tpy::own_iter(std::move(nums2)));

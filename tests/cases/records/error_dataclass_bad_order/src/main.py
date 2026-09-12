@@ -1,8 +1,8 @@
 # Error: field without default after field with default
 from dataclasses import dataclass
-from tpy import Int32
+from tpy import int32
 
 @dataclass
 class Bad:
-    x: Int32 = 0
-    y: Int32  # tpyc: error(/without default follows field with default/)
+    x: int32 = 0
+    y: int32  # tpyc: error(/without default follows field with default/)

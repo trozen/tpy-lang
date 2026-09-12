@@ -1,12 +1,12 @@
 # A reference-typed local needs an initializer at its declaration. The value-
 # typed spelling that IS allowed to stay bare until a later assignment is
 # pinned by tests/cases/pointers/init_tracking.
-from tpy import Int32
+from tpy import int32
 
 class Point:
-    x: Int32
-    y: Int32
-    def __init__(self, x: Int32, y: Int32):
+    x: int32
+    y: int32
+    def __init__(self, x: int32, y: int32):
         self.x = x
         self.y = y
 

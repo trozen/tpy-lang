@@ -3,10 +3,10 @@
 # read needs the frame to own the copies (async sibling of
 # generators/gen_view_local_owned_frame).
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
-def pair(n: Int32) -> tuple[str, str]:
+def pair(n: int32) -> tuple[str, str]:
     return ("host-" + str(n), "port-" + str(n))
 
 

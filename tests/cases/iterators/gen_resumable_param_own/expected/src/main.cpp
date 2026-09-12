@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def drain(b: Own[Box[Int32]]) -> Iterator[Int32]:
+// def drain(b: Own[Box[int32]]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_drain::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -27,14 +27,14 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_drain::__next__() {
 }
 
 
-// def drain(b: Own[Box[Int32]]) -> Iterator[Int32]:
+// def drain(b: Own[Box[int32]]) -> Iterator[int32]:
 __gen_drain drain(::tpystd::tplib::box::Box<int32_t> b) {
     return __gen_drain(std::move(b));
 }
 
 // def main() -> None:
 void main() {
-    // box = Box(Int32(7))
+    // box = Box(int32(7))
     ::tpystd::tplib::box::Box<int32_t> box = ::tpystd::tplib::box::Box<int32_t>(7);
     // for v in drain(box):
     {

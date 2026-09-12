@@ -4,12 +4,12 @@
 # and there the container comprehension takes the field-write render
 # (`this->cells = ({ ... });`); the list is grown afterwards through the
 # field so a silent copy would show.
-from tpy import Int32
+from tpy import int32
 
 
 class Grid:
-    n: Int32 = Int32(4)
-    cells: list[Int32]
+    n: int32 = int32(4)
+    cells: list[int32]
 
     def __init__(self) -> None:
         # The subject: the comprehension reads a default-only field.

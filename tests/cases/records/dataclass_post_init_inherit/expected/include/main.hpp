@@ -17,7 +17,7 @@ void main();
 // @dataclass
 // class Base:
 struct Base {
-    // a: Int32
+    // a: int32
     int32_t a;
 
     Base() = default;
@@ -44,7 +44,7 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
 // @dataclass
 // class Child(Base):
 struct Child : Base {
-    // b: Int32
+    // b: int32
     int32_t b;
 
     Child() = default;

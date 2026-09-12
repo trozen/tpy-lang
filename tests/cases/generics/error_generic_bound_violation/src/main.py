@@ -8,5 +8,5 @@ class LengthHolder[T: Sized]:
         self.item = item
 
 def main() -> None:
-    # Int32 doesn't satisfy Sized (no __len__ method)
+    # int32 doesn't satisfy Sized (no __len__ method)
     holder = LengthHolder[int](42)  # tpyc: error(/does not satisfy bound/)

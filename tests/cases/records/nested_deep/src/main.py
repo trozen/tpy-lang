@@ -1,12 +1,12 @@
 # Two-level nested class definitions
-from tpy import Int32
+from tpy import int32
 
 class Outer:
     class Mid:
         class Deep:
-            val: Int32
+            val: int32
 
-            def __init__(self, val: Int32) -> None:
+            def __init__(self, val: int32) -> None:
                 self.val = val
 
         name: str
@@ -14,9 +14,9 @@ class Outer:
         def __init__(self, name: str) -> None:
             self.name = name
 
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 def main() -> None:

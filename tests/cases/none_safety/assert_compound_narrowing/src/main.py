@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 
 
-def clamp_positive(x: Int32 | None) -> Int32:
+def clamp_positive(x: int32 | None) -> int32:
     assert x is not None and x > 0, "need positive"
     return x + 1
 

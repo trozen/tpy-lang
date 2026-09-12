@@ -40,17 +40,17 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
 // class Wrapper[T](Container[T]):
 template<typename T>
 struct Wrapper : Container<T> {
-    // extra: Int32
+    // extra: int32
     int32_t extra;
 
-    // def __init__(self, value: T, extra: Int32) -> None:
+    // def __init__(self, value: T, extra: int32) -> None:
     Wrapper() = default;
     explicit Wrapper(::tpy::readonly_form_t<T> value, int32_t extra) : extra(extra) {
         // self.value = value
         this->value = ::tpy::param_to_storage<T>(value);
     }
 
-    // def get_extra(self) -> Int32:
+    // def get_extra(self) -> int32:
     int32_t get_extra() const {
         // return self.extra
         return this->extra;

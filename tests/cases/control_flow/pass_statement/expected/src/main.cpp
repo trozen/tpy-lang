@@ -10,7 +10,7 @@ void empty_function() {
     // pass
 }
 
-// def function_with_pass_branch(x: Int32) -> Int32:
+// def function_with_pass_branch(x: int32) -> int32:
 int32_t function_with_pass_branch(int32_t x) {
     // if x > 0:
     if ((x > 0)) {
@@ -24,11 +24,11 @@ int32_t function_with_pass_branch(int32_t x) {
     return (::tpy::mul_check<int32_t>(x, 2));
 }
 
-// def pass_in_loop() -> Int32:
+// def pass_in_loop() -> int32:
 int32_t pass_in_loop() {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < 10:
     while ((i < 10)) {
@@ -47,7 +47,7 @@ int32_t pass_in_loop() {
     return total;
 }
 
-// def pass_in_elif(x: Int32) -> Int32:
+// def pass_in_elif(x: int32) -> int32:
 int32_t pass_in_elif(int32_t x) {
     // if x < 0:
     if ((x < 0)) {

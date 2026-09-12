@@ -1,1 +1,1 @@
-main.py:3: error: print() 'file' argument must satisfy the Writable protocol (write(str) -> Int32, flush() -> None); got 'IntLiteral(42)'
+main.py:3: error: print() 'file' argument must satisfy the Writable protocol (write(str) -> int32, flush() -> None); got 'IntLiteral(42)'

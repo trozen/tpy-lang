@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def probe(v: Alpha | Beta | Gamma) -> Int32:
+// def probe(v: Alpha | Beta | Gamma) -> int32:
 int32_t probe(::tpy::Union<const Alpha*, const Beta*, const Gamma*> v) {
     // # A tuple isinstance extracts nothing: the holds-OR test emits bare and
     // # the subject stays the variant.

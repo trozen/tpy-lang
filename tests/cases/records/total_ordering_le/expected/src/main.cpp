@@ -3,9 +3,9 @@
 
 namespace tpyapp::main {
 
-// x = Bid(Int32(10))
+// x = Bid(int32(10))
 Bid* x{};
-// y = Bid(Int32(20))
+// y = Bid(int32(20))
 Bid* y{};
 
 void __tpy_init() {
@@ -17,10 +17,10 @@ void __tpy_init() {
     // # __gt__, __ge__ in terms of __le__ and __eq__.
     // from functools import total_ordering
     ::tpystd::functools::__tpy_init();
-    // x = Bid(Int32(10))
+    // x = Bid(int32(10))
     static Bid __global_slot_1 = Bid(10);
     x = &__global_slot_1;
-    // y = Bid(Int32(20))
+    // y = Bid(int32(20))
     static Bid __global_slot_2 = Bid(20);
     y = &__global_slot_2;
     // print(x < y)

@@ -3,17 +3,17 @@
 # proving the per-element check continues past element 0 when element 0
 # is OK. (The first-error-wins behaviour is otherwise documented in the
 # sibling error_tuple_optional_own_param_borrowed test.)
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class P:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
-def take(t: Own[tuple[P | None, P | None]]) -> Int32:
-    return Int32(0)
+def take(t: Own[tuple[P | None, P | None]]) -> int32:
+    return int32(0)
 
 
 def main() -> None:

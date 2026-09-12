@@ -13,15 +13,15 @@ inline constexpr std::string_view __name__ = "__main__";
 
 ::tpy::Union<int32_t, std::string> make_iu();
 ::tpy::Union<int32_t, std::string> make_su();
-::tpy::Union<int32_t, Point, std::string> make_3u();
+::tpy::Union<Point, int32_t, std::string> make_3u();
 void main();
 
 // class Point:
 struct Point {
-    // x: Int32
+    // x: int32
     int32_t x;
 
-    // def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: int32) -> None:
     Point() = default;
     explicit Point(int32_t x);
 
@@ -36,7 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 }
 
 
-// def __init__(self, x: Int32) -> None:
+// def __init__(self, x: int32) -> None:
 inline Point::Point(int32_t x) : x(x) {}
 
 // def __repr__(self) -> str:

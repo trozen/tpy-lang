@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 from traits import Printable
 
 class Message:
@@ -13,9 +13,9 @@ class Message:
 def show(p: Printable) -> None:
     print(p.to_string())
 
-def main() -> Int32:
+def main() -> int32:
     m = Message("Hello")
     show(m)
-    return Int32(0)
+    return int32(0)
 
 main()

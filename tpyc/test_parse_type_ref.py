@@ -24,8 +24,8 @@ def _make_parser() -> Parser:
     parser = Parser()
     parser.parse(
         "from tpy import Ptr, Own, readonly, auto_readonly, auto_own, Fn\n"
-        "from tpy import (Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64,\n"
-        "                 Char, Float32, String, StrView, BytesView,\n"
+        "from tpy import (int8, int16, int32, int64, uint8, uint16, uint32, uint64,\n"
+        "                 char, float32, String, StrView, BytesView,\n"
         "                 basic_slice, slice, Array, Span)\n"
         "from typing import Optional, Final, Callable, Literal, Self\n"
         "pass\n",
@@ -43,9 +43,9 @@ def _parse_ann(parser: Parser, annotation_src: str):
 
 class TestLeafNames:
     def test_bare_name(self):
-        ref = _parse_ann(_make_parser(), "Int32")
+        ref = _parse_ann(_make_parser(), "int32")
         assert isinstance(ref, TpyTypeRef)
-        assert ref.name == "Int32"
+        assert ref.name == "int32"
         assert ref.args == ()
 
     def test_user_record_name(self):
@@ -73,46 +73,46 @@ class TestLeafNames:
 
 class TestGenerics:
     def test_list_of_int(self):
-        ref = _parse_ann(_make_parser(), "list[Int32]")
+        ref = _parse_ann(_make_parser(), "list[int32]")
         assert isinstance(ref, TpyTypeRef)
         assert ref.name == "list"
         assert len(ref.args) == 1
         inner = ref.args[0]
-        assert isinstance(inner, TpyTypeRef) and inner.name == "Int32"
+        assert isinstance(inner, TpyTypeRef) and inner.name == "int32"
 
     def test_dict_of_str_int(self):
-        ref = _parse_ann(_make_parser(), "dict[str, Int32]")
+        ref = _parse_ann(_make_parser(), "dict[str, int32]")
         assert isinstance(ref, TpyTypeRef)
         assert ref.name == "dict"
         assert len(ref.args) == 2
         k, v = ref.args
         assert isinstance(k, TpyTypeRef) and k.name == "str"
-        assert isinstance(v, TpyTypeRef) and v.name == "Int32"
+        assert isinstance(v, TpyTypeRef) and v.name == "int32"
 
     def test_array_with_int_size(self):
-        ref = _parse_ann(_make_parser(), "Array[Int32, 8]")
+        ref = _parse_ann(_make_parser(), "Array[int32, 8]")
         assert isinstance(ref, TpyTypeRef)
         assert ref.name == "Array"
         assert len(ref.args) == 2
         elem, size = ref.args
-        assert isinstance(elem, TpyTypeRef) and elem.name == "Int32"
+        assert isinstance(elem, TpyTypeRef) and elem.name == "int32"
         assert size == 8
 
     def test_nested_generic(self):
-        ref = _parse_ann(_make_parser(), "list[dict[str, Int32]]")
+        ref = _parse_ann(_make_parser(), "list[dict[str, int32]]")
         assert isinstance(ref, TpyTypeRef) and ref.name == "list"
         outer_arg = ref.args[0]
         assert isinstance(outer_arg, TpyTypeRef) and outer_arg.name == "dict"
         k, v = outer_arg.args
         assert isinstance(k, TpyTypeRef) and k.name == "str"
-        assert isinstance(v, TpyTypeRef) and v.name == "Int32"
+        assert isinstance(v, TpyTypeRef) and v.name == "int32"
 
     def test_user_generic_record(self):
-        ref = _parse_ann(_make_parser(), "Stack[Int32]")
+        ref = _parse_ann(_make_parser(), "Stack[int32]")
         assert isinstance(ref, TpyTypeRef)
         assert ref.name == "Stack"
         assert len(ref.args) == 1
-        assert isinstance(ref.args[0], TpyTypeRef) and ref.args[0].name == "Int32"
+        assert isinstance(ref.args[0], TpyTypeRef) and ref.args[0].name == "int32"
 
 
 class TestStructuralWrappers:
@@ -122,11 +122,11 @@ class TestStructuralWrappers:
     # only fire when the walker confirmed module resolution).
 
     def test_ptr(self):
-        ref = _parse_ann(_make_parser(), "Ptr[Int32]")
+        ref = _parse_ann(_make_parser(), "Ptr[int32]")
         assert isinstance(ref, TpyTypeRef)
         assert ref.name == "tpy:Ptr"
         assert len(ref.args) == 1
-        assert isinstance(ref.args[0], TpyTypeRef) and ref.args[0].name == "Int32"
+        assert isinstance(ref.args[0], TpyTypeRef) and ref.args[0].name == "int32"
 
     def test_own(self):
         ref = _parse_ann(_make_parser(), "Own[MyRecord]")
@@ -134,12 +134,12 @@ class TestStructuralWrappers:
         assert ref.name == "tpy:Own"
 
     def test_readonly(self):
-        ref = _parse_ann(_make_parser(), "readonly[Int32]")
+        ref = _parse_ann(_make_parser(), "readonly[int32]")
         assert isinstance(ref, TpyTypeRef)
         assert ref.name == "tpy:readonly"
 
     def test_auto_readonly(self):
-        ref = _parse_ann(_make_parser(), "auto_readonly[Int32]")
+        ref = _parse_ann(_make_parser(), "auto_readonly[int32]")
         assert isinstance(ref, TpyTypeRef)
         assert ref.name == "tpy:auto_readonly"
 
@@ -149,36 +149,36 @@ class TestStructuralWrappers:
         assert ref.name == "tpy:auto_own"
 
     def test_optional(self):
-        ref = _parse_ann(_make_parser(), "Optional[Int32]")
+        ref = _parse_ann(_make_parser(), "Optional[int32]")
         assert isinstance(ref, TpyTypeRef)
         assert ref.name == "typing:Optional"
 
     def test_final(self):
-        ref = _parse_ann(_make_parser(), "Final[Int32]")
+        ref = _parse_ann(_make_parser(), "Final[int32]")
         assert isinstance(ref, TpyTypeRef)
         assert ref.name == "typing:Final"
 
     def test_ptr_of_readonly(self):
-        # Ptr[readonly[Int32]] -- readonly nested under Ptr.
+        # Ptr[readonly[int32]] -- readonly nested under Ptr.
         # The resolver applies Ptr.is_readonly; walker just records structure.
-        ref = _parse_ann(_make_parser(), "Ptr[readonly[Int32]]")
+        ref = _parse_ann(_make_parser(), "Ptr[readonly[int32]]")
         assert isinstance(ref, TpyTypeRef) and ref.name == "tpy:Ptr"
         inner = ref.args[0]
         assert isinstance(inner, TpyTypeRef) and inner.name == "tpy:readonly"
         leaf = inner.args[0]
-        assert isinstance(leaf, TpyTypeRef) and leaf.name == "Int32"
+        assert isinstance(leaf, TpyTypeRef) and leaf.name == "int32"
 
 
 class TestTuple:
     def test_empty_tuple_allowed_syntactically(self):
         # Parser-level: tuple with no args is syntactically valid here; the
         # resolver raises.
-        ref = _parse_ann(_make_parser(), "tuple[Int32]")
+        ref = _parse_ann(_make_parser(), "tuple[int32]")
         assert isinstance(ref, TpyTypeRef) and ref.name == "builtins:tuple"
         assert len(ref.args) == 1
 
     def test_tuple_multiple(self):
-        ref = _parse_ann(_make_parser(), "tuple[Int32, str, bool]")
+        ref = _parse_ann(_make_parser(), "tuple[int32, str, bool]")
         assert isinstance(ref, TpyTypeRef) and ref.name == "builtins:tuple"
         assert len(ref.args) == 3
         assert all(isinstance(a, TpyTypeRef) for a in ref.args)
@@ -186,37 +186,37 @@ class TestTuple:
 
 class TestUnion:
     def test_simple_union(self):
-        ref = _parse_ann(_make_parser(), "Int32 | str")
+        ref = _parse_ann(_make_parser(), "int32 | str")
         assert isinstance(ref, TpyUnionRef)
         assert len(ref.members) == 2
         a, b = ref.members
-        assert isinstance(a, TpyTypeRef) and a.name == "Int32"
+        assert isinstance(a, TpyTypeRef) and a.name == "int32"
         assert isinstance(b, TpyTypeRef) and b.name == "str"
 
     def test_union_with_none(self):
-        ref = _parse_ann(_make_parser(), "Int32 | None")
+        ref = _parse_ann(_make_parser(), "int32 | None")
         assert isinstance(ref, TpyUnionRef)
         assert len(ref.members) == 2
 
     def test_three_way_union(self):
-        ref = _parse_ann(_make_parser(), "Int32 | str | bool")
+        ref = _parse_ann(_make_parser(), "int32 | str | bool")
         assert isinstance(ref, TpyUnionRef)
         assert len(ref.members) == 3
 
 
 class TestCallable:
     def test_callable(self):
-        ref = _parse_ann(_make_parser(), "Callable[[Int32, str], bool]")
+        ref = _parse_ann(_make_parser(), "Callable[[int32, str], bool]")
         assert isinstance(ref, TpyCallableRef)
         assert ref.kind == "Callable"
         assert len(ref.params) == 2
-        assert isinstance(ref.params[0], TpyTypeRef) and ref.params[0].name == "Int32"
+        assert isinstance(ref.params[0], TpyTypeRef) and ref.params[0].name == "int32"
         assert isinstance(ref.params[1], TpyTypeRef) and ref.params[1].name == "str"
         assert isinstance(ref.return_type, TpyTypeRef)
         assert ref.return_type.name == "bool"
 
     def test_fn(self):
-        ref = _parse_ann(_make_parser(), "Fn[[Int32], bool]")
+        ref = _parse_ann(_make_parser(), "Fn[[int32], bool]")
         assert isinstance(ref, TpyCallableRef)
         assert ref.kind == "Fn"
         assert len(ref.params) == 1
@@ -229,7 +229,7 @@ class TestCallable:
 
     def test_callable_malformed_missing_list(self):
         with pytest.raises(ParseError, match="parameter types must be a list"):
-            _parse_ann(_make_parser(), "Callable[Int32, bool]")
+            _parse_ann(_make_parser(), "Callable[int32, bool]")
 
 
 class TestLiteral:
@@ -268,14 +268,14 @@ class TestUnknownName:
         assert ref.name == "TotallyUnknownName"
 
     def test_unknown_generic_does_not_raise(self):
-        ref = _parse_ann(_make_parser(), "UnknownGeneric[Int32]")
+        ref = _parse_ann(_make_parser(), "UnknownGeneric[int32]")
         assert isinstance(ref, TpyTypeRef)
         assert ref.name == "UnknownGeneric"
 
 
 class TestLoc:
     def test_loc_populated(self):
-        ref = _parse_ann(_make_parser(), "Int32")
+        ref = _parse_ann(_make_parser(), "int32")
         assert ref.loc is not None
         assert ref.loc.line == 1
 
@@ -306,11 +306,11 @@ def _equiv(parser: Parser, annotation_src: str, type_param_scope=None):
 class TestResolverEquivalence:
     @pytest.mark.parametrize("src", [
         # Primitives
-        "Int32", "Int8", "Int16", "Int64",
-        "UInt8", "UInt16", "UInt32", "UInt64",
-        "int", "float", "Float32", "bool",
+        "int32", "int8", "int16", "int64",
+        "uint8", "uint16", "uint32", "uint64",
+        "int", "float", "float32", "bool",
         "str", "bytes", "bytearray", "String", "StrView", "BytesView",
-        "Char", "None",
+        "char", "None",
         # Slice types
         "basic_slice", "slice",
     ])
@@ -318,52 +318,52 @@ class TestResolverEquivalence:
         _equiv(_make_parser(), src)
 
     @pytest.mark.parametrize("src", [
-        "list[Int32]",
+        "list[int32]",
         "list[str]",
-        "dict[str, Int32]",
-        "dict[Int32, str]",
-        "set[Int32]",
-        "tuple[Int32]",
-        "tuple[Int32, str]",
-        "tuple[Int32, str, bool]",
-        "Array[Int32, 8]",
+        "dict[str, int32]",
+        "dict[int32, str]",
+        "set[int32]",
+        "tuple[int32]",
+        "tuple[int32, str]",
+        "tuple[int32, str, bool]",
+        "Array[int32, 8]",
         "Array[str, 16]",
-        "Span[Int32]",
-        "Span[readonly[Int32]]",
+        "Span[int32]",
+        "Span[readonly[int32]]",
     ])
     def test_generics(self, src):
         _equiv(_make_parser(), src)
 
     @pytest.mark.parametrize("src", [
-        "Ptr[Int32]",
-        "Ptr[readonly[Int32]]",
-        "Own[list[Int32]]",
-        "readonly[Int32]",
-        "auto_readonly[Int32]",
-        "auto_own[list[Int32]]",
-        "Optional[Int32]",
-        "Optional[Ptr[Int32]]",
-        "Final[Int32]",
+        "Ptr[int32]",
+        "Ptr[readonly[int32]]",
+        "Own[list[int32]]",
+        "readonly[int32]",
+        "auto_readonly[int32]",
+        "auto_own[list[int32]]",
+        "Optional[int32]",
+        "Optional[Ptr[int32]]",
+        "Final[int32]",
     ])
     def test_structural_wrappers(self, src):
         _equiv(_make_parser(), src)
 
     @pytest.mark.parametrize("src", [
-        "Int32 | str",
-        "Int32 | None",
-        "Int32 | str | bool",
-        "Ptr[Int32] | None",
-        "Optional[Int32]",
-        "list[Int32] | None",
+        "int32 | str",
+        "int32 | None",
+        "int32 | str | bool",
+        "Ptr[int32] | None",
+        "Optional[int32]",
+        "list[int32] | None",
     ])
     def test_unions(self, src):
         _equiv(_make_parser(), src)
 
     @pytest.mark.parametrize("src", [
-        "Callable[[Int32], bool]",
-        "Callable[[Int32, str], bool]",
+        "Callable[[int32], bool]",
+        "Callable[[int32, str], bool]",
         "Callable[[], None]",
-        "Fn[[Int32], bool]",
+        "Fn[[int32], bool]",
         "Fn[[], None]",
     ])
     def test_callable(self, src):
@@ -380,11 +380,11 @@ class TestResolverEquivalence:
 
     @pytest.mark.parametrize("src", [
         # Nested generics + wrappers
-        "list[Ptr[Int32]]",
-        "dict[str, list[Int32]]",
-        "Optional[list[Int32]]",
-        "list[tuple[Int32, str]]",
-        "Callable[[list[Int32]], Optional[str]]",
+        "list[Ptr[int32]]",
+        "dict[str, list[int32]]",
+        "Optional[list[int32]]",
+        "list[tuple[int32, str]]",
+        "Callable[[list[int32]], Optional[str]]",
     ])
     def test_nested(self, src):
         _equiv(_make_parser(), src)
@@ -431,7 +431,7 @@ class TestResolverErrors:
 
     def test_unknown_generic_raises(self):
         parser = _make_parser()
-        node = _ann_tree("UnknownGeneric[Int32]")
+        node = _ann_tree("UnknownGeneric[int32]")
         ref = parser._parse_type_ref(node)
         with pytest.raises(ParseError, match="Unknown generic type"):
             parser._resolve_type_ref_impl(ref)
@@ -484,14 +484,14 @@ class TestResolverLenient:
     def test_lenient_unknown_generic_with_args(self):
         from .typesys import NominalType, INT32
         parser = _make_parser()
-        node = _ann_tree("UnknownGeneric[Int32]")
+        node = _ann_tree("UnknownGeneric[int32]")
         ref = parser._parse_type_ref(node)
         with pytest.raises(ParseError, match="Unknown generic type"):
             parser._resolve_type_ref_impl(ref)
         result = parser._resolver.resolve_lenient(ref)
         assert isinstance(result, NominalType)
         assert result.name == "UnknownGeneric"
-        # Inner Int32 resolves normally through strict path inside the
+        # Inner int32 resolves normally through strict path inside the
         # lenient recursion, so type_args carries the real singleton.
         assert result.type_args == (INT32,)
 
@@ -502,5 +502,5 @@ class TestResolverLenient:
         # not the resolver. The walker runs first, so it raises before
         # the lenient resolver even sees it.
         with pytest.raises(ParseError):
-            node = _ann_tree("Fn[[Int32]]")  # Fn requires [[params], return]
+            node = _ann_tree("Fn[[int32]]")  # Fn requires [[params], return]
             parser._parse_type_ref(node)

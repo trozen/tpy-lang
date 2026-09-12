@@ -5,23 +5,23 @@ Field access on Own[T] should work in:
 - Parameters with Own[T] type
 - Direct access on function calls returning Own[T]
 """
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
-    def __init__(self, x: Int32, y: Int32):
+    def __init__(self, x: int32, y: int32):
         self.x = x
         self.y = y
 
 
-def make_point(x: Int32, y: Int32) -> Own[Point]:
+def make_point(x: int32, y: int32) -> Own[Point]:
     return Point(x, y)
 
 
-def use_owned_point(p: Own[Point]) -> Int32:
+def use_owned_point(p: Own[Point]) -> int32:
     # Field access on Own[T] parameter
     return p.x + p.y
 

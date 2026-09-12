@@ -1,6 +1,6 @@
 # Shared across the ext-exec and cpy-parity runs: each exposed Final constant
 # reads back as the same value and Python type as the plain source binding.
-# TAG (a Char Final) is deliberately not touched here -- it is not exposed by
+# TAG (a char Final) is deliberately not touched here -- it is not exposed by
 # the .so (see ext_checks.py), so referencing it would diverge from the source.
 import constants
 

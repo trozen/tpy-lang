@@ -22,10 +22,10 @@ void main();
 
 // class Sector:
 struct Sector {
-    // floor_h: Int32
+    // floor_h: int32
     int32_t floor_h;
 
-    // def __init__(self, floor_h: Int32) -> None:
+    // def __init__(self, floor_h: int32) -> None:
     Sector() = default;
     explicit Sector(int32_t floor_h);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Sector";
@@ -88,7 +88,7 @@ inline std::ostream& operator<<(std::ostream& os, const Map& obj) {
 }
 
 
-// def __init__(self, floor_h: Int32) -> None:
+// def __init__(self, floor_h: int32) -> None:
 inline Sector::Sector(int32_t floor_h) : floor_h(floor_h) {}
 
 // def __init__(self, sector_front: Ptr[Sector]) -> None:

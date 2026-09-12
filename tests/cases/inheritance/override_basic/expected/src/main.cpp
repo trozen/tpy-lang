@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // s = Square(Int32(4))
+    // s = Square(int32(4))
     Square s = Square(4);
     // print(s.area())
     std::cout << s.area() << "\n";

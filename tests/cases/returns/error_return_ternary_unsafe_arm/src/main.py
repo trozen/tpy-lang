@@ -5,11 +5,11 @@
 # flagged dangling. This guards against a merge bug where one safe arm
 # would falsely poll as "safe enough" for the whole ternary.
 
-from tpy import Int32
+from tpy import int32
 
 
 class Point:
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 

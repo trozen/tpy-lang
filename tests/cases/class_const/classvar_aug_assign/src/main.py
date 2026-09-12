@@ -1,10 +1,10 @@
 # Aug-assign on a mutable ClassVar updates the class-scoped storage in place.
 from typing import ClassVar
-from tpy import Int32
+from tpy import int32
 
 
 class Counter:
-    instances: ClassVar[Int32] = 0
+    instances: ClassVar[int32] = 0
 
     def __init__(self) -> None:
         Counter.instances += 1

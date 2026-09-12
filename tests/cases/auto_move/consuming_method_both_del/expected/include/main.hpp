@@ -16,11 +16,11 @@ void main();
 
 // class Base:
 struct Base {
-    // _ptr: Ptr[Int32]
+    // _ptr: Ptr[int32]
     int32_t* _ptr;
     bool __tpy_owned_ = true;
 
-    // def __init__(self, value: Int32):
+    // def __init__(self, value: int32):
     explicit Base(int32_t value);
     Base(const Base&) = delete;
     Base& operator=(const Base&) = delete;
@@ -39,10 +39,10 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
 
 // class Child(Base):
 struct Child : Base {
-    // _extra: Int32
+    // _extra: int32
     int32_t _extra;
 
-    // def __init__(self, value: Int32, extra: Int32):
+    // def __init__(self, value: int32, extra: int32):
     explicit Child(int32_t value, int32_t extra);
     Child(const Child&) = delete;
     Child& operator=(const Child&) = delete;
@@ -52,7 +52,7 @@ struct Child : Base {
     // def __del__(self):
     ~Child();
 
-    // def take(self: Own[Self]) -> Int32:
+    // def take(self: Own[Self]) -> int32:
     int32_t take() &&;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
@@ -63,7 +63,7 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 }
 
 
-// def __init__(self, value: Int32):
+// def __init__(self, value: int32):
 inline Base::Base(int32_t value) {
     // print("Base.init", value)
     std::cout << "Base.init" << " " << value << "\n";
@@ -95,7 +95,7 @@ inline Base::~Base() {
     ::operator delete(this->_ptr, std::align_val_t(alignof(int32_t)));
 }
 
-// def __init__(self, value: Int32, extra: Int32):
+// def __init__(self, value: int32, extra: int32):
 inline Child::Child(int32_t value, int32_t extra) : Base(value), _extra(extra) {
     // print("Child.init", extra)
     std::cout << "Child.init" << " " << extra << "\n";
@@ -119,12 +119,12 @@ inline Child::~Child() {
     std::cout << "Child.del" << "\n";
 }
 
-// def take(self: Own[Self]) -> Int32:
+// def take(self: Own[Self]) -> int32:
 inline int32_t Child::take() && {
     this->__tpy_owned_ = false;
     // print("take")
     std::cout << "take" << "\n";
-    // val: Int32 = unsafe_move_out(self._ptr)
+    // val: int32 = unsafe_move_out(self._ptr)
     int32_t val = std::move(*this->_ptr);
     // unsafe_free(self._ptr)
     ::operator delete(this->_ptr, std::align_val_t(alignof(int32_t)));

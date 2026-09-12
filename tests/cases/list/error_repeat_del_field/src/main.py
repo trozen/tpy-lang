@@ -1,12 +1,12 @@
 # A copyable-looking record with a __del__-bearing FIELD is transitively
 # copy-deleted in C++; repeating it must be rejected like the direct case.
-from tpy import Int32
+from tpy import int32
 
 
 class Res:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
     def __del__(self) -> None:
@@ -16,7 +16,7 @@ class Res:
 class Wrap:
     res: Res
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.res = Res(v)
 
 

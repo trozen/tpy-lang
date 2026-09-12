@@ -2,13 +2,13 @@
 # the name live past the branch that owns the manager, so the manager has to
 # outlive the branch too. A source-order scan sees no read after the statement
 # and leaves the manager block-scoped, which dangles.
-from tpy import Int32
+from tpy import int32
 
 
 class Reg:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
     def __enter__(self) -> "Reg":
@@ -18,7 +18,7 @@ class Reg:
         pass
 
 
-def outer(flag: bool) -> Int32:
+def outer(flag: bool) -> int32:
     if flag:
         with Reg(11) as v:
             pass
@@ -29,7 +29,7 @@ def outer(flag: bool) -> Int32:
     # The only use of `v` -- through a capture, after both managers' blocks.
     # It mutates, so a copy at the boundary would read back the un-incremented
     # value instead of dangling quietly.
-    def inner() -> Int32:
+    def inner() -> int32:
         v.n += 1
         return v.n
 

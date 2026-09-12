@@ -1,10 +1,10 @@
 # A generator binding `a` first as a for-loop variable and later as a
 # tuple-unpack target: the loop variable is shadowed inside the frame.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
-def gen(xs: list[Int32]) -> Iterator[Int32]:
+def gen(xs: list[int32]) -> Iterator[int32]:
     yield 0
     total = 0
     # `a` is rebound below, so the loop variable cannot own a frame slot.

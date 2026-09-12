@@ -4,11 +4,11 @@
 namespace tpyapp::main {
 
 
-// # Discriminates on Float64 (== float under CPython) so an int arg narrows
+// # Discriminates on float64 (== float under CPython) so an int arg narrows
 // # identically on both runtimes.
-// def take_vu(v: Int32 | Float64) -> Int32:
-int32_t take_vu(const ::tpy::Union<int32_t, double>& v) {
-    // if isinstance(v, Float64):
+// def take_vu(v: int32 | float64) -> int32:
+int32_t take_vu(const ::tpy::Union<double, int32_t>& v) {
+    // if isinstance(v, float64):
     if (std::holds_alternative<double>(v)) {
         const auto& __v = std::get<double>(v);
         // return -1
@@ -38,14 +38,14 @@ int32_t take_vu(const ::tpy::Union<int32_t, double>& v) {
     return ::tpy::__getitem__(xs, 0);
 }
 
-// def countdown(total: Int32) -> Int32:
+// def countdown(total: int32) -> int32:
 int32_t countdown(int32_t total) {
     // # Variant temp reads loop-mutated state: stale snapshot never terminates.
     // it = 0
     int32_t it = 0;
     // while take_vu(total) > 0:
     while (true) {
-        ::tpy::Union<int32_t, double> __tmp_1 = total;
+        ::tpy::Union<double, int32_t> __tmp_1 = total;
         if (!((take_vu(__tmp_1) > 0))) break;
         // total -= 1
         total = ::tpy::sub_check<int32_t>(total, 1);
@@ -147,13 +147,13 @@ int32_t countdown(int32_t total) {
     return ::tpy::BigInt(steps);
 }
 
-// def weigh(p: Pack) -> Int32:
+// def weigh(p: Pack) -> int32:
 int32_t weigh(const Pack& p) {
     // return p.n
     return p.n;
 }
 
-// def ctor_rvalue_cond(start: Int32) -> Int32:
+// def ctor_rvalue_cond(start: int32) -> int32:
 int32_t ctor_rvalue_cond(int32_t start) {
     // # Record-ctor rvalue arg temp reads a loop-mutated var each iteration.
     // n = start
@@ -201,7 +201,7 @@ int32_t ctor_rvalue_cond(int32_t start) {
     return ::tpy::BigInt(hits);
 }
 
-// def walrus_cond(stop: Int32) -> Int32:
+// def walrus_cond(stop: int32) -> int32:
 int32_t walrus_cond(int32_t stop) {
     // # Named walrus pre-decl stays before the loop (visible after it);
     // # inverse guard for the named/anonymous flush split.

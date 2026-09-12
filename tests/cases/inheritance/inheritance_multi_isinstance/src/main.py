@@ -1,5 +1,5 @@
 # isinstance across multi-base hierarchy folds to True for every base in the MRO.
-from tpy import Int32
+from tpy import int32
 
 
 class Named:
@@ -7,17 +7,17 @@ class Named:
 
 
 class Counted:
-    count: Int32
+    count: int32
 
 
 class Widget(Named, Counted):
-    def __init__(self, name: str, count: Int32) -> None:
+    def __init__(self, name: str, count: int32) -> None:
         self.name = name
         self.count = count
 
 
 def main() -> None:
-    w = Widget("x", Int32(1))
+    w = Widget("x", int32(1))
     # Both folds resolve at compile time via MRO membership.
     if isinstance(w, Named):  # tpyc: ok
         print("isa Named")

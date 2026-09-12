@@ -1,5 +1,5 @@
-from tpy import Int32
+from tpy import int32
 from typing import Final
 
-LIMIT: Final[Int32] = 16
+LIMIT: Final[int32] = 16
 banner: Final[str] = "ok"

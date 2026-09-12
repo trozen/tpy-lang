@@ -1,5 +1,5 @@
 # Float literals in containers adapt to context (FloatLiteralType inference)
-from tpy import Float32
+from tpy import float32
 
 def test_list_inferred() -> None:
     xs = [1.5, 2.5, 3.5]  # tpyc: type(list[float])
@@ -7,7 +7,7 @@ def test_list_inferred() -> None:
     print(xs)
 
 def test_list_annotated_float32() -> None:
-    xs: list[Float32] = [1.0, 2.0, 3.0]  # tpyc: type(list[Float32])
+    xs: list[float32] = [1.0, 2.0, 3.0]  # tpyc: type(list[float32])
     print(xs)
 
 def test_dict_inferred() -> None:
@@ -19,8 +19,8 @@ def test_set_inferred() -> None:
     print(s)
 
 def test_ternary_float_literal() -> None:
-    x: Float32 = Float32(1.0)
-    y = x if True else 2.0  # tpyc: type(Float32)
+    x: float32 = float32(1.0)
+    y = x if True else 2.0  # tpyc: type(float32)
     print(y)
 
 def test_annotated_float64() -> None:

@@ -175,11 +175,11 @@ struct DictWriter {
         // # take const str&); the subscript `self.fieldnames[i]` binds a str&.
         // ordered: list[str] = []
         std::vector<std::string> ordered = std::vector<std::string>{};
-        // matched: Int32 = 0
+        // matched: int32 = 0
         int32_t matched = 0;
-        // i: Int32 = 0
+        // i: int32 = 0
         int32_t i = 0;
-        // m: Int32 = len(self.fieldnames)
+        // m: int32 = len(self.fieldnames)
         int32_t m = ::tpy::__len__(this->fieldnames);
         // while i < m:
         while ((i < m)) {
@@ -295,9 +295,9 @@ std::expected<std::vector<std::string>, ::tpy::StopIteration> __gen__parse_rows<
             row.emplace(std::vector<std::string>{});
             // parts: list[str] = []
             parts.emplace(std::vector<std::string>{});
-            // i: Int32 = 0
+            // i: int32 = 0
             i = 0;
-            // n: Int32 = len(line)
+            // n: int32 = len(line)
             n = ::tpy::__len__(line);
             // in_quotes = False
             in_quotes = false;
@@ -521,9 +521,9 @@ std::expected<std::vector<std::string>, ::tpy::StopIteration> __gen_reader<T_fp>
             row.emplace(std::vector<std::string>{});
             // parts: list[str] = []
             parts.emplace(std::vector<std::string>{});
-            // i: Int32 = 0
+            // i: int32 = 0
             i = 0;
-            // n: Int32 = len(line)
+            // n: int32 = len(line)
             n = ::tpy::__len__(line);
             // in_quotes = False
             in_quotes = false;
@@ -730,9 +730,9 @@ std::expected<::tpy::ordered_map<std::string, std::string>, ::tpy::StopIteration
             // # The first row supplies the field names when none were given.
             // # Index loop, not `for name in row` -- the for-loop var over a
             // # list in this resumable frame trips a Pending crash (BUGS.md).
-            // h: Int32 = 0
+            // h: int32 = 0
             h = 0;
-            // hn: Int32 = len(row)
+            // hn: int32 = len(row)
             hn = ::tpy::__len__((*row));
             // while h < hn:
             while ((h < hn)) {
@@ -753,9 +753,9 @@ std::expected<::tpy::ordered_map<std::string, std::string>, ::tpy::StopIteration
             // # Index loop (not `for name in self.fieldnames`): a for-loop var
             // # over a list field in this resumable frame trips a Pending-type
             // # crash (BUGS.md). A short row pads missing fields with "".
-            // i: Int32 = 0
+            // i: int32 = 0
             i = 0;
-            // m: Int32 = len(self.fieldnames)
+            // m: int32 = len(self.fieldnames)
             m = ::tpy::__len__(__self.fieldnames);
             // while i < m:
             while ((i < m)) {

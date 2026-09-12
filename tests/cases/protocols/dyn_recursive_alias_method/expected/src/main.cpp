@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def run(c: Counter) -> Int32:
+// def run(c: Counter) -> int32:
 int32_t run(Counter& c) {
     // t: Tree[int] = [1, [2, 3], 4]
     ::tpyapp::treelib::Tree<::tpy::BigInt> t = std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{1, std::vector<::tpyapp::treelib::Tree<::tpy::BigInt>>{2, 3}, 4};

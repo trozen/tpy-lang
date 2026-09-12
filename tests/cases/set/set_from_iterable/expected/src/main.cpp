@@ -6,9 +6,9 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // items: list[Int32] = [10, 20, 30, 20, 10]
+    // items: list[int32] = [10, 20, 30, 20, 10]
     std::vector<int32_t> items = {10, 20, 30, 20, 10};
-    // s: set[Int32] = set(items)
+    // s: set[int32] = set(items)
     ::tpy::ordered_set<int32_t> s = ::tpy::set_construct<int32_t>(::tpy::own_iter(std::move(items)));
     // print(s)
     std::cout << ::tpy::SetPrinter(s) << "\n";

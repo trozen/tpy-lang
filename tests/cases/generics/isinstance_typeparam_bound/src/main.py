@@ -2,25 +2,25 @@
 # per-instantiation compile-time trait: ancestor/equal checks hold for every
 # instantiation, and a descendant check resolves correctly per concrete T
 # (isinstance(x, Puppy) is True when T=Puppy, False when T=Dog).
-from tpy import Int32
+from tpy import int32
 
 class Animal:
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
 class Dog(Animal):
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
 class Puppy(Dog):
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
 class Cat(Animal):
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
-def classify[T: Dog](x: T) -> Int32:
+def classify[T: Dog](x: T) -> int32:
     code = 0
     if isinstance(x, Animal):  # tpyc: ok
         code += 1

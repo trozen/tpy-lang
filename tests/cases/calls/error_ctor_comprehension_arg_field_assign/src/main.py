@@ -2,11 +2,11 @@
 # comprehension argument as a RECORD FIELD assignment has no statement flush
 # for the hoisted temp and keeps rejecting
 # (BUGS.md#ctor-call-arg-temp-flush-positions).
-from tpy import Int32
+from tpy import int32
 
 
 class Flat:
-    n: Int32
+    n: int32
 
     def __init__(self, data: list[bytes]) -> None:
         self.n = len(data)

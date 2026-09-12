@@ -1,5 +1,5 @@
 # T: ValueType bound should use std::optional<T> (not T*) for Optional[T].
-from tpy import Int32, ValueType
+from tpy import int32, ValueType
 
 class Box[T: ValueType]:
     _value: T
@@ -15,8 +15,8 @@ class Box[T: ValueType]:
         self._has = False
 
 def main() -> None:
-    b = Box[Int32](42)
-    v = b.get()  # tpyc: type(Int32 | None)
+    b = Box[int32](42)
+    v = b.get()  # tpyc: type(int32 | None)
     if v is not None:
         print("got:", v)
 

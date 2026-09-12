@@ -20,10 +20,10 @@ void main();
 
 // class Sentinel:
 struct Sentinel {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32):
+    // def __init__(self, n: int32):
     Sentinel() = default;
     explicit Sentinel(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Sentinel";
@@ -84,7 +84,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
 };
 
 
-// def __init__(self, n: Int32):
+// def __init__(self, n: int32):
 inline Sentinel::Sentinel(int32_t n) : n(n) {}
 
 inline Wrapper::Wrapper(Wrapper&& other) noexcept {

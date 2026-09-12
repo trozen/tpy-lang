@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def make(n: Int32) -> tuple[Int32, Int32]:
+// def make(n: int32) -> tuple[int32, int32]:
 std::tuple<int32_t, int32_t> make(int32_t n) {
     // return (n, n + 1)
     return std::tuple<int32_t, int32_t>{n, (::tpy::add_check<int32_t>(n, 1))};
 }
 
-// def from_call(n: Int32) -> Int32:
+// def from_call(n: int32) -> int32:
 int32_t from_call(int32_t n) {
     // a, b = make(n)  # tpyc: ok
     auto __tup_1 = make(n);
@@ -20,7 +20,7 @@ int32_t from_call(int32_t n) {
     return (::tpy::add_check<int32_t>(a, b));
 }
 
-// def from_field(h: Holder) -> Int32:
+// def from_field(h: Holder) -> int32:
 int32_t from_field(const Holder& h) {
     // a, b = h.pair  # tpyc: ok
     auto __tup_1 = h.pair;

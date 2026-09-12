@@ -6,19 +6,19 @@ namespace tpyapp::main {
 
 // def forward() -> None:
 void forward() {
-    // a = Float32(10.0) + Int8(5)  # tpyc: type(Float32)
+    // a = float32(10.0) + int8(5)  # tpyc: type(float32)
     float a = ((10.0f) + static_cast<float>(5));
-    // b = Float32(10.0) - Int16(3)  # tpyc: type(Float32)
+    // b = float32(10.0) - int16(3)  # tpyc: type(float32)
     float b = ((10.0f) - static_cast<float>(3));
-    // c = Float32(4.0) * Int64(3)  # tpyc: type(Float32)
+    // c = float32(4.0) * int64(3)  # tpyc: type(float32)
     float c = ((4.0f) * static_cast<float>(3));
-    // d = Float32(12.0) / UInt8(4)  # tpyc: type(Float32)
+    // d = float32(12.0) / uint8(4)  # tpyc: type(float32)
     float d = (::tpy::truediv_f32(12.0f, static_cast<float>(4)));
-    // e = Float32(13.0) // UInt16(5)  # tpyc: type(Float32)
+    // e = float32(13.0) // uint16(5)  # tpyc: type(float32)
     float e = (::tpy::floordiv_f32(13.0f, static_cast<float>(5)));
-    // f = Float32(13.0) % UInt32(5)  # tpyc: type(Float32)
+    // f = float32(13.0) % uint32(5)  # tpyc: type(float32)
     float f = (::tpy::fmod_f32(13.0f, static_cast<float>(5)));
-    // g = Float32(2.0) ** UInt64(3)  # tpyc: type(Float32)
+    // g = float32(2.0) ** uint64(3)  # tpyc: type(float32)
     float g = (std::pow(2.0f, static_cast<float>(3)));
     // print(a, b, c, d, e, f, g)
     std::cout << ::tpy::print_float(static_cast<double>(a)) << " " << ::tpy::print_float(static_cast<double>(b)) << " " << ::tpy::print_float(static_cast<double>(c)) << " " << ::tpy::print_float(static_cast<double>(d)) << " " << ::tpy::print_float(static_cast<double>(e)) << " " << ::tpy::print_float(static_cast<double>(f)) << " " << ::tpy::print_float(static_cast<double>(g)) << "\n";
@@ -26,19 +26,19 @@ void forward() {
 
 // def reverse() -> None:
 void reverse() {
-    // a = Int8(5) + Float32(10.0)  # tpyc: type(Float32)
+    // a = int8(5) + float32(10.0)  # tpyc: type(float32)
     float a = (static_cast<float>(5) + (10.0f));
-    // b = Int16(3) - Float32(10.0)  # tpyc: type(Float32)
+    // b = int16(3) - float32(10.0)  # tpyc: type(float32)
     float b = (static_cast<float>(3) - (10.0f));
-    // c = Int64(3) * Float32(4.0)  # tpyc: type(Float32)
+    // c = int64(3) * float32(4.0)  # tpyc: type(float32)
     float c = (static_cast<float>(3) * (4.0f));
-    // d = UInt8(12) / Float32(4.0)  # tpyc: type(Float32)
+    // d = uint8(12) / float32(4.0)  # tpyc: type(float32)
     float d = (::tpy::truediv_f32(static_cast<float>(12), 4.0f));
-    // e = UInt16(13) // Float32(5.0)  # tpyc: type(Float32)
+    // e = uint16(13) // float32(5.0)  # tpyc: type(float32)
     float e = (::tpy::floordiv_f32(static_cast<float>(13), 5.0f));
-    // f = UInt32(13) % Float32(5.0)  # tpyc: type(Float32)
+    // f = uint32(13) % float32(5.0)  # tpyc: type(float32)
     float f = (::tpy::fmod_f32(static_cast<float>(13), 5.0f));
-    // g = UInt64(2) ** Float32(3.0)  # tpyc: type(Float32)
+    // g = uint64(2) ** float32(3.0)  # tpyc: type(float32)
     float g = (std::pow(static_cast<float>(2), 3.0f));
     // print(a, b, c, d, e, f, g)
     std::cout << ::tpy::print_float(static_cast<double>(a)) << " " << ::tpy::print_float(static_cast<double>(b)) << " " << ::tpy::print_float(static_cast<double>(c)) << " " << ::tpy::print_float(static_cast<double>(d)) << " " << ::tpy::print_float(static_cast<double>(e)) << " " << ::tpy::print_float(static_cast<double>(f)) << " " << ::tpy::print_float(static_cast<double>(g)) << "\n";
@@ -46,13 +46,13 @@ void reverse() {
 
 // def augmented() -> None:
 void augmented() {
-    // y = Float32(20.0)
+    // y = float32(20.0)
     float y = 20.0f;
-    // y += Int8(5)
+    // y += int8(5)
     y = (y) + static_cast<float>(5);
-    // y -= Int16(5)
+    // y -= int16(5)
     y = (y) - static_cast<float>(5);
-    // y *= UInt32(2)
+    // y *= uint32(2)
     y = (y) * static_cast<float>(2);
     // print(y)
     std::cout << ::tpy::print_float(static_cast<double>(y)) << "\n";

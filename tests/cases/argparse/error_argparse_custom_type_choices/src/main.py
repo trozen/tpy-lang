@@ -2,7 +2,7 @@
 # would need an equality predicate on the user type plus a way to
 # render macro-time literals in the matched-set check; v1 punts.
 from __future__ import annotations
-from tpy import Own, Int32
+from tpy import Own, int32
 from argparse import ArgumentParser
 
 
@@ -17,7 +17,7 @@ class Tag:
         return Tag(s)
 
 
-def main() -> Int32:
+def main() -> int32:
     parser = ArgumentParser()
     parser.add_argument("--tag", type=Tag, choices=("a", "b"))  # tpyc: error(/type=<custom> does not support choices=/)
     parser.parse_args([])

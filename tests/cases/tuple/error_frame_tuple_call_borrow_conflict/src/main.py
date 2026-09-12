@@ -2,21 +2,21 @@
 # yield are rejected: the two inits want different field forms for the element.
 from typing import Iterator
 
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class A:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 
-def make_pair() -> Own[tuple[A, Int32]]:
+def make_pair() -> Own[tuple[A, int32]]:
     return (A(7), 3)
 
 
-def g(a: A, c: bool) -> Iterator[Int32]:
+def g(a: A, c: bool) -> Iterator[int32]:
     if c:
         t = (a, 2)
     else:

@@ -17,36 +17,36 @@ void main();
 struct Outer {
     // class Inner:
     struct Inner {
-        // y: Int32
+        // y: int32
         int32_t y;
 
-        // def __init__(self, y: Int32) -> None:
+        // def __init__(self, y: int32) -> None:
         Inner() = default;
         explicit Inner(int32_t y);
 
-        // def doubled(self) -> Int32:
+        // def doubled(self) -> int32:
         int32_t doubled() const;
         static constexpr std::string_view __tpy_class_name__ = "__main__.Outer.Inner";
     };
 
     // class Pair:
     struct Pair {
-        // v: Int32
+        // v: int32
         int32_t v;
 
         // # A defaulted parameter of a NESTED constructor, filled by a
         // # positional argument or left to its default; the keyword
         // # spelling is tests/cases/calls/error_nested_ctor_kwargs.
-        // def __init__(self, v: Int32, w: Int32 = 0) -> None:
+        // def __init__(self, v: int32, w: int32 = 0) -> None:
         Pair() = default;
         explicit Pair(int32_t v, int32_t w = 0);
         static constexpr std::string_view __tpy_class_name__ = "__main__.Outer.Pair";
     };
 
-    // x: Int32
+    // x: int32
     int32_t x;
 
-    // def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: int32) -> None:
     Outer() = default;
     explicit Outer(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Outer";
@@ -68,10 +68,10 @@ inline std::ostream& operator<<(std::ostream& os, const Outer::Pair& obj) {
 }
 
 
-// def __init__(self, y: Int32) -> None:
+// def __init__(self, y: int32) -> None:
 inline Outer::Inner::Inner(int32_t y) : y(y) {}
 
-// def doubled(self) -> Int32:
+// def doubled(self) -> int32:
 inline int32_t Outer::Inner::doubled() const {
     // return self.y * 2
     return (::tpy::mul_check<int32_t>(this->y, 2));
@@ -80,10 +80,10 @@ inline int32_t Outer::Inner::doubled() const {
 // # A defaulted parameter of a NESTED constructor, filled by a
 // # positional argument or left to its default; the keyword
 // # spelling is tests/cases/calls/error_nested_ctor_kwargs.
-// def __init__(self, v: Int32, w: Int32 = 0) -> None:
+// def __init__(self, v: int32, w: int32 = 0) -> None:
 inline Outer::Pair::Pair(int32_t v, int32_t w) : v((::tpy::add_check<int32_t>(v, w))) {}
 
-// def __init__(self, x: Int32) -> None:
+// def __init__(self, x: int32) -> None:
 inline Outer::Outer(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

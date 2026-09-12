@@ -21,11 +21,11 @@ struct Source {
     // self.n = start
     int32_t n;
 
-    // def __init__(self, start: Int32):
+    // def __init__(self, start: int32):
     Source() = default;
     explicit Source(int32_t start);
 
-    // def __enter__(self) -> Int32:
+    // def __enter__(self) -> int32:
     int32_t __enter__() const;
 
     // def __exit__(self, et, ev, tb) -> None:
@@ -63,10 +63,10 @@ struct __gen_steps : public ::tpy::next_iter_mixin<__gen_steps, int32_t> {
 };
 
 
-// def __init__(self, start: Int32):
+// def __init__(self, start: int32):
 inline Source::Source(int32_t start) : n(start) {}
 
-// def __enter__(self) -> Int32:
+// def __enter__(self) -> int32:
 inline int32_t Source::__enter__() const {
     // return self.n
     return this->n;

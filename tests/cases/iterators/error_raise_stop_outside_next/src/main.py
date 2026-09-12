@@ -1,10 +1,10 @@
-from tpy import Int32
+from tpy import int32
 
 class Foo:
-    value: Int32
+    value: int32
 
     def __init__(self) -> None:
         self.value = 0
 
-    def some_method(self) -> Int32:
+    def some_method(self) -> int32:
         raise StopIteration  # tpyc: error(/raise StopIteration.*requires.*error_return/)

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def probe_twin(val: Int32 | None) -> bool:
+// def probe_twin(val: int32 | None) -> bool:
 bool probe_twin(std::optional<int32_t> val) {
     // return val is not None
     return (val.has_value());
@@ -21,13 +21,13 @@ Cell& first_or_twin(Cell* val, Cell& fallback) {
     return (*val);
 }
 
-// def mk() -> Int32:
+// def mk() -> int32:
 int32_t mk() {
     // return 5
     return 5;
 }
 
-// def gen_body(n: Int32) -> Iterator[bool]:
+// def gen_body(n: int32) -> Iterator[bool]:
 std::expected<bool, ::tpy::StopIteration> __gen_gen_body::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -50,26 +50,26 @@ std::expected<bool, ::tpy::StopIteration> __gen_gen_body::__next__() {
 }
 
 
-// def gen_body(n: Int32) -> Iterator[bool]:
+// def gen_body(n: int32) -> Iterator[bool]:
 __gen_gen_body gen_body(int32_t n) {
     return __gen_gen_body(n);
 }
 
 // @error_return(Stop)
-// def er_gen(n: Int32) -> bool:
+// def er_gen(n: int32) -> bool:
 std::expected<bool, Stop> er_gen(int32_t n) {
     // return probe_gen(n + 1)  # tpyc: ok
     return probe_gen<int32_t>((::tpy::add_check<int32_t>(n, 1)));
 }
 
 // @error_return(Stop)
-// def er_twin(n: Int32) -> bool:
+// def er_twin(n: int32) -> bool:
 std::expected<bool, Stop> er_twin(int32_t n) {
     // return probe_twin(n + 1)
     return probe_twin((::tpy::add_check<int32_t>(n, 1)));
 }
 
-// async def probe_async_twin(val: Int32 | None) -> bool:
+// async def probe_async_twin(val: int32 | None) -> bool:
 ::tpystd::tpy::Poll<bool> __coro_probe_async_twin::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
@@ -85,7 +85,7 @@ std::expected<bool, Stop> er_twin(int32_t n) {
 }
 
 
-// async def probe_async_twin(val: Int32 | None) -> bool:
+// async def probe_async_twin(val: int32 | None) -> bool:
 __coro_probe_async_twin probe_async_twin(std::optional<int32_t> val) {
     return __coro_probe_async_twin(val);
 }
@@ -111,13 +111,13 @@ __coro_probe_pinned_twin probe_pinned_twin(Pinned* val) {
     return __coro_probe_pinned_twin(val);
 }
 
-// async def amain(n: Int32) -> None:
+// async def amain(n: int32) -> None:
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // v: Int32 | None = n + 1
+        // v: int32 | None = n + 1
         v = (::tpy::add_check<int32_t>(n, 1));
-        // v_none: Int32 | None = None
+        // v_none: int32 | None = None
         v_none = std::nullopt;
         // c = Cell(5)
         c.emplace(Cell(5));
@@ -263,7 +263,7 @@ __coro_probe_pinned_twin probe_pinned_twin(Pinned* val) {
 }
 
 
-// async def amain(n: Int32) -> None:
+// async def amain(n: int32) -> None:
 __coro_amain amain(int32_t n) {
     return __coro_amain(n);
 }
@@ -294,9 +294,9 @@ void main() {
     std::cout << "free_ref" << " " << c.n << " " << d.n << " " << first_or<Cell>(none_cell, d).n << " " << ::tpy::print_bool(probe_gen<Cell>(none_cell)) << "\n";
     // print("free_ref_twin", first_or_twin(none_cell, d).n)
     std::cout << "free_ref_twin" << " " << first_or_twin(none_cell, d).n << "\n";
-    // box = Container[Int32](None)
+    // box = Container[int32](None)
     Container<int32_t> box = Container<int32_t>(std::nullopt);
-    // held = Container[Int32](n + 1)
+    // held = Container[int32](n + 1)
     Container<int32_t> held = Container<int32_t>((::tpy::add_check<int32_t>(n, 1)));
     // twin = ContainerTwin(n + 1)
     ContainerTwin twin = ContainerTwin((::tpy::add_check<int32_t>(n, 1)));
@@ -418,9 +418,9 @@ void __tpy_init() {
     ::tpystd::asyncio::__tpy_init();
     // main()
     main();
-    // # module-level statement position. The Int32() spelling is load-bearing: a bare
+    // # module-level statement position. The int32() spelling is load-bearing: a bare
     // # int literal at a generic `T | None` slot is not admitted (see BUGS.md).
-    // print("module", probe_gen(Int32(2)), probe_twin(Int32(2)))
+    // print("module", probe_gen(int32(2)), probe_twin(int32(2)))
     std::cout << "module" << " " << ::tpy::print_bool(probe_gen<int32_t>(2)) << " " << ::tpy::print_bool(probe_twin(2)) << "\n";
 }
 

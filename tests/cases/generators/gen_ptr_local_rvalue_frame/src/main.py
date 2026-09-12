@@ -2,21 +2,21 @@
 # materialization slot (was: a case-block slot dying at the next
 # suspension while the pointer field kept aiming at it -- silent UAF).
 from typing import Iterator, Optional
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Point:
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
-def make_opt(n: Int32) -> Own[Optional[Point]]:
+def make_opt(n: int32) -> Own[Optional[Point]]:
     if n > 0:
         return Point(n)
     return None
 
 
-def rvalue_init() -> Iterator[Int32]:
+def rvalue_init() -> Iterator[int32]:
     # The Point(42) slot must survive the loop's suspensions.
     saved: Optional[Point] = Point(42)
     for i in range(3):
@@ -25,7 +25,7 @@ def rvalue_init() -> Iterator[Int32]:
         yield saved.x
 
 
-def rebind_after_alias(items: list[Point]) -> Iterator[Int32]:
+def rebind_after_alias(items: list[Point]) -> Iterator[int32]:
     saved: Optional[Point] = None
     saved = items[0]
     # The alias write stays an alias: this mutation reaches items[0].
@@ -40,7 +40,7 @@ def rebind_after_alias(items: list[Point]) -> Iterator[Int32]:
         yield saved.x
 
 
-def rebind_after_none() -> Iterator[Int32]:
+def rebind_after_none() -> Iterator[int32]:
     saved: Optional[Point] = None
     yield 1
     saved = Point(5)
@@ -49,7 +49,7 @@ def rebind_after_none() -> Iterator[Int32]:
         yield saved.x
 
 
-def own_opt_call() -> Iterator[Int32]:
+def own_opt_call() -> Iterator[int32]:
     # The returned optional<Point> lives in a frame slot; the pointer
     # local is lifted from it and read after two suspensions.
     got = make_opt(3)
@@ -59,7 +59,7 @@ def own_opt_call() -> Iterator[Int32]:
         yield got.x
 
 
-def loop_rebind(n: Int32) -> Iterator[Int32]:
+def loop_rebind(n: int32) -> Iterator[int32]:
     # The same rebind site re-executed each iteration reuses one frame
     # slot: the assignment destroys the prior payload at the rebind.
     saved: Optional[Point] = None

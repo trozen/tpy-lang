@@ -19,10 +19,10 @@ void main();
 
 // class P:
 struct P {
-    // x: Int32
+    // x: int32
     int32_t x;
 
-    // def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: int32) -> None:
     P() = default;
     explicit P(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.P";
@@ -62,7 +62,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::tuple<P*, P*>> 
 };
 
 
-// def __init__(self, x: Int32) -> None:
+// def __init__(self, x: int32) -> None:
 inline P::P(int32_t x) : x(x) {}
 void __tpy_init();
 } // namespace tpyapp::main

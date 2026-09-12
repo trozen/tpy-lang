@@ -1,13 +1,13 @@
 # @dataclass with field default values
 from dataclasses import dataclass
-from tpy import Int32
+from tpy import int32
 
 @dataclass
 class Color:
-    r: Int32
-    g: Int32
-    b: Int32
-    a: Int32 = 255
+    r: int32
+    g: int32
+    b: int32
+    a: int32 = 255
 
 def main() -> None:
     red = Color(255, 0, 0)

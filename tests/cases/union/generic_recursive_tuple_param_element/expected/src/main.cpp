@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def count(t: Tree[Int32]) -> Int32:
+// def count(t: Tree[int32]) -> int32:
 int32_t count(const Tree<int32_t>& t) {
     // match t:
     auto& __match_subject_1 = t;
@@ -37,7 +37,7 @@ int32_t count(const Tree<int32_t>& t) {
     ::std::unreachable();
 }
 
-// def pair(t: Tree[Int32]) -> tuple[Tree[Int32], Int32]:
+// def pair(t: Tree[int32]) -> tuple[Tree[int32], int32]:
 std::tuple<Tree<int32_t>&, int32_t> pair(Tree<int32_t>& t) {
     // return (t, 0)
     return std::tuple<Tree<int32_t>&, int32_t>{t, 0};
@@ -45,7 +45,7 @@ std::tuple<Tree<int32_t>&, int32_t> pair(Tree<int32_t>& t) {
 
 // def main() -> None:
 void main() {
-    // seed: Tree[Int32] = [1, [2, 3]]
+    // seed: Tree[int32] = [1, [2, 3]]
     Tree<int32_t> seed = std::vector<Tree<int32_t>>{1, std::vector<Tree<int32_t>>{2, 3}};
     // a, n = pair(seed)
     auto __tup_1 = pair(seed);

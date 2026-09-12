@@ -1,8 +1,8 @@
 # Error: return with value in generator function
-from tpy import Int32
+from tpy import int32
 from typing import Iterator
 
-def bad() -> Iterator[Int32]:
+def bad() -> Iterator[int32]:
     yield 1
     return 42  # tpyc: error(/cannot use 'return' with a value/)
 

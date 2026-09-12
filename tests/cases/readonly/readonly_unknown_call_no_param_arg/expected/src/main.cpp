@@ -11,7 +11,7 @@ void mutate(Box& b) {
 }
 
 // @readonly
-// def ok(b: Box) -> Int32:
+// def ok(b: Box) -> int32:
 int32_t ok(const Box& b) {
     // local = Box(b.value)
     Box local = Box(b.value);

@@ -4,14 +4,14 @@
 namespace tpyapp::main {
 
 
-// def wider(flag: bool, a: Int32, b: Int64) -> Int64:
+// def wider(flag: bool, a: int32, b: int64) -> int64:
 int64_t wider(bool flag, int32_t a, int64_t b) {
-    // # Int32 + Int64 -> Int64
+    // # int32 + int64 -> int64
     // return a if flag else b
     return ((flag) ? (static_cast<int64_t>(a)) : (b));
 }
 
-// def literal_with_typed(flag: bool, x: Int32) -> Int32:
+// def literal_with_typed(flag: bool, x: int32) -> int32:
 int32_t literal_with_typed(bool flag, int32_t x) {
     // # Int literal adopts the concrete type from the other branch
     // return x if flag else 0

@@ -1,13 +1,13 @@
 # @auto_readonly usage-dependent receiver const-ness: a param read only through an
 # accessor keeps a const receiver; a mutation through the result demotes it.
-from tpy import Int32, auto_readonly
+from tpy import int32, auto_readonly
 from tplib.box import Box
 
 
 class Inner:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32):
+    def __init__(self, v: int32):
         self.v = v
 
     def bump(self):
@@ -18,7 +18,7 @@ class Cell:
     # User-defined accessor (not a tplib type): borrowing get + value-returning peek.
     inner: Inner
 
-    def __init__(self, v: Int32):
+    def __init__(self, v: int32):
         self.inner = Inner(v)
 
     @auto_readonly
@@ -26,7 +26,7 @@ class Cell:
         return self.inner
 
     @auto_readonly
-    def peek(self) -> Int32:   # value return: copy, never roots mutation to receiver
+    def peek(self) -> int32:   # value return: copy, never roots mutation to receiver
         return self.inner.v
 
 
@@ -34,12 +34,12 @@ class Outer:
     b: Box[Inner]
     items: list[Inner]
 
-    def __init__(self, v: Int32):
+    def __init__(self, v: int32):
         self.b = Box(Inner(v))
         self.items = [Inner(v)]
 
 
-def read_through_get(o: Outer) -> Int32:   # const Outer&
+def read_through_get(o: Outer) -> int32:   # const Outer&
     return o.b.get().v
 
 
@@ -55,7 +55,7 @@ def aug_through_get(o: Outer):             # Outer&
     o.b.get().v += 1
 
 
-def alias_read(o: Outer) -> Int32:         # Outer&: non-const local alias needs a
+def alias_read(o: Outer) -> int32:         # Outer&: non-const local alias needs a
     x = o.b.get()                          # mutable source, so the receiver stays mutable
     return x.v                             # until never-mutated locals can bind const
 
@@ -70,7 +70,7 @@ def elem_alias_write(o: Outer):            # Outer&: field-path element-borrow a
     e.v = 3
 
 
-def read_user_accessor(c: Cell) -> Int32:  # const Cell&
+def read_user_accessor(c: Cell) -> int32:  # const Cell&
     return c.get().v
 
 
@@ -78,11 +78,11 @@ def write_user_accessor(c: Cell):          # Cell&
     c.get().v = 8
 
 
-def peek_user_accessor(c: Cell) -> Int32:  # const Cell&: value return, only read
+def peek_user_accessor(c: Cell) -> int32:  # const Cell&: value return, only read
     return c.peek()
 
 
-def sum_boxes(boxes: list[Box[Inner]]) -> Int32:   # const list&: loop var read through accessor
+def sum_boxes(boxes: list[Box[Inner]]) -> int32:   # const list&: loop var read through accessor
     total = 0
     for b in boxes:
         total += b.get().v

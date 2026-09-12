@@ -18,16 +18,16 @@ void main();
 
 // class Range:
 struct Range {
-    // start: Int32
+    // start: int32
     int32_t start;
-    // stop: Int32
+    // stop: int32
     int32_t stop;
 
-    // def __init__(self, start: Int32, stop: Int32) -> None:
+    // def __init__(self, start: int32, stop: int32) -> None:
     Range() = default;
     explicit Range(int32_t start, int32_t stop);
 
-    // def total(self) -> Int32:
+    // def total(self) -> int32:
     int32_t total() const;
 
     __gen_Range___iter__ __iter__() const;
@@ -100,10 +100,10 @@ inline __gen_Range_pairs Range::pairs() const {
 }
 
 
-// def __init__(self, start: Int32, stop: Int32) -> None:
+// def __init__(self, start: int32, stop: int32) -> None:
 inline Range::Range(int32_t start, int32_t stop) : start(start), stop(stop) {}
 
-// def total(self) -> Int32:
+// def total(self) -> int32:
 inline int32_t Range::total() const {
     // return self.stop - self.start
     return (::tpy::sub_check<int32_t>(this->stop, this->start));

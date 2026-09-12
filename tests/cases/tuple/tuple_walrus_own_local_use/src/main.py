@@ -1,26 +1,26 @@
 # A walrus bound from an owning-tuple call declares the owning STORAGE form
 # (an rvalue can't be address-lifted): local reads work, only the
 # borrow-form return is rejected (error_tuple_walrus_own_return).
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Box:
-    val: Int32
-    def __init__(self, v: Int32) -> None:
+    val: int32
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 
-def make_pair(v: Int32) -> Own[tuple[Int32, Box]]:
+def make_pair(v: int32) -> Own[tuple[int32, Box]]:
     return (v, Box(v))
 
 
-def use() -> Int32:
+def use() -> int32:
     if (t := make_pair(5))[0] > 0:
         return t[0] + t[1].val
     return 0
 
 
-def use_branches(c: bool) -> Int32:
+def use_branches(c: bool) -> int32:
     # The slot's (*t) read rewrite and storage-form classification are
     # function-scope (the pre-decl is hoisted), so reads in a SIBLING
     # branch of the walrus must see them too.

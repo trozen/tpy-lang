@@ -30,7 +30,7 @@ void run_void(__F0&& f, int32_t x);
 void print_val(int32_t x);
 void main();
 
-// def apply(f: Fn[[Int32], Int32], x: Int32) -> Int32:
+// def apply(f: Fn[[int32], int32], x: int32) -> int32:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<int32_t>;
@@ -39,7 +39,7 @@ int32_t apply(__F0&& f, int32_t x) {
     // return f(x)
     return f(x);
 }
-// def apply2(f: Fn[[Int32, Int32], Int32], a: Int32, b: Int32) -> Int32:
+// def apply2(f: Fn[[int32, int32], int32], a: int32, b: int32) -> int32:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0, int32_t __a1) {
       { __fn(__a0, __a1) } -> std::convertible_to<int32_t>;
@@ -48,7 +48,7 @@ int32_t apply2(__F0&& f, int32_t a, int32_t b) {
     // return f(a, b)
     return f(a, b);
 }
-// def run_void(f: Fn[[Int32], None], x: Int32) -> None:
+// def run_void(f: Fn[[int32], None], x: int32) -> None:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       __fn(__a0);

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def local_double(x: Int32) -> Int32:
+// async def local_double(x: int32) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_local_double::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -29,7 +29,7 @@ namespace tpyapp::main {
 }
 
 
-// async def local_double(x: Int32) -> Int32:
+// async def local_double(x: int32) -> int32:
 __coro_local_double local_double(int32_t x) {
     return __coro_local_double(x);
 }

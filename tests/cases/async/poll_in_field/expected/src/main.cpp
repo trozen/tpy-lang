@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // h = Holder(Poll[Int32].ready(42))
+    // h = Holder(Poll[int32].ready(42))
     Holder h = Holder(::tpystd::tpy::Poll<int32_t>::ready(42));
     // p = h.take()
     ::tpystd::tpy::Poll<int32_t> p = std::move(h).take();

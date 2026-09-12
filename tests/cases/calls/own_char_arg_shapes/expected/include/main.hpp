@@ -16,15 +16,15 @@ void main();
 
 // class Sink:
 struct Sink {
-    // n: Int32
+    // n: int32
     int32_t n;
-    // last: Char
+    // last: char
     char last;
 
     // def __init__(self) -> None:
     Sink();
 
-    // def put(self, c: Own[Char]) -> None:
+    // def put(self, c: Own[char]) -> None:
     void put(char c);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Sink";
 };
@@ -38,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
 // def __init__(self) -> None:
 inline Sink::Sink() : n(0), last(::tpy::char_from_str("?")) {}
 
-// def put(self, c: Own[Char]) -> None:
+// def put(self, c: Own[char]) -> None:
 inline void Sink::put(char c) {
     // self.n += 1
     this->n = ::tpy::add_check<int32_t>(this->n, 1);

@@ -14,7 +14,7 @@ void read_holder(const NodeHolder& h) {
 
 // def main() -> None:
 void main() {
-    // n = Node(Int32(7))
+    // n = Node(int32(7))
     Node n = Node(7);
     // h = NodeHolder()
     NodeHolder h = NodeHolder();
@@ -22,11 +22,11 @@ void main() {
     h._node = &n;
     // p = h.get_node()  # tpyc: type(Ptr[Node])
     Node* p = h.get_node();
-    // p.value = Int32(99)
+    // p.value = int32(99)
     ::tpy::deref_check(p).value = 99;
     // print(h.get_node().value)
     std::cout << ::tpy::deref_check(h.get_node()).value << "\n";
-    // n2 = Node(Int32(42))
+    // n2 = Node(int32(42))
     Node n2 = Node(42);
     // h._node = take_ptr(n2)
     h._node = &n2;

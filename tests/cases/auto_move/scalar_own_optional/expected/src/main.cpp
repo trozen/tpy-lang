@@ -4,18 +4,18 @@
 namespace tpyapp::main {
 
 
-// def take(x: Own[P | None]) -> Int32:
+// def take(x: Own[P | None]) -> int32:
 int32_t take(std::optional<P>&& x) {
     // if x is None:
     if ((!x.has_value())) {
-        // return Int32(-1)
+        // return int32(-1)
         return -1;
     }
     // return x.x
     return x->x;
 }
 
-// def make(v: Int32) -> Own[P | None]:
+// def make(v: int32) -> Own[P | None]:
 std::optional<P> make(int32_t v) {
     // if v > 0:
     if ((v > 0)) {
@@ -35,18 +35,18 @@ std::optional<P> passthrough(std::optional<P>&& x) {
     return std::move(x);
 }
 
-// def borrow(p: P | None) -> Int32:
+// def borrow(p: P | None) -> int32:
 int32_t borrow(const P* p) {
     // if p is None:
     if ((p == nullptr)) {
-        // return Int32(-1)
+        // return int32(-1)
         return -1;
     }
     // return p.x
     return p->x;
 }
 
-// def forward_borrow(x: Own[P | None]) -> Int32:
+// def forward_borrow(x: Own[P | None]) -> int32:
 int32_t forward_borrow(std::optional<P>&& x) {
     // # Forwarding a storage-form Optional param into a borrow-form
     // # `P | None` slot needs an explicit optional_to_ptr lift -- C++ won't
@@ -55,7 +55,7 @@ int32_t forward_borrow(std::optional<P>&& x) {
     return borrow(::tpy::optional_to_ptr(x));
 }
 
-// def reassign_pointer(x: Own[P | None]) -> Int32:
+// def reassign_pointer(x: Own[P | None]) -> int32:
 int32_t reassign_pointer(std::optional<P>&& x) {
     // # Reassign a pointer-form local from the Own-Optional param: the
     // # rebind path needs the lift, otherwise C++ assigns optional<P> to P*.
@@ -65,14 +65,14 @@ int32_t reassign_pointer(std::optional<P>&& x) {
     y = ::tpy::optional_to_ptr(x);
     // if y is None:
     if ((y == nullptr)) {
-        // return Int32(-1)
+        // return int32(-1)
         return -1;
     }
     // return y.x
     return y->x;
 }
 
-// def first_decl(x: Own[P | None]) -> Int32:
+// def first_decl(x: Own[P | None]) -> int32:
 int32_t first_decl(std::optional<P>&& x) {
     // # First-declaration of a pointer-form local from the Own-Optional
     // # param (no prior `y = None` line). The var-decl path needs the lift
@@ -81,7 +81,7 @@ int32_t first_decl(std::optional<P>&& x) {
     P* y = ::tpy::optional_to_ptr(x);
     // if y is None:
     if ((y == nullptr)) {
-        // return Int32(-1)
+        // return int32(-1)
         return -1;
     }
     // return y.x
@@ -120,7 +120,7 @@ void test_return_into_pointer_receiver() {
     // # Own[P|None] return into a P|None receiver: function returns
     // # std::optional<P> (storage form) but the local is P*. Codegen
     // # materializes a slot for the optional and lifts via optional_to_ptr.
-    // r = make(Int32(11))
+    // r = make(int32(11))
     std::optional<P> __slot_1 = make(11);
     P* r = ::tpy::optional_to_ptr(__slot_1);
     // if r is not None:
@@ -128,7 +128,7 @@ void test_return_into_pointer_receiver() {
         // print(r.x)
         std::cout << r->x << "\n";
     }
-    // s = make(Int32(-1))
+    // s = make(int32(-1))
     std::optional<P> __slot_2 = make(-1);
     P* s = ::tpy::optional_to_ptr(__slot_2);
     // print(s is None)
@@ -137,7 +137,7 @@ void test_return_into_pointer_receiver() {
 
 // def test_forward_own_return_to_own_param() -> None:
 void test_forward_own_return_to_own_param() {
-    // print(take(make(Int32(13))))
+    // print(take(make(int32(13))))
     std::cout << take(make(13)) << "\n";
 }
 
@@ -189,10 +189,10 @@ void test_first_decl_pointer_local() {
 void test_rebind_from_successive_returns() {
     // # A single std::optional<P> slot holds the current value, the
     // # pointer-local re-lifts after each rebind.
-    // z = make(Int32(41))
+    // z = make(int32(41))
     std::optional<P> __slot_1 = make(41);
     P* z = ::tpy::optional_to_ptr(__slot_1);
-    // z = make(Int32(43))
+    // z = make(int32(43))
     __slot_1 = make(43);
     z = ::tpy::optional_to_ptr(__slot_1);
     // if z is not None:
@@ -200,7 +200,7 @@ void test_rebind_from_successive_returns() {
         // print(z.x)
         std::cout << z->x << "\n";
     }
-    // z = make(Int32(-1))
+    // z = make(int32(-1))
     __slot_1 = make(-1);
     z = ::tpy::optional_to_ptr(__slot_1);
     // print(z is None)

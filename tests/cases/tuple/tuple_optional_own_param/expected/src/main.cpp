@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def take(t: Own[tuple[P | None, P | None]]) -> Int32:
+// def take(t: Own[tuple[P | None, P | None]]) -> int32:
 int32_t take(std::tuple<std::optional<P>, std::optional<P>> t) {
     // a, b = t
     auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(t);
@@ -20,11 +20,11 @@ int32_t take(std::tuple<std::optional<P>, std::optional<P>> t) {
         // return a.x
         return a->x;
     }
-    // return Int32(0)
+    // return int32(0)
     return 0;
 }
 
-// def take_subscript(t: Own[tuple[P | None, P | None]]) -> Int32:
+// def take_subscript(t: Own[tuple[P | None, P | None]]) -> int32:
 int32_t take_subscript(std::tuple<std::optional<P>, std::optional<P>> t) {
     // first = t[0]
     P* first = ::tpy::optional_to_ptr(std::get<0>(t));
@@ -33,7 +33,7 @@ int32_t take_subscript(std::tuple<std::optional<P>, std::optional<P>> t) {
         // return first.x
         return first->x;
     }
-    // return Int32(0)
+    // return int32(0)
     return 0;
 }
 

@@ -1,13 +1,13 @@
 # Base-init argument forwarding: an `Optional[record]` parameter passes through,
 # and an `Own[record]` one renders bare into the base's slot. Both are handed to
 # the base by value, so nothing observes an alias here.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Payload:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 

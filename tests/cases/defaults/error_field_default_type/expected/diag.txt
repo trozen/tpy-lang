@@ -1,1 +1,1 @@
-main.py:7: error: Type mismatch in field 'n': expected Int32, got None
+main.py:7: error: Type mismatch in field 'n': expected int32, got None

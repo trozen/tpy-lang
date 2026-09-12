@@ -1,5 +1,5 @@
 # Error: field type pattern doesn't match any variant
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Box[T]:
@@ -8,7 +8,7 @@ class Box[T]:
         self.value = value
 
 
-def bad(x: Box[str] | Box[Int32]) -> str:
+def bad(x: Box[str] | Box[int32]) -> str:
     match x:
         case Box(value=float() as v):  # tpyc: error(/no 'Box' variant/)
             return "float"

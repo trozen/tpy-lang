@@ -6,15 +6,15 @@
 # in is_type_non_copyable (a conservative over-approximation -- Tagged
 # is phantom in T -- but the move-based pattern is idiomatic anyway).
 from typing import Protocol
-from tpy import Int32, Own, dynamic
+from tpy import int32, Own, dynamic
 
 @dynamic
 class Greeter(Protocol):
     def greet(self) -> str: ...
 
 class Tagged[T]:
-    tag: Int32
-    def __init__(self, tag: Int32):
+    tag: int32
+    def __init__(self, tag: int32):
         self.tag = tag
 
 class Owner:

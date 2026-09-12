@@ -6,8 +6,8 @@ namespace tpyapp::main {
 
 // def main():
 void main() {
-    // # Infer T=Int32 through Own[list[T]] -- value element type
-    // nums: list[Int32] = [10, 20, 30]
+    // # Infer T=int32 through Own[list[T]] -- value element type
+    // nums: list[int32] = [10, 20, 30]
     std::vector<int32_t> nums = {10, 20, 30};
     // print(first_val(nums))
     std::cout << first_val<int32_t>(std::move(nums)) << "\n";

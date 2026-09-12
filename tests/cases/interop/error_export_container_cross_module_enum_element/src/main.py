@@ -2,11 +2,11 @@
 # element (its CPython type handle lives in the defining module's glue) -- the
 # enum sibling of error_export_container_cross_module_element.
 # tpy: ext_module
-from tpy import Int64
+from tpy import int64
 from tpy.extern import export
 from enum_mod import Color
 
 
 @export
-def f(cs: list[Color]) -> Int64:  # tpyc: error(/exposed-enum container element from another module/)
+def f(cs: list[Color]) -> int64:  # tpyc: error(/exposed-enum container element from another module/)
     return len(cs)

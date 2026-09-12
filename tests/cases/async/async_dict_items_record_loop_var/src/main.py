@@ -1,21 +1,21 @@
 # A whole-variable loop over `dict.items()` whose value is a record, across
 # a suspension: the loop variable binds the borrow-form tuple.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
 class Box:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 
-async def step(n: Int32) -> Int32:
+async def step(n: int32) -> int32:
     return n + 1
 
 
-async def f(n: Int32) -> Int32:
+async def f(n: int32) -> int32:
     d = {n: Box(n)}
     total = 0
     for kv in d.items():

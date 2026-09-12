@@ -22,10 +22,10 @@ void main();
 
 // class A:
 struct A {
-    // x: Int32
+    // x: int32
     int32_t x;
 
-    // def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: int32) -> None:
     A() = default;
     explicit A(int32_t x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.A";
@@ -38,10 +38,10 @@ inline std::ostream& operator<<(std::ostream& os, const A& obj) {
 
 // class B:
 struct B {
-    // y: Int32
+    // y: int32
     int32_t y;
 
-    // def __init__(self, y: Int32) -> None:
+    // def __init__(self, y: int32) -> None:
     B() = default;
     explicit B(int32_t y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.B";
@@ -54,10 +54,10 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 
 // class Counter:
 struct Counter {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Counter() = default;
     explicit Counter(int32_t n);
 
@@ -78,7 +78,7 @@ struct Pair {
     // a2: A
     A a2;
 
-    // def __init__(self, m: Int32, n: Int32) -> None:
+    // def __init__(self, m: int32, n: int32) -> None:
     Pair() = default;
     explicit Pair(int32_t m, int32_t n);
 
@@ -93,13 +93,13 @@ inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
 }
 
 
-// def __init__(self, x: Int32) -> None:
+// def __init__(self, x: int32) -> None:
 inline A::A(int32_t x) : x(x) {}
 
-// def __init__(self, y: Int32) -> None:
+// def __init__(self, y: int32) -> None:
 inline B::B(int32_t y) : y(y) {}
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Counter::Counter(int32_t n) : n(n) {}
 
 // def bump_via_union(self) -> None:
@@ -108,7 +108,7 @@ inline void Counter::bump_via_union() {
     bump_counter(::tpy::Union<A*, Counter*>{&((*this))});
 }
 
-// def __init__(self, m: Int32, n: Int32) -> None:
+// def __init__(self, m: int32, n: int32) -> None:
 inline Pair::Pair(int32_t m, int32_t n) : a1(A(m)), a2(A(n)) {}
 
 // def bump_picked(self, flip: bool) -> None:

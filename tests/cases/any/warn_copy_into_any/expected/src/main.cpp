@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def warn_record_not_last_use() -> None:
 void warn_record_not_last_use() {
-    // n = Node(Int32(1))
+    // n = Node(int32(1))
     Node n = Node(1);
     // a: Any = n  # tpyc: warning(/copies Node into Any/)
     ::tpy::Any a = ::tpy::make_any(n);
@@ -16,7 +16,7 @@ void warn_record_not_last_use() {
 
 // def no_warn_record_last_use() -> None:
 void no_warn_record_last_use() {
-    // n = Node(Int32(2))
+    // n = Node(int32(2))
     Node n = Node(2);
     // a: Any = n  # tpyc: ok -- n's last use, auto-moved
     ::tpy::Any a = ::tpy::make_any(n);
@@ -30,7 +30,7 @@ void no_warn_record_last_use() {
 
 // def no_warn_record_explicit_copy() -> None:
 void no_warn_record_explicit_copy() {
-    // n = Node(Int32(3))
+    // n = Node(int32(3))
     Node n = Node(3);
     // a: Any = copy(n)  # tpyc: ok -- explicit copy
     ::tpy::Any a = ::tpy::make_any(n);
@@ -40,7 +40,7 @@ void no_warn_record_explicit_copy() {
 
 // def no_warn_record_rvalue() -> None:
 void no_warn_record_rvalue() {
-    // a: Any = Node(Int32(4))  # tpyc: ok -- rvalue, no other handle
+    // a: Any = Node(int32(4))  # tpyc: ok -- rvalue, no other handle
     ::tpy::Any a = ::tpy::make_any(Node(4));
     // if isinstance(a, Node):
     if ((a.value.has_value() && a.value.type() == typeid(Node))) {
@@ -52,9 +52,9 @@ void no_warn_record_rvalue() {
 
 // def warn_list_not_last_use() -> None:
 void warn_list_not_last_use() {
-    // xs: list[Int32] = [Int32(1), Int32(2)]
+    // xs: list[int32] = [int32(1), int32(2)]
     std::vector<int32_t> xs = {1, 2};
-    // a: Any = xs  # tpyc: warning(/copies list\[Int32\] into Any/)
+    // a: Any = xs  # tpyc: warning(/copies list\[int32\] into Any/)
     ::tpy::Any a = ::tpy::make_any(xs);
     // print(len(xs))
     std::cout << ::tpy::__len__(xs) << "\n";
@@ -62,9 +62,9 @@ void warn_list_not_last_use() {
 
 // def warn_dict_not_last_use() -> None:
 void warn_dict_not_last_use() {
-    // d: dict[str, Int32] = {"k": Int32(1)}
+    // d: dict[str, int32] = {"k": int32(1)}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"k", 1}});
-    // a: Any = d  # tpyc: warning(/copies dict\[str, Int32\] into Any/)
+    // a: Any = d  # tpyc: warning(/copies dict\[str, int32\] into Any/)
     ::tpy::Any a = ::tpy::make_any(d);
     // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";
@@ -72,9 +72,9 @@ void warn_dict_not_last_use() {
 
 // def warn_set_not_last_use() -> None:
 void warn_set_not_last_use() {
-    // s: set[Int32] = {Int32(1), Int32(2)}
+    // s: set[int32] = {int32(1), int32(2)}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2});
-    // a: Any = s  # tpyc: warning(/copies set\[Int32\] into Any/)
+    // a: Any = s  # tpyc: warning(/copies set\[int32\] into Any/)
     ::tpy::Any a = ::tpy::make_any(s);
     // print(len(s))
     std::cout << ::tpy::__len__(s) << "\n";
@@ -92,7 +92,7 @@ void no_warn_str_not_last_use() {
 
 // def no_warn_int_not_last_use() -> None:
 void no_warn_int_not_last_use() {
-    // x = Int32(42)
+    // x = int32(42)
     int32_t x = 42;
     // a: Any = x  # tpyc: ok -- value type
     ::tpy::Any a = ::tpy::make_any(x);
@@ -112,7 +112,7 @@ void takes_any(::tpy::Any a) {
 
 // def warn_arg_coerce_not_last_use() -> None:
 void warn_arg_coerce_not_last_use() {
-    // n = Node(Int32(5))
+    // n = Node(int32(5))
     Node n = Node(5);
     // takes_any(n)  # tpyc: warning(/copies Node into Any/)
     takes_any(::tpy::make_any(n));
@@ -130,7 +130,7 @@ void warn_arg_coerce_not_last_use() {
 void exercise_returns_any() {
     // # Warning fires inside returns_any (the `return n` line); the call
     // # site itself is Any -> Any, no INTO_ANY, no extra warning here.
-    // n = Node(Int32(6))
+    // n = Node(int32(6))
     Node n = Node(6);
     // a = returns_any(n)  # tpyc: ok -- result is already Any
     ::tpy::Any a = returns_any(n);
@@ -146,7 +146,7 @@ void exercise_returns_any() {
 
 // def warn_list_literal_element() -> None:
 void warn_list_literal_element() {
-    // n = Node(Int32(7))
+    // n = Node(int32(7))
     Node n = Node(7);
     // xs: list[Any] = [n]  # tpyc: warning(/copies Node into Any/)
     std::vector<::tpy::Any> xs = {::tpy::make_any(n)};
@@ -158,7 +158,7 @@ void warn_list_literal_element() {
 
 // def warn_dict_literal_value() -> None:
 void warn_dict_literal_value() {
-    // n = Node(Int32(8))
+    // n = Node(int32(8))
     Node n = Node(8);
     // d: dict[str, Any] = {"k": n}  # tpyc: warning(/copies Node into Any/)
     ::tpy::ordered_map<std::string, ::tpy::Any> d = ::tpy::ordered_map<std::string, ::tpy::Any>({{"k", ::tpy::make_any(n)}});
@@ -170,7 +170,7 @@ void warn_dict_literal_value() {
 
 // def warn_subscript_assign_dict_any() -> None:
 void warn_subscript_assign_dict_any() {
-    // n = Node(Int32(9))
+    // n = Node(int32(9))
     Node n = Node(9);
     // d: dict[str, Any] = {}
     ::tpy::ordered_map<std::string, ::tpy::Any> d = ::tpy::ordered_map<std::string, ::tpy::Any>();
@@ -182,7 +182,7 @@ void warn_subscript_assign_dict_any() {
 
 // def warn_field_assign_any() -> None:
 void warn_field_assign_any() {
-    // n = Node(Int32(10))
+    // n = Node(int32(10))
     Node n = Node(10);
     // h = Holder()
     Holder h = Holder();

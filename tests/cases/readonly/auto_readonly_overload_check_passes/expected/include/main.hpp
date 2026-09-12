@@ -15,7 +15,7 @@ void main();
 
 // class Box:
 struct Box {
-    // value: Int32
+    // value: int32
     int32_t value;
 
     // def __init__(self) -> None:
@@ -26,7 +26,7 @@ struct Box {
     // # (just `self`) and identical return types -- the only difference
     // # is the synthesised `is_readonly` flag.
     // @auto_readonly
-    // def get(self) -> Int32:
+    // def get(self) -> int32:
     int32_t get();
 
     // # @auto_readonly generates a const-qualified clone alongside the
@@ -34,7 +34,7 @@ struct Box {
     // # (just `self`) and identical return types -- the only difference
     // # is the synthesised `is_readonly` flag.
     // @auto_readonly
-    // def get(self) -> Int32:
+    // def get(self) -> int32:
     int32_t get() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
@@ -53,7 +53,7 @@ inline Box::Box() : value(0) {}
 // # (just `self`) and identical return types -- the only difference
 // # is the synthesised `is_readonly` flag.
 // @auto_readonly
-// def get(self) -> Int32:
+// def get(self) -> int32:
 inline int32_t Box::get() {
     // return self.value
     return this->value;
@@ -64,7 +64,7 @@ inline int32_t Box::get() {
 // # (just `self`) and identical return types -- the only difference
 // # is the synthesised `is_readonly` flag.
 // @auto_readonly
-// def get(self) -> Int32:
+// def get(self) -> int32:
 inline int32_t Box::get() const {
     // return self.value
     return this->value;

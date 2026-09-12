@@ -2,17 +2,17 @@
 # element print must show the referent (via the runtime's pointer-deref
 # print_element overload), never the pointer address; hash() derefs likewise.
 # Locks the access-as-value layer for the borrow (T*) tuple form.
-from tpy import Int32, UInt64
+from tpy import int32, uint64
 
 
 class Box:
-    val: Int32
-    def __init__(self, v: Int32) -> None:
+    val: int32
+    def __init__(self, v: int32) -> None:
         self.val = v
     def __repr__(self) -> str:
         return f"Box({self.val})"
-    def __hash__(self) -> UInt64:
-        return UInt64(self.val)
+    def __hash__(self) -> uint64:
+        return uint64(self.val)
 
 
 def main() -> None:

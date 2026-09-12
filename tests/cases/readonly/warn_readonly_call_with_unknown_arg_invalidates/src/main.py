@@ -1,14 +1,14 @@
-from tpy import Int32, readonly
+from tpy import int32, readonly
 
 
 class Box:
-    value: Int32 | None
+    value: int32 | None
 
-    def __init__(self, value: Int32):
+    def __init__(self, value: int32):
         self.value = value
 
 
-def mutate_and_get(b: Box) -> Int32:
+def mutate_and_get(b: Box) -> int32:
     if b.value is not None:
         b.value = b.value + 1
         return b.value + 0
@@ -16,11 +16,11 @@ def mutate_and_get(b: Box) -> Int32:
 
 
 @readonly
-def observe(_: Int32) -> None:
+def observe(_: int32) -> None:
     return
 
 
-def use(b: Box) -> Int32:
+def use(b: Box) -> int32:
     if b.value is not None:
         observe(mutate_and_get(b))
         return b.value + 1  # tpyc: warning(/Potential None access/)

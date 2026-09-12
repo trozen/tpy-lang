@@ -3,18 +3,18 @@
 # tpy: ext_module
 from typing import overload
 
-from tpy import Int64
+from tpy import int64
 from tpy.extern import export
 
 
 @export
 class C:
-    def __init__(self, a: Int64):
+    def __init__(self, a: int64):
         self.a = a
 
     @overload
-    def f(self, x: Int64) -> Int64: ...  # tpyc: error(/overloaded 'f' cannot be exposed/)
+    def f(self, x: int64) -> int64: ...  # tpyc: error(/overloaded 'f' cannot be exposed/)
     @overload
-    def f(self, x: Int64, y: Int64) -> Int64: ...
-    def f(self, x: Int64, y: Int64 = 0) -> Int64:
+    def f(self, x: int64, y: int64) -> int64: ...
+    def f(self, x: int64, y: int64 = 0) -> int64:
         return x + y

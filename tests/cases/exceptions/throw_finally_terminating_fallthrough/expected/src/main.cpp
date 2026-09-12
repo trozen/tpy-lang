@@ -29,7 +29,7 @@ void raise_from_finally() {
     }
 }
 
-// def return_from_finally() -> Int32:
+// def return_from_finally() -> int32:
 int32_t return_from_finally() {
     // try:
     {
@@ -79,7 +79,7 @@ void handler_falls_through() {
     }
 }
 
-// def finally_return_wins() -> Int32:
+// def finally_return_wins() -> int32:
 int32_t finally_return_wins() {
     // try:
     {
@@ -169,7 +169,7 @@ void deep_terminating_finally(bool c) {
     }
 }
 
-// def all_paths_terminate() -> Int32:
+// def all_paths_terminate() -> int32:
 int32_t all_paths_terminate() {
     // try:
     {

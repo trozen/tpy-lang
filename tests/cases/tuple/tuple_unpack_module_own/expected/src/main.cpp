@@ -8,9 +8,9 @@ int32_t n{};
 // n, p = make_pair()
 Point* p{};
 
-// def make_pair() -> tuple[Int32, Own[Point]]:
+// def make_pair() -> tuple[int32, Own[Point]]:
 std::tuple<int32_t, Point> make_pair() {
-    // return (Int32(42), Point(Int32(1), Int32(2)))
+    // return (int32(42), Point(int32(1), int32(2)))
     return std::tuple<int32_t, Point>{42, Point(1, 2)};
 }
 

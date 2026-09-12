@@ -2,13 +2,13 @@
 # does not kill the read that feeds it, so the manager must outlive its branch
 # for the read to be valid -- treating the statement as a pure rebind drops the
 # manager first and reads freed storage.
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Reg:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32):
+    def __init__(self, n: int32):
         self.n = n
 
     def __enter__(self) -> "Reg":
@@ -24,7 +24,7 @@ class Reg:
         return Reg(self.n + 1)
 
 
-def probe(flag: bool) -> Int32:
+def probe(flag: bool) -> int32:
     if flag:
         with Reg(11) as g:
             pass

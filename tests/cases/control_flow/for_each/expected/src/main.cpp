@@ -6,21 +6,21 @@ namespace tpyapp::main {
 // # Test for-each over inferred list (no annotation needed)
 // items = [1, 2, 3, 4, 5]
 std::vector<int32_t>* items{};
-// total: Int32 = 0
+// total: int32 = 0
 int32_t total{};
 // # Test for-each over Array
-// arr: Array[Int32, 3] = [10, 20, 30]
+// arr: Array[int32, 3] = [10, 20, 30]
 std::array<int32_t, 3>* arr{};
 // # Test for-each over string
 // text = "AB"
 std::string text;
 
 // # Test for-each with local inferred array (no mutation -> std::array)
-// def sum_array() -> Int32:
+// def sum_array() -> int32:
 int32_t sum_array() {
     // nums = [100, 200, 300]
     std::array<int32_t, 3> nums = {100, 200, 300};
-    // result: Int32 = 0
+    // result: int32 = 0
     int32_t result = 0;
     // for n in nums:
     auto& __obj_0 = nums;
@@ -36,7 +36,7 @@ int32_t sum_array() {
 }
 
 // # Test for-each over Span parameter
-// def print_span(data: Span[Int32]) -> None:
+// def print_span(data: Span[int32]) -> None:
 void print_span(std::span<int32_t> data) {
     // for x in data:
     auto& __obj_0 = data;
@@ -50,13 +50,13 @@ void print_span(std::span<int32_t> data) {
 }
 
 // # Test nested for-each
-// def nested_sum() -> Int32:
+// def nested_sum() -> int32:
 int32_t nested_sum() {
     // outer = [1, 2]
     std::array<int32_t, 2> outer = {1, 2};
     // inner = [10, 20]
     std::array<int32_t, 2> inner = {10, 20};
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for a in outer:
     auto& __obj_0 = outer;
@@ -87,7 +87,7 @@ void __tpy_init() {
     // items = [1, 2, 3, 4, 5]
     static std::vector<int32_t> __global_slot_1 = {1, 2, 3, 4, 5};
     items = &__global_slot_1;
-    // total: Int32 = 0
+    // total: int32 = 0
     total = 0;
     // for x in items:
     auto& __obj_0 = (*items);
@@ -101,7 +101,7 @@ void __tpy_init() {
     // print(total)  # 15
     std::cout << total << "\n";
     // # Test for-each over Array
-    // arr: Array[Int32, 3] = [10, 20, 30]
+    // arr: Array[int32, 3] = [10, 20, 30]
     static std::array<int32_t, 3> __global_slot_2 = {10, 20, 30};
     arr = &__global_slot_2;
     // for val in arr:

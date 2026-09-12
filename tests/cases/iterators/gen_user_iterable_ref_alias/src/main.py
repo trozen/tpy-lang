@@ -2,14 +2,14 @@
 # any protocol param: a user-defined iterable routes through the same universal
 # __iter__/__next__ frame strategy, so its loop element must alias too. The bag
 # owns the list, and the mutation is observed through the bag's own field.
-from tpy import Int32, Own
+from tpy import int32, Own
 from typing import Iterator
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
@@ -24,7 +24,7 @@ class Bag:
             yield p
 
 
-def bump(bag: Bag) -> Iterator[Int32]:
+def bump(bag: Bag) -> Iterator[int32]:
     for p in bag:
         p.x += 100
         yield p.x

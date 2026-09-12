@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main():
 void main() {
-    // d: dict[Int32, str] = {1: "a", 2: "b"}
+    // d: dict[int32, str] = {1: "a", 2: "b"}
     ::tpy::ordered_map<int32_t, std::string> d = ::tpy::ordered_map<int32_t, std::string>({{1, "a"}, {2, "b"}});
     // k: int = 2
     ::tpy::BigInt k = ::tpy::BigInt(2);
@@ -28,7 +28,7 @@ void main() {
     std::cout << ::tpy::print_bool((!(d.contains(big)))) << "\n";
     // print(big in d.keys())
     std::cout << ::tpy::print_bool((::tpy::dict_keys(d).contains(big))) << "\n";
-    // counts: dict[str, Int32] = {"a": 1}
+    // counts: dict[str, int32] = {"a": 1}
     ::tpy::ordered_map<std::string, int32_t> counts = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
     // print(big in counts.values())
     std::cout << ::tpy::print_bool((::tpy::dict_values(counts).contains(big))) << "\n";
@@ -36,7 +36,7 @@ void main() {
     ::tpy::BigInt one = ::tpy::BigInt(1);
     // print(one in counts.values())
     std::cout << ::tpy::print_bool((::tpy::dict_values(counts).contains(one))) << "\n";
-    // d64: dict[Int64, str] = {}
+    // d64: dict[int64, str] = {}
     ::tpy::ordered_map<int64_t, std::string> d64 = ::tpy::ordered_map<int64_t, std::string>();
     // d64[big] = "wide"
     ::tpy::__setitem__(d64, big.to_fixed_check<int64_t>(), "wide");
@@ -46,11 +46,11 @@ void main() {
     ::tpy::BigInt huge = ::tpy::BigInt::from_str("1180591620717411303424");
     // print(huge in d64)
     std::cout << ::tpy::print_bool((d64.contains(huge))) << "\n";
-    // b63: int = 9223372036854775808  # 2**63: one past Int64 max
+    // b63: int = 9223372036854775808  # 2**63: one past int64 max
     ::tpy::BigInt b63 = ::tpy::BigInt::from_str("9223372036854775808");
     // print(b63 in d64)
     std::cout << ::tpy::print_bool((d64.contains(b63))) << "\n";
-    // du: dict[UInt32, str] = {7: "u"}
+    // du: dict[uint32, str] = {7: "u"}
     ::tpy::ordered_map<uint32_t, std::string> du = ::tpy::ordered_map<uint32_t, std::string>({{7, "u"}});
     // seven: int = 7
     ::tpy::BigInt seven = ::tpy::BigInt(7);
@@ -60,13 +60,13 @@ void main() {
     std::cout << ::tpy::print_bool((du.contains(neg))) << "\n";
     // print(big in du)
     std::cout << ::tpy::print_bool((du.contains(big))) << "\n";
-    // ucounts: dict[str, UInt32] = {"a": 7}
+    // ucounts: dict[str, uint32] = {"a": 7}
     ::tpy::ordered_map<std::string, uint32_t> ucounts = ::tpy::ordered_map<std::string, uint32_t>({{"a", 7}});
     // print(seven in ucounts.values())
     std::cout << ::tpy::print_bool((::tpy::dict_values(ucounts).contains(seven))) << "\n";
     // print(neg in ucounts.values())
     std::cout << ::tpy::print_bool((::tpy::dict_values(ucounts).contains(neg))) << "\n";
-    // xs: list[Int32] = [1, 2]
+    // xs: list[int32] = [1, 2]
     std::vector<int32_t> xs = {1, 2};
     // print(big in xs)
     std::cout << ::tpy::print_bool(std::ranges::contains(xs, big)) << "\n";

@@ -3,19 +3,19 @@
 # for the entry module where the C++ namespace is the structural name.
 from typing import Final
 
-from tpy import Int64
+from tpy import int64
 
-STEP: Final[Int64] = 42
+STEP: Final[int64] = 42
 
 
-def spaced(a: Int64, b: Int64 = STEP, *, c: Int64) -> Int64:
+def spaced(a: int64, b: int64 = STEP, *, c: int64) -> int64:
     return a * 10000 + b * 100 + c
 
 
 class Holder:
-    n: Int64
+    n: int64
 
-    def __init__(self, n: Int64 = STEP, *, tag: Int64) -> None:
+    def __init__(self, n: int64 = STEP, *, tag: int64) -> None:
         self.n = n * 10 + tag
 
 

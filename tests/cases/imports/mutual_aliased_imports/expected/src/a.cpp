@@ -11,7 +11,7 @@ A::A() {
     // def __init__(self) -> None: pass
 }
 
-// def go(self) -> Int32:
+// def go(self) -> int32:
 int32_t A::go() const {
     // return H().work()
     return ::tpyapp::b::Helper().work();

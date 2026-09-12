@@ -6,7 +6,7 @@ namespace tpyapp::a {
 
 
 // # Real cycle edge: a calls into b's sum_pair, b takes a's Pair.
-// def add_pair(p: Pair) -> Int32:
+// def add_pair(p: Pair) -> int32:
 int32_t add_pair(Pair& p) {
     // return sum_pair(p) + 1
     return (::tpy::add_check<int32_t>(::tpyapp::b::sum_pair(p), 1));

@@ -21,10 +21,10 @@ void main();
 // class Base[N: int](ValueType):
 template<std::size_t N>
 struct Base {
-    // _v: Int32
+    // _v: int32
     int32_t _v;
 
-    // def __init__(self, x: Int32 = 0) -> None:
+    // def __init__(self, x: int32 = 0) -> None:
     explicit Base(int32_t x = 0) : _v(x) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
@@ -71,7 +71,7 @@ inline std::ostream& operator<<(std::ostream& os, const Sub& obj) {
     return os;
 }
 
-// class TypedI(Typed[Int32]): ...
+// class TypedI(Typed[int32]): ...
 struct TypedI : Typed<int32_t> {
 
     using Typed<int32_t>::Typed;

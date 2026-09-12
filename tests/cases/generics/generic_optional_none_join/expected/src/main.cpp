@@ -4,9 +4,9 @@
 namespace tpyapp::main {
 
 
-// def via_ternary(xs: list[Int32], c: bool) -> Int32:
+// def via_ternary(xs: list[int32], c: bool) -> int32:
 int32_t via_ternary(std::vector<int32_t>& xs, bool c) {
-    // y = first(xs) if c else None  # tpyc: type(Int32 | None)
+    // y = first(xs) if c else None  # tpyc: type(int32 | None)
     int32_t* y = ((c) ? (first<int32_t>(xs)) : (nullptr));
     // if y is not None:
     if ((y != nullptr)) {
@@ -17,7 +17,7 @@ int32_t via_ternary(std::vector<int32_t>& xs, bool c) {
     return -1;
 }
 
-// def via_branches(xs: list[Int32], c: bool) -> Int32:
+// def via_branches(xs: list[int32], c: bool) -> int32:
 int32_t via_branches(std::vector<int32_t>& xs, bool c) {
     // if c:
     int32_t* z;
@@ -40,7 +40,7 @@ int32_t via_branches(std::vector<int32_t>& xs, bool c) {
 
 // def main() -> None:
 void main() {
-    // xs = [Int32(10), Int32(20), Int32(30)]
+    // xs = [int32(10), int32(20), int32(30)]
     std::vector<int32_t> xs = {10, 20, 30};
     // print(via_ternary(xs, True))
     std::cout << via_ternary(xs, true) << "\n";

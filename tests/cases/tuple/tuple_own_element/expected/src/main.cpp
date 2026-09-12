@@ -4,24 +4,24 @@
 namespace tpyapp::main {
 
 
-// def make_pair(p: Point) -> tuple[Int32, Own[Point]]:
+// def make_pair(p: Point) -> tuple[int32, Own[Point]]:
 std::tuple<int32_t, Point> make_pair(const Point& p) {
-    // return (Int32(42), copy(p))
+    // return (int32(42), copy(p))
     return std::tuple<int32_t, Point>{42, Point(p)};
 }
 
 // def main() -> None:
 void main() {
-    // p = Point(Int32(1), Int32(2))
+    // p = Point(int32(1), int32(2))
     Point p = Point(1, 2);
-    // t: tuple[Int32, Point] = (Int32(0), p)
+    // t: tuple[int32, Point] = (int32(0), p)
     auto t = std::tuple<int32_t, Point>{0, std::move(p)};
     // print(t[0])
     std::cout << std::get<0>(t) << "\n";
     // print(t[1])
     std::cout << std::get<1>(t) << "\n";
     // # From function return
-    // t2 = make_pair(Point(Int32(10), Int32(20)))
+    // t2 = make_pair(Point(int32(10), int32(20)))
     Point __tmp_1 = Point(10, 20);
     std::tuple<int32_t, Point> t2 = make_pair(__tmp_1);
     // print(t2[0])

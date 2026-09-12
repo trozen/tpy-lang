@@ -34,26 +34,30 @@ FN = "tpy.Fn"
 SPAN = "tpy.Span"
 ARRAY = "tpy.Array"
 SPAN_ITER = "tpy.SpanIter"
-CHAR = "tpy.Char"
-FLOAT32 = "tpy.Float32"
+CHAR = "tpy.char"
+FLOAT32 = "tpy.float32"
 STRING = "tpy.String"
 STRVIEW = "tpy.StrView"
 
 # Fixed-width integers
-INT8 = "tpy.Int8"
-INT16 = "tpy.Int16"
-INT32 = "tpy.Int32"
-INT64 = "tpy.Int64"
-UINT8 = "tpy.UInt8"
-UINT16 = "tpy.UInt16"
-UINT32 = "tpy.UInt32"
-UINT64 = "tpy.UInt64"
+INT8 = "tpy.int8"
+INT16 = "tpy.int16"
+INT32 = "tpy.int32"
+INT64 = "tpy.int64"
+UINT8 = "tpy.uint8"
+UINT16 = "tpy.uint16"
+UINT32 = "tpy.uint32"
+UINT64 = "tpy.uint64"
 
 # Map from qualified name to short name for all fixed ints
 FIXED_INT_NAMES = {
-    INT8: "Int8", INT16: "Int16", INT32: "Int32", INT64: "Int64",
-    UINT8: "UInt8", UINT16: "UInt16", UINT32: "UInt32", UINT64: "UInt64",
+    INT8: "int8", INT16: "int16", INT32: "int32", INT64: "int64",
+    UINT8: "uint8", UINT16: "uint16", UINT32: "uint32", UINT64: "uint64",
 }
+
+# Every lowercase scalar type `tpy` exports. A local or parameter bound under
+# one of these names hides the type for the rest of its function.
+SCALAR_TYPE_NAMES = frozenset(FIXED_INT_NAMES.values()) | frozenset({"float32", "float64", "char"})
 
 # -- tpy decorators / type modifiers --
 READONLY = "tpy.readonly"

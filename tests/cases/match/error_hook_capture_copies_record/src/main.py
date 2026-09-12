@@ -3,13 +3,13 @@
 # the capture would not reach what the subject holds -- rejected rather than
 # emitted as a silent divergence from CPython.
 from typing import Iterator
-from tpy import Int32
+from tpy import int32
 
 
 class Cat:
-    lives: Int32
+    lives: int32
 
-    def __init__(self, lives: Int32) -> None:
+    def __init__(self, lives: int32) -> None:
         self.lives = lives
 
 
@@ -20,7 +20,7 @@ class Holder:
         self.pet = pet
 
 
-def gen(h: Holder) -> Iterator[Int32]:  # tpyc: error(/not yet supported.*res.match_binding/)
+def gen(h: Holder) -> Iterator[int32]:  # tpyc: error(/not yet supported.*res.match_binding/)
     match h:
         case Holder(pet=Cat(lives=v) as c):
             c.lives += 10

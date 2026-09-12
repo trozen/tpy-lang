@@ -1,13 +1,13 @@
 # Set as function parameter and return value
-from tpy import Int32, Own
+from tpy import int32, Own
 
-def make_set() -> Own[set[Int32]]:
+def make_set() -> Own[set[int32]]:
     return {1, 2, 3}
 
-def add_to_set(s: set[Int32], val: Int32) -> None:
+def add_to_set(s: set[int32], val: int32) -> None:
     s.add(val)
 
-def get_size(s: set[Int32]) -> Int32:
+def get_size(s: set[int32]) -> int32:
     return len(s)
 
 def main() -> None:

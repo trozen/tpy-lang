@@ -20,15 +20,15 @@ void main() {
     // print(hash(a) == hash(b))
     std::cout << ::tpy::print_bool((::tpy::__hash__(a) == ::tpy::__hash__(b))) << "\n";
     // # Tuple as dict key
-    // d: dict[tuple[Int32, Int32], str] = {}
+    // d: dict[tuple[int32, int32], str] = {}
     ::tpy::ordered_map<std::tuple<int32_t, int32_t>, std::string> d = ::tpy::ordered_map<std::tuple<int32_t, int32_t>, std::string>();
-    // d[(Int32(1), Int32(2))] = "one-two"
+    // d[(int32(1), int32(2))] = "one-two"
     ::tpy::__setitem__(d, std::tuple<int32_t, int32_t>{1, 2}, "one-two");
-    // d[(Int32(3), Int32(4))] = "three-four"
+    // d[(int32(3), int32(4))] = "three-four"
     ::tpy::__setitem__(d, std::tuple<int32_t, int32_t>{3, 4}, "three-four");
-    // print(d[(Int32(1), Int32(2))])
+    // print(d[(int32(1), int32(2))])
     std::cout << ::tpy::__getitem__(d, std::tuple<int32_t, int32_t>{1, 2}) << "\n";
-    // print(d[(Int32(3), Int32(4))])
+    // print(d[(int32(3), int32(4))])
     std::cout << ::tpy::__getitem__(d, std::tuple<int32_t, int32_t>{3, 4}) << "\n";
     // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";

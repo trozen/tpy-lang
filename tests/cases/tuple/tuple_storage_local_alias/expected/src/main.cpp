@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def from_list() -> None:
 void from_list() {
-    // items: list[tuple[Int32, Box]] = [(1, Box(5))]
+    // items: list[tuple[int32, Box]] = [(1, Box(5))]
     std::vector<std::tuple<int32_t, Box>> items = {::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, Box(5)})};
     // t = items[0]
     auto&& t = ::tpy::__getitem__(items, 0);
@@ -30,7 +30,7 @@ void from_field() {
 
 // def chain_alias() -> None:
 void chain_alias() {
-    // items: list[tuple[Int32, Box]] = [(1, Box(3))]
+    // items: list[tuple[int32, Box]] = [(1, Box(3))]
     std::vector<std::tuple<int32_t, Box>> items = {::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, Box(3)})};
     // t = items[0]
     auto&& t = ::tpy::__getitem__(items, 0);

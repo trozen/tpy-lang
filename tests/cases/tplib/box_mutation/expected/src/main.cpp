@@ -6,11 +6,11 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // b = Box(State(Int32(1)))
+    // b = Box(State(int32(1)))
     ::tpystd::tplib::box::Box<State> b = ::tpystd::tplib::box::Box<State>(State(1));
     // print(b.x)         # 1 (auto-deref read)
     std::cout << b.__deref__().x << "\n";
-    // b.x = Int32(10)    # auto-deref write (regression guard for @auto_readonly __deref__)
+    // b.x = int32(10)    # auto-deref write (regression guard for @auto_readonly __deref__)
     b.__deref__().x = 10;
     // print(b.x)         # 10
     std::cout << b.__deref__().x << "\n";

@@ -1,41 +1,41 @@
 # Member-valued scalar args into value-union slots hoist variant temps at
 # the flushable statement positions. Scalars copy -- read-only output intended.
-from tpy import Int32, Float64
+from tpy import int32, float64
 
 
-# Discriminates on Float64 (== float under CPython) so an int arg narrows
+# Discriminates on float64 (== float under CPython) so an int arg narrows
 # identically on both runtimes.
-def take_vu(v: Int32 | Float64) -> Int32:
-    if isinstance(v, Float64):
+def take_vu(v: int32 | float64) -> int32:
+    if isinstance(v, float64):
         return -1
     return v
 
 
-def two(a: Int32 | Float64, b: Int32 | Float64) -> Int32:
+def two(a: int32 | float64, b: int32 | float64) -> int32:
     return take_vu(a) + take_vu(b)
 
 
-def use_decl(k: Int32) -> Int32:
+def use_decl(k: int32) -> int32:
     r = take_vu(k)
     return r
 
 
-def use_reassign(k: Int32) -> Int32:
+def use_reassign(k: int32) -> int32:
     r = 0
     r = take_vu(k + 2)
     return r
 
 
-def use_stmt(k: Int32) -> Int32:
+def use_stmt(k: int32) -> int32:
     take_vu(k)  # discarded result; the temp still evaluates
     return k
 
 
-def use_two(k: Int32, f: Float64) -> Int32:
+def use_two(k: int32, f: float64) -> int32:
     return two(k, f)
 
 
-def use_float() -> Int32:
+def use_float() -> int32:
     return take_vu(2.5)
 
 

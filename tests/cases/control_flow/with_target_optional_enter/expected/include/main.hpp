@@ -22,7 +22,7 @@ struct Box {
     // self.n = n
     int32_t n;
 
-    // def __init__(self, n: Int32):
+    // def __init__(self, n: int32):
     Box() = default;
     explicit Box(int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
@@ -38,7 +38,7 @@ struct Holder {
     // box: Box
     Box box;
 
-    // def __init__(self, n: Int32):
+    // def __init__(self, n: int32):
     Holder() = default;
     explicit Holder(int32_t n);
 
@@ -82,10 +82,10 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
 };
 
 
-// def __init__(self, n: Int32):
+// def __init__(self, n: int32):
 inline Box::Box(int32_t n) : n(n) {}
 
-// def __init__(self, n: Int32):
+// def __init__(self, n: int32):
 inline Holder::Holder(int32_t n) : box(Box(n)) {}
 
 // def __enter__(self) -> "Box | None":

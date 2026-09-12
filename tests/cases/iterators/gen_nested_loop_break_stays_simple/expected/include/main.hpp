@@ -17,7 +17,7 @@ inline auto sums(std::vector<int32_t>& items) {
             if (!__init) { __beg = (items).begin(); __end = (items).end(); __init = true; }
             if (__beg != __end) {
                 int32_t x = *__beg++;
-                // acc: Int32 = 0
+                // acc: int32 = 0
                 int32_t acc = 0;
                 // for j in range(x):
                 int32_t __stop_0 = x;

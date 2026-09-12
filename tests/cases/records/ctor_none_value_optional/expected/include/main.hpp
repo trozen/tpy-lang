@@ -15,10 +15,10 @@ void main();
 
 // class Holder:
 struct Holder {
-    // value: Int32 | None
+    // value: int32 | None
     std::optional<int32_t> value;
 
-    // def __init__(self, value: Int32 | None):
+    // def __init__(self, value: int32 | None):
     Holder() = default;
     explicit Holder(std::optional<int32_t> value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
@@ -30,7 +30,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 }
 
 
-// def __init__(self, value: Int32 | None):
+// def __init__(self, value: int32 | None):
 inline Holder::Holder(std::optional<int32_t> value) : value(value) {}
 void __tpy_init();
 } // namespace tpyapp::main

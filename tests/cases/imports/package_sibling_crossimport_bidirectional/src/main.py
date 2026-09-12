@@ -4,7 +4,7 @@
 # (records get `<peer>_fwd.hpp` includes and out-of-line method
 # bodies; the new sibling-fwd-decls in pkg.hpp must coexist with that
 # infrastructure).
-from tpy import Int32
+from tpy import int32
 from pkg import A, B, with_b
 
 

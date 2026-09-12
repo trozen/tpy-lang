@@ -6,14 +6,14 @@
 # by an ordinary `a = make()` compiled fine: the two spellings disagreed.
 from typing import Iterator
 
-from tpy import Int32, Own
+from tpy import int32, Own
 from tplib import Box
 
 
 class Item:
-    boxed: Box[Int32]
+    boxed: Box[int32]
 
-    def __init__(self, b: Own[Box[Int32]]):
+    def __init__(self, b: Own[Box[int32]]):
         self.boxed = b
 
 
@@ -25,7 +25,7 @@ class Fresh:
         pass
 
 
-def gen() -> Iterator[Int32]:
+def gen() -> Iterator[int32]:
     with Fresh() as a:
         yield a.boxed.get()
         a.boxed.set(6)

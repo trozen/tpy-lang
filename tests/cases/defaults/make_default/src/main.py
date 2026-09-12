@@ -1,16 +1,16 @@
 # make_default() portable default construction: inferred and explicit T, primitives and records
-from tpy import Int32, make_default
+from tpy import int32, make_default
 
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
     def __init__(self) -> None:
         self.x = 0
         self.y = 0
 
 def test_explicit() -> None:
-    a = make_default[Int32]()
+    a = make_default[int32]()
     print(a)
 
     b = make_default[str]()
@@ -21,7 +21,7 @@ def test_explicit() -> None:
     print(c)
 
 def test_inferred() -> None:
-    x: Int32 = make_default()
+    x: int32 = make_default()
     print(x)
 
     s: str = make_default()

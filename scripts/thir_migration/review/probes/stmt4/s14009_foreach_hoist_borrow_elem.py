@@ -1,9 +1,9 @@
-from tpy import Int32
+from tpy import int32
 class Box:
-    n: Int32
-    def __init__(self, n: Int32) -> None:
+    n: int32
+    def __init__(self, n: int32) -> None:
         self.n = n
-def f(boxes: list[Box]) -> Int32:
+def f(boxes: list[Box]) -> int32:
     for i in range(len(boxes)):
         r = boxes[i]
     return r.n

@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // sets: list[set[Int32]] = [{1, 2}, {3, 4}]
+    // sets: list[set[int32]] = [{1, 2}, {3, 4}]
     std::vector<::tpy::ordered_set<int32_t>> sets = {::tpy::ordered_set<int32_t>({1, 2}), ::tpy::ordered_set<int32_t>({3, 4})};
     // print(sets)
     std::cout << ::tpy::ListPrinter(sets) << "\n";
@@ -14,7 +14,7 @@ void main() {
     ::tpy::__getitem__(sets, 0).insert(5);
     // print(sets)
     std::cout << ::tpy::ListPrinter(sets) << "\n";
-    // t: tuple[set[Int32], str] = ({10, 20}, "hello")
+    // t: tuple[set[int32], str] = ({10, 20}, "hello")
     auto t = std::tuple<::tpy::ordered_set<int32_t>, std::string>{::tpy::ordered_set<int32_t>({10, 20}), "hello"};
     // print(t)
     std::cout << ::tpy::TuplePrinter(t) << "\n";

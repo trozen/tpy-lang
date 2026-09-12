@@ -3,7 +3,7 @@
 
 namespace tpyapp::main {
 
-// nums: list[Int32] = [Int32(10), Int32(20), Int32(30)]
+// nums: list[int32] = [int32(10), int32(20), int32(30)]
 std::vector<int32_t>* nums{};
 // words: list[str] = ["hello", "world"]
 std::vector<std::string>* words{};
@@ -15,7 +15,7 @@ void __tpy_init() {
 
     // from helpers import first, length
     ::tpyapp::helpers::__tpy_init();
-    // nums: list[Int32] = [Int32(10), Int32(20), Int32(30)]
+    // nums: list[int32] = [int32(10), int32(20), int32(30)]
     static std::vector<int32_t> __global_slot_1 = {10, 20, 30};
     nums = &__global_slot_1;
     // print(first(nums))

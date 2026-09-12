@@ -1,14 +1,14 @@
 # Missing-return enforcement applies to methods (shared body chokepoint).
-from tpy import Int32
+from tpy import int32
 
 
 class Calc:
-    base: Int32
+    base: int32
 
     def __init__(self) -> None:
         self.base = 1
 
-    def pick(self, n: Int32) -> Int32:  # tpyc: error(/'pick' can reach the end of the function without returning/)
+    def pick(self, n: int32) -> int32:  # tpyc: error(/'pick' can reach the end of the function without returning/)
         if n > 0:
             return self.base
 

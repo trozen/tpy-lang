@@ -18,10 +18,10 @@ void main();
 // @nocopy
 // class Handle:
 struct Handle {
-    // fd: Int32
+    // fd: int32
     int32_t fd;
 
-    // def __init__(self, fd: Int32):
+    // def __init__(self, fd: int32):
     Handle() = default;
     explicit Handle(int32_t fd);
     // non-copyable (@nocopy)
@@ -62,7 +62,7 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
 }
 
 
-// def __init__(self, fd: Int32):
+// def __init__(self, fd: int32):
 inline Handle::Handle(int32_t fd) : fd(fd) {}
 
 // def __init__(self, handle: Own[Handle]):

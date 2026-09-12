@@ -1,19 +1,19 @@
 # A copy()'d element in a name-bound tuple passed into a per-element-Own tuple
 # param is accepted (the hazard set is empty) -- the positive arg-NAME path.
-from tpy import Int32, Own, copy
+from tpy import int32, Own, copy
 
 
 class Box:
-    val: Int32
-    def __init__(self, v: Int32) -> None:
+    val: int32
+    def __init__(self, v: int32) -> None:
         self.val = v
 
 
-def sink(p: tuple[Own[Box], Int32]) -> Int32:  # tpyc: warning(/owned tuple param 'p' is never consumed/)
+def sink(p: tuple[Own[Box], int32]) -> int32:  # tpyc: warning(/owned tuple param 'p' is never consumed/)
     return p[0].val + p[1]
 
 
-def f(b: Box) -> Int32:
+def f(b: Box) -> int32:
     pair = (copy(b), 0)
     return sink(pair)
 

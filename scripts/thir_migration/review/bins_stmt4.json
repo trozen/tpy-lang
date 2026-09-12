@@ -150,7 +150,7 @@
   "reason": "\"stmt.del_item:subscript_shape\"",
   "bin": "DEAD",
   "confidence": "medium",
-  "evidence": "The parser refuses a slice in a del target (ParseError 'Unsupported expression: Slice', probe s13345_del_slice) so slice_function_info is never set, and sema _analyze_del_item refuses del on an Optional-typed container for names and fields (\"'del' is not supported for type dict[str, Int32] | None\", probes s13345_del_opt_unnarrowed / s13345_del_opt_field_unnarrowed), so needs_optional_runtime_check cannot be set on an admitted target.",
+  "evidence": "The parser refuses a slice in a del target (ParseError 'Unsupported expression: Slice', probe s13345_del_slice) so slice_function_info is never set, and sema _analyze_del_item refuses del on an Optional-typed container for names and fields (\"'del' is not supported for type dict[str, int32] | None\", probes s13345_del_opt_unnarrowed / s13345_del_opt_field_unnarrowed), so needs_optional_runtime_check cannot be set on an admitted target.",
   "probe": null,
   "plain_raise": false,
   "known_shape": null
@@ -306,7 +306,7 @@
   "reason": "\"stmt.assert\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "Probe BREAKS_AT_CUTOVER; trace shows statements.py:13567: `assert isinstance(it, NativeIterable)` on an Iterable[Int32] param inside a generator (no render_concept).",
+  "evidence": "Probe BREAKS_AT_CUTOVER; trace shows statements.py:13567: `assert isinstance(it, NativeIterable)` on an Iterable[int32] param inside a generator (no render_concept).",
   "probe": "scripts/thir_migration/review/probes/stmt4/s13567_assert_native_iterable_gen.py",
   "plain_raise": false,
   "known_shape": null
@@ -438,7 +438,7 @@
   "reason": "\"stmt.tuple_unpack\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "Probe BREAKS_AT_CUTOVER; trace shows statements.py:13858: `a, b = pairs[0]` on a const-inferred list[tuple[Int32, Box]] param; also `a, b = h.pair` on a narrowed Optional receiver, `a, b = self.pair`, a readonly list receiver, and a storage-tuple local with an Optional-record element. (The pinned test_fallback.py:1041 fixture lands here too.)",
+  "evidence": "Probe BREAKS_AT_CUTOVER; trace shows statements.py:13858: `a, b = pairs[0]` on a const-inferred list[tuple[int32, Box]] param; also `a, b = h.pair` on a narrowed Optional receiver, `a, b = self.pair`, a readonly list receiver, and a storage-tuple local with an Optional-record element. (The pinned test_fallback.py:1041 fixture lands here too.)",
   "probe": "scripts/thir_migration/review/probes/stmt4/s13758_unpack_pairs_subscript.py",
   "plain_raise": false,
   "known_shape": null
@@ -450,7 +450,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "UNSURE",
   "confidence": "low",
-  "evidence": "Requires a for-body/loop-var hoist whose name is a native global. With `score: Int32 = native_global(...)`, a for body binding `score` (plain, annotated, or as loop var) is never hoisted by sema -- the post-loop read resolves to the module global and THIR rejects that read (name.global_read at expressions.py:4946), so this gate is never consulted. The try sibling (14882) does fire. Missing: a sema shape that promotes such a name as a pending loop var.",
+  "evidence": "Requires a for-body/loop-var hoist whose name is a native global. With `score: int32 = native_global(...)`, a for body binding `score` (plain, annotated, or as loop var) is never hoisted by sema -- the post-loop read resolves to the module global and THIR rejects that read (name.global_read at expressions.py:4946), so this gate is never consulted. The try sibling (14882) does fire. Missing: a sema shape that promotes such a name as a pending loop var.",
   "probe": null,
   "plain_raise": false,
   "known_shape": null
@@ -474,7 +474,7 @@
   "reason": "\"stmt.tuple_unpack\"",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "Probe BREAKS_AT_CUTOVER; trace shows statements.py:14109: `for b, n in pairs:` over list[tuple[Box, Int32]] with `b` read after the loop (hoisted ref target, not a container).",
+  "evidence": "Probe BREAKS_AT_CUTOVER; trace shows statements.py:14109: `for b, n in pairs:` over list[tuple[Box, int32]] with `b` read after the loop (hoisted ref target, not a container).",
   "probe": "scripts/thir_migration/review/probes/stmt4/s14109_foreach_ref_target_hoisted.py",
   "plain_raise": false,
   "known_shape": null
@@ -774,7 +774,7 @@
   "reason": "stmt_reject_reason(stmt)",
   "bin": "BREAKS",
   "confidence": "high",
-  "evidence": "Probe BREAKS_AT_CUTOVER; trace shows statements.py:15220 (bare 'stmt.with'): __enter__ returning a tuple; also Int32|None, list, bytes enter types, reuse of a value name as target, and a with-in-try hoist shape.",
+  "evidence": "Probe BREAKS_AT_CUTOVER; trace shows statements.py:15220 (bare 'stmt.with'): __enter__ returning a tuple; also int32|None, list, bytes enter types, reuse of a value name as target, and a with-in-try hoist shape.",
   "probe": "scripts/thir_migration/review/probes/stmt4/s15220_with_tuple_enter.py",
   "plain_raise": false,
   "known_shape": null

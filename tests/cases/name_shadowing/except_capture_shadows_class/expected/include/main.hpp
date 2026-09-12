@@ -17,7 +17,7 @@ void main();
 
 // class Registry:
 struct Registry {
-    // code: ClassVar[Int32] = 999
+    // code: ClassVar[int32] = 999
     static inline int32_t code = 999;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.Registry";
@@ -33,7 +33,7 @@ struct MyError : ::tpy::Exception {
     // self.code = code
     int32_t code;
 
-    // def __init__(self, code: Int32):
+    // def __init__(self, code: int32):
     MyError() = default;
     explicit MyError(int32_t code);
 
@@ -49,7 +49,7 @@ inline std::ostream& operator<<(std::ostream& os, const MyError& obj) {
 }
 
 
-// def __init__(self, code: Int32):
+// def __init__(self, code: int32):
 inline MyError::MyError(int32_t code) : code(code) {}
 void __tpy_init();
 } // namespace tpyapp::main

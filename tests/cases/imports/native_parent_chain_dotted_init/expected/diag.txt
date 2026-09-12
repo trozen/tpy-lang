@@ -1,1 +1,1 @@
-leaf.py:9: warning: ALL_CAPS variable 'COUNTER' without Final annotation; use Final[Int32] if this is a constant
+leaf.py:9: warning: ALL_CAPS variable 'COUNTER' without Final annotation; use Final[int32] if this is a constant

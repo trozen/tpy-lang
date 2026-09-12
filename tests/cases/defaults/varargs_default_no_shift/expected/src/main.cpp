@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // # `b` is a defaulted fixed positional AHEAD of the pack, so C++ cannot spell its
 // # default (the pack that follows has none) and every call must fill it.
-// def spread(a: Int64, b: Int64 = 4, *rest: Int64, tag: Int64 = 9) -> Int64:
+// def spread(a: int64, b: int64 = 4, *rest: int64, tag: int64 = 9) -> int64:
 int64_t spread(int64_t a, int64_t b, ::tpy::varargs<const int64_t> rest, int64_t tag) {
     // total = a * 1000 + b * 100 + tag
     int64_t total = (::tpy::add_check<int64_t>((::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(a, 1000)), (::tpy::mul_check<int64_t>(b, 100)))), tag));

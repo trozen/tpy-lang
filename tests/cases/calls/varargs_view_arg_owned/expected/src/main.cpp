@@ -21,7 +21,7 @@ std::string joins(std::string_view a, ::tpy::varargs<const std::string> parts) {
     return out;
 }
 
-// def total_len(a: bytes, *parts: bytes) -> Int32:
+// def total_len(a: bytes, *parts: bytes) -> int32:
 int32_t total_len(::tpy::BytesView a, ::tpy::varargs<const ::tpy::Bytes> parts) {
     // n = len(a)
     int32_t n = ::tpy::__len__(a);
@@ -38,7 +38,7 @@ int32_t total_len(::tpy::BytesView a, ::tpy::varargs<const ::tpy::Bytes> parts) 
     return n;
 }
 
-// def addall(*nums: Int32) -> Int32:
+// def addall(*nums: int32) -> int32:
 int32_t addall(::tpy::varargs<const int32_t> nums) {
     // t = 0
     int32_t t = 0;
@@ -72,7 +72,7 @@ std::string from_str_view(std::string_view sv) {
     return joins("x", ::tpy::varargs<const std::string>(__tmp_2));
 }
 
-// def from_bytes_view(bv: BytesView) -> Int32:
+// def from_bytes_view(bv: BytesView) -> int32:
 int32_t from_bytes_view(::tpy::BytesView bv) {
     // return total_len(b"x", bv)         # view arg into *parts: bytes
     std::array<const ::tpy::Bytes, 1> __tmp_3{::tpy::Bytes(bv)};

@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def test_basic() -> None:
 void test_basic() {
-    // items: list[Int32] = [10, 20, 30, 40, 50]
+    // items: list[int32] = [10, 20, 30, 40, 50]
     std::vector<int32_t> items = {10, 20, 30, 40, 50};
     // print(items)
     std::cout << ::tpy::ListPrinter(items) << "\n";
@@ -20,7 +20,7 @@ void test_basic() {
 
 // def test_negative_index() -> None:
 void test_negative_index() {
-    // items: list[Int32] = [1, 2, 3, 4]
+    // items: list[int32] = [1, 2, 3, 4]
     std::vector<int32_t> items = {1, 2, 3, 4};
     // del items[-1]
     ::tpy::__delitem__(items, -1);
@@ -30,7 +30,7 @@ void test_negative_index() {
 
 // def test_first_element() -> None:
 void test_first_element() {
-    // items: list[Int32] = [10, 20, 30]
+    // items: list[int32] = [10, 20, 30]
     std::vector<int32_t> items = {10, 20, 30};
     // del items[0]
     ::tpy::__delitem__(items, 0);

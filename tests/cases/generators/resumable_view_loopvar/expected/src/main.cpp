@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def words_gen(words: list[str]) -> Iterator[Int32]:
+// def words_gen(words: list[str]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_words_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -49,12 +49,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_words_gen::__next__() {
 }
 
 
-// def words_gen(words: list[str]) -> Iterator[Int32]:
+// def words_gen(words: list[str]) -> Iterator[int32]:
 __gen_words_gen words_gen(std::vector<std::string>& words) {
     return __gen_words_gen(words);
 }
 
-// def blobs_gen(blobs: list[bytes]) -> Iterator[Int32]:
+// def blobs_gen(blobs: list[bytes]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_blobs_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -99,12 +99,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_blobs_gen::__next__() {
 }
 
 
-// def blobs_gen(blobs: list[bytes]) -> Iterator[Int32]:
+// def blobs_gen(blobs: list[bytes]) -> Iterator[int32]:
 __gen_blobs_gen blobs_gen(std::vector<::tpy::Bytes>& blobs) {
     return __gen_blobs_gen(blobs);
 }
 
-// def pairs_gen(pairs: list[tuple[str, Int32]]) -> Iterator[Int32]:
+// def pairs_gen(pairs: list[tuple[str, int32]]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_pairs_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -153,7 +153,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_pairs_gen::__next__() {
 }
 
 
-// def pairs_gen(pairs: list[tuple[str, Int32]]) -> Iterator[Int32]:
+// def pairs_gen(pairs: list[tuple[str, int32]]) -> Iterator[int32]:
 __gen_pairs_gen pairs_gen(std::vector<std::tuple<std::string, int32_t>>& pairs) {
     return __gen_pairs_gen(pairs);
 }
@@ -208,7 +208,7 @@ void main() {
         }
         }
     }
-    // ps: list[tuple[str, Int32]] = []
+    // ps: list[tuple[str, int32]] = []
     std::vector<std::tuple<std::string, int32_t>> ps = std::vector<std::tuple<std::string, int32_t>>{};
     // ps.append(("k", 9))
     ps.push_back(std::tuple<std::string, int32_t>{"k", 9});

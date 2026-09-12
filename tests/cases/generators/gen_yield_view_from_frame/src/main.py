@@ -16,7 +16,7 @@
 # an owned string twice.
 from typing import Iterator
 
-from tpy import Int32, StrView
+from tpy import int32, StrView
 
 
 class Holder:
@@ -65,7 +65,7 @@ def with_view_target(h: Holder) -> Iterator[str]:
 # A single yield inside the trailing loop stays on the make_generator lambda,
 # which reaches the sink through its own emitter -- covered here so the copy is
 # pinned on both paths at exec level, not only in the THIR unit pins.
-def peephole_view(n: Int32) -> Iterator[str]:
+def peephole_view(n: int32) -> Iterator[str]:
     lit = "peephole"
     i = 0
     while i < n:

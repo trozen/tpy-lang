@@ -3,7 +3,7 @@
 
 namespace tpyapp::main {
 
-// mem: list[Int32] = [0] * 10
+// mem: list[int32] = [0] * 10
 std::vector<int32_t>* mem{};
 // # Unannotated list repetition (infers default int)
 // data = [0] * 5
@@ -12,11 +12,11 @@ std::vector<int32_t>* data{};
 // chars = [72, 73]  # 'H', 'I'
 std::vector<int32_t>* chars{};
 
-// def sum_list(nums: list[Int32]) -> Int32:
+// def sum_list(nums: list[int32]) -> int32:
 int32_t sum_list(const std::vector<int32_t>& nums) {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
-    // i: Int32 = 0
+    // i: int32 = 0
     int32_t i = 0;
     // while i < len(nums):
     while ((i < ::tpy::__len__(nums))) {
@@ -34,7 +34,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // mem: list[Int32] = [0] * 10
+    // mem: list[int32] = [0] * 10
     static std::vector<int32_t> __global_slot_1 = ::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(10, {0}));
     mem = &__global_slot_1;
     // mem[0] = 42

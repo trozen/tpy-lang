@@ -1,13 +1,13 @@
 # match/case on Optional[Record] (pointer repr) and Optional[primitive]
 from typing import Optional
 from dataclasses import dataclass
-from tpy import Int32
+from tpy import int32
 from enum import Enum, auto
 
 @dataclass
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 class Color(Enum):
     Red = auto()
@@ -35,8 +35,8 @@ def check_color(c: Optional[Color]) -> str:
 
 def main() -> None:
     print(check_point(None))
-    print(check_point(Point(Int32(0), Int32(0))))
-    print(check_point(Point(Int32(3), Int32(4))))
+    print(check_point(Point(int32(0), int32(0))))
+    print(check_point(Point(int32(3), int32(4))))
     print(check_color(None))
     print(check_color(Color.Red))
     print(check_color(Color.Green))

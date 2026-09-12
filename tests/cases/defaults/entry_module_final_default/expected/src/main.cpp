@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def spaced(a: Int64, b: Int64 = STEP, *, c: Int64) -> Int64:
+// def spaced(a: int64, b: int64 = STEP, *, c: int64) -> int64:
 int64_t spaced(int64_t a, int64_t b, int64_t c) {
     // return a * 10000 + b * 100 + c
     return (::tpy::add_check<int64_t>((::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(a, 10000)), (::tpy::mul_check<int64_t>(b, 100)))), c));

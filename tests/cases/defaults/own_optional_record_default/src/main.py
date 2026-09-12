@@ -1,11 +1,11 @@
 # Own[Rec | None] default on a free function: Own forces the value form, so the
 # pointer-form escape must not leave an illegal C++ default at the declaration.
 
-from tpy import Int64, Own
+from tpy import int64, Own
 
 
 class Rec:
-    def __init__(self, v: Int64) -> None:
+    def __init__(self, v: int64) -> None:
         self.v = v
 
 
@@ -14,7 +14,7 @@ class Holder:
     def __init__(self, r: Own[Rec | None] = None) -> None:
         self.slot = r
 
-    def value(self) -> Int64:
+    def value(self) -> int64:
         if self.slot is None:
             return -1
         return self.slot.v

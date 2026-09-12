@@ -18,7 +18,7 @@ struct __coro_Wrap_total;
 
 void main();
 
-// class Wrap[T: NativeIterable[Int32]]:
+// class Wrap[T: NativeIterable[int32]]:
 template<::tpy::NativeIterable<int32_t> T>
 struct Wrap {
     // items: T
@@ -63,13 +63,13 @@ struct __coro_Wrap_total {
     }
 };
 
-// async def total(self) -> Int32:
+// async def total(self) -> int32:
 template <::tpy::NativeIterable<int32_t> T>
 ::tpystd::tpy::Poll<int32_t> __coro_Wrap_total<T>::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-        // result: Int32 = 0
+        // result: int32 = 0
         result = 0;
         // for x in self.items:
         auto& __obj_0 = __self.items;

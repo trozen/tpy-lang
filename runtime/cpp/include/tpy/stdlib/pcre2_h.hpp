@@ -28,7 +28,7 @@
 // ---- Type aliases (8-bit code unit) ----
 // Upstream pcre2.h has `typedef size_t PCRE2_SIZE`. We use `std::uint64_t`
 // instead because the TPy bindings (lib/tpy/_bindings/pcre2.py) type the
-// matching pointer params as `Ptr[UInt64]` -- on Linux x86_64 `size_t` and
+// matching pointer params as `Ptr[uint64]` -- on Linux x86_64 `size_t` and
 // `uint64_t` are both `unsigned long`, but on macOS `size_t` is
 // `unsigned long` while `uint64_t` is `unsigned long long`, so the pointer
 // types don't implicitly convert. Both are 8-byte unsigned on every 64-bit

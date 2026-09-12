@@ -36,10 +36,10 @@ void main();
 // class Tagged[T]:
 template<typename T>
 struct Tagged {
-    // tag: Int32
+    // tag: int32
     int32_t tag;
 
-    // def __init__(self, tag: Int32):
+    // def __init__(self, tag: int32):
     Tagged() = default;
     explicit Tagged(int32_t tag) : tag(tag) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Tagged";

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def score(x: float | None) -> Int32:
+// def score(x: float | None) -> int32:
 int32_t score(std::optional<double> x) {
     // if x:  # tpyc: warning(/Truthiness check on optional value/)  # tpyc: warning(/variable 'x'/)
     if (::tpy::is_truthy(x)) {

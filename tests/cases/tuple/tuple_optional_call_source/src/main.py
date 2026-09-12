@@ -2,12 +2,12 @@
 # storage-form destinations (list.append, dict subscript-assign). The call
 # returns pointer form, so the wrap path must fire -- is_storage_form_source
 # returns False for calls.
-from tpy import Int32
+from tpy import int32
 
 
 class P:
-    x: Int32
-    def __init__(self, x: Int32) -> None:
+    x: int32
+    def __init__(self, x: int32) -> None:
         self.x = x
 
 
@@ -22,8 +22,8 @@ def main() -> None:
     pairs: list[tuple[P | None, P | None]] = []
     pairs.append(make_pair(a, b))  # tpyc: warning(/copies/) warning(/copies/)
 
-    d: dict[Int32, tuple[P | None, P | None]] = {}
-    d[Int32(0)] = make_pair(a, b)  # tpyc: warning(/copies/) warning(/copies/)
+    d: dict[int32, tuple[P | None, P | None]] = {}
+    d[int32(0)] = make_pair(a, b)  # tpyc: warning(/copies/) warning(/copies/)
 
     print(len(pairs))
     print(len(d))

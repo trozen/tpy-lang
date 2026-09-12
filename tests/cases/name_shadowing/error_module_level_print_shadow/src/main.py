@@ -2,16 +2,16 @@
 # the call is a plain user call, not the builtin print form, and the user
 # function is not a shape the caller position has an arm for. TPy rejects
 # calling `print(n)` inside `record` today, once `print` is redefined.
-from tpy import Int32
+from tpy import int32
 
-seen: list[Int32] = []
+seen: list[int32] = []
 
 
-def print(n: Int32) -> None:
+def print(n: int32) -> None:
     seen.append(n)
 
 
-def record(n: Int32) -> None:
+def record(n: int32) -> None:
     print(n)  # tpyc: error(/call\.builtin_special/)
 
 

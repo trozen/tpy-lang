@@ -1495,7 +1495,7 @@ The work landed across 8 commits, one per phase of the plan:
 - **Star imports of typed globals through user modules.**
   Pre-existing bug, surfaced by trying to write
   `star_import_all_filter` against a typed global: `from lib
-  import *` where `lib` defines `X: Int32 = ...` produces "X
+  import *` where `lib` defines `X: int32 = ...` produces "X
   is not a variable" at consumer use sites. Resolved by the
   star-import filter migration (May 2026) -- the sema bind-
   order fix and compile-time expansion together cover

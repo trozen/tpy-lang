@@ -1,32 +1,32 @@
 # Empty list [] and list() infer element type from subsequent usage
-from tpy import Int32, Int64, Own
+from tpy import int32, int64, Own
 
 def test_append() -> None:
-    xs = []  # tpyc: type(list[Int32])
+    xs = []  # tpyc: type(list[int32])
     xs.append(42)
     print(xs)
 
 def test_list_ctor() -> None:
-    xs = list()  # tpyc: type(list[Int32])
+    xs = list()  # tpyc: type(list[int32])
     xs.append(42)
     print(xs)
 
 def test_insert() -> None:
-    xs = []  # tpyc: type(list[Int32])
+    xs = []  # tpyc: type(list[int32])
     xs.insert(0, 99)
     print(xs)
 
 def test_multiple_append() -> None:
-    xs = []  # tpyc: type(list[Int32])
+    xs = []  # tpyc: type(list[int32])
     xs.append(1)
     xs.append(2)
     xs.append(3)
     print(xs)
 
 def test_numeric_widen() -> None:
-    xs = []  # tpyc: type(list[Int64])
-    xs.append(Int32(1))
-    xs.append(Int64(2))
+    xs = []  # tpyc: type(list[int64])
+    xs.append(int32(1))
+    xs.append(int64(2))
     print(xs)
 
 def test_return_context() -> Own[list[int]]:
@@ -45,11 +45,11 @@ def test_param_context() -> None:
 
 def test_param_overrides_inferred() -> None:
     xs = []  # tpyc: type(list[int])
-    xs.append(Int32(1))
+    xs.append(int32(1))
     takes_list(xs)
 
 def test_alias_inference() -> None:
-    xs = []  # tpyc: type(list[Int32])
+    xs = []  # tpyc: type(list[int32])
     ys = xs
     ys.append(42)
     print(xs)

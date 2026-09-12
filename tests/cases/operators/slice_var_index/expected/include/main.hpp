@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t with_basic_slice(std::vector<int32_t>& items, const ::tpy::Union<int32_t, ::tpy::BasicSlice>& index);
+int32_t with_basic_slice(std::vector<int32_t>& items, const ::tpy::Union<::tpy::BasicSlice, int32_t>& index);
 void main();
 
 void __tpy_init();

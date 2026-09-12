@@ -1,20 +1,20 @@
 # Address-of a reference-bound generic param into a Ptr[W] slot, via both a
 # field assign and a local binding, with W deduced from the call lvalue.
 from typing import Protocol
-from tpy import Ptr, Own, Int32
+from tpy import Ptr, Own, int32
 
 
 class Adds(Protocol):
-    def add(self, n: Int32) -> None: ...
+    def add(self, n: int32) -> None: ...
 
 
 class Sink(Adds):
-    total: Int32
+    total: int32
 
     def __init__(self) -> None:
         self.total = 0
 
-    def add(self, n: Int32) -> None:
+    def add(self, n: int32) -> None:
         self.total += n
 
 
@@ -24,7 +24,7 @@ class Adder[W: Adds]:
     def __init__(self, sink: W) -> None:
         self._sink = sink
 
-    def push(self, n: Int32) -> None:
+    def push(self, n: int32) -> None:
         self._sink.add(n)
 
 

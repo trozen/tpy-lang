@@ -1230,7 +1230,7 @@ def _lower_expr(
         # `type_args` on the IR maps to the parser's `call_type`: a
         # TpyTypeRef whose `args` are the explicit type/int args. This
         # is what powers generic-constructor calls like
-        # `Array[Int32, 8]()` and `Container[T]()`.
+        # `Array[int32, 8]()` and `Container[T]()`.
         if expr.type_args:
             if not isinstance(expr.callee, Name):
                 diags.append(_ir_invalid(

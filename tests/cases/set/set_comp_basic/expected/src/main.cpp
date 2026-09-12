@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // # Range to set
-    // squares: set[Int32] = {x * x for x in range(5)}
+    // squares: set[int32] = {x * x for x in range(5)}
     ::tpy::ordered_set<int32_t> squares = ({
         ::tpy::ordered_set<int32_t> __result;
         const int32_t __stop_0 = 5;
@@ -26,9 +26,9 @@ void main() {
         std::cout << v << "\n";
     }
     // # List to set (dedup)
-    // items: list[Int32] = [1, 2, 2, 3, 3, 3]
+    // items: list[int32] = [1, 2, 2, 3, 3, 3]
     std::vector<int32_t> items = {1, 2, 2, 3, 3, 3};
-    // unique: set[Int32] = {x for x in items}
+    // unique: set[int32] = {x for x in items}
     ::tpy::ordered_set<int32_t> unique = ({
         ::tpy::ordered_set<int32_t> __result;
         auto& __obj_2 = items;
@@ -60,7 +60,7 @@ void main() {
     // print(len(name_set))
     std::cout << ::tpy::__len__(name_set) << "\n";
     // # 2-arg range
-    // r2: set[Int32] = {x for x in range(3, 7)}
+    // r2: set[int32] = {x for x in range(3, 7)}
     ::tpy::ordered_set<int32_t> r2 = ({
         ::tpy::ordered_set<int32_t> __result;
         const int32_t __start_4 = 3;

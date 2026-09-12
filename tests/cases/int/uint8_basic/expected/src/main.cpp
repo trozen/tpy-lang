@@ -7,11 +7,11 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // # Constructors
-    // a: UInt8 = UInt8(0)
+    // a: uint8 = uint8(0)
     uint8_t a = 0;
-    // b: UInt8 = UInt8(255)
+    // b: uint8 = uint8(255)
     uint8_t b = 255;
-    // c: UInt8 = UInt8(42)
+    // c: uint8 = uint8(42)
     uint8_t c = 42;
     // print(a)
     std::cout << static_cast<int>(a) << "\n";
@@ -20,28 +20,28 @@ void main() {
     // print(c)
     std::cout << static_cast<int>(c) << "\n";
     // # Arithmetic
-    // x: UInt8 = UInt8(100)
+    // x: uint8 = uint8(100)
     uint8_t x = 100;
-    // y: UInt8 = UInt8(50)
+    // y: uint8 = uint8(50)
     uint8_t y = 50;
     // print(x + y)
     std::cout << static_cast<int>((::tpy::add_check<uint8_t>(x, y))) << "\n";
     // print(x - y)
     std::cout << static_cast<int>((::tpy::sub_check<uint8_t>(x, y))) << "\n";
-    // print(x * UInt8(2))
+    // print(x * uint8(2))
     std::cout << static_cast<int>((::tpy::mul_check<uint8_t>(x, 2))) << "\n";
-    // print(x // UInt8(3))
+    // print(x // uint8(3))
     std::cout << static_cast<int>((::tpy::div_check<uint8_t>(x, 3))) << "\n";
-    // print(x % UInt8(7))
+    // print(x % uint8(7))
     std::cout << static_cast<int>((::tpy::mod_check<uint8_t>(x, 7))) << "\n";
     // # Bitwise
-    // print(UInt8(0xFF) & UInt8(0x0F))
+    // print(uint8(0xFF) & uint8(0x0F))
     std::cout << static_cast<int>((static_cast<uint8_t>(255 & 15))) << "\n";
-    // print(UInt8(0xF0) | UInt8(0x0F))
+    // print(uint8(0xF0) | uint8(0x0F))
     std::cout << static_cast<int>((static_cast<uint8_t>(240 | 15))) << "\n";
-    // print(UInt8(0xFF) ^ UInt8(0x0F))
+    // print(uint8(0xFF) ^ uint8(0x0F))
     std::cout << static_cast<int>((static_cast<uint8_t>(255 ^ 15))) << "\n";
-    // print(~UInt8(0))
+    // print(~uint8(0))
     std::cout << static_cast<int>(static_cast<uint8_t>(~(0))) << "\n";
     // # Conversion to BigInt
     // n: int = int(c)

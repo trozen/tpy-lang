@@ -1,16 +1,16 @@
 # super() in a @readonly multi-base method must dispatch to @readonly parent
 # methods on each branch.
-from tpy import Int32, readonly
+from tpy import int32, readonly
 
 
 class Counter:
-    n: Int32
+    n: int32
 
     def __init__(self) -> None:
-        self.n = Int32(0)
+        self.n = int32(0)
 
     @readonly
-    def get_n(self) -> Int32:
+    def get_n(self) -> int32:
         return self.n
 
 

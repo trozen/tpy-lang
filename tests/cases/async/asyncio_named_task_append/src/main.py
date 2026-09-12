@@ -1,16 +1,16 @@
 # A named Task local appended to a list inside an async body is moved out of
 # its frame slot at its last use (Task is @nocopy, so a copy would not build).
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
-async def fetch(n: Int32) -> Int32:
+async def fetch(n: int32) -> int32:
     await asyncio.sleep(0.001)
     return n * 2
 
 
 async def main_coro() -> None:
-    tasks: list[asyncio.Task[Int32]] = []
+    tasks: list[asyncio.Task[int32]] = []
     a = asyncio.create_task(fetch(1))
     tasks.append(a)  # tpyc: ok
     b = asyncio.create_task(fetch(2))

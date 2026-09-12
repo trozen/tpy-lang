@@ -7,16 +7,16 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // # list.extend with Iterable param
-    // nums: list[Int32] = [1, 2]
+    // nums: list[int32] = [1, 2]
     std::vector<int32_t> nums = {1, 2};
-    // more: list[Int32] = [3, 4, 5]
+    // more: list[int32] = [3, 4, 5]
     std::vector<int32_t> more = {3, 4, 5};
     // extend_from(nums, more)
     extend_from(nums, more);
     // print(nums)
     std::cout << ::tpy::ListPrinter(nums) << "\n";
     // # list.extend with list literal
-    // nums2: list[Int32] = [10]
+    // nums2: list[int32] = [10]
     std::vector<int32_t> nums2 = {10};
     // extend_from(nums2, [20, 30])
     auto __tmp_1 = std::array<int32_t, 2>{20, 30};
@@ -24,9 +24,9 @@ void main() {
     // print(nums2)
     std::cout << ::tpy::ListPrinter(nums2) << "\n";
     // # list.extend with another list via Iterable
-    // target: list[Int32] = [100]
+    // target: list[int32] = [100]
     std::vector<int32_t> target = {100};
-    // vals: list[Int32] = [200, 300]
+    // vals: list[int32] = [200, 300]
     std::vector<int32_t> vals = {200, 300};
     // extend_from(target, vals)
     extend_from(target, vals);
@@ -38,14 +38,14 @@ void main() {
     // print(join_from("-", words))
     std::cout << join_from("-", words) << "\n";
     // # list() from Iterable param
-    // src: list[Int32] = [7, 8, 9]
+    // src: list[int32] = [7, 8, 9]
     std::vector<int32_t> src = {7, 8, 9};
     // result = list_from(src)
     std::vector<int32_t> result = list_from(src);
     // print(result)
     std::cout << ::tpy::ListPrinter(result) << "\n";
     // # Direct calls (not through Iterable param)
-    // direct: list[Int32] = [1]
+    // direct: list[int32] = [1]
     std::vector<int32_t> direct = {1};
     // direct.extend([2, 3])
     ::tpy::list_extend(direct, std::array<int32_t, 2>{2, 3});

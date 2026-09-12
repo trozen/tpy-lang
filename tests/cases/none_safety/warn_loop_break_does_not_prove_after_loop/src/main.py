@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 
 
-def after_break(x: Int32 | None, flag: bool) -> Int32:
+def after_break(x: int32 | None, flag: bool) -> int32:
     while flag:
         if x is None:
             break

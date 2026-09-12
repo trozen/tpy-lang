@@ -24,9 +24,9 @@ void main() {
     std::cout << ::tpy::print_bool((static_cast<int64_t>(-86400000000) <= n)) << "\n";
     // print(-86400000000 <= n <= 100000000000)
     std::cout << ::tpy::print_bool(((static_cast<int64_t>(-86400000000) <= n) && (n <= static_cast<int64_t>(100000000000)))) << "\n";
-    // # Inverse: fixed-width Int64 vs a large literal stays a plain integer
+    // # Inverse: fixed-width int64 vs a large literal stays a plain integer
     // # comparison (no BigInt wrap), which the fix must not disturb.
-    // m: Int64 = 90000000000
+    // m: int64 = 90000000000
     int64_t m = static_cast<int64_t>(90000000000);
     // print(m >= 86400000000)
     std::cout << ::tpy::print_bool((m >= static_cast<int64_t>(86400000000))) << "\n";

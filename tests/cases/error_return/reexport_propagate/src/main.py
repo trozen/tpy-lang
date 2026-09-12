@@ -2,11 +2,11 @@
 # imported via the facade re-export, and propagates check() whose error type is
 # the SAME AppError reached via its defining module. Both qualify to the
 # defining-module qname, so the propagation must still match and compile.
-from tpy import error_return, Int32
+from tpy import error_return, int32
 from facade import AppError, check
 
 @error_return(AppError)
-def run(n: Int32) -> Int32:
+def run(n: int32) -> int32:
     return check(n)
 
 def main() -> None:

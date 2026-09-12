@@ -1,11 +1,11 @@
 # `asyncio.run(w.go())` -- a MEMBER async-method factory as the driver argument:
 # the coroutine factory spells inline inside the adapter.
-from tpy import Int32
+from tpy import int32
 import asyncio
 
 
 class Worker:
-    n: Int32
+    n: int32
 
     def __init__(self) -> None:
         self.n = 1

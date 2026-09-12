@@ -1,12 +1,12 @@
 # A lambda whose tuple parameter carries a POINTER-repr element (a record) at a
 # still-open Fn slot: that parameter spelling is not one the closure renders.
-from tpy import Comparable, Fn, Int32, Own
+from tpy import Comparable, Fn, int32, Own
 
 
 class Box:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 
@@ -19,12 +19,12 @@ def pick[T, K: Comparable](xs: list[T], f: Fn[[T], K]) -> Own[list[K]]:
     return out
 
 
-def keys(pairs: list[tuple[Box, Int32]]) -> Own[list[Int32]]:
+def keys(pairs: list[tuple[Box, int32]]) -> Own[list[int32]]:
     return pick(pairs, lambda p: p[1])  # tpyc: error(/call\.generic_arg_shape/)
 
 
 def main() -> None:
-    ps: list[tuple[Box, Int32]] = [(Box(1), 5)]
+    ps: list[tuple[Box, int32]] = [(Box(1), 5)]
     for n in keys(ps):
         print(n)
 

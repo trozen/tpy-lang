@@ -4,13 +4,13 @@
 # where the check is pointee-blind.
 from typing import Protocol
 
-from tpy import Int32, dynamic
+from tpy import int32, dynamic
 
 
 class Bag:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
     def conv[T](self, x: T) -> T:
@@ -19,20 +19,20 @@ class Bag:
 
 @dynamic
 class Pet(Protocol):
-    def sound(self) -> Int32: ...
+    def sound(self) -> int32: ...
 
 
 class Dog(Pet):
-    def sound(self) -> Int32:
+    def sound(self) -> int32:
         return 7
 
 
-def generic_on_optional(b: Bag | None) -> Int32:
+def generic_on_optional(b: Bag | None) -> int32:
     # targs ride the checked deref
     return b.conv(3)           # tpyc: warning(/Potential None access/)
 
 
-def dyn_on_optional(p: Pet | None) -> Int32:
+def dyn_on_optional(p: Pet | None) -> int32:
     # a @dynamic pointee -- the check is pointee-blind
     return p.sound()           # tpyc: warning(/Potential None access/)
 

@@ -1,21 +1,21 @@
 # Literal overload flattening: per-literal C++ specializations with different
 # return types. Each Literal stub gets its own mangled C++ function/method.
 from typing import Literal, overload
-from tpy import Int32
+from tpy import int32
 
 
 # --- Free function flattening ---
 
 @overload
-def get_field(name: Literal["age"]) -> Int32: ...
+def get_field(name: Literal["age"]) -> int32: ...
 
 @overload
 def get_field(name: Literal["name"]) -> str: ...
 
 @overload
-def get_field(name: str) -> Int32 | str: ...
+def get_field(name: str) -> int32 | str: ...
 
-def get_field(name: str) -> Int32 | str:
+def get_field(name: str) -> int32 | str:
     if name == "age":
         return 42
     return "hello"
@@ -24,23 +24,23 @@ def get_field(name: str) -> Int32 | str:
 # --- Method flattening ---
 
 class Record:
-    data_age: Int32
+    data_age: int32
     data_name: str
 
-    def __init__(self, age: Int32, name: str) -> None:
+    def __init__(self, age: int32, name: str) -> None:
         self.data_age = age
         self.data_name = name
 
     @overload
-    def get(self, key: Literal["age"]) -> Int32: ...
+    def get(self, key: Literal["age"]) -> int32: ...
 
     @overload
     def get(self, key: Literal["name"]) -> str: ...
 
     @overload
-    def get(self, key: str) -> Int32 | str: ...
+    def get(self, key: str) -> int32 | str: ...
 
-    def get(self, key: str) -> Int32 | str:
+    def get(self, key: str) -> int32 | str:
         if key == "age":
             return self.data_age
         return self.data_name

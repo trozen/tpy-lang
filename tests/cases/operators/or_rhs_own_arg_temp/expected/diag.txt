@@ -1,12 +1,12 @@
-main.py:17: warning: copies list[Int32] into field; use copy() to make this explicit
-main.py:20: warning: Own[list[Int32]] param 'o' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:25: warning: Own[list[Int32]] param 'o' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:17: warning: copies list[int32] into field; use copy() to make this explicit
+main.py:20: warning: Own[list[int32]] param 'o' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:25: warning: Own[list[int32]] param 'o' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
 main.py:30: warning: Own[Bag] param 'b' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:48: warning: copies list[Int32] into owned storage; use copy() to make this explicit
-main.py:53: warning: copies list[Int32] into owned storage; use copy() to make this explicit
-main.py:59: warning: copies list[Int32] into owned storage; use copy() to make this explicit
-main.py:64: warning: copies list[Int32] into owned storage; use copy() to make this explicit
-main.py:69: warning: copies list[Int32] into owned storage; use copy() to make this explicit
-main.py:76: warning: copies list[Int32] into owned storage; use copy() to make this explicit
+main.py:48: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:53: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:59: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:64: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:69: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:76: warning: copies list[int32] into owned storage; use copy() to make this explicit
 main.py:84: warning: copies Bag into owned storage; use copy() to make this explicit
-main.py:104: warning: copies list[Int32] into owned storage; use copy() to make this explicit
+main.py:104: warning: copies list[int32] into owned storage; use copy() to make this explicit

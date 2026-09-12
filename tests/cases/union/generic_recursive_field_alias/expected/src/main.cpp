@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def count(t: Tree[Int32]) -> Int32:
+// def count(t: Tree[int32]) -> int32:
 int32_t count(const Tree<int32_t>& t) {
     // match t:
     auto& __match_subject_1 = t;

@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 // x: I = I(42)
 int32_t x{};
-// ch: C = "x"  # Char from string literal, not constructor
+// ch: C = "x"  # char from string literal, not constructor
 char ch{};
 
 // def greet(n: I, c: C) -> None:
@@ -23,7 +23,7 @@ void __tpy_init() {
 
     // x: I = I(42)
     x = 42;
-    // ch: C = "x"  # Char from string literal, not constructor
+    // ch: C = "x"  # char from string literal, not constructor
     ch = 'x';
     // greet(x, ch)
     greet(x, ch);

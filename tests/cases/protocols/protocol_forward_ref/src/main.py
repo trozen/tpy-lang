@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 from typing import Protocol
 
 # Protocol defined first (required for CPython compatibility)
@@ -17,9 +17,9 @@ class Describable(Protocol):
 # Class implementing protocols defined in same file
 class Person(Printable, Describable):
     name: str
-    age: Int32
+    age: int32
 
-    def __init__(self, name: str, age: Int32) -> None:
+    def __init__(self, name: str, age: int32) -> None:
         self.name = name
         self.age = age
 

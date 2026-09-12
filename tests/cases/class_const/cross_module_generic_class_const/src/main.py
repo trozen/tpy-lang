@@ -2,11 +2,11 @@
 # instance from `main.py`. Codegen must qualify both the namespace
 # (`tpyapp::box`) and the type-args (`<int32_t>`) at the access site.
 from box import Box
-from tpy import Int32
+from tpy import int32
 
 
 def main() -> None:
-    b = Box[Int32]()
+    b = Box[int32]()
     print(b.CAPACITY)
     c = Box[float]()
     print(c.CAPACITY)

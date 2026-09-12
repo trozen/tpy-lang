@@ -198,7 +198,7 @@ in the current model.
   unification variable tying `heap`'s pending element to `X`, so the local stays
   `PendingList[???]` and the call is rejected. Forward-from-usage deduction already covers
   the method-call shape (`xs.append(5)`) and the concrete expected-type shape (`f(x)` where
-  `f` wants `Container[Int32]`) -- see `BIDIRECTIONAL_CALL_INFERENCE_DESIGN.md` Phase 3a --
+  `f` wants `Container[int32]`) -- see `BIDIRECTIONAL_CALL_INFERENCE_DESIGN.md` Phase 3a --
   but the joint case (co-resolve a pending arg with a type param determined by a *sibling*
   arg, then write the result back onto the local) is the HM-style constraint-solving step
   that doc defers to "Phase 3+". Natural on MIR's unification-variable model; awkward to
@@ -220,7 +220,7 @@ in the current model.
   *syntactic* "observable
   prologue/post-yield" predicate to reroute selectively -- is a semantic-purity problem that
   leaks (a denylist keeping local bindings mis-times `x = f()`/`x = xs[i]`/`x = global`; an
-  allowlist of pure-arith counters reroutes `i = Int32(0)` back into the tuple bug). Once MIR
+  allowlist of pure-arith counters reroutes `i = int32(0)` back into the tuple bug). Once MIR
   makes representation selection late and the resumable path's borrow-form gaps dissolve, the
   reroute becomes unconditional and complete. (Investigated + abandoned pre-IR 2026-06-22,
   Codex-validated.)
@@ -569,10 +569,10 @@ A human-readable text format for inspecting the THIR:
 
 ```
 fn main() -> Void:
-  %items: list[Int32] = list_literal([1, 2, 3])    # elem_type=Int32
-  %total: Int32 = int_literal(0)
-  for %x: Int32 in %items [consuming=false, native=false]:
-    %total = binop(%total, Add, %x)                 # resolved=Int32.__add__
+  %items: list[int32] = list_literal([1, 2, 3])    # elem_type=int32
+  %total: int32 = int_literal(0)
+  for %x: int32 in %items [consuming=false, native=false]:
+    %total = binop(%total, Add, %x)                 # resolved=int32.__add__
   call print(%total)                                 # target=builtins.print
 ```
 
@@ -1989,9 +1989,9 @@ Standard backward pass on the CFG.
 ```
 fn main() -> Void:
   bb0:
-    StorageLive(items, list[Int32])
+    StorageLive(items, list[int32])
     items = Aggregate(List, [Literal(1), Literal(2), Literal(3)])
-    StorageLive(total, Int32)
+    StorageLive(total, int32)
     total = Use(Literal(0))
     goto -> bb1
 
@@ -2001,7 +2001,7 @@ fn main() -> Void:
 
   bb2:                                  // loop body
     x = Use(_iter_current)
-    total = Call(Int32.__add__, [total, x])
+    total = Call(int32.__add__, [total, x])
     goto -> bb1
 
   bb3:                                  // after loop
@@ -2495,7 +2495,7 @@ or eliminating the C++ compiler dependency), the MIR is ready.
    tuple element gap, and the recursive-union-wrapper durable member (excluded
    from the `T*` form). A particularly sharp exhibit is the `key=` lambda over
    a generic-element tuple (`sorted(pairs, key=...)` /
-   `min(a, b, key=...)` where `pairs: list[tuple[T, Int32]]`): the lambda's
+   `min(a, b, key=...)` where `pairs: list[tuple[T, int32]]`): the lambda's
    param form is reconstructed at its DEFINITION site, but the form it actually
    needs is decided by the CONSUMER -- `builtin_sorted_key` calls `key(items[i])`
    with a STORAGE-form element, while `min_key`/`max_key` are handed the

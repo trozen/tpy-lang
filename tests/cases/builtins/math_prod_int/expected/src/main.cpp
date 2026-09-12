@@ -6,19 +6,19 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // ints: list[Int32] = []
+    // ints: list[int32] = []
     std::vector<int32_t> ints = std::vector<int32_t>{};
-    // ints.append(Int32(2))
+    // ints.append(int32(2))
     ints.push_back(2);
-    // ints.append(Int32(3))
+    // ints.append(int32(3))
     ints.push_back(3);
-    // ints.append(Int32(4))
+    // ints.append(int32(4))
     ints.push_back(4);
-    // n: Int32 = math.prod(ints)
+    // n: int32 = math.prod(ints)
     int32_t n = ::tpystd::math::prod(ints, 1);
-    // print(n)  # 24 -- Int32 overload preserves Int32 result
+    // print(n)  # 24 -- int32 overload preserves int32 result
     std::cout << n << "\n";
-    // n_with_start: Int32 = math.prod(ints, start=Int32(10))
+    // n_with_start: int32 = math.prod(ints, start=int32(10))
     int32_t n_with_start = ::tpystd::math::prod(ints, 10);
     // print(n_with_start)  # 240
     std::cout << n_with_start << "\n";
@@ -32,20 +32,20 @@ void main() {
     double f = ::tpystd::math::prod(floats, 1.0);
     // print(f)  # 3.0
     std::cout << ::tpy::print_float(f) << "\n";
-    // # Empty Iterable[Int32] disambiguated by the float kwarg type.
-    // empty_int: list[Int32] = []
+    // # Empty Iterable[int32] disambiguated by the float kwarg type.
+    // empty_int: list[int32] = []
     std::vector<int32_t> empty_int = std::vector<int32_t>{};
     // f_empty: float = math.prod(empty_int, start=2.5)
     double f_empty = ::tpystd::math::prod(empty_int, 2.5);
     // print(f_empty)  # 2.5
     std::cout << ::tpy::print_float(f_empty) << "\n";
-    // # Empty Iterable[Int32] disambiguated by the int kwarg type.
-    // n_empty: Int32 = math.prod(empty_int, start=Int32(7))
+    // # Empty Iterable[int32] disambiguated by the int kwarg type.
+    // n_empty: int32 = math.prod(empty_int, start=int32(7))
     int32_t n_empty = ::tpystd::math::prod(empty_int, 7);
     // print(n_empty)  # 7
     std::cout << n_empty << "\n";
     // # BigInt iterable picks the Iterable[int] overload; result is BigInt
-    // # so products outside Int32 range are exact.
+    // # so products outside int32 range are exact.
     // bigs: list[int] = []
     std::vector<::tpy::BigInt> bigs = std::vector<::tpy::BigInt>{};
     // bigs.append(1000000)
@@ -56,9 +56,9 @@ void main() {
     bigs.push_back(1000000);
     // big_prod: int = math.prod(bigs)
     ::tpy::BigInt big_prod = ::tpystd::math::prod(bigs, ::tpy::BigInt(1));
-    // print(big_prod)  # 1000000000000000000 -- exceeds Int32 max
+    // print(big_prod)  # 1000000000000000000 -- exceeds int32 max
     std::cout << big_prod << "\n";
-    // # Empty Iterable[Int32] disambiguated to the BigInt overload by an
+    // # Empty Iterable[int32] disambiguated to the BigInt overload by an
     // # explicit BigInt start kwarg.
     // big_empty: int = math.prod(empty_int, start=int(42))
     ::tpy::BigInt big_empty = ::tpystd::math::prod(empty_int, ::tpy::BigInt(42));
@@ -71,7 +71,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # math.prod has overloads for Iterable[Int32], Iterable[int] (BigInt),
+    // # math.prod has overloads for Iterable[int32], Iterable[int] (BigInt),
     // # and Iterable[float]. The return type matches the input type family;
     // # kwargs disambiguate when positional args alone are ambiguous (empty
     // # list literal).

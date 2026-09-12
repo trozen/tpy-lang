@@ -2,13 +2,13 @@
 # needs its own borrow lift, which the closure return has no arm for.
 # Concretely, `lambda p: (str(p.x), p)` inside `map(...)`; TPy rejects that
 # lambda body today.
-from tpy import Int32, copy_iter
+from tpy import int32, copy_iter
 
 
 class Point:
-    x: Int32
+    x: int32
 
-    def __init__(self, x: Int32) -> None:
+    def __init__(self, x: int32) -> None:
         self.x = x
 
     def __str__(self) -> str:

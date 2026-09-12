@@ -24,7 +24,7 @@ void main() {
     std::cout << ::tpy::__getitem__(h.nodes, 0).val << " " << ::tpy::__getitem__(h.nodes, 1).val << "\n";
 }
 
-// def bump(self) -> Iterator[Int32]:
+// def bump(self) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_bump::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {

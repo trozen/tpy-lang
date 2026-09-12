@@ -22,7 +22,7 @@ struct Item {
     // self.v = v
     int32_t v;
 
-    // def __init__(self, v: Int32):
+    // def __init__(self, v: int32):
     Item() = default;
     explicit Item(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Item";
@@ -94,7 +94,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
 };
 
 
-// def __init__(self, v: Int32):
+// def __init__(self, v: int32):
 inline Item::Item(int32_t v) : v(v) {}
 
 // def __enter__(self) -> Own[Item]:

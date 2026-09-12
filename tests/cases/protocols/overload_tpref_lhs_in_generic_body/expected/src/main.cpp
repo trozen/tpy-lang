@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // @dispatch
-// def pick(x: Int32, y: Int32) -> Int32:
+// def pick(x: int32, y: int32) -> int32:
 int32_t pick(int32_t x, int32_t y) {
     // return x
     return x;
@@ -13,11 +13,11 @@ int32_t pick(int32_t x, int32_t y) {
 
 // def main() -> None:
 void main() {
-    // a: Int32 = use(Int32(1), Int32(2))
+    // a: int32 = use(int32(1), int32(2))
     int32_t a = use<int32_t>(1, 2);
     // print(a)
     std::cout << a << "\n";
-    // f: Float32 = use(Float32(1.5), Float32(2.5))
+    // f: float32 = use(float32(1.5), float32(2.5))
     float f = use<float>(1.5f, 2.5f);
     // print(f)
     std::cout << ::tpy::print_float(static_cast<double>(f)) << "\n";

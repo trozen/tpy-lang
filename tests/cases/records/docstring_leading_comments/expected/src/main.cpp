@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def free_fn() -> Int32:
+// def free_fn() -> int32:
 int32_t free_fn() {
     // # comment before a free-function docstring
     // return 1

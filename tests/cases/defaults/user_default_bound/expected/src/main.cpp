@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // x = create_default[Int32]()
+    // x = create_default[int32]()
     int32_t x = create_default<int32_t>();
     // print(x)
     std::cout << x << "\n";
@@ -14,7 +14,7 @@ void main() {
     std::string s = create_default<std::string>();
     // print(len(s))
     std::cout << ::tpy::__len__(s) << "\n";
-    // nums = fill[Int32](3)
+    // nums = fill[int32](3)
     std::vector<int32_t> nums = fill<int32_t>(3);
     // print(len(nums))
     std::cout << ::tpy::__len__(nums) << "\n";

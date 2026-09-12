@@ -3,13 +3,13 @@
 # materialized default is reported as missing an argument.
 from typing import TypedDict, Unpack
 
-from tpy import Int64, ValueType
+from tpy import int64, ValueType
 
 
 class Fixed(ValueType):
-    off: Int64
+    off: int64
 
-    def __init__(self, off: Int64) -> None:
+    def __init__(self, off: int64) -> None:
         self.off = off
 
 
@@ -17,11 +17,11 @@ class Options(TypedDict):
     host: str
 
 
-def probe(x: "Fixed | None" = None, **kwargs: Unpack[Options]) -> Int64:
+def probe(x: "Fixed | None" = None, **kwargs: Unpack[Options]) -> int64:
     return -1 if x is None else x.off
 
 
-def spread(a: Int64, b: Int64 = 4, *rest: Int64, tag: Int64 = 9) -> Int64:
+def spread(a: int64, b: int64 = 4, *rest: int64, tag: int64 = 9) -> int64:
     total = a * 1000 + b * 100 + tag
     for r in rest:
         total = total + r

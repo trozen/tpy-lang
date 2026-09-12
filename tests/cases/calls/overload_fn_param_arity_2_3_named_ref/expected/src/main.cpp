@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def add(x: Int32, y: Int32) -> Int32:
+// def add(x: int32, y: int32) -> int32:
 int32_t add(int32_t x, int32_t y) {
     // return x + y
     return (::tpy::add_check<int32_t>(x, y));
@@ -12,9 +12,9 @@ int32_t add(int32_t x, int32_t y) {
 
 // def main() -> None:
 void main() {
-    // xs: list[Int32] = [1, 2, 3, 4]
+    // xs: list[int32] = [1, 2, 3, 4]
     std::vector<int32_t> xs = {1, 2, 3, 4};
-    // print(f(add, xs, Int32(0)))  # 3-arg form: returns init = 0
+    // print(f(add, xs, int32(0)))  # 3-arg form: returns init = 0
     std::cout << f<int32_t, int32_t>(add, xs, 0) << "\n";
     // print(f(add, xs))             # 2-arg form: was the BUGS.md failure
     std::cout << f<int32_t>(add, xs) << "\n";

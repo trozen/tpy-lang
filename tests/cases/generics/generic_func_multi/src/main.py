@@ -1,5 +1,5 @@
 """Test generic functions with multiple type parameters."""
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Pair[A, B]:

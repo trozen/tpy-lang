@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def swap(p: Pair[Int32]) -> Pair[Int32]:
+// def swap(p: Pair[int32]) -> Pair[int32]:
 std::tuple<int32_t, int32_t> swap(const std::tuple<int32_t, int32_t>& p) {
     // return (p[1], p[0])
     return std::tuple<int32_t, int32_t>{std::get<1>(p), std::get<0>(p)};
@@ -12,7 +12,7 @@ std::tuple<int32_t, int32_t> swap(const std::tuple<int32_t, int32_t>& p) {
 
 // def main() -> None:
 void main() {
-    // p: Pair[Int32] = (Int32(1), Int32(2))  # tpyc: type(/tuple\[Int32, Int32\]/)
+    // p: Pair[int32] = (int32(1), int32(2))  # tpyc: type(/tuple\[int32, int32\]/)
     std::tuple<int32_t, int32_t> p = std::tuple<int32_t, int32_t>{1, 2};
     // q = swap(p)
     std::tuple<int32_t, int32_t> q = swap(p);

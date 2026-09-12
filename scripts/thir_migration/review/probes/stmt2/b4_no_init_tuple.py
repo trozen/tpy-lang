@@ -1,6 +1,6 @@
-from tpy import Int32
+from tpy import int32
 def main() -> None:
-    t: tuple[Int32, Int32]
+    t: tuple[int32, int32]
     t = (1, 2)
     print(t[0])
 main()

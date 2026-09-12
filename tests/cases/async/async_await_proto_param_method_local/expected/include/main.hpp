@@ -67,7 +67,7 @@ struct __coro_consume {
         return os << "<coroutine consume>";
     }
 };
-// async def consume(it: Iterable[Int32]) -> None:
+// async def consume(it: Iterable[int32]) -> None:
 template <::tpystd::typing::Iterable<int32_t> T_it>
 ::tpystd::tpy::Poll<::std::monostate> __coro_consume<T_it>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
@@ -104,7 +104,7 @@ template <::tpystd::typing::Iterable<int32_t> T_it>
 }
 
 
-// async def consume(it: Iterable[Int32]) -> None:
+// async def consume(it: Iterable[int32]) -> None:
 template <::tpystd::typing::Iterable<int32_t> T_it>
 __coro_consume<T_it> consume(T_it&& it) {
     return __coro_consume<T_it>(std::forward<T_it>(it));
@@ -139,12 +139,12 @@ struct __coro_Runner_go {
     }
 };
 
-// async def go(self, extra: Iterable[Int32]) -> None:
+// async def go(self, extra: Iterable[int32]) -> None:
 template <::tpystd::typing::Iterable<int32_t> T_extra>
 ::tpystd::tpy::Poll<::std::monostate> __coro_Runner_go<T_extra>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // local: list[Int32] = [7, 8]
+        // local: list[int32] = [7, 8]
         local.emplace(std::vector<int32_t>{7, 8});
         // await consume(local)
         __sub_0.emplace((*local));

@@ -6,9 +6,9 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
-    // def add(x: Int32) -> None:
+    // def add(x: int32) -> None:
     auto add = [&total](int32_t x) {
         // nonlocal total
         // total += x

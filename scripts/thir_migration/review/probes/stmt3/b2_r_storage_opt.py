@@ -1,11 +1,11 @@
-from tpy import Int32, Own, Ptr, StrView
+from tpy import int32, Own, Ptr, StrView
 class Box:
-    n: Int32
-    def __init__(self, n: Int32) -> None:
+    n: int32
+    def __init__(self, n: int32) -> None:
         self.n = n
 def a(xs: list[Box]) -> Own[Box] | None:
     return xs[0]
-def b(n: Int32) -> Own[Box] | None:
+def b(n: int32) -> Own[Box] | None:
     return Box(n)
 def main() -> None:
     xs = [Box(1)]

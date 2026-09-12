@@ -27,13 +27,13 @@ control flow into a result-type return. `raise E` inside the function body compi
 to returning an error variant -- no C++ exceptions, no stack unwinding.
 
 ```python
-from tpy import Int32, error_return, ReturnException
+from tpy import int32, error_return, ReturnException
 
 class NotFound(Exception, ReturnException):
     pass
 
 @error_return(NotFound)
-def find(items: list[Int32], target: Int32) -> Int32:
+def find(items: list[int32], target: int32) -> int32:
     for i in range(len(items)):
         if items[i] == target:
             return i
@@ -114,7 +114,7 @@ and `except E as e` binds the error value for field access. See `EXCEPTION_DESIG
 
 ```python
 @error_return(StopIteration)
-def __next__(self) -> Int32:
+def __next__(self) -> int32:
     ...
 ```
 
@@ -198,7 +198,7 @@ For the `__next__` case:
 
 ```python
 @error_return(StopIteration)
-def __next__(self) -> Int32:
+def __next__(self) -> int32:
     ...
 ```
 
@@ -418,14 +418,14 @@ The same source code runs in both CPython and TPy:
 
 ```python
 class Counter:
-    current: Int32
-    limit: Int32
+    current: int32
+    limit: int32
 
-    def __init__(self, limit: Int32) -> None:
+    def __init__(self, limit: int32) -> None:
         self.current = 0
         self.limit = limit
 
-    def __next__(self) -> Int32:
+    def __next__(self) -> int32:
         if self.current < self.limit:
             result = self.current
             self.current += 1

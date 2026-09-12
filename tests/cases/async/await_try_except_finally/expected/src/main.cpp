@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// async def value(n: Int32) -> Int32:
+// async def value(n: int32) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_value::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
@@ -20,12 +20,12 @@ namespace tpyapp::main {
 }
 
 
-// async def value(n: Int32) -> Int32:
+// async def value(n: int32) -> int32:
 __coro_value value(int32_t n) {
     return __coro_value(n);
 }
 
-// async def fail() -> Int32:
+// async def fail() -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_fail::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
@@ -39,17 +39,17 @@ __coro_value value(int32_t n) {
 }
 
 
-// async def fail() -> Int32:
+// async def fail() -> int32:
 __coro_fail fail() {
     return __coro_fail();
 }
 
-// async def go(should_fail: bool) -> Int32:
+// async def go(should_fail: bool) -> int32:
 ::tpystd::tpy::Poll<int32_t> __coro_go::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // result = Int32(0)
+        // result = int32(0)
         result = 0;
         __state = S_JOIN_2;
         continue;
@@ -68,7 +68,7 @@ __coro_fail fail() {
                 __state = S_RESUME_1;
                 continue;
             } else {
-                // b = await value(Int32(2))
+                // b = await value(int32(2))
                 __sub_2.emplace(2);
                 __state = S_RESUME_2;
                 continue;
@@ -77,7 +77,7 @@ __coro_fail fail() {
             __sub_0.reset();
             bool __fin_ran_2 = false;
             try {
-                // result = Int32(99)
+                // result = int32(99)
                 result = 99;
                 __fin_ran_2 = true;
                 this->__finally_0();
@@ -109,7 +109,7 @@ __coro_fail fail() {
             __sub_1.reset();
             bool __fin_ran_4 = false;
             try {
-                // result = Int32(99)
+                // result = int32(99)
                 result = 99;
                 __fin_ran_4 = true;
                 this->__finally_0();
@@ -141,7 +141,7 @@ __coro_fail fail() {
             __sub_2.reset();
             bool __fin_ran_6 = false;
             try {
-                // result = Int32(99)
+                // result = int32(99)
                 result = 99;
                 __fin_ran_6 = true;
                 this->__finally_0();
@@ -175,7 +175,7 @@ __coro_fail fail() {
         } catch (const ::tpy::ValueError&) {
             bool __fin_ran_8 = false;
             try {
-                // result = Int32(99)
+                // result = int32(99)
                 result = 99;
                 __fin_ran_8 = true;
                 this->__finally_0();
@@ -196,14 +196,14 @@ __coro_fail fail() {
     }
     case S_JOIN_2: {
         try {
-            // a = await value(Int32(1))
+            // a = await value(int32(1))
             __sub_0.emplace(1);
             __state = S_RESUME_0;
             continue;
         } catch (const ::tpy::ValueError&) {
             bool __fin_ran_10 = false;
             try {
-                // result = Int32(99)
+                // result = int32(99)
                 result = 99;
                 __fin_ran_10 = true;
                 this->__finally_0();
@@ -234,7 +234,7 @@ void __coro_go::__finally_0() {
     std::cout << "cleanup" << "\n";
 }
 
-// async def go(should_fail: bool) -> Int32:
+// async def go(should_fail: bool) -> int32:
 __coro_go go(bool should_fail) {
     return __coro_go(should_fail);
 }

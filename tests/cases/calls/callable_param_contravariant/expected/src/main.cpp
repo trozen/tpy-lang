@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def cb(x: Int32 | None) -> None:
+// def cb(x: int32 | None) -> None:
 void cb(std::optional<int32_t> x) {
     // if x is None:
     if ((!x.has_value())) {
@@ -19,7 +19,7 @@ void cb(std::optional<int32_t> x) {
 
 // def main() -> None:
 void main() {
-    // g: Callable[[Int32 | None], None] = cb
+    // g: Callable[[int32 | None], None] = cb
     std::function<void(std::optional<int32_t>)> g = cb;
     // use(g)
     use(g);

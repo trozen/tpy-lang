@@ -19,13 +19,13 @@ void main();
 
 // class Holder:
 struct Holder {
-    // items: list[Int32]
+    // items: list[int32]
     std::vector<int32_t> items;
 
     // def __init__(self) -> None:
     Holder();
 
-    // def __iter__(self) -> Iterator[Int32]:
+    // def __iter__(self) -> Iterator[int32]:
     auto __iter__() const {
         return ::tpy::make_generator<int32_t>(
             [this, __beg = decltype(((*this).items).begin())(), __end = decltype(((*this).items).begin())(), __init = false]() mutable -> std::optional<int32_t> {

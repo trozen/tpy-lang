@@ -533,7 +533,7 @@ def is_slice_category(t: "TpyType") -> bool:  return _is_cat(t, TypeCategory.SLI
 
 def is_free_copy_scalar(t: "TpyType") -> bool:
     """A value type whose copy is a trivial register move with no heap
-    allocation: fixed-width ints, bool, Char, float, enums. Excludes BigInt
+    allocation: fixed-width ints, bool, char, float, enums. Excludes BigInt
     and str (owned but heap-backed) and all views/reference types. Used where
     a copy is acceptable only if it is free (e.g. binding a match capture by
     value to avoid a dangling reference must not pessimize the common path).
@@ -720,7 +720,7 @@ def is_string_type(t: "TpyType") -> bool:  return _is_qn(t, "tpy.String")
 def is_str_view_type(t: "TpyType") -> bool: return _is_qn(t, "tpy.StrView")
 def is_fstr_type(t: "TpyType") -> bool:    return _is_qn(t, "tpy.FStr")
 def is_float64_type(t: "TpyType") -> bool: return _is_qn(t, "builtins.float")
-def is_float32_type(t: "TpyType") -> bool: return _is_qn(t, "tpy.Float32")
+def is_float32_type(t: "TpyType") -> bool: return _is_qn(t, "tpy.float32")
 def is_bytes_type(t: "TpyType") -> bool:   return _is_qn(t, "builtins.bytes")
 
 
@@ -913,7 +913,7 @@ def _populate() -> None:
 
     for bits in (8, 16, 32, 64):
         for signed in (True, False):
-            prefix = "Int" if signed else "UInt"
+            prefix = "int" if signed else "uint"
             qn = f"tpy.{prefix}{bits}"
             register(TypeDef(
                 qn, TC.FIXED_INT, is_value_type=True, boundary_marshal=True,
@@ -938,20 +938,20 @@ def _populate() -> None:
         float_traits=FloatTraits(bits=64),
     ))
     register(TypeDef(
-        "tpy.Float32", TC.FLOAT, is_value_type=True,
+        "tpy.float32", TC.FLOAT, is_value_type=True,
         cpp_formatter=lambda args: "float",
         param_cpp_formatter=lambda args: "float",
         float_traits=FloatTraits(bits=32),
     ))
 
-    # Bool and Char.
+    # Bool and char.
     register(TypeDef(
         "builtins.bool", TC.BOOL, is_value_type=True, boundary_marshal=True,
         cpp_formatter=lambda args: "bool",
         param_cpp_formatter=lambda args: "bool",
     ))
     register(TypeDef(
-        "tpy.Char", TC.CHAR, is_value_type=True,
+        "tpy.char", TC.CHAR, is_value_type=True,
         cpp_formatter=lambda args: "char",
         param_cpp_formatter=lambda args: "char",
     ))
@@ -960,7 +960,7 @@ def _populate() -> None:
     # are heap-backed and expensive to copy, StrView is a lightweight view,
     # FStr is compile-time-only.
     # element_of returns CHAR so iteration / for-each over any str-family
-    # type yields Char.
+    # type yields char.
     def _char_elem(args):
         from tpyc.typesys import CHAR
         return CHAR
@@ -996,9 +996,9 @@ def _populate() -> None:
 
     # Bytes family. bytes/bytearray are heap-backed (each its own class over
     # std::vector<uint8_t>, so a trait keyed on the C++ type can tell them --
-    # and list[UInt8] -- apart), BytesView borrows (its own class over
+    # and list[uint8] -- apart), BytesView borrows (its own class over
     # std::span<const uint8_t>, for the same reason against
-    # Span[readonly[UInt8]]). Element type is UInt8.
+    # Span[readonly[uint8]]). Element type is uint8.
     def _u8_elem(args):
         from tpyc.typesys import UINT8
         return UINT8
@@ -1016,7 +1016,7 @@ def _populate() -> None:
         # CPython. bytes stays value-like (immutable, so a copy is unobservable).
         "builtins.bytearray", TC.BYTES,
         # Send (owns a plain u8 buffer, no shared refs) but not Sync (mutable),
-        # same as list[Int32]; the reference-type default is non-Send, so spell
+        # same as list[int32]; the reference-type default is non-Send, so spell
         # it out.
         is_send=True, is_sync=False,
         cpp_formatter=lambda args: "::tpy::ByteArray",
@@ -1146,7 +1146,7 @@ def _populate() -> None:
         # reference element so a write through it is caught by the
         # readonly-mutation gate at sema, not only by C++ const; strip it on a
         # value element, where a by-value read drops const anyway (else
-        # numeric/value consumers see readonly[Int32] and reject).
+        # numeric/value consumers see readonly[int32] and reject).
         from tpyc.typesys import ReadonlyType, unwrap_readonly
         elem = args[0]
         if isinstance(elem, ReadonlyType) and unwrap_readonly(elem).is_value_type():
@@ -1291,8 +1291,8 @@ def _populate_factories() -> None:
         ("tpy.Span",             (TYPE,),      lambda t: make_span(t)),
         ("tpy.SpanIter",         (TYPE,),      make_span_iter),
         ("tpy.coro.Waker",       (),           lambda: WAKER),
-        ("tpy.Float32",          (),           lambda: FLOAT32),
-        ("tpy.Char",             (),           lambda: CHAR),
+        ("tpy.float32",          (),           lambda: FLOAT32),
+        ("tpy.char",             (),           lambda: CHAR),
         ("tpy.String",           (),           lambda: STRING),
         ("tpy.StrView",          (),           lambda: STRVIEW),
         ("tpy.FStr",             (),           lambda: FSTR),

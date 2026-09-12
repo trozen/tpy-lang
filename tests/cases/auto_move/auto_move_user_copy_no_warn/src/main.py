@@ -1,17 +1,17 @@
 # User-defined function named 'copy' should NOT trigger unnecessary copy warning,
 # even when tpy.copy is also imported (user def shadows the import)
-from tpy import Int32, Own, copy
+from tpy import int32, Own, copy
 
 
 class Box:
-    value: Int32
+    value: int32
 
 
 def copy(b: Own[Box]) -> Own[Box]:
     return b
 
 
-def consume(b: Own[Box]) -> Int32:
+def consume(b: Own[Box]) -> int32:
     return b.value
 
 

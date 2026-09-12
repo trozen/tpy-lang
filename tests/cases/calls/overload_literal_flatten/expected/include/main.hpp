@@ -19,17 +19,17 @@ void main();
 // # --- Method flattening ---
 // class Record:
 struct Record {
-    // data_age: Int32
+    // data_age: int32
     int32_t data_age;
     // data_name: str
     std::string data_name;
 
-    // def __init__(self, age: Int32, name: str) -> None:
+    // def __init__(self, age: int32, name: str) -> None:
     Record() = default;
     explicit Record(int32_t age, std::string_view name);
 
     // @overload
-    // def get(self, key: Literal["age"]) -> Int32: ...
+    // def get(self, key: Literal["age"]) -> int32: ...
     int32_t get__lit_age(std::string_view key) const {
         // return self.data_age
         return this->data_age;
@@ -43,7 +43,7 @@ struct Record {
     }
 
     // @overload
-    // def get(self, key: str) -> Int32 | str: ...
+    // def get(self, key: str) -> int32 | str: ...
     ::tpy::Union<int32_t, std::string> get(std::string_view key) const {
         // if key == "age":
         if ((key == "age")) {
@@ -62,7 +62,7 @@ inline std::ostream& operator<<(std::ostream& os, const Record& obj) {
 }
 
 
-// def __init__(self, age: Int32, name: str) -> None:
+// def __init__(self, age: int32, name: str) -> None:
 inline Record::Record(int32_t age, std::string_view name) : data_age(age), data_name(name) {}
 void __tpy_init();
 } // namespace tpyapp::main

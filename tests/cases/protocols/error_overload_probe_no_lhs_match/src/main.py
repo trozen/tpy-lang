@@ -10,27 +10,27 @@
 # resolve_overload + type-checking, not via LHS-driven bias toward a
 # specific overload's arg shape.
 #
-# Scenario: two overloads return Int32 and Float32 respectively; LHS
+# Scenario: two overloads return int32 and float32 respectively; LHS
 # hint is `str`. Neither matches -> 0-LHS-matching candidates -> probe
-# falls back. resolve_overload then picks the Int32 overload from the
-# arg type, returns Int32, and the str = Int32 assignment fails with a
+# falls back. resolve_overload then picks the int32 overload from the
+# arg type, returns int32, and the str = int32 assignment fails with a
 # type mismatch -- the error surfaces at assignment, NOT during the
 # overload probe.
-from tpy import Int32, Float32, dispatch
+from tpy import int32, float32, dispatch
 
 
 @dispatch
-def f(x: Int32) -> Int32:
+def f(x: int32) -> int32:
     return x
 
 
 @dispatch
-def f(x: Float32) -> Float32:
+def f(x: float32) -> float32:
     return x
 
 
 def main() -> None:
-    s: str = f(Int32(5))  # tpyc: error(/Type mismatch.*got Int32/)
+    s: str = f(int32(5))  # tpyc: error(/Type mismatch.*got int32/)
     print(s)
 
 

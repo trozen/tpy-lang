@@ -6,11 +6,11 @@ namespace tpyapp::main {
 
 // def read_buf(b: readonly[Buffer]) -> None:
 void read_buf(const Buffer& b) {
-    // items: list[Int32] = [Int32(99)]
+    // items: list[int32] = [int32(99)]
     std::vector<int32_t> items = {99};
-    // s = b.merge_span(items)  # tpyc: type(Span[readonly[Int32]])
+    // s = b.merge_span(items)  # tpyc: type(Span[readonly[int32]])
     std::span<const int32_t> s = b.merge_span(items);
-    // print(s[Int32(0)])
+    // print(s[int32(0)])
     std::cout << ::tpy::__getitem__(s, 0) << "\n";
 }
 
@@ -18,11 +18,11 @@ void read_buf(const Buffer& b) {
 void main() {
     // b = Buffer()
     Buffer b = Buffer();
-    // items: list[Int32] = [Int32(99)]
+    // items: list[int32] = [int32(99)]
     std::vector<int32_t> items = {99};
-    // s = b.merge_span(items)  # tpyc: type(Span[Int32])
+    // s = b.merge_span(items)  # tpyc: type(Span[int32])
     std::span<int32_t> s = b.merge_span(items);
-    // print(s[Int32(0)])
+    // print(s[int32(0)])
     std::cout << ::tpy::__getitem__(s, 0) << "\n";
     // read_buf(b)
     read_buf(b);

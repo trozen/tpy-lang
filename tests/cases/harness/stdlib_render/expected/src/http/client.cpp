@@ -4,7 +4,7 @@
 namespace tpystd::http::client {
 
 
-// def _hex_val(c: Int32) -> Int32:
+// def _hex_val(c: int32) -> int32:
 int32_t _hex_val(int32_t c) {
     // if c >= 48 and c <= 57:
     if (((c >= 48) && (c <= 57))) {
@@ -45,7 +45,7 @@ int32_t _hex_val(int32_t c) {
     int32_t i = 0;
     // while i < n:
     while ((i < n)) {
-        // c = Int32(data[i])
+        // c = int32(data[i])
         int32_t c = ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(data, i));
         // if c < 48 or c > 57:
         if (((c < 48) || (c > 57))) {
@@ -73,7 +73,7 @@ int32_t _hex_val(int32_t c) {
     int32_t i = 0;
     // while i < n:
     while ((i < n)) {
-        // v = _hex_val(Int32(line[i]))
+        // v = _hex_val(int32(line[i]))
         int32_t v = _hex_val(::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(line, i)));
         // if v < 0:
         if ((v < 0)) {
@@ -109,7 +109,7 @@ int32_t _hex_val(int32_t c) {
 
 // def _build_request(method: str, url: str, body: bytes | None,
 // headers: dict[str, str] | None,
-// host: str, port: Int32, default_port: Int32) -> bytes:
+// host: str, port: int32, default_port: int32) -> bytes:
 ::tpy::Bytes _build_request(std::string_view method, std::string_view url, std::optional<::tpy::BytesView> body, const ::tpy::ordered_map<std::string, std::string>* headers, std::string_view host, int32_t port, int32_t default_port) {
     // lines: list[str] = []
     std::vector<std::string> lines = std::vector<std::string>{};
@@ -254,7 +254,7 @@ void HTTPResponse::_read_status() {
         // raise BadStatusLine(line)
         throw BadStatusLine(line);
     }
-    // self.status = Int32(code)
+    // self.status = int32(code)
     this->status = (code).to_fixed_check<int32_t>();
     // if len(parts) >= 3:
     if ((::tpy::__len__(parts) >= 3)) {
@@ -381,7 +381,7 @@ bool HTTPResponse::_check_close() const {
     return false;
 }
 
-// def read(self, amt: Int32 = -1) -> bytes:
+// def read(self, amt: int32 = -1) -> bytes:
 ::tpy::Bytes HTTPResponse::read(int32_t amt) {
     // if self._eof:
     if (this->_eof) {
@@ -395,7 +395,7 @@ bool HTTPResponse::_check_close() const {
     }
     // if amt < 0:
     if ((amt < 0)) {
-        // data = self._fp.read() if self._length < 0 else self._fp.read(Int32(self._length))
+        // data = self._fp.read() if self._length < 0 else self._fp.read(int32(self._length))
         ::tpy::Bytes data = (((this->_length < 0)) ? (this->_fp.read()) : (this->_fp.read((this->_length).to_fixed_check<int32_t>())));
         // self._eof = True
         this->_eof = true;
@@ -409,7 +409,7 @@ bool HTTPResponse::_check_close() const {
         // want = self._length
         want = this->_length;
     }
-    // data = self._fp.read(Int32(want))
+    // data = self._fp.read(int32(want))
     ::tpy::Bytes data = this->_fp.read((want).to_fixed_check<int32_t>());
     // if self._length >= 0:
     if ((this->_length >= 0)) {
@@ -431,7 +431,7 @@ bool HTTPResponse::_check_close() const {
     return data;
 }
 
-// def _read_chunked(self, amt: Int32) -> bytes:
+// def _read_chunked(self, amt: int32) -> bytes:
 ::tpy::Bytes HTTPResponse::_read_chunked(int32_t amt) {
     // # bytearray accumulator: `result = result + piece` would be
     // # O(total*chunks), and chunked framing is normal streamed-response
@@ -467,7 +467,7 @@ bool HTTPResponse::_check_close() const {
             // want = self._chunk_left
             want = this->_chunk_left;
         }
-        // piece = self._fp.read(Int32(want))
+        // piece = self._fp.read(int32(want))
         ::tpy::Bytes piece = this->_fp.read((want).to_fixed_check<int32_t>());
         // if len(piece) == 0:
         if ((::tpy::__len__(piece) == 0)) {

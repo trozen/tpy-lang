@@ -26,10 +26,10 @@ void main();
 // @nocopy
 // class Token(Counted):
 struct Token {
-    // n: Int32
+    // n: int32
     int32_t n;
 
-    // def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: int32) -> None:
     Token() = default;
     explicit Token(int32_t n);
     // non-copyable (@nocopy)
@@ -38,7 +38,7 @@ struct Token {
     Token(Token&&) = default;
     Token& operator=(Token&&) = default;
 
-    // def value(self) -> Int32:
+    // def value(self) -> int32:
     int32_t value() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Token";
 };
@@ -49,10 +49,10 @@ inline std::ostream& operator<<(std::ostream& os, const Token& obj) {
 }
 
 
-// def __init__(self, n: Int32) -> None:
+// def __init__(self, n: int32) -> None:
 inline Token::Token(int32_t n) : n(n) {}
 
-// def value(self) -> Int32:
+// def value(self) -> int32:
 inline int32_t Token::value() const {
     // return self.n
     return this->n;

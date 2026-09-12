@@ -17,10 +17,10 @@ void main();
 // @nocopy
 // class Box:
 struct Box {
-    // val: Int32
+    // val: int32
     int32_t val;
 
-    // def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: int32) -> None:
     Box() = default;
     explicit Box(int32_t v);
     // non-copyable (@nocopy)
@@ -40,10 +40,10 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 struct Pile {
 
 
-    // def total(self, *boxes: Box) -> Int32:
+    // def total(self, *boxes: Box) -> int32:
     int32_t total(::tpy::varargs<const Box> boxes) const;
 
-    // def via_param(self, b: Box, c: Box) -> Int32:
+    // def via_param(self, b: Box, c: Box) -> int32:
     int32_t via_param(const Box& b, const Box& c) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pile";
 };
@@ -54,12 +54,12 @@ inline std::ostream& operator<<(std::ostream& os, const Pile& obj) {
 }
 
 
-// def __init__(self, v: Int32) -> None:
+// def __init__(self, v: int32) -> None:
 inline Box::Box(int32_t v) : val(v) {}
 
-// def total(self, *boxes: Box) -> Int32:
+// def total(self, *boxes: Box) -> int32:
 inline int32_t Pile::total(::tpy::varargs<const Box> boxes) const {
-    // n: Int32 = 0
+    // n: int32 = 0
     int32_t n = 0;
     // for b in boxes:
     auto& __obj_0 = boxes;
@@ -74,7 +74,7 @@ inline int32_t Pile::total(::tpy::varargs<const Box> boxes) const {
     return n;
 }
 
-// def via_param(self, b: Box, c: Box) -> Int32:
+// def via_param(self, b: Box, c: Box) -> int32:
 inline int32_t Pile::via_param(const Box& b, const Box& c) const {
     // return self.total(b, c)  # tpyc: ok
     std::array<const Box*, 2> __tmp_1{&b, &c};

@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 
-// def consume(b: Own[Box]) -> Int32:
+// def consume(b: Own[Box]) -> int32:
 int32_t consume(Box&& b) {
     // return b.value
     return b.value;
 }
 
-// def make_box(v: Int32) -> Own[Box]:
+// def make_box(v: int32) -> Own[Box]:
 Box make_box(int32_t v) {
     // b = Box()
     Box b = Box();

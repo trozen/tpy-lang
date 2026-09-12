@@ -15,7 +15,7 @@ void main();
 
 // class Stack:
 struct Stack {
-    // _data: list[Int32]
+    // _data: list[int32]
     std::vector<int32_t> _data;
 
     // def __init__(self) -> None:
@@ -26,27 +26,27 @@ struct Stack {
     auto begin() const { return this->__span__().begin(); }
     auto end() const { return this->__span__().end(); }
 
-    // def push(self, val: Int32) -> None:
+    // def push(self, val: int32) -> None:
     void push(int32_t val);
 
     // @auto_readonly
-    // def __span__(self) -> Span[auto_readonly[Int32]]:
+    // def __span__(self) -> Span[auto_readonly[int32]]:
     std::span<int32_t> __span__();
 
     // @auto_readonly
-    // def __span__(self) -> Span[auto_readonly[Int32]]:
+    // def __span__(self) -> Span[auto_readonly[int32]]:
     std::span<const int32_t> __span__() const;
 
     // @auto_readonly
-    // def __iter__(self) -> SpanIter[auto_readonly[Int32]]:
+    // def __iter__(self) -> SpanIter[auto_readonly[int32]]:
     ::tpy::SpanIter<int32_t> __iter__();
 
     // @auto_readonly
-    // def __iter__(self) -> SpanIter[auto_readonly[Int32]]:
+    // def __iter__(self) -> SpanIter[auto_readonly[int32]]:
     ::tpy::SpanIter<const int32_t> __iter__() const;
 
     // @readonly
-    // def sum(self) -> Int32:
+    // def sum(self) -> int32:
     int32_t sum() const;
 
     // def __repr__(self) -> str:
@@ -63,44 +63,44 @@ inline std::ostream& operator<<(std::ostream& os, const Stack& obj) {
 // def __init__(self) -> None:
 inline Stack::Stack() : _data(std::vector<int32_t>{}) {}
 
-// def push(self, val: Int32) -> None:
+// def push(self, val: int32) -> None:
 inline void Stack::push(int32_t val) {
     // self._data.append(val)
     this->_data.push_back(val);
 }
 
 // @auto_readonly
-// def __span__(self) -> Span[auto_readonly[Int32]]:
+// def __span__(self) -> Span[auto_readonly[int32]]:
 inline std::span<int32_t> Stack::__span__() {
     // return self._data
     return ::tpy::as_mut_span(this->_data);
 }
 
 // @auto_readonly
-// def __span__(self) -> Span[auto_readonly[Int32]]:
+// def __span__(self) -> Span[auto_readonly[int32]]:
 inline std::span<const int32_t> Stack::__span__() const {
     // return self._data
     return ::tpy::as_span(this->_data);
 }
 
 // @auto_readonly
-// def __iter__(self) -> SpanIter[auto_readonly[Int32]]:
+// def __iter__(self) -> SpanIter[auto_readonly[int32]]:
 inline ::tpy::SpanIter<int32_t> Stack::__iter__() {
     // return SpanIter(self.__span__())
     return ::tpy::SpanIter<int32_t>(this->__span__());
 }
 
 // @auto_readonly
-// def __iter__(self) -> SpanIter[auto_readonly[Int32]]:
+// def __iter__(self) -> SpanIter[auto_readonly[int32]]:
 inline ::tpy::SpanIter<const int32_t> Stack::__iter__() const {
     // return SpanIter(self.__span__())
     return ::tpy::SpanIter<const int32_t>(this->__span__());
 }
 
 // @readonly
-// def sum(self) -> Int32:
+// def sum(self) -> int32:
 inline int32_t Stack::sum() const {
-    // total: Int32 = 0
+    // total: int32 = 0
     int32_t total = 0;
     // for x in self:
     auto& __src_0 = (*this);

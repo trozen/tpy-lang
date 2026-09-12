@@ -3,13 +3,13 @@
 # post-Phase-F.1 need to walk into tuple element types so Point gets
 # _module_qname and default-constructibility / equality dunders resolve.
 from dataclasses import dataclass
-from tpy import Int32
+from tpy import int32
 
 
 @dataclass
 class Point:
-    x: Int32
-    y: Int32
+    x: int32
+    y: int32
 
 
 @dataclass

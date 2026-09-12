@@ -1,6 +1,6 @@
 import asyncio
-from tpy import Int32
-async def f(n: Int32) -> Int32:
+from tpy import int32
+async def f(n: int32) -> int32:
     t = 0
     for i in range(3):
         try:

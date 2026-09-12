@@ -6,20 +6,20 @@
 # async/return_own_await_borrow_copy.
 import asyncio
 
-from tpy import Int32
+from tpy import int32
 
 
 class Payload:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 
 class Holder:
     p: Payload
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.p = Payload(v)
 
     async def borrow(self) -> Payload:

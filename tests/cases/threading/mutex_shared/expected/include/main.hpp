@@ -25,14 +25,14 @@ void main();
 // @nocopy
 // class Appender:
 struct Appender {
-    // shared: Arc[Mutex[list[Int32]]]
+    // shared: Arc[Mutex[list[int32]]]
     ::tpystd::tplib::arc::Arc<::tpystd::tpy::sync::Mutex<std::vector<int32_t>>> shared;
-    // id: Int32
+    // id: int32
     int32_t id;
-    // iters: Int32
+    // iters: int32
     int32_t iters;
 
-    // def __init__(self, shared: Own[Arc[Mutex[list[Int32]]]], id: Int32, iters: Int32) -> None:
+    // def __init__(self, shared: Own[Arc[Mutex[list[int32]]]], id: int32, iters: int32) -> None:
     explicit Appender(::tpystd::tplib::arc::Arc<::tpystd::tpy::sync::Mutex<std::vector<int32_t>>>&& shared, int32_t id, int32_t iters);
     // non-copyable (@nocopy)
     Appender(const Appender&) = delete;
@@ -51,7 +51,7 @@ inline std::ostream& operator<<(std::ostream& os, const Appender& obj) {
 }
 
 
-// def __init__(self, shared: Own[Arc[Mutex[list[Int32]]]], id: Int32, iters: Int32) -> None:
+// def __init__(self, shared: Own[Arc[Mutex[list[int32]]]], id: int32, iters: int32) -> None:
 inline Appender::Appender(::tpystd::tplib::arc::Arc<::tpystd::tpy::sync::Mutex<std::vector<int32_t>>>&& shared, int32_t id, int32_t iters) : shared(std::move(shared)), id(id), iters(iters) {}
 
 // def run(self) -> None:

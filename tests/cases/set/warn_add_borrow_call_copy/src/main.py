@@ -5,12 +5,12 @@
 # the source.
 from dataclasses import dataclass
 
-from tpy import Int32
+from tpy import int32
 
 
 @dataclass(frozen=True)
 class Key:
-    n: Int32
+    n: int32
 
 
 class Holder:

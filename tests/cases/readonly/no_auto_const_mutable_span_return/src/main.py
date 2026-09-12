@@ -4,23 +4,23 @@
 # making the declared mutable Span unusable for caller-side mutation.
 # Guards the conservative branch in view_is_inherently_const.
 
-from tpy import Int32, Span
+from tpy import int32, Span
 
 
 class Buffer:
-    _items: list[Int32]
+    _items: list[int32]
 
     def __init__(self) -> None:
-        self._items = [Int32(1), Int32(2), Int32(3)]
+        self._items = [int32(1), int32(2), int32(3)]
 
-    def items(self) -> Span[Int32]:
+    def items(self) -> Span[int32]:
         return self._items
 
 
 def main() -> None:
     b = Buffer()
     s = b.items()
-    s[Int32(0)] = Int32(99)
+    s[int32(0)] = int32(99)
     print(b._items[0])
 
 

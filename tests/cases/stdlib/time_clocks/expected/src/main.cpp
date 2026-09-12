@@ -18,22 +18,22 @@ void main() {
     double m2 = ::tpy::stdlib::time::monotonic();
     // print("monotonic_monotonic:", m2 >= m1)
     std::cout << "monotonic_monotonic:" << " " << ::tpy::print_bool((m2 >= m1)) << "\n";
-    // pn1: Int64 = time.perf_counter_ns()
+    // pn1: int64 = time.perf_counter_ns()
     int64_t pn1 = ::tpy::stdlib::time::perf_counter_ns();
-    // pn2: Int64 = time.perf_counter_ns()
+    // pn2: int64 = time.perf_counter_ns()
     int64_t pn2 = ::tpy::stdlib::time::perf_counter_ns();
     // print("perf_ns_monotonic:", pn2 >= pn1)
     std::cout << "perf_ns_monotonic:" << " " << ::tpy::print_bool((pn2 >= pn1)) << "\n";
-    // mn1: Int64 = time.monotonic_ns()
+    // mn1: int64 = time.monotonic_ns()
     int64_t mn1 = ::tpy::stdlib::time::monotonic_ns();
-    // mn2: Int64 = time.monotonic_ns()
+    // mn2: int64 = time.monotonic_ns()
     int64_t mn2 = ::tpy::stdlib::time::monotonic_ns();
     // print("monotonic_ns_monotonic:", mn2 >= mn1)
     std::cout << "monotonic_ns_monotonic:" << " " << ::tpy::print_bool((mn2 >= mn1)) << "\n";
     // # 1704067200 = 2024-01-01 UTC seconds; ns is *1e9.
-    // tn: Int64 = time.time_ns()
+    // tn: int64 = time.time_ns()
     int64_t tn = ::tpy::stdlib::time::time_ns();
-    // print("time_ns_after_2024:", tn > Int64(1704067200000000000))
+    // print("time_ns_after_2024:", tn > int64(1704067200000000000))
     std::cout << "time_ns_after_2024:" << " " << ::tpy::print_bool((tn > static_cast<int64_t>(1704067200000000000))) << "\n";
     // t: float = time.time()
     double t = ::tpy::time_time();

@@ -15,7 +15,7 @@ void __tpy_init() {
     x = nullptr;
     // print(x)
     std::cout << ::tpy::print_optional(x) << "\n";
-    // x = Point(Int32(7))
+    // x = Point(int32(7))
     static Point __global_slot_1 = Point(7);
     x = &__global_slot_1;
     // print(x.x)

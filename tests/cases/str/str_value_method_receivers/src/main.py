@@ -1,10 +1,10 @@
 # A str-family method receiver that is a VALUE rvalue rather than a name: a
 # concat binop and a select. Both substitute bare into the native method, so
 # there is no copy-vs-alias question at the receiver.
-from tpy import Int32
+from tpy import int32
 
 
-def shout(a: str, b: str, c: bool) -> Int32:
+def shout(a: str, b: str, c: bool) -> int32:
     n = (a + b).upper()         # tpyc: ok -- a concat receiver
     m = (a if c else b).upper()  # tpyc: ok -- a select receiver
     print(n, m)

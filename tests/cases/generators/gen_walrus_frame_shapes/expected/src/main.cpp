@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def val_scalar() -> Iterator[Int32]:
+// def val_scalar() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_val_scalar::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -42,7 +42,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_val_scalar::__next__() {
 }
 
 
-// def val_scalar() -> Iterator[Int32]:
+// def val_scalar() -> Iterator[int32]:
 __gen_val_scalar val_scalar() {
     return __gen_val_scalar();
 }
@@ -90,13 +90,13 @@ __gen_val_str val_str(std::vector<std::string>& words) {
     return __gen_val_str(words);
 }
 
-// def make_pair(i: Int32) -> tuple[Int32, Int32]:
+// def make_pair(i: int32) -> tuple[int32, int32]:
 std::tuple<int32_t, int32_t> make_pair(int32_t i) {
     // return (i, i * 2)
     return std::tuple<int32_t, int32_t>{i, (::tpy::mul_check<int32_t>(i, 2))};
 }
 
-// def val_tuple() -> Iterator[Int32]:
+// def val_tuple() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_val_tuple::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -134,12 +134,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_val_tuple::__next__() {
 }
 
 
-// def val_tuple() -> Iterator[Int32]:
+// def val_tuple() -> Iterator[int32]:
 __gen_val_tuple val_tuple() {
     return __gen_val_tuple();
 }
 
-// def owning() -> Iterator[Int32]:
+// def owning() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_owning::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -177,12 +177,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_owning::__next__() {
 }
 
 
-// def owning() -> Iterator[Int32]:
+// def owning() -> Iterator[int32]:
 __gen_owning owning() {
     return __gen_owning();
 }
 
-// def borrow_alias(rows: list[list[Int32]]) -> Iterator[Int32]:
+// def borrow_alias(rows: list[list[int32]]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_borrow_alias::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -222,12 +222,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_borrow_alias::__next__() {
 }
 
 
-// def borrow_alias(rows: list[list[Int32]]) -> Iterator[Int32]:
+// def borrow_alias(rows: list[list[int32]]) -> Iterator[int32]:
 __gen_borrow_alias borrow_alias(std::vector<std::vector<int32_t>>& rows) {
     return __gen_borrow_alias(rows);
 }
 
-// def pick(nodes: list[Node], i: Int32) -> Node | None:
+// def pick(nodes: list[Node], i: int32) -> Node | None:
 Node* pick(std::vector<Node>& nodes, int32_t i) {
     // if i < len(nodes):
     if ((i < ::tpy::__len__(nodes))) {
@@ -238,7 +238,7 @@ Node* pick(std::vector<Node>& nodes, int32_t i) {
     return nullptr;
 }
 
-// def value_of(n: Node | None) -> Int32:
+// def value_of(n: Node | None) -> int32:
 int32_t value_of(const Node* n) {
     // if n is not None:
     if ((n != nullptr)) {
@@ -249,7 +249,7 @@ int32_t value_of(const Node* n) {
     return -9;
 }
 
-// def opt_ptr(nodes: list[Node]) -> Iterator[Int32]:
+// def opt_ptr(nodes: list[Node]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_opt_ptr::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -296,18 +296,18 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_opt_ptr::__next__() {
 }
 
 
-// def opt_ptr(nodes: list[Node]) -> Iterator[Int32]:
+// def opt_ptr(nodes: list[Node]) -> Iterator[int32]:
 __gen_opt_ptr opt_ptr(std::vector<Node>& nodes) {
     return __gen_opt_ptr(nodes);
 }
 
-// def borrow_pair(n: Node) -> tuple[Int32, Node]:
+// def borrow_pair(n: Node) -> tuple[int32, Node]:
 std::tuple<int32_t, Node*> borrow_pair(Node& n) {
     // return (n.v, n)
     return std::tuple<int32_t, Node*>{n.v, &(n)};
 }
 
-// def borrow_tuple(nodes: list[Node]) -> Iterator[Int32]:
+// def borrow_tuple(nodes: list[Node]) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_borrow_tuple::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -347,18 +347,18 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_borrow_tuple::__next__() {
 }
 
 
-// def borrow_tuple(nodes: list[Node]) -> Iterator[Int32]:
+// def borrow_tuple(nodes: list[Node]) -> Iterator[int32]:
 __gen_borrow_tuple borrow_tuple(std::vector<Node>& nodes) {
     return __gen_borrow_tuple(nodes);
 }
 
-// def own_pair(i: Int32) -> Own[tuple[Int32, Node]]:
+// def own_pair(i: int32) -> Own[tuple[int32, Node]]:
 std::tuple<int32_t, Node> own_pair(int32_t i) {
     // return (i, Node(i * 5))
     return std::tuple<int32_t, Node>{i, Node((::tpy::mul_check<int32_t>(i, 5)))};
 }
 
-// def own_tuple() -> Iterator[Int32]:
+// def own_tuple() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_own_tuple::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -396,12 +396,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_own_tuple::__next__() {
 }
 
 
-// def own_tuple() -> Iterator[Int32]:
+// def own_tuple() -> Iterator[int32]:
 __gen_own_tuple own_tuple() {
     return __gen_own_tuple();
 }
 
-// def raiser(i: Int32) -> Int32:
+// def raiser(i: int32) -> int32:
 int32_t raiser(int32_t i) {
     // if i > 0:
     if ((i > 0)) {
@@ -412,7 +412,7 @@ int32_t raiser(int32_t i) {
     return i;
 }
 
-// def exc_binding() -> Iterator[Int32]:
+// def exc_binding() -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_exc_binding::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -482,7 +482,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_exc_binding::__next__() {
 }
 
 
-// def exc_binding() -> Iterator[Int32]:
+// def exc_binding() -> Iterator[int32]:
 __gen_exc_binding exc_binding() {
     return __gen_exc_binding();
 }
@@ -626,7 +626,7 @@ void main() {
     }
 }
 
-// def gen(self) -> Iterator[Int32]:
+// def gen(self) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_Src_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {

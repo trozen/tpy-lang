@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def read_via_ptr(p: Ptr[readonly[Data]]) -> Int32:
+// def read_via_ptr(p: Ptr[readonly[Data]]) -> int32:
 int32_t read_via_ptr(const Data* p) {
     // return p.__deref__().value
     return ::tpy::deref_check(p).value;
@@ -12,7 +12,7 @@ int32_t read_via_ptr(const Data* p) {
 
 // def main() -> None:
 void main() {
-    // d = Data(Int32(42))
+    // d = Data(int32(42))
     Data d = Data(42);
     // p: Ptr[readonly[Data]] = d
     const Data* p = &d;

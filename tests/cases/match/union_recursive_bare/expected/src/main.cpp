@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def head(t: Tree) -> Int32:
+// def head(t: Tree) -> int32:
 int32_t head(const Tree& t) {
     // match t:
     auto& __match_subject_1 = t;

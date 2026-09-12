@@ -72,7 +72,7 @@ struct __coro_main_coro {
     }
 };
 
-// def task_arity_generic[T](t: Task[T]) -> Int32:
+// def task_arity_generic[T](t: Task[T]) -> int32:
 template<typename T>
 int32_t task_arity_generic(const ::tpystd::asyncio::_executor::Task<T>& t) {
     // # Same as above, generic form. Pre-fix this emitted `Task<T> t`

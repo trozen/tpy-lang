@@ -1,7 +1,7 @@
-from tpy import Int32
+from tpy import int32
 
 
-def use_after_continue_merge(flag: bool, x: Int32 | None) -> Int32:
+def use_after_continue_merge(flag: bool, x: int32 | None) -> int32:
     while flag:
         if x is None:
             flag = False

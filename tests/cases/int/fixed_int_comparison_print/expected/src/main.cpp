@@ -6,9 +6,9 @@ namespace tpyapp::main {
 
 // def test_int32_cmp() -> None:
 void test_int32_cmp() {
-    // a = Int32(5)
+    // a = int32(5)
     int32_t a = 5;
-    // b = Int32(3)
+    // b = int32(3)
     int32_t b = 3;
     // print(a > b)
     std::cout << ::tpy::print_bool((a > b)) << "\n";
@@ -26,9 +26,9 @@ void test_int32_cmp() {
 
 // def test_int64_cmp() -> None:
 void test_int64_cmp() {
-    // x = Int64(100)
+    // x = int64(100)
     int64_t x = 100;
-    // y = Int64(200)
+    // y = int64(200)
     int64_t y = 200;
     // print(x < y)
     std::cout << ::tpy::print_bool((x < y)) << "\n";
@@ -40,9 +40,9 @@ void test_int64_cmp() {
 
 // def test_uint32_cmp() -> None:
 void test_uint32_cmp() {
-    // m = UInt32(10)
+    // m = uint32(10)
     uint32_t m = 10;
-    // n = UInt32(10)
+    // n = uint32(10)
     uint32_t n = 10;
     // print(m == n)
     std::cout << ::tpy::print_bool((m == n)) << "\n";

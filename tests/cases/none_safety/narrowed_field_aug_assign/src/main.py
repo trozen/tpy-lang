@@ -2,15 +2,15 @@
 # storage is std::optional<T> but whose sema type has been narrowed by
 # `if self.f is None: return` / `if self.f is not None:`. The LHS is
 # read-then-written so the synthesized binop needs the inner T, not the
-# raw std::optional<T>. Covers BigInt (int) and Int32 (fixed int).
-from tpy import Int32
+# raw std::optional<T>. Covers BigInt (int) and int32 (fixed int).
+from tpy import int32
 
 
 class Counter:
     big: int | None
-    small: Int32 | None
+    small: int32 | None
 
-    def __init__(self, big: int | None, small: Int32 | None) -> None:
+    def __init__(self, big: int | None, small: int32 | None) -> None:
         self.big = big
         self.small = small
 

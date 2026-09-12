@@ -17,7 +17,7 @@ void main();
 
 // class P:
 struct P {
-    // vals: list[Int32]
+    // vals: list[int32]
     std::vector<int32_t> vals;
 
     // def __init__(self):
@@ -34,7 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 struct Picker {
 
 
-    // def run(self) -> Int32:
+    // def run(self) -> int32:
     int32_t run() const;
 
     // def first(self, xs: list[P]) -> P:
@@ -51,7 +51,7 @@ inline std::ostream& operator<<(std::ostream& os, const Picker& obj) {
 // def __init__(self):
 inline P::P() : vals(std::vector<int32_t>{5}) {}
 
-// def run(self) -> Int32:
+// def run(self) -> int32:
 inline int32_t Picker::run() const {
     // xs = [P()]
     std::vector<P> xs = {P()};

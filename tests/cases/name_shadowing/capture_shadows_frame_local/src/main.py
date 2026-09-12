@@ -3,10 +3,10 @@
 # and read after a later yield, so losing the slot breaks the generator.
 from typing import Iterator
 
-from tpy import Int32
+from tpy import int32
 
 
-def run(n: Int32) -> Iterator[Int32]:
+def run(n: int32) -> Iterator[int32]:
     total = 100
     yield total
 

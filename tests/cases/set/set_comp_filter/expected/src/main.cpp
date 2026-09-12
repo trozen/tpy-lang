@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // # Single condition -- integer sets have deterministic order
-    // evens: set[Int32] = {x for x in range(10) if x % 2 == 0}
+    // evens: set[int32] = {x for x in range(10) if x % 2 == 0}
     ::tpy::ordered_set<int32_t> evens = ({
         ::tpy::ordered_set<int32_t> __result;
         const int32_t __stop_0 = 10;

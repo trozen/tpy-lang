@@ -1,5 +1,5 @@
-from tpy import Int32, Own
-type Tree = Int32 | list[Tree]
+from tpy import int32, Own
+type Tree = int32 | list[Tree]
 def a(xs: list[Tree]) -> Tree:
     return xs[0]
 def main() -> None:

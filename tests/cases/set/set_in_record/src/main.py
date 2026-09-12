@@ -1,5 +1,5 @@
 # Set as a field in a dataclass
-from tpy import Int32
+from tpy import int32
 from dataclasses import dataclass
 
 @dataclass

@@ -47,14 +47,14 @@ void main();
 
 // class Widget(Comparable):
 struct Widget {
-    // val: Int32
+    // val: int32
     int32_t val;
 
-    // def __init__(self, val: Int32):
+    // def __init__(self, val: int32):
     Widget() = default;
     explicit Widget(int32_t val);
 
-    // def compare_to(self) -> Int32:
+    // def compare_to(self) -> int32:
     int32_t compare_to() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Widget";
 };
@@ -65,15 +65,15 @@ inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
 }
 
 
-// def __init__(self, val: Int32):
+// def __init__(self, val: int32):
 inline Widget::Widget(int32_t val) : val(val) {}
 
-// def compare_to(self) -> Int32:
+// def compare_to(self) -> int32:
 inline int32_t Widget::compare_to() const {
     // return self.val
     return this->val;
 }
-// def use_user_comparable(x: Comparable) -> Int32:
+// def use_user_comparable(x: Comparable) -> int32:
 template<Comparable T_x>
 int32_t use_user_comparable(T_x& x) {
     // return x.compare_to()

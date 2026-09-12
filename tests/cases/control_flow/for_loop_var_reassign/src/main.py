@@ -3,7 +3,7 @@
 import asyncio
 from typing import Iterator
 
-from tpy import AnyFixedInt, Int32, Int64, ReturnException, error_return, noalloc, nocopy
+from tpy import AnyFixedInt, int32, int64, ReturnException, error_return, noalloc, nocopy
 
 
 def original() -> None:
@@ -14,8 +14,8 @@ def original() -> None:
     print("done")
 
 
-def steps32(base: Int32, step: Int32) -> None:
-    # Int32: all five emission arms keep a private induction value.
+def steps32(base: int32, step: int32) -> None:
+    # int32: all five emission arms keep a private induction value.
     count = 0
     total = 0
     for a in range(base, base + 5):  # tpyc: ok
@@ -24,7 +24,7 @@ def steps32(base: Int32, step: Int32) -> None:
         count += 1
         if count > 10:
             break
-    print("Int32 +1", count, total)
+    print("int32 +1", count, total)
     count = 0
     total = 0
     for b in range(base + 5, base, -1):  # tpyc: ok
@@ -33,7 +33,7 @@ def steps32(base: Int32, step: Int32) -> None:
         count += 1
         if count > 10:
             break
-    print("Int32 -1", count, total)
+    print("int32 -1", count, total)
     count = 0
     total = 0
     for c in range(base, base + 10, 2):  # tpyc: ok
@@ -42,7 +42,7 @@ def steps32(base: Int32, step: Int32) -> None:
         count += 1
         if count > 10:
             break
-    print("Int32 +2", count, total)
+    print("int32 +2", count, total)
     count = 0
     total = 0
     for d in range(base + 10, base, -2):  # tpyc: ok
@@ -51,7 +51,7 @@ def steps32(base: Int32, step: Int32) -> None:
         count += 1
         if count > 10:
             break
-    print("Int32 -2", count, total)
+    print("int32 -2", count, total)
     count = 0
     total = 0
     for e in range(base, base + 5 * step, step):  # tpyc: ok
@@ -60,20 +60,20 @@ def steps32(base: Int32, step: Int32) -> None:
         count += 1
         if count > 10:
             break
-    print("Int32 variable", count, total)
+    print("int32 variable", count, total)
 
 
-def steps64(base: Int64, step: Int64) -> None:
-    # Int64: typed bounds force the wider counter instead of default Int32.
+def steps64(base: int64, step: int64) -> None:
+    # int64: typed bounds force the wider counter instead of default int32.
     count = 0
-    total: Int64 = 0
+    total: int64 = 0
     for a in range(base, base + 5):  # tpyc: ok
         total += a - base
         a = base  # tpyc: ok
         count += 1
         if count > 10:
             break
-    print("Int64 +1", count, total)
+    print("int64 +1", count, total)
     count = 0
     total = 0
     for b in range(base + 5, base, -1):  # tpyc: ok
@@ -82,7 +82,7 @@ def steps64(base: Int64, step: Int64) -> None:
         count += 1
         if count > 10:
             break
-    print("Int64 -1", count, total)
+    print("int64 -1", count, total)
     count = 0
     total = 0
     for c in range(base, base + 10, 2):  # tpyc: ok
@@ -91,7 +91,7 @@ def steps64(base: Int64, step: Int64) -> None:
         count += 1
         if count > 10:
             break
-    print("Int64 +2", count, total)
+    print("int64 +2", count, total)
     count = 0
     total = 0
     for d in range(base + 10, base, -2):  # tpyc: ok
@@ -100,7 +100,7 @@ def steps64(base: Int64, step: Int64) -> None:
         count += 1
         if count > 10:
             break
-    print("Int64 -2", count, total)
+    print("int64 -2", count, total)
     count = 0
     total = 0
     for e in range(base, base + 5 * step, step):  # tpyc: ok
@@ -109,7 +109,7 @@ def steps64(base: Int64, step: Int64) -> None:
         count += 1
         if count > 10:
             break
-    print("Int64 variable", count, total)
+    print("int64 variable", count, total)
 
 
 def steps_big(base: int, step: int) -> None:
@@ -161,7 +161,7 @@ def steps_big(base: int, step: int) -> None:
     print("BigInt variable", count, total)
 
 
-def binding_forms(subject: Int32) -> None:
+def binding_forms(subject: int32) -> None:
     count = 0
     for a in range(5):
         # Augmented assignment must not cancel the iterator's increment.
@@ -278,7 +278,7 @@ def closure_forms() -> None:
     total = 0
     for b in range(3):
         # Local assignment is rejected: BUGS.md#nested-local-shadow-requires-nonlocal.
-        def local(b: Int32) -> Int32:  # tpyc: ok
+        def local(b: int32) -> int32:  # tpyc: ok
             return b
 
         total += b + local(10)
@@ -292,7 +292,7 @@ class Gate:
     def __init__(self) -> None:
         self.exits = 0
 
-    def __enter__(self) -> Int32:
+    def __enter__(self) -> int32:
         return 10
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
@@ -352,7 +352,7 @@ def control_edges() -> None:
     print("postloop target", count, fresh)
 
 
-def parameter_target(target: Int32) -> Int32:
+def parameter_target(target: int32) -> int32:
     # Parameter storage is already hoisted before entering the range.
     for target in range(3):
         target = 40  # tpyc: ok
@@ -435,7 +435,7 @@ def generic_count[T: AnyFixedInt](values: list[T]) -> int:
     return count
 
 
-def concrete_count(values: list[Int32]) -> int:
+def concrete_count(values: list[int32]) -> int:
     count = 0
     for i in range(len(values)):  # tpyc: ok
         i = 10  # tpyc: ok
@@ -445,7 +445,7 @@ def concrete_count(values: list[Int32]) -> int:
 
 
 @noalloc
-def readonly32(stop: Int32) -> Int32:
+def readonly32(stop: int32) -> int32:
     # No-write inverse: keep the direct, allocation-free fixed-int counter.
     total = 0
     for i in range(stop):  # tpyc: ok

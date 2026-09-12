@@ -1,6 +1,6 @@
 # Rc[T] drops the shared payload exactly once when the last clone goes
 # out of scope. Verified via __del__ side effect.
-from tpy import Int32
+from tpy import int32
 from tplib import Rc
 
 

@@ -2,7 +2,7 @@
 # with a clear diagnostic (the grandparent's type param is not bound). async
 # with / async for route through the same codegen guard.
 import asyncio
-from tpy import Int32
+from tpy import int32
 
 
 class A[T]:
@@ -21,8 +21,8 @@ class B[U](A[U]):
         self.v = v
 
 
-class C(B[Int32]):
-    def __init__(self, v: Int32) -> None:
+class C(B[int32]):
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 

@@ -2,11 +2,11 @@
 # subscript, etc.), codegen wraps the access in a GCC statement expression so
 # the receiver is evaluated for its effects and the constant is the value.
 from typing import Final
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class C:
-    LIMIT: Final[Int32] = 7
+    LIMIT: Final[int32] = 7
 
     def __init__(self) -> None:
         pass

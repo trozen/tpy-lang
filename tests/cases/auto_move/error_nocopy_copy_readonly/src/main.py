@@ -1,10 +1,10 @@
 # copy() on readonly[@nocopy] must error in sema, not C++ backend
-from tpy import Int32, Own, nocopy, copy, readonly
+from tpy import int32, Own, nocopy, copy, readonly
 
 
 @nocopy
 class Handle:
-    fd: Int32
+    fd: int32
 
 
 def inspect(h: readonly[Handle]) -> Own[Handle]:

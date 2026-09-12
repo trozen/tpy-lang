@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def wrap(n: Int32) -> Iterator[Int32]:
+// def wrap(n: int32) -> Iterator[int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_wrap::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
@@ -39,7 +39,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_wrap::__next__() {
 }
 
 
-// def wrap(n: Int32) -> Iterator[Int32]:
+// def wrap(n: int32) -> Iterator[int32]:
 __gen_wrap wrap(int32_t n) {
     return __gen_wrap(n);
 }
@@ -47,7 +47,7 @@ __gen_wrap wrap(int32_t n) {
 // def main() -> None:
 void main() {
     // # Iterable[T] param consuming a move-only generator: for-loop and comprehension
-    // out: list[Int32] = []
+    // out: list[int32] = []
     std::vector<int32_t> out = std::vector<int32_t>{};
     // for v in take(repeat_n(7, 5), 3):
     {

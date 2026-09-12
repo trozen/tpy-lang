@@ -753,8 +753,8 @@ class FunctionMacroContext(_MacroContextBase):
         return self._func.body or []
 
     def resolve_type(self, name: str) -> TypeInfo | None:
-        """Resolve a primitive/builtin type name (e.g. "bool", "Int32",
-        "Float64") to a TypeInfo, or None if `name` is not a known builtin.
+        """Resolve a primitive/builtin type name (e.g. "bool", "int32",
+        "float64") to a TypeInfo, or None if `name` is not a known builtin.
 
         Lets a macro mint a type to hand to annotate_local without borrowing
         one off a param/return. For user types (enums/records), use
@@ -763,8 +763,8 @@ class FunctionMacroContext(_MacroContextBase):
         from .modules.type_resolution import _resolve_concrete_type_name
         if name == "None":  # void is not a mintable local type
             return None
-        # Float64 is TPy `float`; the shared resolver doesn't list the alias.
-        if name == "Float64":
+        # float64 is TPy `float`; the shared resolver doesn't list the alias.
+        if name == "float64":
             return TypeInfo.from_tpy_type(_FLOAT)
         t = _resolve_concrete_type_name(name)
         return TypeInfo.from_tpy_type(t) if t is not None else None
@@ -1392,7 +1392,7 @@ class TypeInfo:
 
     @property
     def int_type_name(self) -> str:
-        """Get the fixed-int type name e.g. 'Int32' (only valid when is_int)."""
+        """Get the fixed-int type name e.g. 'int32' (only valid when is_int)."""
         from .type_def_registry import is_fixed_int_type
         assert is_fixed_int_type(self._tpy_type)
         return str(self._tpy_type)

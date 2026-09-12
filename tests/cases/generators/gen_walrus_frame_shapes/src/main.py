@@ -4,18 +4,18 @@
 # forces the resumable path (two yields) and reads the walrus target ACROSS a
 # suspension, which is the only way the shadow is observable.
 from typing import Iterator
-from tpy import Int32, Own
+from tpy import int32, Own
 
 
 class Node:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 
 # -- value scalar: the field is a bare `int32_t`.
-def val_scalar() -> Iterator[Int32]:
+def val_scalar() -> Iterator[int32]:
     yield -1
     i = 0
     while i < 2:
@@ -34,12 +34,12 @@ def val_str(words: list[str]) -> Iterator[int]:
         i += 1
 
 
-def make_pair(i: Int32) -> tuple[Int32, Int32]:
+def make_pair(i: int32) -> tuple[int32, int32]:
     return (i, i * 2)
 
 
 # -- value tuple: both elements must survive the suspension.
-def val_tuple() -> Iterator[Int32]:
+def val_tuple() -> Iterator[int32]:
     yield -1
     i = 1
     while i < 3:
@@ -50,7 +50,7 @@ def val_tuple() -> Iterator[Int32]:
 
 # -- owning non-value: the field is a `frame_slot<T>`, whose write must be an
 # emplace (frame_slot has no operator=).
-def owning() -> Iterator[Int32]:
+def owning() -> Iterator[int32]:
     yield -1
     i = 0
     while i < 2:
@@ -62,7 +62,7 @@ def owning() -> Iterator[Int32]:
 # -- statement-borrow alias: the field must be a `T*` aliasing the caller's
 # element, so a mutation after the boundary is visible to the caller (an owning
 # copy would silently diverge from CPython here).
-def borrow_alias(rows: list[list[Int32]]) -> Iterator[Int32]:
+def borrow_alias(rows: list[list[int32]]) -> Iterator[int32]:
     yield -1
     i = 0
     while i < len(rows):
@@ -72,13 +72,13 @@ def borrow_alias(rows: list[list[Int32]]) -> Iterator[Int32]:
         i += 1
 
 
-def pick(nodes: list[Node], i: Int32) -> Node | None:
+def pick(nodes: list[Node], i: int32) -> Node | None:
     if i < len(nodes):
         return nodes[i]
     return None
 
 
-def value_of(n: Node | None) -> Int32:
+def value_of(n: Node | None) -> int32:
     if n is not None:
         return n.v
     return -9
@@ -86,7 +86,7 @@ def value_of(n: Node | None) -> Int32:
 
 # -- pointer-repr Optional: the field is a bare `T*` whose nullptr doubles as
 # None, so a shadowed write makes the `is not None` branch silently vanish.
-def opt_ptr(nodes: list[Node]) -> Iterator[Int32]:
+def opt_ptr(nodes: list[Node]) -> Iterator[int32]:
     yield -1
     i = 0
     while i < 3:
@@ -99,13 +99,13 @@ def opt_ptr(nodes: list[Node]) -> Iterator[Int32]:
         i += 1
 
 
-def borrow_pair(n: Node) -> tuple[Int32, Node]:
+def borrow_pair(n: Node) -> tuple[int32, Node]:
     return (n.v, n)
 
 
 # -- reference-element borrow tuple: the pointer element must still address the
 # caller's node after the resume, so the mutation is visible outside.
-def borrow_tuple(nodes: list[Node]) -> Iterator[Int32]:
+def borrow_tuple(nodes: list[Node]) -> Iterator[int32]:
     yield -1
     i = 0
     while i < len(nodes):
@@ -115,14 +115,14 @@ def borrow_tuple(nodes: list[Node]) -> Iterator[Int32]:
         i += 1
 
 
-def own_pair(i: Int32) -> Own[tuple[Int32, Node]]:
+def own_pair(i: int32) -> Own[tuple[int32, Node]]:
     return (i, Node(i * 5))
 
 
 # -- owning tuple: an owning-call source cannot be aliased into a borrow-form
 # field, so the frame needs the owning slot (a borrow field would point at the
 # dead result temporary).
-def own_tuple() -> Iterator[Int32]:
+def own_tuple() -> Iterator[int32]:
     yield -1
     i = 1
     while i < 3:
@@ -138,7 +138,7 @@ class Boom(Exception):
         self.msg = msg
 
 
-def raiser(i: Int32) -> Int32:
+def raiser(i: int32) -> int32:
     if i > 0:
         raise Boom("bad")
     return i
@@ -147,7 +147,7 @@ def raiser(i: Int32) -> Int32:
 # -- walrus off an exception-handler binding: the caught object is handler-
 # scoped, so the frame must keep an owning COPY -- a `T*` alias would point
 # past the catch block at the next resume.
-def exc_binding() -> Iterator[Int32]:
+def exc_binding() -> Iterator[int32]:
     yield -1
     i = 0
     while i < 2:
@@ -162,12 +162,12 @@ def exc_binding() -> Iterator[Int32]:
 
 # -- generator METHOD: the frame carries `__self` too, same field machinery.
 class Src:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
-    def gen(self) -> Iterator[Int32]:
+    def gen(self) -> Iterator[int32]:
         yield -1
         i = 0
         while i < self.n:

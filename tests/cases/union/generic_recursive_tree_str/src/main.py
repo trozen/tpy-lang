@@ -1,11 +1,11 @@
 # The same generic recursive alias instantiated with a different type arg
 # (Tree[str]) -- pins that one template serves multiple instantiations.
-from tpy import Int32
+from tpy import int32
 
 type Tree[T] = T | list[Tree[T]]
 
 
-def depth[T](t: Tree[T]) -> Int32:
+def depth[T](t: Tree[T]) -> int32:
     match t:
         case list() as branches:
             best = 0

@@ -39,10 +39,10 @@ void main();
 // @nocopy
 // class HttpConn(Conn):
 struct HttpConn : Conn {
-    // _port: Int32
+    // _port: int32
     int32_t _port;
 
-    // def __init__(self, p: Int32) -> None:
+    // def __init__(self, p: int32) -> None:
     HttpConn() = default;
     explicit HttpConn(int32_t p);
     // non-copyable (@nocopy)
@@ -51,7 +51,7 @@ struct HttpConn : Conn {
     HttpConn(HttpConn&&) = default;
     HttpConn& operator=(HttpConn&&) = default;
 
-    // def port(self) -> Int32:
+    // def port(self) -> int32:
     int32_t port() override;
     static constexpr std::string_view __tpy_class_name__ = "__main__.HttpConn";
 };
@@ -81,10 +81,10 @@ struct tpy::RefAdapter<tpyapp::main::Conn, T> : tpyapp::main::Conn {
 namespace tpyapp::main {
 
 
-// def __init__(self, p: Int32) -> None:
+// def __init__(self, p: int32) -> None:
 inline HttpConn::HttpConn(int32_t p) : _port(p) {}
 
-// def port(self) -> Int32:
+// def port(self) -> int32:
 inline int32_t HttpConn::port() {
     // return self._port
     return this->_port;

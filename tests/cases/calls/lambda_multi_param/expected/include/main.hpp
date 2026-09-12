@@ -16,7 +16,7 @@ template<typename __F0>
 int32_t combine(__F0&& f, int32_t a, int32_t b);
 void main();
 
-// def combine(f: Fn[[Int32, Int32], Int32], a: Int32, b: Int32) -> Int32:
+// def combine(f: Fn[[int32, int32], int32], a: int32, b: int32) -> int32:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0, int32_t __a1) {
       { __fn(__a0, __a1) } -> std::convertible_to<int32_t>;

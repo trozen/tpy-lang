@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def consume(h: Own[Holder[Handle]]) -> Int32:
+// def consume(h: Own[Holder[Handle]]) -> int32:
 int32_t consume(Holder<Handle>&& h) {
     // return h.item.fd
     return h.item.fd;

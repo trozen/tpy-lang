@@ -1,6 +1,6 @@
-from tpy import Int32, AnyFixedInt
-def conv[T: AnyFixedInt](x: T) -> Int32:
-    return Int32(x)
+from tpy import int32, AnyFixedInt
+def conv[T: AnyFixedInt](x: T) -> int32:
+    return int32(x)
 def main() -> None:
-    print(conv(Int32(4)))
+    print(conv(int32(4)))
 main()

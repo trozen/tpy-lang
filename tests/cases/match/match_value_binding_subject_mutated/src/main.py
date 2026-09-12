@@ -1,20 +1,20 @@
-# A free-copy-scalar match binding (Int32) is copied, so mutating the subject
+# A free-copy-scalar match binding (int32) is copied, so mutating the subject
 # storage in the arm (field assign, method call, container realloc) keeps the
 # matched value rather than dangling -- matching CPython, no warning.
-from tpy import Int32
+from tpy import int32
 
 
 class Dog:
-    legs: Int32
+    legs: int32
 
-    def __init__(self, legs: Int32) -> None:
+    def __init__(self, legs: int32) -> None:
         self.legs = legs
 
 
 class Cat:
-    age: Int32
+    age: int32
 
-    def __init__(self, age: Int32) -> None:
+    def __init__(self, age: int32) -> None:
         self.age = age
 
 

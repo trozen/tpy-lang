@@ -2,20 +2,20 @@
 # C++ representation is the same Adapter/RefAdapter as bare Pet, and sema
 # checks the concrete argument's Send-ness at the erasing conversion
 # (pointee-level assertion -- see SEND_SYNC_DESIGN.md OQ5).
-from tpy import Int32, Send, Own, dynamic
+from tpy import int32, Send, Own, dynamic
 from typing import Protocol
 
 @dynamic
 class Pet(Protocol):
-    def speak(self) -> Int32: ...
+    def speak(self) -> int32: ...
 
 class Dog:
-    n: Int32
+    n: int32
 
-    def __init__(self, n: Int32) -> None:
+    def __init__(self, n: int32) -> None:
         self.n = n
 
-    def speak(self) -> Int32:
+    def speak(self) -> int32:
         return self.n
 
 def greet(p: Send[Pet]) -> None:

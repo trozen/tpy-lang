@@ -1,1 +1,1 @@
-main.py:9: error: Type mismatch in argument 'x': expected Int32 | str, got bool
+main.py:9: error: Type mismatch in argument 'x': expected int32 | str, got bool

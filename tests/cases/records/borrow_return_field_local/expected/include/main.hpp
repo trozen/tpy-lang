@@ -17,7 +17,7 @@ void main();
 struct H {
     // buf: bytearray
     ::tpy::ByteArray buf;
-    // xs: list[Int32]
+    // xs: list[int32]
     std::vector<int32_t> xs;
 
     // def __init__(self) -> None:
@@ -26,7 +26,7 @@ struct H {
     // def view(self) -> bytearray:
     ::tpy::ByteArray& view();
 
-    // def nums(self) -> list[Int32]:
+    // def nums(self) -> list[int32]:
     std::vector<int32_t>& nums();
     static constexpr std::string_view __tpy_class_name__ = "__main__.H";
 };
@@ -46,7 +46,7 @@ inline ::tpy::ByteArray& H::view() {
     return this->buf;
 }
 
-// def nums(self) -> list[Int32]:
+// def nums(self) -> list[int32]:
 inline std::vector<int32_t>& H::nums() {
     // return self.xs  # tpyc: ok
     return this->xs;

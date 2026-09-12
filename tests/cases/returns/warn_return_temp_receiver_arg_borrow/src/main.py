@@ -5,13 +5,13 @@
 # too. The copy is the ACKNOWLEDGED CPython divergence (CPython hands back the
 # very Row), so the case prints only what both agree on and the WARNING is the
 # pin.
-from tpy import Int32, Own, copy
+from tpy import int32, Own, copy
 
 
 class Row:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 

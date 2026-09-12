@@ -1,13 +1,13 @@
 # Keyword captures of value-repr Optional fields on the union tier: the scalar
 # capture's narrowed print and the view capture's narrowed concat.
 from typing import Optional
-from tpy import Int32
+from tpy import int32
 
 
 class WithScalar:
-    n: Optional[Int32]
+    n: Optional[int32]
 
-    def __init__(self, n: Optional[Int32]) -> None:
+    def __init__(self, n: Optional[int32]) -> None:
         self.n = n
 
 
@@ -19,9 +19,9 @@ class WithStr:
 
 
 class Other:
-    v: Int32
+    v: int32
 
-    def __init__(self, v: Int32) -> None:
+    def __init__(self, v: int32) -> None:
         self.v = v
 
 

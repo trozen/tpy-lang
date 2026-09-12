@@ -4,21 +4,21 @@
 # message the FIELD spelling of the slot gets (`use(f.cached)`).
 from typing import Protocol
 
-from tpy import Int32, Own, dynamic
+from tpy import int32, Own, dynamic
 
 
 @dynamic
 class Shape(Protocol):
-    def area(self) -> Int32: ...
+    def area(self) -> int32: ...
 
 
 class Square:
-    side: Int32
+    side: int32
 
-    def __init__(self, side: Int32) -> None:
+    def __init__(self, side: int32) -> None:
         self.side = side
 
-    def area(self) -> Int32:
+    def area(self) -> int32:
         return self.side * self.side
 
 
@@ -32,7 +32,7 @@ class Factory:
         return self.cached
 
 
-def use(s: Own[Shape]) -> Int32:
+def use(s: Own[Shape]) -> int32:
     return s.area()
 
 

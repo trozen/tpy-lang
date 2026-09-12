@@ -82,7 +82,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # @native IntEnum with explicit underlying type (Int8) matching the C++ side.
+    // # @native IntEnum with explicit underlying type (int8) matching the C++ side.
     // # tpy: include("native_types.hpp")
     // from enum import Enum, auto
     // from tpy.extern import native

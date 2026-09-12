@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // xs: list[Int32 | None] = [None, None]
+    // xs: list[int32 | None] = [None, None]
     std::vector<std::optional<int32_t>> xs = {std::nullopt, std::nullopt};
     // xs[0] = 5  # a bare scalar into the value-repr optional slot
     ::tpy::__setitem__(xs, 0, 5);
@@ -50,7 +50,7 @@ void main() {
         // print(head.n, nodes[1] is None)
         std::cout << head->n << " " << ::tpy::print_bool((!::tpy::__getitem__(nodes, 1).has_value())) << "\n";
     }
-    // d: dict[str, Int32 | None] = {}
+    // d: dict[str, int32 | None] = {}
     ::tpy::ordered_map<std::string, std::optional<int32_t>> d = ::tpy::ordered_map<std::string, std::optional<int32_t>>();
     // d["a"] = 5  # tpyc: ok
     ::tpy::__setitem__(d, "a", 5);

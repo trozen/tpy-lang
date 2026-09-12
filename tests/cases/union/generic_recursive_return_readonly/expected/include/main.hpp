@@ -35,13 +35,13 @@ struct Tree {
 
 // class Holder:
 struct Holder {
-    // t: Tree[Int32]
+    // t: Tree[int32]
     Tree<int32_t> t;
 
-    // def __init__(self, t: Own[Tree[Int32]]) -> None:
+    // def __init__(self, t: Own[Tree[int32]]) -> None:
     explicit Holder(Tree<int32_t>&& t);
 
-    // def view(self) -> readonly[Tree[Int32]]:
+    // def view(self) -> readonly[Tree[int32]]:
     const Tree<int32_t>& view();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
@@ -52,10 +52,10 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 }
 
 
-// def __init__(self, t: Own[Tree[Int32]]) -> None:
+// def __init__(self, t: Own[Tree[int32]]) -> None:
 inline Holder::Holder(Tree<int32_t>&& t) : t(std::move(t)) {}
 
-// def view(self) -> readonly[Tree[Int32]]:
+// def view(self) -> readonly[Tree[int32]]:
 inline const Tree<int32_t>& Holder::view() {
     // return self.t
     return this->t;

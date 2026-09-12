@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import int32
 
 class Container[T]:
     value: T
@@ -10,10 +10,10 @@ class Container[T]:
         return self.value
 
 
-class IntContainer(Container[Int32]):
-    extra: Int32
+class IntContainer(Container[int32]):
+    extra: int32
 
-    def __init__(self, value: Int32, extra: Int32) -> None:
+    def __init__(self, value: int32, extra: int32) -> None:
         self.value = value
         self.extra = extra
 

@@ -4,11 +4,11 @@
 namespace tpyapp::main {
 
 
-// def test_and_flag(v: Int32 | Dog | None, flag: bool) -> str:
+// def test_and_flag(v: int32 | Dog | None, flag: bool) -> str:
 std::string test_and_flag(::tpy::Union<std::monostate, const Dog*, const int32_t*> v, bool flag) {
     // if v is not None and flag:
     if (((!std::holds_alternative<std::monostate>(v)) && flag)) {
-        // if isinstance(v, Int32):
+        // if isinstance(v, int32):
         if (std::holds_alternative<const int32_t*>(v)) {
             auto& __v = *std::get<const int32_t*>(v);
             // return "int+flag"
@@ -22,9 +22,9 @@ std::string test_and_flag(::tpy::Union<std::monostate, const Dog*, const int32_t
     return "skip";
 }
 
-// def test_and_isinstance(v: Int32 | Dog | None) -> str:
+// def test_and_isinstance(v: int32 | Dog | None) -> str:
 std::string test_and_isinstance(::tpy::Union<std::monostate, const Dog*, const int32_t*> v) {
-    // if v is not None and isinstance(v, Int32):
+    // if v is not None and isinstance(v, int32):
     if (((!std::holds_alternative<std::monostate>(v)) && std::holds_alternative<const int32_t*>(v))) {
         auto& __v = *std::get<const int32_t*>(v);
         // return "int"
@@ -34,7 +34,7 @@ std::string test_and_isinstance(::tpy::Union<std::monostate, const Dog*, const i
     return "other";
 }
 
-// def test_or(v: Int32 | Dog | None, w: Int32 | Dog | None) -> str:
+// def test_or(v: int32 | Dog | None, w: int32 | Dog | None) -> str:
 std::string test_or(::tpy::Union<std::monostate, const Dog*, const int32_t*> v, ::tpy::Union<std::monostate, const Dog*, const int32_t*> w) {
     // if v is None or w is None:
     if (((std::holds_alternative<std::monostate>(v)) || (std::holds_alternative<std::monostate>(w)))) {
@@ -47,15 +47,15 @@ std::string test_or(::tpy::Union<std::monostate, const Dog*, const int32_t*> v, 
 
 // def main() -> None:
 void main() {
-    // print(test_and_flag(Int32(1), True))
+    // print(test_and_flag(int32(1), True))
     int32_t __tmp_1 = 1;
     std::cout << test_and_flag(::tpy::Union<std::monostate, const Dog*, const int32_t*>{&__tmp_1}, true) << "\n";
-    // print(test_and_flag(Int32(1), False))
+    // print(test_and_flag(int32(1), False))
     int32_t __tmp_2 = 1;
     std::cout << test_and_flag(::tpy::Union<std::monostate, const Dog*, const int32_t*>{&__tmp_2}, false) << "\n";
     // print(test_and_flag(None, True))
     std::cout << test_and_flag(::tpy::Union<std::monostate, const Dog*, const int32_t*>{std::monostate{}}, true) << "\n";
-    // print(test_and_isinstance(Int32(5)))
+    // print(test_and_isinstance(int32(5)))
     int32_t __tmp_3 = 5;
     std::cout << test_and_isinstance(::tpy::Union<std::monostate, const Dog*, const int32_t*>{&__tmp_3}) << "\n";
     // print(test_and_isinstance(Dog("Rex")))
@@ -63,14 +63,14 @@ void main() {
     std::cout << test_and_isinstance(::tpy::Union<std::monostate, const Dog*, const int32_t*>{&__tmp_4}) << "\n";
     // print(test_and_isinstance(None))
     std::cout << test_and_isinstance(::tpy::Union<std::monostate, const Dog*, const int32_t*>{std::monostate{}}) << "\n";
-    // print(test_or(Int32(1), Dog("Rex")))
+    // print(test_or(int32(1), Dog("Rex")))
     int32_t __tmp_5 = 1;
     Dog __tmp_6 = Dog("Rex");
     std::cout << test_or(::tpy::Union<std::monostate, const Dog*, const int32_t*>{&__tmp_5}, ::tpy::Union<std::monostate, const Dog*, const int32_t*>{&__tmp_6}) << "\n";
     // print(test_or(None, Dog("Rex")))
     Dog __tmp_7 = Dog("Rex");
     std::cout << test_or(::tpy::Union<std::monostate, const Dog*, const int32_t*>{std::monostate{}}, ::tpy::Union<std::monostate, const Dog*, const int32_t*>{&__tmp_7}) << "\n";
-    // print(test_or(Int32(1), None))
+    // print(test_or(int32(1), None))
     int32_t __tmp_8 = 1;
     std::cout << test_or(::tpy::Union<std::monostate, const Dog*, const int32_t*>{&__tmp_8}, ::tpy::Union<std::monostate, const Dog*, const int32_t*>{std::monostate{}}) << "\n";
 }

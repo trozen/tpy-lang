@@ -19,30 +19,30 @@ def test_ptr_is_a_leaf():
     chain = why_not_send(PtrType(INT32))
     assert chain is not None and not chain.children
     out = render_chain(chain, send=True)
-    assert out == "Ptr[Int32] is not Send (raw pointer, no ownership guarantee)"
+    assert out == "Ptr[int32] is not Send (raw pointer, no ownership guarantee)"
 
 
 def test_tuple_attributes_offending_element():
     chain = why_not_send(TupleType((INT32, PtrType(INT32))))
     out = render_chain(chain, send=True)
     assert out.splitlines() == [
-        "tuple[Int32, Ptr[Int32]] is not Send",
-        "+-- element 1: Ptr[Int32] is not Send (raw pointer, no ownership guarantee)",
+        "tuple[int32, Ptr[int32]] is not Send",
+        "+-- element 1: Ptr[int32] is not Send (raw pointer, no ownership guarantee)",
     ]
 
 
 def test_union_attributes_each_offending_member():
     chain = why_not_send(make_union(PtrType(INT32), INT32))
-    # Only the Ptr member is non-Send; Int32 is skipped.
+    # Only the Ptr member is non-Send; int32 is skipped.
     out = render_chain(chain, send=True)
     assert out.splitlines() == [
-        "Int32 | Ptr[Int32] is not Send",
-        "+-- Ptr[Int32] is not Send (raw pointer, no ownership guarantee)",
+        "Ptr[int32] | int32 is not Send",
+        "+-- Ptr[int32] is not Send (raw pointer, no ownership guarantee)",
     ]
 
 
 def test_readonly_ptr_sync_recurses_into_pointee():
-    # Ptr[readonly[Int32]] is Sync (Int32 is), so no chain.
+    # Ptr[readonly[int32]] is Sync (int32 is), so no chain.
     ro = PtrType(INT32, is_readonly=True)
     assert why_not_sync(ro) is None
 
@@ -53,7 +53,7 @@ def test_optional_attributes_inner():
     chain = why_not_send(OptionalType(TupleType((PtrType(INT32),))))
     out = render_chain(chain, send=True)
     assert out.splitlines()[-1].endswith(
-        "Ptr[Int32] is not Send (raw pointer, no ownership guarantee)")
+        "Ptr[int32] is not Send (raw pointer, no ownership guarantee)")
 
 
 def test_callable_leaf_names_the_queried_trait():
@@ -66,8 +66,8 @@ def test_callable_leaf_names_the_queried_trait():
 
 
 def test_own_is_a_sync_leaf_not_a_pass_through():
-    # Own[Int32] is Send (delegates) but never Sync (single-owner); the sync
+    # Own[int32] is Send (delegates) but never Sync (single-owner); the sync
     # chain must not mislabel it as a mutable container.
     assert why_not_send(OwnType(INT32)) is None
     out = render_chain(why_not_sync(OwnType(INT32)), send=False)
-    assert out == "Own[Int32] is not Sync (single-owner move slot, not shareable across threads)"
+    assert out == "Own[int32] is not Sync (single-owner move slot, not shareable across threads)"
