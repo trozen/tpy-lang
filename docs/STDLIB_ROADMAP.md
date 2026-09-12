@@ -120,7 +120,7 @@ Examples of the policy in action:
 
 | Module | Priority | Status | % | Approach | Blockers / Notes |
 |---|---|---|---|---|---|
-| [`builtins`](#builtins) | P0 | Partial | ~75% | mixed | Implicit import. Core types + most common functions + most exception types present and catchable (`Index/Key/Lookup/Value/Type/Attribute/Assertion/OS/FileNotFound/Permission/Connection (+BrokenPipe/Reset/Refused/Aborted)/ZeroDivision/Overflow/FloatingPoint/Arithmetic/Runtime/Recursion/EOF/NotImplemented/Memory/StopIteration`); fixed-int arithmetic overflow stays panic by design (future policy switch). Missing: `frozenset`, `complex`, `memoryview`, `input`, `format`, `ascii`, `callable`, `id`, `type(x)` runtime. D16 dyn-attrs (`getattr`/`setattr`/`delattr`/`hasattr` for both literal and runtime names) fully shipped. See [builtins](#builtins) for per-item status |
+| [`builtins`](#builtins) | P0 | Partial | ~75% | mixed | Implicit import. Core types + most common functions + most exception types present and catchable (`Index/Key/Lookup/Value/Type/Attribute/Assertion/OS/FileNotFound/Permission/Connection (+BrokenPipe/Reset/Refused/Aborted)/ZeroDivision/Overflow/FloatingPoint/Arithmetic/Runtime/Recursion/EOF/NotImplemented/Memory/StopIteration`); fixed-int arithmetic overflow stays panic by design (future policy switch). Missing: `frozenset`, `complex`, `memoryview`, `format`, `ascii`, `callable`, `id`, `type(x)` runtime. D16 dyn-attrs (`getattr`/`setattr`/`delattr`/`hasattr` for both literal and runtime names) fully shipped. See [builtins](#builtins) for per-item status |
 | [`math`](#math) | P0 | Done | ~99% | mixed | Checked libm bindings + pure TPy wrappers. All CPython funcs present with matching signatures (`Iterable[float]` for fsum/sumprod/dist; `prod` has int32 / int (BigInt) / float overloads). Remaining gap: tuple as iterable (blocked on tuple-iteration bundle) |
 | [`time`](#time) | P0 | Partial | ~50% | mixed | Thin clock/sleep syscalls. `time`, `sleep`, `perf_counter`, `monotonic`, `time_ns`, `perf_counter_ns`, `monotonic_ns`, `process_time`, `tzset` (CPython-parity no-op: TPy's tz provider pins TZ at first use) all done. Missing `struct_time`/`strftime`/`gmtime`/`localtime`/timezone constants |
 | [`sys`](#sys) | P0 | Stub | ~20% | mixed | Thin syscall bindings + pure TPy. `argv`, `stdout`, `stderr`, `exit`, `maxsize` done; needs `stdin`/`path`/`version_info` |
@@ -281,7 +281,7 @@ functions, exceptions, I/O) and is re-exported by `lib/tpy/builtins.py`.
 |---|---|---|
 | `print` | Done | |
 | `open`, `open_text`, `open_binary` | Done | `TextIO` / `BinaryIO` context managers |
-| `input` | Missing | Needs stdin reader |
+| `input` | Done | Both `input()` and `input(prompt)`; EOF raises `EOFError` |
 
 **Descriptors / class utilities**
 
@@ -335,7 +335,7 @@ helper-API surface.
 | `KeyboardInterrupt` | Done | Inherits `BaseException` directly (CPython hierarchy); raisable/catchable, and raised by `asyncio.run` after a SIGINT-driven graceful shutdown |
 | `SystemExit` | Missing | Control-flow exception; needs runtime support |
 | `SystemError` | Missing | Internal-interpreter notion not directly applicable |
-| `EOFError` | Done (class-only) | Class exposed for user `raise`; no runtime sites raise it yet |
+| `EOFError` | Done | Raised by `input()` on EOF; also available for user `raise` |
 | `PermissionError`, `FileExistsError`, `NotADirectoryError`, `IsADirectoryError` | Done | `OSError` subclasses (per CPython). Raised by the `os` syscall errno table (EACCES/EPERM, EEXIST, ENOTDIR, EISDIR); also user-raisable |
 | `TimeoutError` | Done | Built-in re-export of `tpy::TimeoutError` (inherits `OSError`, matching CPython where `socket.timeout is TimeoutError`); raised by `asyncio.wait_for` and on a `socket` timeout-mode expiry |
 

@@ -654,10 +654,16 @@ def filter[T](fn: None, iterable: Iterable[T]) -> Iterator[T]: ...
 
 
 # Read one line from stdin (the trailing newline is stripped). Returns
-# the line as a heap-allocated `String`. Mirrors CPython's `input()`
-# minus the optional prompt arg, which is future work.
+# the line as a heap-allocated `String`. Mirrors CPython's `input()`:
+# the prompt form writes the prompt to stdout without a newline and
+# flushes before reading, and EOF raises EOFError.
+@dispatch
 @native("tpy::input_line")
 def input() -> String: ...
+
+@dispatch
+@native("tpy::input_line")
+def input(prompt: str) -> String: ...
 
 
 # -- Special-handling builtins (custom sema/codegen, signatures are illustrative) --

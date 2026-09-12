@@ -716,9 +716,17 @@ def run_cpython(src_file: Path) -> str:
     # this, the cpy phase is non-deterministic across developer terminals.
     env["COLUMNS"] = "80"
 
+    # Same `src/input.txt` stdin fixture the exec phase pipes in, so a case
+    # that reads stdin can have a CPython phase at all.
+    stdin_input = None
+    case_input = src_dir / "input.txt"
+    if case_input.exists():
+        stdin_input = case_input.read_text()
+
     with _scratch_cwd() as cwd:
         result = subprocess.run(
             [sys.executable, str(src_file)],
+            input=stdin_input,
             capture_output=True,
             text=True,
             env=env,

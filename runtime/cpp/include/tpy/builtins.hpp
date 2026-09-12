@@ -23,15 +23,21 @@ namespace tpy {
 
 // -- stdin helper --
 
-// Read a line from stdin (newline stripped). Raises ValueError on EOF.
-// Powers the `input()` builtin -- Python's `input()` raises EOFError;
-// TPy maps that to ValueError today (no dedicated EOFError class yet).
+// Read a line from stdin (newline stripped). Raises EOFError on EOF,
+// like CPython's `input()`. Powers the `input()` builtin.
 inline std::string input_line() {
     std::string line;
     if (!std::getline(std::cin, line)) {
-        raise_value_error("unexpected end of input");
+        raise_eof_error("EOF when reading a line");
     }
     return line;
+}
+
+// input(prompt): CPython writes the prompt to stdout with no trailing
+// newline and flushes it, so the prompt is visible before the read blocks.
+inline std::string input_line(std::string_view prompt) {
+    std::cout << prompt << std::flush;
+    return input_line();
 }
 
 // -- ord/char helpers --

@@ -5268,6 +5268,7 @@ class Car(Vehicle, Printable, Measurable):
 - **Working**: `print()`, `len()`, `hash()`, `range()`, `chr()`, `ord()`, `pow()`, `round()`, `divmod()`, `next()`, `copy()` -- most builtins (`len`, `repr`, `hash`, `chr`, `ord`, `abs`, `min`, `max`, `pow`, `divmod`, `next`) defined in `lib/tpy/builtins/` via `@native`/`@cpp_template`
   - `print(*args, sep=" ", end="\n", file=sys.stdout, flush=False)`. `sep`/`end` accept any string-typed expression (literal or runtime). `file=` accepts any value satisfying the `Writable` protocol (`write(str) -> int32` + `flush() -> None`); `sys.stdout`, `sys.stderr`, `open(...)` results, and user records all qualify. `flush=` requires a bool literal.
   - Container printing matches Python format: bools as `True`/`False`, floats with `.0`, strings in `'quotes'`
+  - `input()` / `input(prompt)` read one line from stdin (trailing newline stripped) and return `String`. The prompt is written to stdout without a newline and flushed before the read; EOF raises `EOFError`, like CPython
 - **Working**: `str()`, `repr()`, f-strings on containers (tuple, list, dict, Array, Span) -- uses runtime to_str helpers matching `print()` format
   - Generic type parameters use `ValuePrinter` for runtime dispatch (bool/float correctly formatted)
 - **Working**: List methods: `append()`, `pop()`, `insert()`, `remove()`, `clear()`, `extend()`

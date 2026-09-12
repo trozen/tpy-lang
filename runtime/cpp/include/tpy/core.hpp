@@ -277,6 +277,7 @@ TPY_DEFINE_RAISE_OS_HELPER(raise_blocking_io_error,     BlockingIOError)
 TPY_DEFINE_RAISE_HELPER(raise_runtime_error,         RuntimeError)
 TPY_DEFINE_RAISE_HELPER(raise_not_implemented_error, NotImplementedError)
 TPY_DEFINE_RAISE_HELPER(raise_memory_error,          MemoryError)
+TPY_DEFINE_RAISE_HELPER(raise_eof_error,             EOFError)
 
 [[noreturn]] inline void raise_stop_iteration() {
     throw StopIteration{};

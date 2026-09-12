@@ -1,0 +1,4 @@
+s1 name: s1: Tom
+s2: Ann
+s3 where: s3: here
+s4 more: s4: eof EOFError
