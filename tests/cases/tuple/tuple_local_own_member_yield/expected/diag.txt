@@ -1,0 +1,4 @@
+main.py:88: warning: copies tuple[Int32, Own[Box]] into owned storage; use copy() to make this explicit
+main.py:106: warning: copies tuple[Int32, Own[Box]] into owned storage; use copy() to make this explicit
+main.py:118: warning: copies tuple[Int32, Own[Box]] into owned storage; use copy() to make this explicit
+main.py:132: warning: copies tuple[Int32, Box] into owned storage; use copy() to make this explicit

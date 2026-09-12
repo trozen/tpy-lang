@@ -285,6 +285,18 @@ def _dynamic_type_defs_view() -> dict[str, TypeDef]:
 def register(td: TypeDef) -> None:
     if td.qname in _type_defs:
         raise ValueError(f"Duplicate TypeDef registration: {td.qname}")
+    if td.is_borrowing_view and not td.is_value_type:
+        # The call-argument rows read "a view slot passes by VALUE, so it is
+        # never a ref param" straight off this pairing (thir/lower's
+        # frame-view backing arm). A reference-typed view would take the ref
+        # arms instead and silently skip them. This guards only the FLAG
+        # bearers -- the three dict views. The rest of the family
+        # (`Span`, `varargs`, `SpanIter`, `StrView`, `BytesView`) is
+        # recognized by category/qname in `is_borrowing_view_type` and never
+        # reaches this check, so it holds the property by construction
+        # (TODO.md, widen the invariant to the whole predicate).
+        raise ValueError(
+            f"borrowing-view TypeDef must be a value type: {td.qname}")
     _type_defs[td.qname] = td
 
 

@@ -764,7 +764,7 @@ def _run_cli(is_runner: bool) -> int:
 
     # Heavy imports, deferred past the warm path (see top-of-module note).
     from .parse import ParseError
-    from .sema import SemanticError, DiagnosticLevel
+    from .sema import SemanticError, DiagnosticLevel, format_diagnostics
     from .explain import explain_send_sync
     from .codegen_cpp import (CodeGenOptions, CodeGenError,
                               stamp_codegen_error_file)
@@ -806,33 +806,26 @@ def _run_cli(is_runner: bool) -> int:
         user_modules = [m.name for m in compiled_modules if compiler.is_user_module(m)]
         n_stdlib = n_py - len(user_modules)
 
-        # Collect diagnostics: errors abort immediately, warnings are deferred
+        # Collect diagnostics: errors abort immediately, warnings are
+        # deferred. Errors from the compiler driver itself (frontend plugin
+        # parse failures, module-resolution failures, etc.) halt the build
+        # the same way analyzer-level errors do -- without that a plugin's
+        # parse error surfaces as a downstream C++ compile failure, because
+        # the empty-module fallback gets fed into the build pipeline.
         has_errors = False
         warning_messages: list[str] = []
         n_warnings = 0
-        for diag in compiler.diagnostics:
-            # Errors from the compiler driver itself (frontend plugin
-            # parse failures, module-resolution failures, etc.) must
-            # halt the build the same way analyzer-level errors do.
-            # Without this check a plugin's parse error surfaces as a
-            # downstream C++ compile failure because the empty-module
-            # fallback gets fed into the build pipeline.
+        for diag, line in format_diagnostics(
+                compiler, compiled_modules, prog_name=prog_name,
+                source_name=lambda m: (
+                    "<stdin>" if reading_from_stdin
+                    else os.path.relpath(m.path))):
             if diag.level == DiagnosticLevel.ERROR:
                 has_errors = True
-                print(diag.format(prog_name), file=sys.stderr)
+                print(line, file=sys.stderr)
             else:
                 n_warnings += 1
-                warning_messages.append(diag.format(prog_name))
-        for compiled in compiled_modules:
-            source_name = "<stdin>" if reading_from_stdin else os.path.relpath(compiled.path)
-            if compiled.analyzer:
-                for diag in compiled.analyzer.diagnostics:
-                    if diag.level == DiagnosticLevel.ERROR:
-                        has_errors = True
-                        print(diag.format(source_name), file=sys.stderr)
-                    elif diag.level == DiagnosticLevel.WARNING:
-                        n_warnings += 1
-                        warning_messages.append(diag.format(source_name))
+                warning_messages.append(line)
 
         progress.analyzed(user_modules, n_stdlib, n_warnings, t_compile)
 

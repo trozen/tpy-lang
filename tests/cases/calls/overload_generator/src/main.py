@@ -35,10 +35,9 @@ def main():
     # two-arg arm (bounded)
     for y in rep(9, 3):
         print(y)
-    # ... and an rvalue that is a CALL, not a literal. The warning is spurious
-    # -- the temp below outlives the loop -- and filed as
-    # BUGS.md#gen-iter-arg-temp-warns-though-hoisted
-    for z in rep(mk(), 2):  # tpyc: warning(/borrows from temporary argument/)
+    # ... and an rvalue that is a CALL, not a literal: the frame rule hoists it
+    # into a named local of the loop's own block, so no dangle and no warning.
+    for z in rep(mk(), 2):  # tpyc: ok
         print(z)
 
 

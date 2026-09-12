@@ -1,1 +1,2 @@
+main.py:18: warning: copies Row into container; use copy() to make this explicit
 main.py:18: error: in function 'fill': this construct is not yet supported by C++ code generation (stmt.assign:setitem.record_own_copy)

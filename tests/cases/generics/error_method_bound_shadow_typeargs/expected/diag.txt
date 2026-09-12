@@ -1,1 +1,2 @@
+main.py:15: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
 main.py:31: error: Method 'contains' expects 0 type argument(s), got 1

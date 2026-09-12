@@ -1,1 +1,2 @@
+main.py:18: warning: copies Collar | None into field; use copy() to make this explicit
 main.py:33: error: in function 'pick': this construct is not yet supported by C++ code generation (stmt.return:unionlift.cond_defer)

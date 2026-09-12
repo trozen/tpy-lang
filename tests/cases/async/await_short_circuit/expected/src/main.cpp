@@ -31,8 +31,9 @@ __coro_num num(std::string_view tag, ::tpy::BigInt n) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
+        __coro_arg_0 = "or1-left";
         // r1 = await num("or1-left", 5) or await num("or1-right-skip", 9)
-        __sub_0.emplace("or1-left", ::tpy::BigInt(5));
+        __sub_0.emplace(__coro_arg_0, ::tpy::BigInt(5));
         __state = S_RESUME_0;
         continue;
     }
@@ -48,8 +49,9 @@ __coro_num num(std::string_view tag, ::tpy::BigInt n) {
             __state = S_JOIN_0;
             continue;
         } else {
+            __coro_arg_1 = "or1-right-skip";
             // r1 = await num("or1-left", 5) or await num("or1-right-skip", 9)
-            __sub_1.emplace("or1-right-skip", ::tpy::BigInt(9));
+            __sub_1.emplace(__coro_arg_1, ::tpy::BigInt(9));
             __state = S_RESUME_1;
             continue;
         }
@@ -74,8 +76,9 @@ __coro_num num(std::string_view tag, ::tpy::BigInt n) {
             __state = S_JOIN_1;
             continue;
         } else {
+            __coro_arg_3 = "or2-right-run";
             // r2 = await num("or2-left", 0) or await num("or2-right-run", 7)
-            __sub_3.emplace("or2-right-run", ::tpy::BigInt(7));
+            __sub_3.emplace(__coro_arg_3, ::tpy::BigInt(7));
             __state = S_RESUME_3;
             continue;
         }
@@ -94,8 +97,9 @@ __coro_num num(std::string_view tag, ::tpy::BigInt n) {
         __sc_4 = std::move(__r4).value();
         __sub_4.reset();
         if (__sc_4) {
+            __coro_arg_5 = "and1-right-skip";
             // r3 = await num("and1-left", 0) and await num("and1-right-skip", 9)
-            __sub_5.emplace("and1-right-skip", ::tpy::BigInt(9));
+            __sub_5.emplace(__coro_arg_5, ::tpy::BigInt(9));
             __state = S_RESUME_5;
             continue;
         } else {
@@ -120,8 +124,9 @@ __coro_num num(std::string_view tag, ::tpy::BigInt n) {
         __sc_6 = std::move(__r6).value();
         __sub_6.reset();
         if (__sc_6) {
+            __coro_arg_7 = "and2-right-run";
             // r4 = await num("and2-left", 3) and await num("and2-right-run", 8)
-            __sub_7.emplace("and2-right-run", ::tpy::BigInt(8));
+            __sub_7.emplace(__coro_arg_7, ::tpy::BigInt(8));
             __state = S_RESUME_7;
             continue;
         } else {
@@ -146,8 +151,9 @@ __coro_num num(std::string_view tag, ::tpy::BigInt n) {
         r1 = __sc_1;
         // print("r1", r1)
         std::cout << "r1" << " " << r1 << "\n";
+        __coro_arg_2 = "or2-left";
         // r2 = await num("or2-left", 0) or await num("or2-right-run", 7)
-        __sub_2.emplace("or2-left", ::tpy::BigInt(0));
+        __sub_2.emplace(__coro_arg_2, ::tpy::BigInt(0));
         __state = S_RESUME_2;
         continue;
     }
@@ -157,8 +163,9 @@ __coro_num num(std::string_view tag, ::tpy::BigInt n) {
         r2 = __sc_3;
         // print("r2", r2)
         std::cout << "r2" << " " << r2 << "\n";
+        __coro_arg_4 = "and1-left";
         // r3 = await num("and1-left", 0) and await num("and1-right-skip", 9)
-        __sub_4.emplace("and1-left", ::tpy::BigInt(0));
+        __sub_4.emplace(__coro_arg_4, ::tpy::BigInt(0));
         __state = S_RESUME_4;
         continue;
     }
@@ -168,8 +175,9 @@ __coro_num num(std::string_view tag, ::tpy::BigInt n) {
         r3 = __sc_5;
         // print("r3", r3)
         std::cout << "r3" << " " << r3 << "\n";
+        __coro_arg_6 = "and2-left";
         // r4 = await num("and2-left", 3) and await num("and2-right-run", 8)
-        __sub_6.emplace("and2-left", ::tpy::BigInt(3));
+        __sub_6.emplace(__coro_arg_6, ::tpy::BigInt(3));
         __state = S_RESUME_6;
         continue;
     }

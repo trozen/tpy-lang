@@ -1,1 +1,2 @@
+main.py:15: warning: Own[C] param 'c' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
 main.py:15: error: @export function 'take': parameter 'c' is Own[C], which is not a valid boundary type: the host keeps its reference, so ownership cannot transfer -- use the borrow form 'C'

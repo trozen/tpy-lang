@@ -4,9 +4,298 @@
 namespace tpyapp::main {
 
 
+// # Reads the heap member through a borrow, so a moved-from Box shows up as an
+// # empty list rather than an intact `val`.
+// def first_item(b: Box) -> Int32:
+int32_t first_item(const Box& b) {
+    // return b.items[0]
+    return ::tpy::__getitem__(b.items, 0);
+}
+
+// def mk(v: Int32) -> Own[tuple[Int32, Own[Box]]]:
+std::tuple<int32_t, Box> mk(int32_t v) {
+    // return (v, Box(v * 10))
+    return std::tuple<int32_t, Box>{v, Box((::tpy::mul_check<int32_t>(v, 10)))};
+}
+
+// def gen_twice(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
+std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_twice::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // i = Int32(0)
+        i = 0;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        // u = (i + 100, Box(i))
+        u.emplace(std::tuple<int32_t, Box>{(::tpy::add_check<int32_t>(i, 100)), Box(i)});
+        // yield u  # tpyc: ok
+        __state = S_RESUME_1;
+        return std::move((*u));
+    }
+    case S_RESUME_1: {
+        // i += 1
+        i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((i < n)) {
+            // t = (i, Box(i * 10))
+            t.emplace(std::tuple<int32_t, Box>{i, Box((::tpy::mul_check<int32_t>(i, 10)))});
+            // yield t  # tpyc: ok
+            __state = S_RESUME_0;
+            return std::move((*t));
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def gen_twice(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
+__gen_gen_twice gen_twice(int32_t n) {
+    return __gen_gen_twice(n);
+}
+
+// def gen_call_init(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
+std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_call_init::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // i = Int32(0)
+        i = 0;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        // v = mk(i + 100)
+        v.emplace(mk((::tpy::add_check<int32_t>(i, 100))));
+        // yield v  # tpyc: ok
+        __state = S_RESUME_1;
+        return std::move((*v));
+    }
+    case S_RESUME_1: {
+        // i += 1
+        i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((i < n)) {
+            // # An owning CALL init keeps the per-element Own markers a literal init
+            // # drops, and binds the same storage tuple.
+            // t = mk(i)
+            t.emplace(mk(i));
+            // yield t  # tpyc: ok
+            __state = S_RESUME_0;
+            return std::move((*t));
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def gen_call_init(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
+__gen_gen_call_init gen_call_init(int32_t n) {
+    return __gen_gen_call_init(n);
+}
+
+// def gen_call_init_borrowed(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
+std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_call_init_borrowed::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // i = Int32(0)
+        i = 0;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        // print("borrowed", saved.items[0])
+        std::cout << "borrowed" << " " << ::tpy::__getitem__(saved->items, 0) << "\n";
+        // u = mk(i + 100)
+        u.emplace(mk((::tpy::add_check<int32_t>(i, 100))));
+        // yield u  # tpyc: ok
+        __state = S_RESUME_1;
+        return std::move((*u));
+    }
+    case S_RESUME_1: {
+        // i += 1
+        i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((i < n)) {
+            // t = mk(i)
+            t.emplace(mk(i));
+            // saved = take_ptr(t[1])
+            saved = &std::get<1>((*t));
+            // yield t  # tpyc: warning(/copies tuple.* into owned storage/)
+            __state = S_RESUME_0;
+            return (*t);
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def gen_call_init_borrowed(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
+__gen_gen_call_init_borrowed gen_call_init_borrowed(int32_t n) {
+    return __gen_gen_call_init_borrowed(n);
+}
+
+// def gen_call_init_borrow_dead(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
+std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_call_init_borrow_dead::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // i = Int32(0)
+        i = 0;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        // u = mk(i + 100)
+        u.emplace(mk((::tpy::add_check<int32_t>(i, 100))));
+        // yield u  # tpyc: ok
+        __state = S_RESUME_1;
+        return std::move((*u));
+    }
+    case S_RESUME_1: {
+        // i += 1
+        i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((i < n)) {
+            // t = mk(i)
+            t.emplace(mk(i));
+            // saved = take_ptr(t[1])
+            saved = &std::get<1>((*t));
+            // print("dead-borrow", saved.items[0])
+            std::cout << "dead-borrow" << " " << ::tpy::__getitem__(saved->items, 0) << "\n";
+            // yield t  # tpyc: warning(/copies tuple.* into owned storage/)
+            __state = S_RESUME_0;
+            return (*t);
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def gen_call_init_borrow_dead(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
+__gen_gen_call_init_borrow_dead gen_call_init_borrow_dead(int32_t n) {
+    return __gen_gen_call_init_borrow_dead(n);
+}
+
+// def gen_preloop(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
+std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_preloop::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // t = mk(7)
+        t.emplace(mk(7));
+        __for_i_0.emplace(int32_t(0));
+        __for_stop_0.emplace(static_cast<int32_t>(n));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if (!((*__for_i_0) < (*__for_stop_0))) {
+            // print("preloop-kept", first_item(t[1]))
+            std::cout << "preloop-kept" << " " << first_item(std::get<1>((*t))) << "\n";
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        _ = ((*__for_i_0))++;
+        // yield t  # tpyc: warning(/copies tuple.* into owned storage/)
+        __state = S_RESUME_0;
+        return (*t);
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def gen_preloop(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
+__gen_gen_preloop gen_preloop(int32_t n) {
+    return __gen_gen_preloop(n);
+}
+
+// def gen_live(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
+std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_live::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // i = Int32(0)
+        i = 0;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        // print("live-gen", t[1].val)
+        std::cout << "live-gen" << " " << std::get<1>((*t)).val << "\n";
+        // u = (i, Box(i))
+        u.emplace(std::tuple<int32_t, Box>{i, Box(i)});
+        // yield u  # tpyc: ok
+        __state = S_RESUME_1;
+        return std::move((*u));
+    }
+    case S_RESUME_1: {
+        // i += 1
+        i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((i < n)) {
+            // t = (i, Box(i * 10))
+            t.emplace(std::tuple<int32_t, Box>{i, Box((::tpy::mul_check<int32_t>(i, 10)))});
+            // yield t  # tpyc: warning(/copies tuple.* into owned storage/)
+            __state = S_RESUME_0;
+            return (*t);
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def gen_live(n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
+__gen_gen_live gen_live(int32_t n) {
+    return __gen_gen_live(n);
+}
+
 // def main() -> None:
 void main() {
-    // for pair in gen(Int32(3)):
+    // for pair in gen(3):
     {
         auto __src_0 = gen(3);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -14,11 +303,161 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& pair = ::tpy::unwrap_ref(*__r_1);
-        // print(pair[0], pair[1].val)
-        std::cout << std::get<0>(pair) << " " << std::get<1>(pair).val << "\n";
+        // print("free", pair[0], pair[1].val)
+        std::cout << "free" << " " << std::get<0>(pair) << " " << std::get<1>(pair).val << "\n";
+        }
+    }
+    // for pair in gen_twice(2):
+    {
+        auto __src_2 = gen_twice(2);
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            auto&& pair = ::tpy::unwrap_ref(*__r_3);
+        // # The consumer owns the handed-out Box: the mutation is visible through
+        // # the tuple it arrived in, and the generator's next bind cannot clobber it.
+        // pair[1].val += 1
+        std::get<1>(pair).val = ::tpy::add_check<int32_t>(std::get<1>(pair).val, 1);
+        // print("twice", pair[0], pair[1].val)
+        std::cout << "twice" << " " << std::get<0>(pair) << " " << std::get<1>(pair).val << "\n";
+        }
+    }
+    // for pair in gen_call_init(2):
+    {
+        auto __src_4 = gen_call_init(2);
+        auto&& __itr_4 = ::tpy::__iter__(__src_4);
+        for (;;) {
+            auto __r_5 = __itr_4.__next__();
+            if (!__r_5.has_value()) break;
+            auto&& pair = ::tpy::unwrap_ref(*__r_5);
+        // print("call", pair[0], pair[1].val)
+        std::cout << "call" << " " << std::get<0>(pair) << " " << std::get<1>(pair).val << "\n";
+        }
+    }
+    // for pair in gen_call_init_once(2):
+    {
+        auto __src_6 = gen_call_init_once(2);
+        auto&& __itr_6 = ::tpy::__iter__(__src_6);
+        for (;;) {
+            auto __r_7 = __itr_6.__next__();
+            if (!__r_7.has_value()) break;
+            auto&& pair = ::tpy::unwrap_ref(*__r_7);
+        // # The move leg: the consumer owns the handed-out Box, so its mutation
+        // # is visible through the tuple it arrived in.
+        // pair[1].val += 1
+        std::get<1>(pair).val = ::tpy::add_check<int32_t>(std::get<1>(pair).val, 1);
+        // print("call-once", pair[0], pair[1].val)
+        std::cout << "call-once" << " " << std::get<0>(pair) << " " << std::get<1>(pair).val << "\n";
+        }
+    }
+    // for pair in gen_call_init_borrowed(2):
+    {
+        auto __src_8 = gen_call_init_borrowed(2);
+        auto&& __itr_8 = ::tpy::__iter__(__src_8);
+        for (;;) {
+            auto __r_9 = __itr_8.__next__();
+            if (!__r_9.has_value()) break;
+            auto&& pair = ::tpy::unwrap_ref(*__r_9);
+        // # No mutation here: the warned yield copies, so a mutation would show
+        // # the aliasing divergence tracked at
+        // # BUGS.md#tuple-yield-copy-warning-omits-aliasing rather than this
+        // # section's subject (the generator's own read after the resume).
+        // print("borrowed-consumer", pair[0], pair[1].val)
+        std::cout << "borrowed-consumer" << " " << std::get<0>(pair) << " " << std::get<1>(pair).val << "\n";
+        }
+    }
+    // for pair in gen_call_init_borrow_dead(2):
+    {
+        auto __src_10 = gen_call_init_borrow_dead(2);
+        auto&& __itr_10 = ::tpy::__iter__(__src_10);
+        for (;;) {
+            auto __r_11 = __itr_10.__next__();
+            if (!__r_11.has_value()) break;
+            auto&& pair = ::tpy::unwrap_ref(*__r_11);
+        // print("dead-consumer", pair[0], pair[1].val)
+        std::cout << "dead-consumer" << " " << std::get<0>(pair) << " " << std::get<1>(pair).val << "\n";
+        }
+    }
+    // for pair in gen_preloop(2):
+    {
+        auto __src_12 = gen_preloop(2);
+        auto&& __itr_12 = ::tpy::__iter__(__src_12);
+        for (;;) {
+            auto __r_13 = __itr_12.__next__();
+            if (!__r_13.has_value()) break;
+            auto&& pair = ::tpy::unwrap_ref(*__r_13);
+        // print("preloop", pair[0], pair[1].val)
+        std::cout << "preloop" << " " << std::get<0>(pair) << " " << std::get<1>(pair).val << "\n";
+        }
+    }
+    // for pair in gen_live(2):
+    {
+        auto __src_14 = gen_live(2);
+        auto&& __itr_14 = ::tpy::__iter__(__src_14);
+        for (;;) {
+            auto __r_15 = __itr_14.__next__();
+            if (!__r_15.has_value()) break;
+            auto&& pair = ::tpy::unwrap_ref(*__r_15);
+        // print("live", pair[0], pair[1].val)
+        std::cout << "live" << " " << std::get<0>(pair) << " " << std::get<1>(pair).val << "\n";
+        }
+    }
+    // s = Src(100)
+    Src s = Src(100);
+    // for pair in s.pairs(2):
+    {
+        auto __src_16 = s.pairs(2);
+        auto&& __itr_16 = ::tpy::__iter__(__src_16);
+        for (;;) {
+            auto __r_17 = __itr_16.__next__();
+            if (!__r_17.has_value()) break;
+            auto&& pair = ::tpy::unwrap_ref(*__r_17);
+        // print("method", pair[0], pair[1].val)
+        std::cout << "method" << " " << std::get<0>(pair) << " " << std::get<1>(pair).val << "\n";
         }
     }
 }
+
+// def pairs(self, n: Int32) -> Iterator[tuple[Int32, Own[Box]]]:
+std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_Src_pairs::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // i = Int32(0)
+        i = 0;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        // u = (self.base - i, Box(i))
+        u.emplace(std::tuple<int32_t, Box>{(::tpy::sub_check<int32_t>(__self.base, i)), Box(i)});
+        // yield u  # tpyc: ok
+        __state = S_RESUME_1;
+        return std::move((*u));
+    }
+    case S_RESUME_1: {
+        // i += 1
+        i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((i < n)) {
+            // t = (self.base + i, Box(i * 10))
+            t.emplace(std::tuple<int32_t, Box>{(::tpy::add_check<int32_t>(__self.base, i)), Box((::tpy::mul_check<int32_t>(i, 10)))});
+            // yield t  # tpyc: ok
+            __state = S_RESUME_0;
+            return std::move((*t));
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
 
 void __tpy_init() {
     static bool initialized = false;

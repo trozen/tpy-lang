@@ -20,7 +20,7 @@ class Keep:
 
 def main() -> None:
     things = [Thing(4), Thing(5)]
-    k = Keep(things[0])  # tpyc: error(/not yet supported/)
+    k = Keep(things[0])  # tpyc: warning(/copies Thing into owned storage/) error(/not yet supported/)
     k.t.x += 1.0
     print(k.t.x, things[0].x)
 

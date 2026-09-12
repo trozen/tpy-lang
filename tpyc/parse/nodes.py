@@ -781,6 +781,10 @@ class TpyVarDecl(TpyStmt):
     module_init_local: bool = field(default=False, kw_only=True)
     # Set by sema: union assignment narrowing facts for codegen
     then_type_facts: dict[str, TpyType] = field(default_factory=dict)
+    # Stamped by liveness: names still live AFTER this statement (see
+    # analyze_last_uses). None means the liveness walk never reached this
+    # node, where the alias-rebind check stays silent.
+    live_names_after: frozenset[str] | None = field(default=None, repr=False)
 
     def exprs(self) -> list[TpyExpr]:
         return [self.init] if self.init else []
@@ -807,6 +811,8 @@ class TpyAssign(TpyStmt):
     """Assignment to variable or field."""
     target: TpyExpr
     value: TpyExpr
+    # Stamped by liveness -- see TpyVarDecl.live_names_after.
+    live_names_after: frozenset[str] | None = field(default=None, repr=False)
 
     def exprs(self) -> list[TpyExpr]:
         return [self.target, self.value]

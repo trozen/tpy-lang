@@ -1,0 +1,4 @@
+The case pins the WRONG values the new alias-rebind warning announces
+(BUGS.md#resumable-alias-identity and its sync siblings): each section reads
+back the object the loan was given and gets the rebound one instead. CPython
+keeps the original object, so a cpy phase would compare two different bugs.

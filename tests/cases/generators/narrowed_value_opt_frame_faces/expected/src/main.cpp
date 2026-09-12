@@ -332,7 +332,8 @@ void main() {
     }
     // for s in g_view("v"):
     {
-        auto __src_10 = g_view("v");
+        std::string __tmp_1 = "v";
+        auto __src_10 = g_view(__tmp_1);
         auto&& __itr_10 = ::tpy::__iter__(__src_10);
         for (;;) {
             auto __r_11 = __itr_10.__next__();

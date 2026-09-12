@@ -124,10 +124,12 @@ __coro_cleanup_task cleanup_task(std::string_view label) {
         try {
             // tasks: list[asyncio.Task[Int32]] = []
             tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<int32_t>>{});
+            __coro_arg_0 = "a";
             // tasks.append(asyncio.create_task(cleanup_task("a")))
-            (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(cleanup_task("a"))));
+            (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(cleanup_task(__coro_arg_0))));
+            __coro_arg_1 = "b";
             // tasks.append(asyncio.create_task(cleanup_task("b")))
-            (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(cleanup_task("b"))));
+            (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(cleanup_task(__coro_arg_1))));
             // await asyncio.gather_list(tasks)
             __sub_0.emplace((*tasks));
             __state = S_RESUME_0;

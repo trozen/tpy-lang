@@ -3827,6 +3827,38 @@ class TupleType(TpyType):
         # a raw field, even though `is_value_type()` reports the tuple True.
         return any(e.value_form() is ValueForm.OWN for e in self.element_types)
 
+    def has_nested_element(self, pred: 'Callable[[TpyType], bool]') -> bool:
+        """Depth-first over the element tree: True if `pred` holds at any
+        element position, here or inside a nested value tuple.
+
+        The walker owns the DESCENT -- an element reaches a nested tuple
+        through the readonly / ref / Own wrappers it may carry -- and `pred`
+        owns the element test. They are separate because the two questions
+        asked of an element differ: ownership is about the payload under an
+        element's wrappers, while the borrow form is about the element as
+        written (peeling `Own[Box]` to `Box` would answer a different
+        question)."""
+        for e in self.element_types:
+            if pred(e):
+                return True
+            inner = unwrap_own(unwrap_readonly(unwrap_ref_type(e)))
+            if isinstance(inner, TupleType) and inner.has_nested_element(pred):
+                return True
+        return False
+
+    def has_nested_own_element(self) -> bool:
+        """True if an element AT ANY DEPTH through nested value tuples owns
+        its payload -- `Own[T]`, and `Own[T] | None` alike.
+
+        The ownership-transfer question, not the frame-slot form question:
+        a sink that owns this tuple consumes the source's owned members
+        wherever they sit in the element tree. `has_own_element` stays
+        direct-only because a frame field's own slot wrapping is decided by
+        the outer tuple's own elements."""
+        return self.has_nested_element(
+            lambda e: unwrap_optional_own(
+                unwrap_readonly(unwrap_ref_type(e))) is not None)
+
     def is_owned_movable(self) -> bool:
         # A "purely owned" tuple: at least one Own element and NO bare borrow
         # element (every non-value element is Own). Such a tuple has a single
@@ -3904,14 +3936,7 @@ class TupleType(TpyType):
         deliberately stays direct-only because the outer tuple genuinely has no
         pointer slot of its own when the reference sits a level down -- every
         codegen form site must keep asking that shallower question."""
-        for e in self.element_types:
-            if self._element_is_pointer_repr(e):
-                return True
-            inner = unwrap_own(unwrap_readonly(unwrap_ref_type(e)))
-            if (isinstance(inner, TupleType)
-                    and inner.has_nested_pointer_repr_element()):
-                return True
-        return False
+        return self.has_nested_element(self._element_is_pointer_repr)
 
     def _element_to_cpp_param(self, t: 'TpyType', const: bool) -> str:
         """C++ type for a tuple element in param/return (borrow) context.

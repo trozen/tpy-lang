@@ -141,6 +141,12 @@ tests/cases/<group>/<case>/
     └── .fingerprints      # (optional) per-case `main.py` hash gating the cpy-phase skip
 ```
 
+`diag.txt` holds every diagnostic the compile produced, warnings first and in
+source order, then the error that stopped it -- so an `error_` case records the
+warnings sema had already emitted, and a `# tpyc: warning(...)` annotation can
+be pinned alongside a later error. (The `tpyc` CLI still drops those warnings on
+its fatal-error paths; see BUGS.md.)
+
 **The stdlib's own snapshot** is an ordinary case, `tests/cases/harness/stdlib_render`: it imports every non-macro module under `lib/tpy` and its `options.json` sets `snapshot_lib_modules` to `["*"]`, so the whole library's generated C++ lands in that case's `expected/` tree and is byte-compared (and built and run) like any other snapshot. `tests/test_stdlib_render_coverage.py` asserts the import list stays equal to the module set (the glob only covers what the case compiles) and that no two module names collide on one snapshot path. It also holds the arg-table family-reach gate -- every registered family is dispatched to by some stdlib body.
 
 `options.json` is layered: the conftest walks up from the case directory toward `tests/cases/`, merging every options.json it finds (deeper file overrides; `dsl_opts` merges per-key). One file at the group level (e.g. `tests/cases/pascal/options.json`) covers every case underneath; per-case files only need the keys that differ. Supported keys:

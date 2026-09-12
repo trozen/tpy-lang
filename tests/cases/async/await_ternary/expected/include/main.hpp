@@ -103,6 +103,14 @@ struct __coro_main {
     int32_t w;
     bool __await_lift_0;
     bool __await_lift_1;
+    std::string __coro_arg_0;
+    std::string __coro_arg_1;
+    std::string __coro_arg_2;
+    std::string __coro_arg_3;
+    std::string __coro_arg_4;
+    std::string __coro_arg_5;
+    std::string __coro_arg_6;
+    std::string __coro_arg_7;
     std::optional<__coro_one> __sub_0;
     std::optional<__coro_two> __sub_1;
     std::optional<__coro_one> __sub_2;

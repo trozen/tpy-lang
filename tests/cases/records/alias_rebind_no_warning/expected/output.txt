@@ -1,0 +1,12 @@
+sync_first: 101 50
+rebind_in_loop: 102 2
+branch_arms_then: 16
+branch_arms_else: 115 50
+dead_alias_pre: 4
+dead_alias: 50
+none_rebind: 106 True
+container_insert: 7 50
+rebound_ptr: 8 109
+hatch_copy: 111 50
+hatch_rc: 112 50
+hatch_fresh_name: 114 114 50

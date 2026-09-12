@@ -162,7 +162,8 @@ void main() {
     // for m in matching([b"a", b"COLORMAP", b"b"], b"b"):
     {
         std::vector<::tpy::Bytes> __tmp_5 = {::tpy::bytes_literal_owned("a", 1), ::tpy::bytes_literal_owned("COLORMAP", 8), ::tpy::bytes_literal_owned("b", 1)};
-        auto __src_0 = matching(__tmp_5, ::tpy::bytes_literal("b", 1));
+        ::tpy::Bytes __tmp_6 = ::tpy::bytes_literal_owned("b", 1);
+        auto __src_0 = matching(__tmp_5, __tmp_6);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -173,13 +174,13 @@ void main() {
         }
     }
     // filtered([b"a", b"skip", b"c"])
-    std::vector<::tpy::Bytes> __tmp_6 = {::tpy::bytes_literal_owned("a", 1), ::tpy::bytes_literal_owned("skip", 4), ::tpy::bytes_literal_owned("c", 1)};
-    filtered(__tmp_6);
+    std::vector<::tpy::Bytes> __tmp_7 = {::tpy::bytes_literal_owned("a", 1), ::tpy::bytes_literal_owned("skip", 4), ::tpy::bytes_literal_owned("c", 1)};
+    filtered(__tmp_7);
     // print("generic", first_is([b"b", b"c"], b"b"), first_is([b"b"], b"a"), first_is(["x"], "y"))
-    std::vector<::tpy::Bytes> __tmp_7 = {::tpy::bytes_literal_owned("b", 1), ::tpy::bytes_literal_owned("c", 1)};
-    std::vector<::tpy::Bytes> __tmp_8 = {::tpy::bytes_literal_owned("b", 1)};
-    std::vector<std::string> __tmp_9 = {"x"};
-    std::cout << "generic" << " " << ::tpy::print_bool(first_is<::tpy::Bytes>(__tmp_7, ::tpy::bytes_literal("b", 1))) << " " << ::tpy::print_bool(first_is<::tpy::Bytes>(__tmp_8, ::tpy::bytes_literal("a", 1))) << " " << ::tpy::print_bool(first_is<std::string>(__tmp_9, "y")) << "\n";
+    std::vector<::tpy::Bytes> __tmp_8 = {::tpy::bytes_literal_owned("b", 1), ::tpy::bytes_literal_owned("c", 1)};
+    std::vector<::tpy::Bytes> __tmp_9 = {::tpy::bytes_literal_owned("b", 1)};
+    std::vector<std::string> __tmp_10 = {"x"};
+    std::cout << "generic" << " " << ::tpy::print_bool(first_is<::tpy::Bytes>(__tmp_8, ::tpy::bytes_literal("b", 1))) << " " << ::tpy::print_bool(first_is<::tpy::Bytes>(__tmp_9, ::tpy::bytes_literal("a", 1))) << " " << ::tpy::print_bool(first_is<std::string>(__tmp_10, "y")) << "\n";
 }
 
 void __tpy_init() {

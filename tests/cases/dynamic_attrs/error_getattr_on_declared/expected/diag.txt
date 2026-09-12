@@ -1,1 +1,2 @@
+main.py:9: warning: copies dict[str, Any] into field; use copy() to make this explicit
 main.py:16: error: getattr(obj, "_data") for declared field is not supported; use 'obj._data'

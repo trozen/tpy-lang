@@ -1,1 +1,0 @@
-main.py:14: error: in the constructor of 'Grid': this construct is not yet supported by C++ code generation (expr.list_comp)

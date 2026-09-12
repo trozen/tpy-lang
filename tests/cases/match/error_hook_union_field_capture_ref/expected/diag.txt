@@ -1,1 +1,2 @@
+main.py:20: warning: copies Pal into field; use copy() to make this explicit
 main.py:30: error: in function 'guarded': this construct is not yet supported by C++ code generation (res.match_binding)

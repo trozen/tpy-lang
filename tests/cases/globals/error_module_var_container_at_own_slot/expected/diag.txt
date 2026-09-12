@@ -1,1 +1,3 @@
+main.py:7: warning: Own[list[str]] param 'xs' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:12: warning: copies list[str] into owned storage; use copy() to make this explicit
 main.py:12: error: in function 'main': this construct is not yet supported by C++ code generation (stmt.expr_stmt:field.module_var_type)

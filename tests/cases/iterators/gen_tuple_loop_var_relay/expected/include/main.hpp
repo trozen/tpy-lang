@@ -8,9 +8,16 @@
 namespace tpyapp::main {
 
 struct Box;
+struct Hub;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_gen;
+struct __gen_relay_twice;
+struct __gen_Hub_relay;
+
+__gen_gen gen();
+__gen_relay_twice relay_twice();
 void main();
 
 // class Box:
@@ -29,24 +36,105 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
+// class Hub:
+struct Hub {
+
+
+    __gen_Hub_relay relay() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Hub";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Hub& obj) {
+    ::tpy::print_object_default(os, "Hub", obj);
+    return os;
+}
+
+// Generator: gen
+struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::tuple<int32_t, Box*>> {
+    int32_t __state;
+    ::tpy::frame_slot<std::vector<std::tuple<int32_t, Box>>> items;
+    int32_t _;
+    ::tpy::frame_slot<int32_t> __for_i_0;
+    ::tpy::frame_slot<int32_t> __for_stop_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_gen()
+        : __state(S_INITIAL) {}
+
+    std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __next__();
+    __gen_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen&) {
+        return os << "<generator gen>";
+    }
+};
+
+// Generator: relay_twice
+struct __gen_relay_twice : public ::tpy::next_iter_mixin<__gen_relay_twice, std::tuple<int32_t, Box*>> {
+    int32_t __state;
+    std::tuple<int32_t, Box*> p;
+    ::tpy::frame_slot<__gen_gen> __for_src_0;
+    ::tpy::frame_slot<::tpy::iter_next_t<__gen_gen>> __for_r_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_relay_twice()
+        : __state(S_INITIAL) {}
+
+    std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __next__();
+    __gen_relay_twice& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_relay_twice&) {
+        return os << "<generator relay_twice>";
+    }
+};
+
+// Generator: Hub.relay
+struct __gen_Hub_relay : public ::tpy::next_iter_mixin<__gen_Hub_relay, std::tuple<int32_t, Box*>> {
+    int32_t __state;
+    const Hub& __self;
+    std::tuple<int32_t, Box*> p;
+    ::tpy::frame_slot<__gen_gen> __for_src_0;
+    ::tpy::frame_slot<::tpy::iter_next_t<__gen_gen>> __for_r_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_Hub_relay(const Hub& __self)
+        : __state(S_INITIAL), __self(__self) {}
+
+    std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __next__();
+    __gen_Hub_relay& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_Hub_relay&) {
+        return os << "<generator Hub.relay>";
+    }
+};
+
+inline __gen_Hub_relay Hub::relay() const {
+    return __gen_Hub_relay(*this);
+}
+
 
 // def __init__(self, v: Int32) -> None:
 inline Box::Box(int32_t v) : val(v) {}
-inline auto gen() {
-    // items: list[tuple[Int32, Box]] = [(1, Box(5))]
-    std::vector<std::tuple<int32_t, Box>> items = {::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, Box(5)})};
-    return ::tpy::make_generator<std::tuple<int32_t, Box*>>(
-        [items, __i = int32_t(0), __stop = static_cast<int32_t>(2)]() mutable -> std::optional<std::tuple<int32_t, Box*>> {
-            while (__i < __stop) {
-                int32_t _ = __i++;
-                auto __val = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__(items, 0));
-                return std::optional<std::tuple<int32_t, Box*>>(__val);
-            }
-            return std::nullopt;
-        }
-    );
-}
-
 inline auto relay() {
     return ::tpy::make_generator<std::tuple<int32_t, Box*>>(
         [__src = std::optional<std::decay_t<decltype(gen())>>()]() mutable -> std::optional<std::tuple<int32_t, Box*>> {

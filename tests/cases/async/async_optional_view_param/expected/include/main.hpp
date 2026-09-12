@@ -77,6 +77,8 @@ struct __coro_main_coro {
     ::tpy::BigInt __await_lift_1;
     ::tpy::BigInt __await_lift_2;
     ::tpy::BigInt __await_lift_3;
+    ::tpy::Bytes __coro_arg_0;
+    std::string __coro_arg_1;
     std::optional<__coro_first_bytes> __sub_0;
     std::optional<__coro_first_bytes> __sub_1;
     std::optional<__coro_str_len> __sub_2;

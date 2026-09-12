@@ -53,6 +53,7 @@ from ..nodes import (
     THIRFrameSlotWrite,
     THIRNoOpStmt,
     THIRIfExpr,
+    THIRMove,
     THIRName,
     THIRResumableBody,
     THIRStmt,
@@ -86,6 +87,7 @@ from ...parse.nodes import (
 )
 from ...typesys import (
     AnyType,
+    collapse_tuple_own_elements,
     ConcreteCoroType,
     IntLiteralType,
     NominalType,
@@ -105,7 +107,7 @@ from ...typesys import (
     unwrap_ref_type,
     unwrap_send_sync,
 )
-from ...type_def_registry import is_list, is_varargs
+from ...type_def_registry import is_borrowing_view_type, is_list
 from ...codegen_cpp import emit_prims
 from ...codegen_cpp import resumable_cfg as rcfg
 from ...codegen_cpp.gen_generators import owned_view_frame_params
@@ -118,15 +120,18 @@ from .checks import (
     _ctor_shape_ok,
     _narrow_cond_info,
     _record_rvalue_source_shape,
+    _own_return_call_shape,
     check_polymorphic_rvalue_opt_rebind,
 )
 from .context import (_ExprResultUse, _ExprUse, _LowerCtx,
                       _ONLY_CORO_FACTORY, _Prescan,
                       SinkPos, ValueOptKind)
 from .expressions import (
+    _is_move_source,
     _poly_cast_checks,
     _lower_call_arg,
     _lower_expr,
+    _cond_mixed_walrus_temps,
     _lower_truthy,
     _lower_yield_tuple_literal,
     _slot_literal_retype,
@@ -290,13 +295,21 @@ def _res_param_ok(t: 'TpyType | None', analyzer, gen_frame: bool) -> bool:
     if (_resolved_str_value(t, analyzer) is not None
             or _resolved_bytes_value(t, analyzer) is not None):
         return True
-    # A `*args` pack is a VALUE-kind capture: `varargs<E>` is a value type in
-    # both type systems, so the frame field is the same view the sync param
-    # spells (ctor-moved), and every leaf read -- len, subscript, iterate,
-    # whole-pack forward -- takes the sync varargs rows unchanged. The borrow
-    # standing equals Span/StrView: the view aliases the caller's arg-pack
-    # array, which codegen emits as a statement-scoped local.
-    if isinstance(t, TpyType) and is_varargs(
+    # A borrowing view is a VALUE-kind capture: the frame field is the same
+    # view the sync param spells (ctor-moved), and every leaf read -- len,
+    # subscript, iterate, whole-view forward -- takes the sync rows
+    # unchanged. One arm for the whole family because their borrow standing
+    # is one fact: the view aliases the caller's storage and the frame
+    # neither owns nor copies it, so an argument that outlives the frame
+    # keeps the same aliasing the sync call has.
+    #
+    # What this arm ADDS over the preceding ones: the `Span` flavours
+    # (`Span[T]`, `Span[readonly[T]]`, `readonly[Span[T]]`) and the `*args`
+    # pack, plus `SpanIter[T]` and the dict views -- which pass here but are
+    # refused at the CALL SITE by the argument shape either way. A declared
+    # `StrView` / `BytesView` param never reaches here: `_resolved_str_value`
+    # / `_resolved_bytes_value` above already answer for it.
+    if isinstance(t, TpyType) and is_borrowing_view_type(
             unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))):
         return True
     if _optional_ptr_borrow(t, analyzer) is not None:
@@ -842,6 +855,35 @@ def _resume_narrow_envs(cfg: 'rcfg.CFG',
     return envs
 
 
+def _loop_var_bind_ok(elem_type: 'TpyType | None', name: str, analyzer,
+                      borrow_tuple_names: 'set[str]',
+                      value_tuple_names: 'set[str]') -> bool:
+    """The loop-var bind shapes admitted at BOTH loop seams -- the sync
+    advance and its `async for` twin. A value-scalar / str / bytes element
+    binds bare into a plain frame field; a borrow-tuple or value-tuple name
+    binds the shape the frame LAYOUT classified it as, so both seams read
+    that verdict rather than re-deriving a tuple form from the bind type.
+    Families the sync skeleton alone spells (pointer-form and frame_slot
+    loop vars) stay at their own seam."""
+    if _res_local_ok(elem_type, analyzer):
+        return True
+    if name in borrow_tuple_names:
+        # Proxy-ref holder (dict_items): the advance binds the borrow-form
+        # tuple via tuple_to_pointer (skeleton) and reads ride the
+        # borrow-tuple family off the frame field it re-binds.
+        _witness("res.loop_btuple_bind")
+        return True
+    if name in value_tuple_names:
+        # An ALL-VALUE tuple whose source cannot be address-taken (the
+        # dict_items proxy): the bind is bare into the plain field and
+        # element reads are the sync std::get rows. A tuple of values is
+        # unobservably a copy, so the bind loses no aliasing; its
+        # address-takeable sibling is a pointer-form loop var instead.
+        _witness("res.loop_value_tuple_bind")
+        return True
+    return False
+
+
 def _for_advance_reject(t: 'rcfg.AsyncForAdvance', analyzer,
                         ptr_loop_vars: 'set[str]',
                         slot_locals: 'set[str]',
@@ -855,12 +897,13 @@ def _for_advance_reject(t: 'rcfg.AsyncForAdvance', analyzer,
     `lc.pointers` (arrow / deref arms) and a frame_slot loop var
     (`x.emplace(..)` at the advance) reads `(*x)` -- both admitted, keyed on
     the skeleton's own classification, never re-derived from the element
-    type. Proxy-ref borrow-tuple loop vars (dict_items) admit in both the
-    whole-tuple and head-unpack forms (the advance bind is skeleton; reads
-    ride the borrow-tuple family); holders outside every admitted set keep
-    the reject."""
+    type. Borrow-tuple loop vars admit in both the whole-tuple and
+    head-unpack forms (the advance bind is skeleton; reads ride the
+    borrow-tuple family); holders outside every admitted set keep the
+    reject."""
     stmt = t.stmt
-    if _res_local_ok(_loop_elem_type(stmt, analyzer), analyzer):
+    elem_type = _loop_elem_type(stmt, analyzer)
+    if _res_local_ok(elem_type, analyzer):
         return None
     if stmt.is_tuple_unpack:
         # A VALUE-tuple holder (`__for_tup_N` bare field) binds bare at the
@@ -882,11 +925,8 @@ def _for_advance_reject(t: 'rcfg.AsyncForAdvance', analyzer,
             _witness("res.loop_btuple_bind")
             return None
         return "res.loop_var"
-    if stmt.var in borrow_tuple_loop_vars:
-        # Whole-tuple proxy loop var (`for kv in d.items()`): element
-        # reads ride the borrow-tuple subscript family off the frame
-        # field the advance re-binds.
-        _witness("res.loop_btuple_bind")
+    if _loop_var_bind_ok(elem_type, stmt.var, analyzer,
+                         borrow_tuple_loop_vars, value_tuple_holders):
         return None
     if stmt.var in ptr_loop_vars:
         _witness("res.loop_ptr_bind")
@@ -1374,6 +1414,12 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     opt_tuple_holders: set[str] = set()
     borrow_tuple_loop_vars: set[str] = set()
     unpack_ptr_targets: set[str] = set()
+    # Pointer-form loop vars over a TUPLE element: the field points at the
+    # source element's STORAGE tuple, so element reads are the value form
+    # (`std::get<1>((*t)).v`) off the deref'd pointer. The `__for_tup_*`
+    # unpack holder is excluded -- its reads are the head unpack's own
+    # skeleton render, not the subscript family.
+    ptr_storage_tuple_loop_vars: set[str] = set()
     for f_info in rstate.for_info_by_uid.values():
         if f_info.pointer_form_loop_var is not None:
             ptr_frame_locals.add(f_info.pointer_form_loop_var)
@@ -1383,6 +1429,12 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         # fields the head unpack re-points via `= &(std::get<i>(__tup_N));`
         # -- the skeleton's pointer_form_unpack_targets seeding.
         unpack_ptr_targets.update(f_info.pointer_form_unpack_targets)
+    for lname, ltype in (func.generator_locals or []):
+        if (lname in ptr_frame_locals
+                and not lname.startswith("__for_tup_")
+                and isinstance(unwrap_readonly(unwrap_ref_type(
+                    unwrap_send_sync(ltype))), TupleType)):
+            ptr_storage_tuple_loop_vars.add(lname)
     frame_slots: set[str] = set()
     mixed_tuple_slots: set[str] = set()
     coro_handle_slots: set[str] = set()
@@ -1394,6 +1446,13 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     # loop below only reads them, so they must not be rebuilt per local.
     _local_prescan = _Prescan(func, analyzer)
     _body_var_decls = _first_var_decls(func.body)
+    # Per-element ownership the declared type cannot spell (a literal-bound
+    # owning / mixed tuple slot). Collected for every kind so the read chooser
+    # and the slot write agree with the field the skeleton emitted.
+    frame_own_tuple_types: dict[str, TpyType] = {
+        lname: v.effective_type
+        for lname, v in frame_layout.bindings.items()
+        if v.effective_type is not None}
     for lname, ltype in (func.generator_locals or []):
         kind = frame_layout.bindings[lname].kind
         if kind in (_K.VALUE, _K.OWNED_STR):
@@ -1668,10 +1727,15 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             # Sync loop advance: value/str/bytes binds plus the pointer-form
             # and frame_slot loop-var families (coro-handle slots excluded --
             # an advance emplace into one is outside the factory-call-only
-            # handle contract).
+            # handle contract). The borrow-tuple set is the frame LAYOUT's
+            # own BORROW_TUPLE verdict joined with the dict_items proxy-ref
+            # producer: an address-takeable (`begin_end`) tuple loop var is
+            # classified PTR_ALIAS, never BORROW_TUPLE, so the join cannot
+            # re-route one away from its aliasing field.
             reason = _for_advance_reject(
                 t, analyzer, ptr_frame_locals,
-                frame_slots - coro_handle_slots, borrow_tuple_loop_vars,
+                frame_slots - coro_handle_slots,
+                borrow_tuple_loop_vars | borrow_tuple_locals,
                 value_tuple_locals | opt_tuple_holders)
             if reason is not None:
                 return _reject(reason)
@@ -1694,16 +1758,21 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 if payload.async_for_uid is not None:
                     saw_async_loop = True
                     if payload.bind_target is not None:
-                        # async-for loop var: same value/str/bytes slice as the
-                        # sync loop var (the skeleton's ASSIGN bind is a plain
-                        # frame write only for those; non-value uses .emplace
+                        # async-for loop var: the shared bind admission (the
+                        # skeleton's ASSIGN bind is a plain frame write for
+                        # the value/str/bytes slice; non-value uses .emplace
                         # on an optional field). A VALUE-tuple unpack HOLDER
                         # (`async for k, sq in p:`) is the same bare-field
                         # ASSIGN bind; its head unpack ref-binds it via the
-                        # value-tuple name-source arm.
+                        # value-tuple name-source arm. The borrow-tuple leg is
+                        # unreachable from here today: it would need an
+                        # `__anext__` returning a pointer-repr tuple, and that
+                        # coroutine's own frame rejects at res.return_type.
                         bt = gen_local_types.get(payload.bind_target)
-                        if not (_res_local_ok(bt, analyzer)
-                                or _value_tuple(bt, analyzer) is not None):
+                        if not _loop_var_bind_ok(
+                                bt, payload.bind_target, analyzer,
+                                borrow_tuple_locals,
+                                value_tuple_locals | opt_tuple_holders):
                             return _reject("res.loop_var")
                 if payload.async_with_kind is not None:
                     saw_async_with = True
@@ -1725,7 +1794,12 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     # An owning tuple slot stores the STORAGE tuple, so element reads off
     # the slot deref render value-form (`std::get<1>((*t)).val`, dot not
     # arrow) -- the binding-form fact, per-binding not per-type.
+    lc.frame_own_tuple_types = frame_own_tuple_types
     lc.storage_tuple_locals |= owning_tuple_slots
+    # A pointer-to-storage-tuple loop var reads the same value form off its
+    # deref (`lc.pointers` supplies the `(*t)`), so it joins the same
+    # binding-form membership the owning slot uses.
+    lc.storage_tuple_locals |= ptr_storage_tuple_loop_vars
     # A frame-promoted STORAGE slot is movable with no value-type filter --
     # a last-use read moves out of the slot rather than copying it, which is
     # how a BigInt frame local moves at an async return. Its pointer-form
@@ -1776,6 +1850,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     lc.borrow_tuple_frame_locals = frozenset(borrow_tuple_locals)
     lc.coro_handle_slots = frozenset(coro_handle_slots)
     lc.frame_local_types = dict(gen_local_types)
+    lc.frame_field_names = frozenset(frame_fields)
     # The frame ctx seeds var_types from generator_locals and then
     # OVERWRITES each branch-first-declared name with sema's branch-decl
     # snapshot (`if_branch_decls`), whose container types are forced off
@@ -2288,7 +2363,21 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                             pinfo[0], (pinfo[1],), lc, declared),
                         loc=getattr(t.cond, "loc", None))
                 else:
-                    conds[t.cond] = _lower_truthy(t.cond, lc, declared)
+                    # The skeleton renders the cond, flushes pending temps,
+                    # then writes the `if` -- all inside the `case` block, so
+                    # a condition temp is a per-re-entry rebuild, the frame
+                    # twin of the restructured sync while head.
+                    _c = _lower_truthy(t.cond, lc, declared, temps_ok=True)
+                    if _cond_mixed_walrus_temps(_c, walrus_nested_ok=True):
+                        # The flush runs the temp BEFORE the walrus store it
+                        # may read, so the mix rejects here exactly as it
+                        # does at the sync heads
+                        # (BUGS.md#cond-walrus-before-hoisted-temp). The
+                        # nested-temp relaxation cannot fire on a frame: a
+                        # frame walrus lowers its value with no flush right,
+                        # so a temp inside one rejects at the walrus itself.
+                        raise ThirUnsupported("cond.mixed_walrus_temps")
+                    conds[t.cond] = _c
             except ThirUnsupported as ex:
                 # The landmark names the branch position; the condition's own
                 # reason rides it, or the tag names this catcher instead of
@@ -2322,8 +2411,9 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 # A literal takes the value or borrow builder per the slot's
                 # element forms (a readonly slot bumps REF elements to
                 # const); a borrow-tuple LOCAL name passes bare (not a
-                # storage-form source, so the pointer lift no-ops).
-                # Storage-form sources (the tuple_to_pointer lift) reject.
+                # storage-form source, so the pointer lift no-ops). A
+                # STORAGE-form frame binding -- an owning slot or a
+                # pointer-to-storage loop var -- takes its own rung below.
                 target_ro = isinstance(
                     unwrap_ref_type(unwrap_send_sync(yt)), ReadonlyType)
                 yv_src = ys.value
@@ -2341,6 +2431,60 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                              or _bare_yield_tuple_name_ok(
                                  yv_src.name, lc, declared))):
                     yield_values[ys] = _lower_expr(yv_src, lc, declared)
+                elif (isinstance(yv_src, TpyName)
+                        and yv_src.name in owning_tuple_slots
+                        # STORAGE yield slots only: a ptr-repr slot needs the
+                        # storage->borrow lift the arm below carries.
+                        and not yt_bare.has_pointer_repr_element()
+                        and collapse_tuple_own_elements(unwrap_readonly(
+                            unwrap_ref_type(unwrap_send_sync(
+                                declared.get(yv_src.name)))))
+                        == collapse_tuple_own_elements(yt_bare)):
+                    # An owning frame_slot already holds the STORAGE tuple the
+                    # slot spells (`yield t` off `t = (i, Box(...))` at an
+                    # `Own[Box]` element), so the deref'd read IS the handed-out
+                    # value -- the sgen storage-name arm's resumable twin. A
+                    # dead-after-yield slot MOVES out rather than copying its
+                    # reference elements; `frame_slot::emplace` destroys before
+                    # it reconstructs, so the next bind is safe on a moved-from
+                    # slot. A still-live slot copies -- the leg sema already
+                    # warns on ("copies ... into owned storage"), never a
+                    # silent one. Both sides of the type test collapse:
+                    # per-element `Own` is an ownership spelling, not a C++
+                    # shape, so a literal init (markers dropped) and an
+                    # owning-CALL init (`t = mk(i)`, markers kept) bind the
+                    # same storage tuple.
+                    _sv = _lower_expr(yv_src, lc, declared)
+                    if _is_move_source(yv_src, lc):
+                        yield_values[ys] = THIRMove(
+                            result_type=yt_bare, value=_sv,
+                            form=Form.STORAGE,
+                            loc=getattr(yv_src, "loc", None))
+                        _witness("res.btuple_yield_storage_name_move")
+                    else:
+                        yield_values[ys] = _sv
+                        _witness("res.btuple_yield_storage_name")
+                elif (isinstance(yv_src, TpyName)
+                        and yv_src.name in ptr_storage_tuple_loop_vars
+                        and yt_bare.has_pointer_repr_element()
+                        and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                            declared.get(yv_src.name)))) == yt_bare):
+                    # A pointer-to-STORAGE tuple loop var at the slot's BORROW
+                    # form (`yield pair` off `for pair in items` over
+                    # `list[tuple[Int32, C]]`): the same storage->borrow lift
+                    # the container-ELEMENT arm below takes, over the loop
+                    # var's deref. The pointer is into the CALLER's container,
+                    # so the consumer aliases the source element exactly as the
+                    # `for` loop itself does -- and it outlives the resume. Keyed
+                    # on the loop-var set rather than the storage-tuple union an
+                    # owning slot also joins: lifting THAT would hand out
+                    # pointers into frame storage the next emplace destroys.
+                    yield_values[ys] = THIRFormConvert(
+                        result_type=yt_bare,
+                        value=_lower_expr(yv_src, lc, declared),
+                        form=Form.BORROW, move=False,
+                        loc=getattr(yv_src, "loc", None))
+                    _witness("res.btuple_yield_storage_name_lift")
                 elif (isinstance(yv_src, TpySubscript)
                         and yt_bare.has_pointer_repr_element()
                         and isinstance(yv_src.obj, TpyName)
@@ -2453,17 +2597,28 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 if (isinstance(yv_src, TpyCall)
                         and isinstance(unwrap_readonly(unwrap_ref_type(
                             unwrap_send_sync(yt))), OwnType)
-                        and _f1_record(yt_bare, analyzer)
-                        and _ctor_shape_ok(yv_src, analyzer)):
+                        and ((_f1_record(yt_bare, analyzer)
+                              and _ctor_shape_ok(yv_src, analyzer))
+                             or _own_return_call_shape(yv_src, analyzer))):
                     # A CTOR call at an OWN record yield slot (`yield
-                    # Node(i)` at `Iterator[Own[Node]]`): the storage ctor
-                    # render lands bare (`return Node(i);`). OWN record slots
-                    # only -- sema forbids a borrow-record ctor yield, and a
-                    # container ctor at an Own slot has no storage-ctor rung.
+                    # Node(i)` at `Iterator[Own[Node]]`) or any call whose
+                    # callee DECLARES the transfer (`yield copy(p)`,
+                    # `yield mk(i)` at `-> Own[T]`): the storage render lands
+                    # bare (`return Node(i);` / `return Point((*p));`). The
+                    # ctor face is record-only -- sema forbids a borrow-record
+                    # ctor yield and a container ctor at an Own slot has no
+                    # storage-ctor rung -- while the declared-Own face spans
+                    # the whole reference axis, containers included. A
+                    # BORROW-returning callee stays out: `is_rvalue_source`
+                    # cannot tell it apart, and admitting it here would turn
+                    # generators/error_yield_own_borrow_call_copy's reject
+                    # into a warned silent copy.
                     yield_values[ys] = _lower_expr(
                         yv_src, lc, declared,
                         use=_ExprUse(result=_ExprResultUse.STORAGE))
-                    _witness("res.yield_own_ctor")
+                    _witness("res.yield_own_ctor"
+                             if _ctor_shape_ok(yv_src, analyzer)
+                             else "res.yield_own_rvalue")
                     return
                 if (isinstance(yv_src, TpyName)
                         and _bare_yield_param_ok(yv_src.name, yt_bare, lc,

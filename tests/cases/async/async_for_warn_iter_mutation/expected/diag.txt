@@ -1,1 +1,3 @@
 main.py:43: warning: Mutation of 'src' while iterating over it ('push' invalidates the iterator)
+main.py:63: warning: Mutation of 'inner' while iterating over it ('push' invalidates the iterator)
+main.py:64: warning: Mutation of 'outer' while iterating over it ('push' invalidates the iterator)

@@ -45,9 +45,15 @@ several places. Where this section and the prose below disagree, **this section 
   Regression: `error_gen_tuple_yield_fresh`, `error_gen_tuple_yield_fresh_elem0`,
   `error_gen_tuple_yield_readonly`, `error_gen_tuple_yield_nested`, `error_tuple_nested_ref`,
   `gen_tuple_yield_own`, `gen_tuple_yield_nested_own`, `gen_tuple_yield_ref` (borrow-ref mutation).
-  **Still open:** the per-element check is literal-gated, so a non-literal yield/return of a tuple
-  *local* assigned a fresh member (`t = (i, Box(i)); yield t`) dangles unchecked -- the dangle wants
-  catching at the local-assignment site (BUGS.md).
+  **Still open, but LOUD:** the per-element check is literal-gated, so a non-literal yield/return of
+  a tuple *local* assigned a fresh member (`t = (i, Box(i)); yield t`) is not caught by it -- but the
+  shape no longer dangles silently. `_check_tuple_member_local` rejects the bare-name yield/return
+  when the boundary type leaves the fresh element in borrow form ("Cannot yield tuple local 't':
+  element 0 ... would dangle. Use Own[A] ..."), and the spellings that get past it -- an
+  `Iterator[tuple[Own[A], Int32]]` boundary, or a local bound from an owning call -- hit the THIR
+  reject `res.btuple_yield_source` in a resumable frame. Still open because the fix is to make the
+  whole-tuple yield WORK (the frame owns the slot; the yield wants a storage-form handoff), not to
+  keep rejecting it; the dangle still wants catching at the local-assignment site (BUGS.md).
 - **Actual tests** (the "Tests" section names are aspirational): `gen_yield_nocopy`, `gen_yield_del`,
   `gen_method_yield_nocopy`, `gen_own_yield_fresh`, `gen_ref_multi_yield` (mutation guard),
   `genexpr_ref_mutate`, `error_gen_yield_fresh_as_ref`, `error_gen_borrow_yield_onward`,

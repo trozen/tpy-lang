@@ -1,1 +1,3 @@
+main.py:10: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
+main.py:10: warning: comparison between signed and unsigned integer types ('Int32' and 'UInt32'); cast one operand to make the type intent explicit
 main.py:10: error: in function 'f': this construct is not yet supported by C++ code generation (stmt.return:binop.shape.<)

@@ -237,11 +237,66 @@ void test_read_only_ok() {
     }
 }
 
+// def test_outer_loan_survives_inner_while() -> None:
+void test_outer_loan_survives_inner_while() {
+    // items: list[Int32] = [1, 2]
+    std::vector<int32_t> items = {1, 2};
+    // i: Int32 = 0
+    int32_t i = 0;
+    // for x in items:
+    auto& __obj_0 = items;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t x = *__beg_0;
+        // while i < 2:
+        while ((i < 2)) {
+            // i += 1
+            i = ::tpy::add_check<int32_t>(i, 1);
+        }
+        // items.append(x)  # tpyc: warning(/Mutation of 'items'.*'append'/)
+        items.push_back(x);
+    }
+}
+
+// def test_else_clause_ok() -> None:
+void test_else_clause_ok() {
+    // items: list[Int32] = [1, 2]
+    std::vector<int32_t> items = {1, 2};
+    // total: Int32 = 0
+    int32_t total = 0;
+    // for x in items:
+    auto& __obj_1 = items;
+    auto __beg_1 = __obj_1.begin();
+    auto __end_1 = __obj_1.end();
+    for (; __beg_1 != __end_1; ++__beg_1) {
+        int32_t x = *__beg_1;
+        // total += x
+        total = ::tpy::add_check<int32_t>(total, x);
+    }
+    // else:
+    {
+        // items.append(3)  # tpyc: ok
+        items.push_back(3);
+    }
+    __after_else_0:;
+    // print("else_clause:", total, len(items))
+    std::cout << "else_clause:" << " " << total << " " << ::tpy::__len__(items) << "\n";
+}
+
+// def main() -> None:
+void main() {
+    // test_else_clause_ok()
+    test_else_clause_ok();
+}
+
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
+    // main()
+    main();
 }
 
 } // namespace tpyapp::main

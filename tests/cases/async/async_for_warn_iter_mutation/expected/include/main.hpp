@@ -15,9 +15,13 @@ struct Source;
 inline constexpr std::string_view __name__ = "__main__";
 
 struct __coro_runner;
+struct __coro_post_loop;
+struct __coro_nested;
 struct __coro_SrcIter___anext__;
 
 __coro_runner runner();
+__coro_post_loop post_loop();
+__coro_nested nested();
 void main();
 
 // class SrcIter:
@@ -117,6 +121,72 @@ struct __coro_runner {
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_runner&) {
         return os << "<coroutine runner>";
+    }
+};
+
+// Async coroutine: post_loop
+struct __coro_post_loop {
+    int32_t __state;
+    bool __cancel_pending;
+    ::tpy::frame_slot<Source> src;
+    ::tpy::BigInt x;
+    ::tpy::frame_slot<::tpy::aiter_type_t<Source>> __for_itr_0;
+    std::optional<__coro_SrcIter___anext__> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_JOIN_1 = 3,
+        S_JOIN_2 = 4,
+        S_DONE = 5,
+    };
+
+    __coro_post_loop()
+        : __state(S_INITIAL), __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_post_loop&) {
+        return os << "<coroutine post_loop>";
+    }
+};
+
+// Async coroutine: nested
+struct __coro_nested {
+    int32_t __state;
+    bool __cancel_pending;
+    ::tpy::frame_slot<Source> outer;
+    ::tpy::frame_slot<Source> inner;
+    ::tpy::BigInt y;
+    ::tpy::BigInt x;
+    ::tpy::frame_slot<::tpy::aiter_type_t<Source>> __for_itr_0;
+    ::tpy::frame_slot<::tpy::aiter_type_t<Source>> __for_itr_1;
+    std::optional<__coro_SrcIter___anext__> __sub_0;
+    std::optional<__coro_SrcIter___anext__> __sub_1;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_JOIN_1 = 4,
+        S_JOIN_2 = 5,
+        S_JOIN_3 = 6,
+        S_JOIN_4 = 7,
+        S_JOIN_5 = 8,
+        S_DONE = 9,
+    };
+
+    __coro_nested()
+        : __state(S_INITIAL), __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_nested&) {
+        return os << "<coroutine nested>";
     }
 };
 

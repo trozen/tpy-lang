@@ -1,5 +1,7 @@
-# Peephole-generator while conditions: anonymous temps re-evaluate per pull in
-# the lambda's loop head; a walrus pre-decl lands at lambda scope.
+# Generator conditions carrying an anonymous argument temp: the temp
+# re-evaluates per pull. In the peephole it lands in the lambda's loop head
+# (a walrus pre-decl goes to lambda scope); in the RESUMABLE FRAME it lands
+# inside the `case` block, so it is rebuilt on every re-entry.
 from typing import Iterator
 
 
@@ -15,6 +17,23 @@ def fresh_each_pull() -> Iterator[int]:
     # forever; the caller's guard bounds the pulls.
     while eat([1, 2]) > 1:
         yield 1
+
+
+# free generator, TWO yields (frame): the while-head temp is rebuilt on every
+# re-entry, so eat() keeps seeing a fresh [1, 2].
+def fresh_each_pull_framed() -> Iterator[int]:
+    while eat([1, 2]) > 1:  # tpyc: ok
+        yield 1
+        yield 2
+
+
+# An IF condition carrying the same temp -- the frame's Branch seam is shared
+# by if and while heads, so the fresh list is rebuilt per loop iteration.
+def if_cond_temp(n: int) -> Iterator[int]:
+    for i in range(n):
+        if eat([1, 2, 3]) > 2:  # tpyc: ok
+            yield i
+        yield -i
 
 
 def walrus_gen(limit: int) -> Iterator[int]:
@@ -33,6 +52,15 @@ def main():
     print(pulls)
     for v in walrus_gen(3):
         print(v)
+
+    framed = 0
+    for _ in fresh_each_pull_framed():
+        framed += 1
+        if framed >= 5:
+            break
+    print("framed", framed)
+
+    print("if_cond", list(if_cond_temp(2)))
 
 
 main()

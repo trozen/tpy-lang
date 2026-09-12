@@ -24,8 +24,9 @@ namespace tpyapp::main {
         r->v = ::tpy::BigInt(42);
         // print(n.v)
         std::cout << (*n).v << "\n";
+        __coro_arg_0 = "plain";
         // s = await identity("plain")
-        __sub_1.emplace("plain");
+        __sub_1.emplace(__coro_arg_0);
         __state = S_RESUME_1;
         continue;
     }

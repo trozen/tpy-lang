@@ -148,8 +148,9 @@ __coro_opt_ternary opt_ternary(std::optional<std::string_view> tag) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
+        __coro_arg_0 = "a";
         // print(await direct("a"))
-        __sub_0.emplace("a");
+        __sub_0.emplace(__coro_arg_0);
         __state = S_RESUME_0;
         continue;
     }
@@ -160,8 +161,9 @@ __coro_opt_ternary opt_ternary(std::optional<std::string_view> tag) {
         __sub_0.reset();
         // print(await direct("a"))
         std::cout << __await_lift_0 << "\n";
+        __coro_arg_1 = "b";
         // print(await in_finally("b"))
-        __sub_1.emplace("b");
+        __sub_1.emplace(__coro_arg_1);
         __state = S_RESUME_1;
         continue;
     }
@@ -172,8 +174,9 @@ __coro_opt_ternary opt_ternary(std::optional<std::string_view> tag) {
         __sub_1.reset();
         // print(await in_finally("b"))
         std::cout << __await_lift_1 << "\n";
+        __coro_arg_2 = "c";
         // print(await pending_slot("c"))
-        __sub_2.emplace("c");
+        __sub_2.emplace(__coro_arg_2);
         __state = S_RESUME_2;
         continue;
     }
@@ -184,8 +187,9 @@ __coro_opt_ternary opt_ternary(std::optional<std::string_view> tag) {
         __sub_2.reset();
         // print(await pending_slot("c"))
         std::cout << __await_lift_2 << "\n";
+        __coro_arg_3 = "d";
         // print(await opt_ternary("d"))
-        __sub_3.emplace("d");
+        __sub_3.emplace(__coro_arg_3);
         __state = S_RESUME_3;
         continue;
     }

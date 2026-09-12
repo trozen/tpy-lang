@@ -23,14 +23,14 @@ import io
 from dataclasses import dataclass, fields, is_dataclass
 from enum import IntEnum
 from functools import partial
-from typing import TYPE_CHECKING
+from typing import NoReturn, TYPE_CHECKING
 
 from ..identity_map import IdentityMap
 from ..namespace import Namespace
 from ..parse.nodes import (
     TpyFunction, TpyAwait, TpyStmt, TpyAssign, TpyVarDecl, TpyReturn,
     TpyExprStmt, TpyName, TpyExpr, TpyTry, TpyExceptHandler, TpyCall,
-    TpyMethodCall, TpyFieldAccess, TpyForEach, TpyWith, TpyWithItem,
+    TpyMethodCall, TpyFieldAccess, TpyForEach, TpyWhile, TpyWith, TpyWithItem,
     TpyTupleUnpack, TpyNestedDef, TpySubscript,
     TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral,
     TpyNoneLiteral, TpyCoerce,
@@ -62,7 +62,9 @@ _FRESH_COLLECTION_NODES = (
     TpyListComprehension, TpyDictComprehension, TpySetComprehension,
 )
 from ..typesys import IntLiteralType, NominalType, OptionalType, OwnType, ReadonlyType, TupleType, TypeParamRef, unwrap_readonly, unwrap_ref_type, unwrap_own, unwrap_send_sync, VoidType, is_fn_type, is_dyn_protocol
-from ..value_category import async_return_form, AsyncReturnForm
+from ..value_category import (async_return_form, AsyncReturnForm,
+                              borrowing_frame_callee,
+                              materializing_temp_source, peel_coerce)
 from .gen_generators import (GeneratorCodegen, GeneratorForInfo,
                              owned_view_frame_params)
 from ..type_def_registry import (is_str_type, is_str_category, is_big_int_type,
@@ -579,6 +581,35 @@ class AsyncCoroCodegen:
         return self._classify_param_kind(ptype) in (
             _CoroParamKind.REF, _CoroParamKind.POINTER)
 
+    def _frame_temp_slot(self, ptype: 'TpyType',
+                         arg: 'TpyExpr') -> 'TpyType | None':
+        """The OWNED type a TEMPORARY argument of the awaited sub-coro hoists
+        into a slot of THIS frame, or None when nothing is owed.
+
+        A frame never receives a temporary, so this is the same question the
+        sync call sites ask and it is the same predicate:
+        `frame_temp_arg_slot` decides. `_param_borrows` cannot answer for a
+        borrowing-VIEW slot: the view's frame field is a VALUE-kind capture,
+        so the kind cascade says by-value while the aliasing says borrow."""
+        from ..thir.lower import frame_temp_arg_slot
+        return frame_temp_arg_slot(arg, ptype, self.ctx.analyzer)
+
+    def _view_backing_coerce(self, ptype: 'TpyType',
+                             arg: 'TpyExpr') -> 'TpyCoerce | None':
+        """The coerce node the lift re-seats when a hoisted temporary argument
+        arrived through one (`::tpy::as_mut_span(<source>)`): the coerce keeps
+        its render and only its SOURCE moves onto the frame slot.
+
+        A STACKED coerce is safe by the lift's own shape rather than by
+        witness: `_hoist_borrowed_args` captures `host.expr` BEFORE re-seating,
+        so the hoisted decl's init is the inner coerce whole and only the
+        outermost source name is replaced. No two-layer coerce at a view
+        argument could be built to observe it, so the claim is reasoned from
+        that capture, not pinned by a case."""
+        if not isinstance(arg, TpyCoerce):
+            return None
+        return arg if self._frame_temp_slot(ptype, arg) is not None else None
+
     def _protocol_template_parts(self, func: TpyFunction) -> list[str]:
         """Return template-header parts for any static-protocol-typed
         params on `func`. Each part has the form `<Concept> T_<pname>`
@@ -1056,7 +1087,8 @@ class AsyncCoroCodegen:
     # -- Borrowed-rvalue-arg lift (runs after the await-lift pass) ------------
 
     def _lift_borrowed_rvalue_args(self, func: TpyFunction,
-                                    body: list[TpyStmt]) -> list[TpyStmt]:
+                                    body: list[TpyStmt],
+                                    in_loop: bool = False) -> list[TpyStmt]:
         """Hoist rvalue-temporary arguments of INLINE-mode await calls into
         frame-backed hoisted locals so the sub-coro's borrow doesn't dangle
         across the suspension.
@@ -1079,20 +1111,40 @@ class AsyncCoroCodegen:
 
         Runs after `_lift_nested_awaits`, so every await is already in a
         top-level statement; recursion into compound sub-bodies mirrors that
-        pass. Self-gating for generators (no awaits -> no INLINE calls).
+        pass. The await half is self-gating for generators (no awaits -> no
+        INLINE calls); `_hoist_frame_factory_args` then covers every OTHER
+        generator/coro factory call in the body -- a `for` head, a handle bound
+        to a local, the escaping `create_task(f(rvalue))` form -- whose
+        argument the uniform frame-temp rule would otherwise have named in the
+        state's `case` block, which the handle outlives.
 
-        Scope: only borrowed rvalue temps at `await f(...)` positions. The
-        escaping-Task form `create_task(f(rvalue))` is not an await, so the
-        sub-coro's borrow of that rvalue is out of scope here and stays under
-        the escaping-borrow hazard in BUGS.md (#292)."""
+        A `Task` that outlives the whole enclosing frame is a further hazard
+        this pass cannot answer (`BUGS.md#create-task-ref-param-escape`): a
+        frame field is as long-lived as this body, no longer.
+
+        `in_loop` says whether the statements can RE-EXECUTE within one run of
+        this body. One field per call SITE is only enough while at most one
+        handle built there is alive at a time, so a site whose handle outlives
+        the iteration is rejected instead of seated (see
+        `_hoist_frame_factory_args`)."""
         out: list[TpyStmt] = []
         for stmt in body:
-            out.extend(self._hoist_borrowed_args(func, stmt))
-            # Recurse compound bodies AFTER the surface hoist: the surface
-            # hoist mutates only the await call's arg list, never sub-bodies,
-            # so the two never touch the same node.
+            hoisted = self._hoist_borrowed_args(func, stmt)
+            # The factory hoist runs on the await hoist's OUTPUT: an inline
+            # await's arguments are already frame-local names by then, so the
+            # two passes never name the same argument twice.
+            out.extend(hoisted[:-1])
+            out.extend(
+                self._hoist_frame_factory_args(func, hoisted[-1], in_loop))
+            # Recurse compound bodies AFTER the surface hoists: they mutate
+            # only the host statement's own call arg lists, never sub-bodies,
+            # so the passes never touch the same node. A loop's OWN head was
+            # hoisted at the enclosing depth just above; only its sub-bodies
+            # re-execute.
+            sub_in_loop = in_loop or isinstance(out[-1], (TpyForEach, TpyWhile))
             out[-1] = self._map_compound_subbodies(
-                func, out[-1], self._lift_borrowed_rvalue_args)
+                func, out[-1],
+                partial(self._lift_borrowed_rvalue_args, in_loop=sub_in_loop))
         return out
 
     def _hoist_borrowed_args(self, func: TpyFunction,
@@ -1116,45 +1168,374 @@ class AsyncCoroCodegen:
             # dangle class tracked in BUGS.md; leave them for the *args path.
             if i >= len(fi.params):
                 break
-            if not self._param_borrows(fi.params[i].type):
+            # A BORROWING-VIEW slot is passed by value, but the value IS a
+            # borrow the sub-coro's frame keeps for its whole life -- the same
+            # standing the REF / POINTER kinds have. What must outlive the
+            # suspension is then the STORAGE the view aliases, so the lift
+            # targets the coerce's source and leaves the view built over the
+            # hoisted local (`::tpy::as_mut_span((*__coro_arg_0))`).
+            host = self._view_backing_coerce(fi.params[i].type, arg)
+            temp_slot = self._frame_temp_slot(fi.params[i].type, arg)
+            if (host is None and temp_slot is None
+                    and not self._param_borrows(fi.params[i].type)):
                 continue
+            source = host.expr if host is not None else arg
             # `None` lowers to nullptr (pointer-form Optional) or
             # `std::monostate` (pointer-variant union) -- a by-value slot, not
             # a borrow, so there is no temp to outlive the suspension.
-            if isinstance(arg, TpyNoneLiteral):
+            if isinstance(source, TpyNoneLiteral):
                 continue
-            if not (self.ctx.is_rvalue_source(arg)
-                    or self.ctx.is_temporary_expr(arg)):
+            if not (self.ctx.is_rvalue_source(source)
+                    or self.ctx.is_temporary_expr(source)):
                 continue
-            arg_t = self.ctx.get_expr_type(arg)
+            # The frame slot takes the source's OWNED type where the uniform
+            # frame-temp rule named one (a str/bytes argument owns its buffer
+            # in the slot however the param spells it).
+            arg_t = (temp_slot if temp_slot is not None
+                     else self.ctx.get_expr_type(source))
             if arg_t is None:
                 raise CodeGenError(
                     "await arg has no analyzed type (borrowed-arg lift)",
                     loc=stmt.loc)
-            arg_t = unwrap_ref_type(arg_t)
-            # A tuple arg's analyzed type can carry IntLiteral elements and
-            # per-element Own provenance, which would demote the hoisted frame
-            # field to a value tuple (or fail to render). The hoisted local
-            # exists to back the param's borrow, so give it the declared param
-            # slot shape -- the frame field then takes the borrow form and the
-            # sub-coro's pointer slots stay valid across the suspension.
-            lift_ptype = unwrap_readonly(unwrap_ref_type(fi.params[i].type))
-            if isinstance(arg_t, TupleType) and isinstance(lift_ptype, TupleType):
-                arg_t = lift_ptype
-            name = f"__coro_arg_{rcfg.resumable_state(func).next_arg_lift_id}"
-            rcfg.resumable_state(func).next_arg_lift_id += 1
-            # loc=None: the hoisted decl is a synthesized sub-step of the host
-            # await statement, not its own source line, so it must not re-emit
-            # the host's source comment (which the host statement still emits).
-            pre.append(TpyVarDecl(name=name, type=arg_t, init=arg, loc=None))
-            if func.generator_locals is None:
-                func.generator_locals = []
-            func.generator_locals.append((name, arg_t))
-            replacement = TpyName(name=name, loc=arg.loc)
-            self.ctx.analyzer.ctx.set_expr_type(replacement, arg_t)
-            call.args[i] = replacement
+            self._seat_arg_on_frame_local(func, call, i, fi.params[i].type,
+                                          source, host, arg_t, pre)
         pre.append(stmt)
         return pre
+
+    def _seat_arg_on_frame_local(self, func: TpyFunction, call, i: int,
+                                 ptype: 'TpyType', source: TpyExpr,
+                                 host: 'TpyCoerce | None', arg_t: 'TpyType',
+                                 pre: list[TpyStmt]) -> None:
+        """Move `source` onto a `__coro_arg_N` local of THIS frame
+        (`_frame_local_for`) and point argument `i` of `call` at it.
+
+        A coerce-shaped argument keeps its coerce and only its SOURCE moves
+        (`::tpy::as_mut_span(__coro_arg_0)`); an argument with no coerce
+        becomes the local itself."""
+        arg_t = unwrap_ref_type(arg_t)
+        # A tuple arg's analyzed type can carry IntLiteral elements and
+        # per-element Own provenance, which would demote the hoisted frame
+        # field to a value tuple (or fail to render). The hoisted local
+        # exists to back the param's borrow, so give it the declared param
+        # slot shape -- the frame field then takes the borrow form and the
+        # sub-coro's pointer slots stay valid across the suspension.
+        lift_ptype = unwrap_readonly(unwrap_ref_type(ptype))
+        if isinstance(arg_t, TupleType) and isinstance(lift_ptype, TupleType):
+            arg_t = lift_ptype
+        replacement = self._frame_local_for(func, source, arg_t, pre)
+        if host is not None:
+            host.expr = replacement
+        else:
+            call.args[i] = replacement
+
+    def _frame_local_for(self, func: TpyFunction, source: TpyExpr,
+                         local_t: 'TpyType',
+                         pre: list[TpyStmt]) -> TpyName:
+        """Declare `source` as a fresh `__coro_arg_N` local of THIS frame and
+        return the name that reads it back.
+
+        The local is registered in `generator_locals`, so its storage is a
+        field of the enclosing frame and lives as long as the frame does --
+        which is what a hoist inside a resumable body has to mean. A local of
+        the enclosing BLOCK would be a `case`-block local, and every handle
+        this hoist exists to feed (a sub-coro field, a `__for_src` slot, a
+        `Task`) outlives that block."""
+        name = f"__coro_arg_{rcfg.resumable_state(func).next_arg_lift_id}"
+        rcfg.resumable_state(func).next_arg_lift_id += 1
+        # loc=None: the hoisted decl is a synthesized sub-step of the host
+        # statement, not its own source line, so it must not re-emit the
+        # host's source comment (which the host statement still emits).
+        pre.append(TpyVarDecl(name=name, type=local_t, init=source, loc=None))
+        if func.generator_locals is None:
+            func.generator_locals = []
+        func.generator_locals.append((name, local_t))
+        replacement = TpyName(name=name, loc=source.loc)
+        self.ctx.analyzer.ctx.set_expr_type(replacement, local_t)
+        return replacement
+
+    def _frame_factory_calls(
+            self, func: TpyFunction,
+            stmt: TpyStmt) -> 'list[tuple[TpyExpr, bool]]':
+        """The generator/coroutine FACTORY calls in `stmt` that run
+        unconditionally and exactly once when control reaches the statement,
+        each paired with whether its HANDLE can outlive the statement.
+
+        That is the whole admission for the hoist below: a preceding decl
+        preserves evaluation order only where the call was going to run anyway,
+        once. So the descent starts at the statement slots evaluated on entry
+        (a `for` head, an init, an assigned value, a discarded expression) and
+        walks only through coercions, `await` operands and ARGUMENT lists --
+        never into a ternary arm, a `bool` operator's right side, a
+        comprehension body or a nested def, where the sub-expression is
+        conditional or repeated. A `return` / `yield` value is out for a
+        different reason: the handle LEAVES this frame, so seating its argument
+        here would pin the argument to a frame that dies first.
+
+        The callee test is the one the lowering row uses (`borrowing_frame_
+        callee`, plus an async def), so the hoist and the row cannot disagree
+        about which callee keeps an argument past the statement.
+
+        The paired flag is what the ONE-FIELD-PER-SITE seat below needs: the
+        field is safe to re-emplace only where no handle built at this site is
+        still alive. The positions that consume the handle where it stands are
+        a `for` head (the loop statement drains and destroys the iterator), an
+        `await` operand (the statement runs the coroutine to completion), a
+        bare discard (the temporary dies at the semicolon), and a bind whose
+        name is only ever drained -- one slot, re-assigned, so at most one
+        handle is live. Every other position -- an argument of another call
+        (`create_task(...)`, and through it `tasks.append(...)`), a bind whose
+        name is copied elsewhere -- hands the handle on."""
+        # The BIND answer walks the whole body, so it is a thunk: only a root
+        # that turns out to host a factory call ever asks for it.
+        root: 'TpyExpr | None' = None
+        bind_escapes: 'Callable[[], bool]' = lambda: False
+        if isinstance(stmt, TpyForEach):
+            root = stmt.iterable
+        elif isinstance(stmt, TpyVarDecl):
+            root = stmt.init
+            bind_escapes = partial(self._handle_name_escapes, func, stmt.name)
+        elif isinstance(stmt, TpyAssign):
+            root = stmt.value
+            target = peel_coerce(stmt.target)
+            bind_escapes = (
+                partial(self._handle_name_escapes, func, target.name)
+                if isinstance(target, TpyName) else (lambda: True))
+        elif isinstance(stmt, TpyTupleUnpack):
+            root = stmt.value
+            targets = stmt.targets
+            bind_escapes = lambda: any(
+                t is None or self._handle_name_escapes(func, t)
+                for t in targets)
+        elif isinstance(stmt, TpyExprStmt):
+            root = stmt.expr
+        # `None` in a pair means "whatever the bind answers"; a nested position
+        # has already decided (an argument hands the handle on, an `await`
+        # consumes it) and overrides the bind either way.
+        found: 'list[tuple[TpyExpr, bool | None]]' = []
+
+        def visit(e: 'TpyExpr | None', escapes: 'bool | None') -> None:
+            if e is None:
+                return
+            if isinstance(e, TpyCoerce):
+                visit(e.expr, escapes)
+                return
+            if isinstance(e, TpyAwait):
+                visit(e.value, False)
+                return
+            if not isinstance(e, (TpyCall, TpyMethodCall)):
+                return
+            fi = e.resolved_function_info
+            if fi is not None and (borrowing_frame_callee(fi) or fi.is_async):
+                found.append((e, escapes))
+            if isinstance(e, TpyMethodCall):
+                visit(e.obj, escapes)
+            for a in e.args:
+                visit(a, True)
+
+        visit(root, None)
+        if not any(e is None for _, e in found):
+            return [(c, bool(e)) for c, e in found]
+        bound = bind_escapes()
+        return [(c, bound if e is None else e) for c, e in found]
+
+    def _handle_name_escapes(self, func: TpyFunction, name: str) -> bool:
+        """Whether a generator/coroutine handle bound to `name` can be carried
+        out of the statement that builds it.
+
+        The bind itself is not: `name` is ONE slot, so a rebind on the next
+        iteration destroys the previous handle and at most one is ever live --
+        which is exactly what one hoisted field per call site can serve. What
+        carries a handle out is a use that copies or moves it somewhere
+        longer-lived (an argument, a container element, a return). The two
+        DRAINING uses -- `await name` and `for ... in name` -- consume the
+        handle where it stands, so they are not escapes; a rebind of `name`
+        itself is not one either."""
+
+        def expr_escapes(e: 'TpyExpr | None') -> bool:
+            if e is None:
+                return False
+            if isinstance(e, TpyName):
+                return e.name == name
+            if isinstance(e, TpyAwait):
+                inner = peel_coerce(e.value)
+                if isinstance(inner, TpyName) and inner.name == name:
+                    return False
+            return any(expr_escapes(c)
+                       for c in (e.children() if hasattr(e, "children") else ()))
+
+        def body_escapes(body: 'list[TpyStmt]') -> bool:
+            for s in body:
+                skip: 'TpyExpr | None' = None
+                if isinstance(s, TpyForEach):
+                    head = peel_coerce(s.iterable)
+                    if isinstance(head, TpyName) and head.name == name:
+                        skip = s.iterable
+                elif isinstance(s, TpyAssign):
+                    target = peel_coerce(s.target)
+                    if isinstance(target, TpyName) and target.name == name:
+                        skip = s.target
+                for e in (s.exprs() if hasattr(s, "exprs") else ()):
+                    if e is not skip and expr_escapes(e):
+                        return True
+                if any(body_escapes(b) for b in s.sub_bodies()):
+                    return True
+                if isinstance(s, TpyTry):
+                    for h in s.handlers:
+                        if body_escapes(h.body):
+                            return True
+            return False
+
+        return body_escapes(func.body)
+
+    def _hoist_frame_factory_args(self, func: TpyFunction, stmt: TpyStmt,
+                                  in_loop: bool = False) -> list[TpyStmt]:
+        """Seat every temporary argument of a generator/coro factory call in
+        `stmt` on a frame local, and return [decls..., stmt].
+
+        The uniform frame-temp rule names such an argument at the enclosing
+        statement's flush point; inside a resumable body that flush point is
+        the state's `case` block, which the handle the factory returns
+        outlives -- so the name has to be a frame field instead. Same shape
+        predicate as the lowering row (`frame_temp_arg_slot`), so an argument
+        named here is exactly one the row would otherwise have flushed into the
+        `case` block, and the row then sees a plain name and does nothing.
+
+        There is one field per call SITE, so a site that can re-execute while
+        an earlier handle is still alive would hand every one of those handles
+        the LAST value written. That is the `create_task(f(temp))`-in-a-loop
+        shape, and no per-site field can serve it -- the seat is refused
+        instead of silently aliasing (`_reject_shared_loop_seat`)."""
+        pre: list[TpyStmt] = []
+        for call, escapes in self._frame_factory_calls(func, stmt):
+            fi = call.resolved_function_info
+            shared = in_loop and escapes
+            recv = self._factory_receiver_to_seat(func, call)
+            if recv is not None:
+                if shared:
+                    self._reject_shared_loop_seat(
+                        fi, recv, "the receiver",
+                        ", or call the method on a named receiver")
+                recv_t = self._frame_seat_type(recv)
+                call.obj = self._frame_local_for(func, recv, recv_t, pre)
+            for i, arg in enumerate(call.args):
+                # Varargs (past the declared params) are a separate dangle
+                # class tracked in BUGS.md; leave them for the *args path.
+                if i >= len(fi.params):
+                    break
+                ptype = fi.params[i].type
+                temp_slot = self._frame_temp_slot(ptype, arg)
+                if temp_slot is None:
+                    continue
+                host = self._view_backing_coerce(ptype, arg)
+                source = host.expr if host is not None else arg
+                if shared:
+                    self._reject_shared_loop_seat(
+                        fi, source, f"argument '{fi.params[i].name}'",
+                        ", or declare the parameter 'Own[...]' so the callee "
+                        "owns its copy")
+                self._seat_arg_on_frame_local(func, call, i, ptype, source,
+                                              host, temp_slot, pre)
+        pre.append(stmt)
+        return pre
+
+    def _reject_shared_loop_seat(self, fi, source: TpyExpr, what: str,
+                                 remedy: str) -> 'NoReturn':
+        """Refuse a temporary whose seat would be shared by several live
+        handles of the same loop.
+
+        The seat is a field of the enclosing frame, one per call site, so the
+        next iteration overwrites it while the handle the previous iteration
+        handed on (a `Task`, a stored generator) still borrows it. Naming the
+        temporary in the loop body does not help -- a local of a resumable
+        body is a frame field too -- so the remedy the message gives is
+        storage that outlives the loop."""
+        raise CodeGenError(
+            f"cannot use a temporary as {what} of '{fi.name}' here: the "
+            f"handle this call creates outlives the loop iteration, so every "
+            f"handle the loop creates would borrow one shared slot of the "
+            f"enclosing frame and see the last iteration's value. Keep each "
+            f"value in storage that outlives the loop (append it to a list "
+            f"declared before the loop and pass that element)" + remedy,
+            loc=getattr(source, "loc", None))
+
+    def _roots_at_temp(self, e: TpyExpr) -> bool:
+        """Whether `e` reads a field / element out of a TEMPORARY -- storage
+        the enclosing statement destroys. A chain rooted at a name (or at a
+        subscript of one) is not: only the root's own lifetime is in
+        question, and the access itself borrows into it."""
+        root = peel_coerce(e)
+        while isinstance(root, (TpyFieldAccess, TpySubscript)):
+            root = peel_coerce(root.obj)
+        return (root is not peel_coerce(e)
+                and materializing_temp_source(root, self.ctx.analyzer))
+
+    def _frame_seat_type(self, recv: TpyExpr) -> 'TpyType':
+        """The frame-field type a seated factory receiver takes."""
+        recv_t = self.ctx.analyzer.get_expr_type(recv)
+        if recv_t is None:
+            raise CodeGenError(
+                "factory receiver has no analyzed type (receiver lift)",
+                loc=getattr(recv, "loc", None))
+        return unwrap_own(unwrap_readonly(
+            unwrap_ref_type(unwrap_send_sync(recv_t))))
+
+    def _factory_receiver_to_seat(self, func: TpyFunction,
+                                  call) -> 'TpyExpr | None':
+        """The TEMPORARY RECEIVER of a generator/coro factory method that must
+        be seated on a frame local -- the receiver twin of the argument hoist
+        above. `None` when the receiver already outlives the frame.
+
+        The frame keeps the receiver as `<Class>&` for the handle's whole
+        life, exactly as it keeps a borrowed argument, so one invariant covers
+        both: a frame never receives a temporary. Inside a resumable body the
+        receiver would otherwise be named in the state's `case` block
+        (`Summer __tmp_1 = Summer(200);` -- the `method.gen_recv_temp` row,
+        which materializes at the CONSUMING position) or not named at all (the
+        async route binds `const Summer&` straight to the prvalue), and the
+        handle outlives both.
+
+        Admission is the shape the CONSUMING route already accepts, so the
+        hoist removes a dangle without moving the accepted set: the ctor-rvalue
+        slice for a generator factory -- hoisting a broader shape would make
+        `for v in make_summer(1).pair(xs)` compile here while the identical
+        line still rejects in a sync caller -- and any materializing rvalue for
+        an async one, whose route gates no receiver shape at all (every rvalue
+        receiver there compiles today and dangles). The hoisted receiver is a
+        NAME, so the `gen_recv_temp` row no longer fires and no second temp is
+        built.
+
+        A receiver the seat cannot take but that BORROWS INTO a temporary --
+        `make_pair(a, b).left`, a field or element read out of an owner the
+        statement destroys -- is rejected on the async route rather than left
+        to bind `const Summer&` to the dying owner. Seating the owner instead
+        would widen what the language accepts (the generator route rejects the
+        same receiver at lowering, `method.fi_kind`, and sema rejects it at the
+        bound and awaited positions), so the routes are made to agree on the
+        reject. A chain rooted at a NAME is untouched: its storage already
+        outlives the statement."""
+        if not isinstance(call, TpyMethodCall):
+            return None
+        analyzer = self.ctx.analyzer
+        recv = call.obj
+        fi = call.resolved_function_info
+        is_async = fi is not None and fi.is_async
+        if not materializing_temp_source(recv, analyzer):
+            if is_async and self._roots_at_temp(recv):
+                raise CodeGenError(
+                    f"receiver of the async method '{fi.name}' must be a "
+                    f"stable lvalue (a local, parameter, or field chain "
+                    f"rooted at one) or a temporary this frame can seat -- "
+                    f"the coroutine captures it by reference for the handle's "
+                    f"whole life, and this one reads out of a temporary that "
+                    f"dies at the end of the statement. Bind the owner to a "
+                    f"local first: `r = <expr>; ... r.field.{fi.name}(...)`",
+                    loc=getattr(recv, "loc", None))
+            return None
+        if not is_async:
+            from ..thir.lower import gen_recv_ctor_temp
+            if not gen_recv_ctor_temp(recv, analyzer):
+                return None
+        return recv
 
     def _replace_expr_in_stmt(self, stmt: TpyStmt, old_expr,
                                 new_expr) -> None:
@@ -1266,6 +1647,7 @@ class AsyncCoroCodegen:
             # classify; rendering a frame FIELD for it raises at the struct
             # emit.
             payload: str | None = None
+            effective_type: 'TpyType | None' = None
             if self.functions.protocols.is_static_protocol_param(ltype_inner):
                 kind = rcfg.FrameLocalKind.PROTOCOL
             elif lname in source_form_fields:
@@ -1300,10 +1682,16 @@ class AsyncCoroCodegen:
                 # has no fully-owned storage form to hold: its borrowed
                 # element must keep pointing at the caller's object, so its
                 # payload is the mixed render.
-                if (isinstance(ltype_inner, TupleType)
-                        and ltype_inner.is_mixed_own()):
+                #
+                # The ownership axis reads off the EFFECTIVE type: a literal
+                # init's per-element verdict carries no `Own` in the declared
+                # type (there is no user spelling for it), so the oracle hands
+                # the Own-wrapped image back and every arm below keys on that.
+                eff = owning_tuple_locals[lname] or ltype_inner
+                effective_type = eff
+                if isinstance(eff, TupleType) and eff.is_mixed_own():
                     kind = rcfg.FrameLocalKind.MIXED_TUPLE_SLOT
-                    payload = self.types.tuple_borrow_cpp(ltype_inner)
+                    payload = self.types.tuple_borrow_cpp(eff)
                 else:
                     kind = rcfg.FrameLocalKind.OWNING_TUPLE_SLOT
             elif (isinstance(ltype_inner, TupleType)
@@ -1350,7 +1738,8 @@ class AsyncCoroCodegen:
                 const=(kind in (rcfg.FrameLocalKind.PTR_ALIAS,
                                 rcfg.FrameLocalKind.OPT_PTR)
                        and lname in const_aliases),
-                payload=payload)
+                payload=payload,
+                effective_type=effective_type)
 
         state.frame_layout = rcfg.FrameLayoutPlan(bindings=bindings)
         return state.frame_layout
@@ -2946,12 +3335,13 @@ class AsyncCoroCodegen:
             while isinstance(unwrapped, TpyCoerce):
                 unwrapped = unwrapped.expr
             if isinstance(unwrapped, _FRESH_COLLECTION_NODES):
-                # A fresh collection literal/comprehension has no concrete C++
-                # type here (the param is a concept) and no frame storage to
-                # survive the suspension, so it can't back the sub-future
-                # field. Reject cleanly rather than emit ill-formed C++.
-                # Binding it to a typed local first does not yet work either
-                # (the collection-literal-in-coro gap, BUGS.md).
+                # A fresh collection literal/comprehension reaching HERE has no
+                # concrete C++ type (the param is a concept) and no frame
+                # storage to survive the suspension, so it can't back the
+                # sub-future field. The uniform frame-temp hoist normally
+                # replaces it with a frame-slot NAME before this runs
+                # (async_await_proto_param_literal); this stays for the
+                # positions that hoist cannot reach.
                 raise CodeGenError(
                     "awaiting a coroutine with a protocol-typed parameter "
                     "does not yet support a collection literal argument; pass "

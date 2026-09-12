@@ -174,8 +174,9 @@ struct __coro_main {
     ::tpy::frame_slot<Cat> __coro_arg_1;
     ::tpy::frame_slot<Dog> __coro_arg_2;
     ::tpy::frame_slot<Dog> __coro_arg_3;
-    ::tpy::frame_slot<Dog> __coro_arg_4;
+    std::string __coro_arg_4;
     ::tpy::frame_slot<Dog> __coro_arg_5;
+    ::tpy::frame_slot<Dog> __coro_arg_6;
     ::tpy::frame_slot<int32_t> __for_i_0;
     ::tpy::frame_slot<int32_t> __for_stop_0;
     std::optional<__coro_via_union> __sub_0;

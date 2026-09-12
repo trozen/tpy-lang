@@ -144,6 +144,7 @@ struct __coro_main_coro {
     int32_t a;
     std::string b;
     std::tuple<std::string, int32_t> p;
+    std::string __coro_arg_0;
     std::optional<__coro_Container_echo<int32_t>> __sub_0;
     std::optional<__coro_Container_echo<std::string>> __sub_1;
     std::optional<__coro_Container_labeled<int32_t>> __sub_2;

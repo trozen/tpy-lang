@@ -29,7 +29,7 @@ int32_t outer(int32_t flag) {
         Point* p = &__slot_3;
         // alias = p
         Point& alias = (*p);
-        // p = Point(k * 100)
+        // p = Point(k * 100)  # tpyc: ok
         p = &*(__slot_4 = Point((::tpy::mul_check<int32_t>(k, 100))));
         // alias.bump()
         alias.bump();

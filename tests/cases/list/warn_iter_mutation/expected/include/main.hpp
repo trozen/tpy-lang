@@ -23,6 +23,9 @@ void test_conditional_mutation();
 void test_subscript_assign_ok();
 void test_no_warn_after_loop();
 void test_read_only_ok();
+void test_outer_loan_survives_inner_while();
+void test_else_clause_ok();
+void main();
 
 void __tpy_init();
 } // namespace tpyapp::main

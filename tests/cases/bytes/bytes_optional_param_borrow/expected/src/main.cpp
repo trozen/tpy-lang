@@ -119,7 +119,8 @@ void main() {
     int32_t total = 0;
     // for v in gen(b"Q"):
     {
-        auto __src_0 = gen(::tpy::bytes_literal_owned("Q", 1));
+        ::tpy::Bytes __tmp_1 = ::tpy::bytes_literal_owned("Q", 1);
+        auto __src_0 = gen(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();

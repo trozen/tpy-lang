@@ -7,16 +7,26 @@ other for error classes.
 
 Only depends on `.typesys` (for `TpyType` in `Scope`) and `.parse` (for
 `TpyExpr`, `SourceLocation` in `Diagnostic` / `SemanticError`). Both are
-base modules; no reverse dependencies.
+base modules. No reverse dependency at RUNTIME -- the one exception is
+`format_diagnostics`, whose driver parameter types (`Compiler`,
+`CompiledModule`) name the module that imports this one, so they are
+spelled under `TYPE_CHECKING` and stay out of the import graph.
 """
 
 from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from .typesys import TpyType
 from .parse import TpyExpr, SourceLocation
+
+if TYPE_CHECKING:
+    # `compiler` imports this module (through sema), so the driver types the
+    # diagnostic walk names are only reachable to a type checker.
+    from collections.abc import Callable, Iterable
+
+    from .compiler import CompiledModule, Compiler
 
 
 class DiagnosticLevel(Enum):
@@ -75,6 +85,39 @@ class Diagnostic:
             name = self.loc.file or filename
             return f"{name}:{self.loc.line}: {self.level.value}: {self.message}"
         return f"{filename}: {self.level.value}: {self.message}"
+
+
+def format_diagnostics(
+        compiler: 'Compiler', modules: 'Iterable[CompiledModule]', *,
+        prog_name: str = "tpyc",
+        source_name: 'Callable[[CompiledModule], str] | None' = None,
+) -> list[tuple[Diagnostic, str]]:
+    """Every diagnostic of one compilation, paired with its formatted line,
+    in the canonical order: the compiler driver's own first (named
+    `prog_name`), then each module's analyzer in `modules` order.
+
+    The order and the per-diagnostic filename are the whole point -- the CLI
+    and the test harness must report the same lines for the same compile, and
+    when they drifted a rejected case read as a case that had lost its
+    warnings. `source_name(module) -> str` overrides the default
+    (`module.path.name`) for a caller that names sources differently (the CLI
+    prints a path relative to cwd, or `<stdin>`).
+
+    Pairs rather than strings: a caller that must branch per diagnostic
+    (abort on an error, defer a warning) reads the level off the object
+    instead of parsing it back out of the text. `modules` is passed in
+    because the caller knows which set it means -- the modules a successful
+    compile returned, or the ones a failed compile got through.
+    """
+    out: list[tuple[Diagnostic, str]] = []
+    out.extend((d, d.format(prog_name)) for d in compiler.diagnostics)
+    for module in modules:
+        if module.analyzer is None:
+            continue
+        name = (source_name(module) if source_name is not None
+                else module.path.name)
+        out.extend((d, d.format(name)) for d in module.analyzer.diagnostics)
+    return out
 
 
 class SemanticError(Exception):

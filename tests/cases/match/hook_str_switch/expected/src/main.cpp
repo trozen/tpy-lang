@@ -246,8 +246,9 @@ __coro_acoro acoro(std::string_view s) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
+        __coro_arg_0 = "a";
         // print(await acoro("a"))
-        __sub_0.emplace("a");
+        __sub_0.emplace(__coro_arg_0);
         __state = S_RESUME_0;
         continue;
     }
@@ -258,8 +259,9 @@ __coro_acoro acoro(std::string_view s) {
         __sub_0.reset();
         // print(await acoro("a"))
         std::cout << __await_lift_0 << "\n";
+        __coro_arg_1 = "ccc";
         // print(await acoro("ccc"))
-        __sub_1.emplace("ccc");
+        __sub_1.emplace(__coro_arg_1);
         __state = S_RESUME_1;
         continue;
     }
@@ -270,8 +272,9 @@ __coro_acoro acoro(std::string_view s) {
         __sub_1.reset();
         // print(await acoro("ccc"))
         std::cout << __await_lift_1 << "\n";
+        __coro_arg_2 = "zz";
         // print(await acoro("zz"))
-        __sub_2.emplace("zz");
+        __sub_2.emplace(__coro_arg_2);
         __state = S_RESUME_2;
         continue;
     }
@@ -300,7 +303,8 @@ __coro_amain amain() {
 void main() {
     // for v in gen("z", True):
     {
-        auto __src_0 = gen("z", true);
+        std::string __tmp_1 = "z";
+        auto __src_0 = gen(__tmp_1, true);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -312,7 +316,8 @@ void main() {
     }
     // for v in gen("z", False):
     {
-        auto __src_2 = gen("z", false);
+        std::string __tmp_2 = "z";
+        auto __src_2 = gen(__tmp_2, false);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -324,7 +329,8 @@ void main() {
     }
     // for v in gen("c", False):
     {
-        auto __src_4 = gen("c", false);
+        std::string __tmp_3 = "c";
+        auto __src_4 = gen(__tmp_3, false);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();

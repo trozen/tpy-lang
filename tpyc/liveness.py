@@ -361,6 +361,10 @@ def _analyze_stmt(
         _analyze_for_each(stmt, live, last_uses, source_aliases, detached_aliases)
 
     elif isinstance(stmt, TpyVarDecl):
+        # `live` here is liveness AFTER the statement -- what the alias-rebind
+        # check asks of a rebind site, and the same question _analyze_with
+        # answers for `target_read_after`. Stamped before the kill below.
+        stmt.live_names_after = frozenset(live)
         # Reads from the init expression
         if stmt.init:
             # For alias creation (alias = source), temporarily hide the alias
@@ -387,6 +391,8 @@ def _analyze_stmt(
                 _kill_unless_read(name, [stmt.value], live)
 
     elif isinstance(stmt, TpyAssign):
+        if isinstance(stmt.target, TpyName):
+            stmt.live_names_after = frozenset(live)
         # Value and target sub-expression reads form one C++ full-expression;
         # process them together so the multi-occurrence suppression sees both.
         exprs: list[TpyExpr] = [stmt.value]

@@ -71,6 +71,7 @@ struct __coro_main_coro {
     bool __cancel_pending;
     int32_t result;
     std::string s;
+    std::string __coro_arg_0;
     std::optional<__coro_identity<int32_t>> __sub_0;
     std::optional<__coro_identity<std::string>> __sub_1;
 

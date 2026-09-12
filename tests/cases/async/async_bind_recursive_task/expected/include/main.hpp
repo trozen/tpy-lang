@@ -24,6 +24,7 @@ struct __coro_fact {
     ::tpy::BigInt n;
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<::tpy::BigInt>> t;
     ::tpy::BigInt r;
+    ::tpy::BigInt __coro_arg_0;
     ::tpystd::asyncio::_executor::Task<::tpy::BigInt>* __sub_0 = nullptr;
 
     enum : int32_t {

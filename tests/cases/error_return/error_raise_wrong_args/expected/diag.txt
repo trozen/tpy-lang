@@ -1,1 +1,2 @@
+main.py:6: warning: Field 'message' in 'MyError' shadows inherited field from 'BaseException'; use 'BaseException.message' to access the ancestor's
 main.py:14: error: 'raise MyError()' expects 2 arguments, got 1

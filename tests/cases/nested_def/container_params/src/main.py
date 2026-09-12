@@ -1,7 +1,25 @@
 # A nested def taking a CONTAINER parameter (list / dict / set / bytearray).
 # The lambda binds `T&`, so a mutation inside the closure must be visible to
 # the caller -- a silent copy would print the pre-call values.
-from tpy import Int32
+from tpy import Fn, Int32
+
+
+def apply_fn(f: Fn[[Int32], Int32], v: Int32) -> Int32:
+    return f(v)
+
+
+def push_to(ys: list[Int32], v: Int32) -> Int32:
+    ys.append(v)
+    return len(ys)
+
+
+# free function, NON-ESCAPING (`Fn`) slot: a captured container param is bound
+# by reference, so the pass-through lambda mutates the CALLER's list. This is
+# the sync twin of the frame position in nested_def/lambda_in_gen_method --
+# both must print the same list.
+def sync_ref_capture(xs: list[Int32]) -> Int32:
+    a = apply_fn(lambda v: push_to(xs, v), 9)  # tpyc: ok
+    return a + apply_fn(lambda i: xs[i], 2)  # tpyc: ok
 
 
 def main() -> None:
@@ -33,6 +51,9 @@ def main() -> None:
     stamp(buf)  # tpyc: ok
     print(len(data), data[2], total(data))
     print(counts["n"], len(seen), len(buf))
+
+    src = [1, 2]
+    print("lambda_ref", sync_ref_capture(src), src)
 
 
 main()

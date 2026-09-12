@@ -35,6 +35,7 @@ struct __coro_client_role {
     ::tpy::Bytes line;
     ::tpy::Bytes rest;
     ::tpy::frame_slot<std::tuple<::tpystd::asyncio::StreamReader, ::tpystd::asyncio::StreamWriter>> __await_lift_0;
+    std::string __coro_arg_0;
     std::optional<::tpystd::asyncio::__coro_open_connection> __sub_0;
     std::optional<::tpystd::asyncio::__coro_StreamWriter_drain> __sub_1;
     std::optional<::tpystd::asyncio::__coro_StreamReader_readline> __sub_2;

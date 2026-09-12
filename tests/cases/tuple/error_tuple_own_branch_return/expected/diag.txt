@@ -1,1 +1,2 @@
+main.py:17: warning: copies Box into field (tuple element 1); use copy() to make this explicit
 main.py:29: error: Cannot return this tuple: its non-value elements are returned by reference into storage owned by the function, which dies when it returns. Return a tuple rooted in parameter data, or use Own[Box] for such elements to return by value.

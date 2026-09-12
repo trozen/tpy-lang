@@ -170,6 +170,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "argtemp.gen_factory",          # temporary at a generator/coro factory
                                     # METHOD's ref / readonly-ref slot ->
                                     # named scope-local the frame borrows
+    "argtemp.frame_temp",           # the uniform rule beside it: ANY temporary
+                                    # argument of a generator/coro factory,
+                                    # hoisted so the frame never receives one
     "expr.walrus_scalar",           # value-scalar walrus `(n = v)` + named
                                     # pre-decl on the sink's named row
     "expr.walrus_opt_ptr",          # ptr-Optional walrus target: `T* n =
@@ -1922,6 +1925,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # `copy(x)` of an open-T source (lowering; the special-builtin arm's
     # general tail, `T(this->value)`).
     "call.copy_tparam",
+    # `copy(x)` of a POINTER-FORM open-T name (a frame loop var; the same
+    # general tail, whose name read spells the deref: `T((*x))`).
+    "call.copy_tparam_ptr",
     # `copy(heap[pos])` of an open-T CONTAINER ELEMENT (lowering; the same
     # general tail over a subscript read, `T(heap[pos])`).
     "call.copy_tparam_elem",
@@ -2988,17 +2994,29 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # the branch-picked deref borrow
     "res.yield_own_ctor",           # ctor call at an OWN record yield slot:
                                     # the storage render (`return Node(i);`)
+    "res.yield_own_rvalue",         # call DECLARING `-> Own[T]` at an OWN
+                                    # yield slot: the same storage render
     "res.btuple_yield_generic",     # generic tuple literal yield -- spelled
                                     # val_or_ptr_t brace-init + to_val_or_ptr
     "res.btuple_yield_elem_lift",   # container-element source at the btuple
                                     # yield slot: tuple_to_pointer over the
                                     # checked element read (sgen twin)
+    "res.btuple_yield_storage_name",  # owning frame_slot tuple NAME at its
+                                    # own STORAGE slot: the deref'd read,
+                                    # still live after the yield (sgen twin)
+    "res.btuple_yield_storage_name_move",  # ... dead after the yield: the
+                                    # slot moves out instead of copying
+    "res.btuple_yield_storage_name_lift",  # ptr-to-storage tuple loop var at
+                                    # a POINTER-REPR slot: tuple_to_pointer
+                                    # over the deref'd read (sgen twin)
     "res.frame_unpack",             # frame-target tuple unpack (rvalue source)
     "res.unpack_union_elem",        # value-tuple call source with a value-
                                     # union element at the frame unpack
     "res.unpack_opt_ptr",           # optional_to_ptr unpack target bind
     "res.unpack_oneshot",           # await-lift one-shot unpack (auto&& move-out)
     "res.frame_tuple_literal",      # value-tuple literal at a bare frame field
+    "res.frame_own_tuple_literal",  # literal at a fully-owned frame slot
+    "res.frame_mixed_tuple_literal",  # literal at a MIXED-own frame slot
     "res.alias_bind",               # pointer-alias frame bind (= &(<lvalue>)
                                     # or the bare alias-of-alias pointer copy)
     "res.nested_def_member",        # frame nested def -> the marker-line stmt
@@ -3023,6 +3041,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.for_narrowed_opt_field_src",
     "res.loop_tuple_bind",          # value-tuple holder loop admitted
     "res.loop_btuple_bind",         # proxy-ref borrow-tuple loop admitted
+    "res.loop_value_tuple_bind",    # whole all-value tuple loop var admitted
     "res.yield_record_borrow",      # record yield of a routed loop-var name
     "res.yield_record_param",       # record yield of a PARAM name, bare
     "res.yield_value",              # generator yield-value render

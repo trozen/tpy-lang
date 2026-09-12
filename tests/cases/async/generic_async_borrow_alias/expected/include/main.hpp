@@ -101,6 +101,7 @@ struct __coro_main {
     ::tpy::frame_slot<Node> n;
     Node* r = nullptr;
     std::string s;
+    std::string __coro_arg_0;
     std::optional<__coro_identity<Node>> __sub_0;
     std::optional<__coro_identity<std::string>> __sub_1;
 

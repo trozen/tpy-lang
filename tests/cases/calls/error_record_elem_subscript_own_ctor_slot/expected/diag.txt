@@ -1,1 +1,2 @@
+main.py:23: warning: copies Thing into owned storage; use copy() to make this explicit
 main.py:23: error: in function 'main': this construct is not yet supported by C++ code generation (expr.call:call.ctor_arg.own_record_f1)

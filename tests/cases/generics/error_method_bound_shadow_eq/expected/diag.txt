@@ -1,1 +1,2 @@
+main.py:17: warning: may copy T into field if not a value type; use copy() to make this explicit
 main.py:26: error: Method '__eq__' requires type parameter 'T' to satisfy 'Equatable', but 'NotEquatable' does not conform

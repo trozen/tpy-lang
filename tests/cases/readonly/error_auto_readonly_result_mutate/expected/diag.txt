@@ -1,1 +1,2 @@
+main.py:22: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
 main.py:30: error: Cannot call non-readonly method 'set_x' on readonly reference

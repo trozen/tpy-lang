@@ -47,6 +47,9 @@ struct __coro_main_coro {
     bool __cancel_pending;
     std::optional<__coro_note> c;
     std::optional<__coro_note> d;
+    std::string __coro_arg_0;
+    std::string __coro_arg_1;
+    std::string __coro_arg_2;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_1;
 
     enum : int32_t {

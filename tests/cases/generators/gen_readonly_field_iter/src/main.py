@@ -1,9 +1,10 @@
 # Iteration over self fields inside generator methods with a readonly (const)
 # receiver: direct narrowed-Optional field, borrow-alias local of it, and a
-# plain-field alias through the simple-generator lambda -- the frames must
-# spell const iterator/alias slots and const borrow locals. Bumper checks the
-# non-readonly side: loop-var mutation reaches the field's elements (aliasing,
-# no copy).
+# plain-field alias -- through the simple-generator lambda and, in the
+# two-yield sections, through the resumable frame, where the alias is LIVE.
+# The frames must spell const iterator/alias slots and const borrow locals.
+# Bumper checks the non-readonly side: loop-var mutation reaches the field's
+# elements (aliasing, no copy).
 
 from typing import Iterator
 from tpy import Int32
@@ -29,12 +30,32 @@ class Holder:
                 yield x
 
     def simple_alias(self) -> Iterator[Int32]:
-        # Guards the const borrow-local spelling only: the simple-gen lambda
-        # captures `a` by value (the documented escaping-closure snapshot), so
-        # field mutations after creation are NOT observed here (BUGS.md).
+        # Single yield, so this one takes the simple-gen lambda, which
+        # captures `a` by value (the documented escaping-closure snapshot):
+        # field mutations after creation are NOT observed here
+        # (BUGS.md#sgen-proto-param-alias-copy). `live_alias` below is the
+        # frame twin, where the alias is live.
         a = self.plain
         for x in a:
             yield x
+
+    # generator METHOD, TWO yields (frame): the alias binds the field's
+    # ADDRESS (`a = &(__self.plain);`), so a write to the field after the
+    # bind is observed through it -- CPython's name binding.
+    def live_alias(self) -> Iterator[Int32]:
+        a = self.plain  # tpyc: ok
+        yield a[0]
+        self.plain[0] = 111
+        yield a[0]
+
+
+# free generator, NON-self receiver: the same container-field alias off a
+# PARAM, which had no admitted source row before.
+def alias_param(h: Holder) -> Iterator[Int32]:
+    a = h.plain  # tpyc: ok
+    yield a[1]
+    h.plain[1] = 222
+    yield a[1]
 
 
 class Counter:
@@ -61,6 +82,10 @@ def main() -> None:
     print(sum(h.direct()))
     print(sum(h.via_alias()))
     print(sum(h.simple_alias()))
+    h2 = Holder()
+    print("live", list(h2.live_alias()))
+    h3 = Holder()
+    print("param", list(alias_param(h3)))
     b = Bumper()
     print(sum(b.bump()))
     print(b.cells[0].v, b.cells[1].v)

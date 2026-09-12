@@ -59,6 +59,7 @@ struct __coro_client {
     ::tpy::frame_slot<::tpystd::asyncio::StreamWriter> writer;
     ::tpy::Bytes reply;
     ::tpy::frame_slot<std::tuple<::tpystd::asyncio::StreamReader, ::tpystd::asyncio::StreamWriter>> __await_lift_0;
+    std::string __coro_arg_0;
     std::optional<::tpystd::asyncio::__coro_open_connection> __sub_0;
     std::optional<::tpystd::asyncio::__coro_StreamWriter_drain> __sub_1;
     std::optional<::tpystd::asyncio::__coro_StreamReader_readline> __sub_2;
@@ -94,6 +95,9 @@ struct __coro_main_coro {
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::string>> b;
     std::string __await_lift_0;
     std::string __await_lift_1;
+    std::string __coro_arg_0;
+    std::string __coro_arg_1;
+    std::string __coro_arg_2;
     std::optional<::tpystd::asyncio::__coro_start_server> __sub_0;
     ::tpystd::asyncio::_executor::Task<std::string>* __sub_1 = nullptr;
     ::tpystd::asyncio::_executor::Task<std::string>* __sub_2 = nullptr;

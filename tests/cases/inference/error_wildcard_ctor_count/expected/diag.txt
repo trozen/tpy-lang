@@ -1,1 +1,2 @@
+main.py:7: warning: may copy T into field if not a value type; use copy() to make this explicit
 main.py:10: error: Record 'Box' expects 1 type arguments, got 2

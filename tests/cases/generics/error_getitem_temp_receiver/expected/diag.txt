@@ -1,1 +1,2 @@
+main.py:19: warning: copies Rec into field; use copy() to make this explicit
 main.py:28: error: subscript into a temporary would dangle: the accessor returns a borrow into the receiver, which is freed at the end of this expression -- bind the receiver to a local first

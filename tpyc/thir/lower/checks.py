@@ -122,7 +122,9 @@ from ...codegen_cpp.forms import (LocalBinding, classify_local_binding,
                                   reads_storage_form_optional)
 from ...codegen_cpp.protocols import (classify_dyn_own_arg, dyn_forward_ok,
                                       resolve_own_source_type)
-from ...value_category import call_returns_cpp_ref, is_rvalue_source
+from ...value_category import (
+    borrowing_frame_callee, call_returns_cpp_ref, is_rvalue_source,
+)
 from ...codegen_cpp.context import (
     escape_cpp_name,
     imported_free_callee_cpp,
@@ -2126,6 +2128,30 @@ def _record_rvalue_source_shape(init: TpyExpr, analyzer) -> bool:
     # multi-overload callee pins to the view form (`string_view("...")`), which
     # the bare emit does not reproduce -- mirror free-call lowering's pin.
     return _rvalue_free_call_shape(init, analyzer)
+
+
+def _own_return_call_shape(e: TpyExpr, analyzer) -> bool:
+    """A free call whose CALLEE DECLARES the ownership transfer (`-> Own[T]`):
+    `copy(p)` and a `-> Own[Point]` factory alike, the shape an owning sink
+    may take BY VALUE.
+
+    Keyed on the declared return, never on `is_rvalue_source`: that is True
+    for a BORROWING callee too, and admitting one at an owning slot turns a
+    rejected aliasing bug into a silently warned copy
+    (BUGS.md#own-slot-borrow-call-result). The type verdict on the slot and
+    the render both live at the caller -- like `_record_rvalue_source_shape`
+    this is shallow, and the consuming lowering arm validates the arguments.
+    """
+    if not isinstance(e, TpyCall):
+        return False
+    if e.kwargs or e.double_star_unpack is not None:
+        return False
+    fi = e.resolved_function_info
+    if fi is None or fi.is_constructor or not _call_arity_ok(e, fi):
+        return False
+    return isinstance(unwrap_readonly(unwrap_ref_type(
+        unwrap_send_sync(fi.return_type))), OwnType)
+
 
 def _method_recv_field_write_ok(target: TpyExpr, declared: dict[str, TpyType],
                                 analyzer) -> bool:
@@ -4675,7 +4701,7 @@ def _native_union_name_arg(a: TpyExpr, ptype: 'TpyType | None',
                 and _witness("arg.native_union_name"))
 
 def _lambda_routable(a: TpyExpr, analyzer, *,
-                     self_this: bool = False) -> bool:
+                     self_capturable: bool = False) -> bool:
     """The lambda-expression shapes `_lower_lambda` renders:
     a closure with a non-void, non-pointer-tuple return and param types in the
     families the body emit renders without seeding (value scalars / Char /
@@ -4690,11 +4716,10 @@ def _lambda_routable(a: TpyExpr, analyzer, *,
     shape lowering then rejects)."""
     if not isinstance(a, TpyLambda):
         return False
-    # A captured `self` spells `this` in the capture list -- admitted only
-    # where the caller confirmed the receiver IS that pointer (a plain method
-    # or the simple-generator wrapper). A resumable coro's `__self` frame
-    # field is a different receiver render.
-    if "self" in a.captured_names and not self_this:
+    # A captured `self` needs a receiver HANDLE the closure can copy --
+    # admitted only where the caller confirmed the enclosing body holds one
+    # (a plain method, the simple-generator wrapper, or a frame's `__self`).
+    if "self" in a.captured_names and not self_capturable:
         return False
     rt = a.inferred_return_type
     if rt is None:
@@ -4816,7 +4841,7 @@ def _plain_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
                        temps_ok: bool,
                        narrowed: 'set[str] | frozenset[str]',
                        param_names: 'set[str] | frozenset[str]' = frozenset(),
-                       self_this: bool = False,
+                       self_capturable: bool = False,
                        movable_locals: 'set[str] | frozenset[str]' = frozenset(),
                        func_name: 'str | None' = None) -> bool:
     """The plain (non-native, non-marker) free-callee family's arg rows --
@@ -4824,7 +4849,7 @@ def _plain_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
     Rows: `_PLAIN_ARG_SINK`."""
     return arg_ok(_PLAIN_ARG_SINK, a, ptype, locals_, analyzer,
                   param_names=param_names, narrowed=narrowed,
-                  temps_ok=temps_ok, self_this=self_this,
+                  temps_ok=temps_ok, self_capturable=self_capturable,
                   movable_locals=movable_locals, func_name=func_name)
 
 
@@ -7692,52 +7717,6 @@ def _bytes_view_form_source(a: TpyExpr, locals_: dict[str, TpyType],
             and _own_viewfam_param(locals_.get(src.name)) is None)
 
 
-def _borrowing_frame_callee(fi) -> bool:
-    """Does this callee's FRAME borrow an argument slot past the statement,
-    so a prvalue bound only for the full expression dangles on resume?
-
-    The simple-generator peephole does: its lambda captures a generic `T`
-    parameter by reference, a capture form decided on the OPEN `T`
-    (`BUGS.md#simple-generator-captures-open-t-param-by-reference`). A
-    RESUMABLE generator frame and a coroutine frame do not -- both copy the
-    argument into a `val_or_ref_t<T>` member in the frame constructor,
-    inside the full expression (verified for the coroutine by ASAN with the
-    temp elided).
-
-    Which of the two a generator lowers to is `is_simple_generator`, a
-    predicate over the callee's `TpyFunction` that this seam cannot reach:
-    a call site holds a `FunctionInfo`, and the peephole verdict is
-    finalized during codegen (`_prescan_for_src_embedding` may force a
-    simple generator resumable). So every generator factory is treated as
-    borrowing, which costs a resumable one a temp it does not need --
-    TODO.md carries that residue and the two ways to remove it.
-
-    The fact is the CALLEE's, so it must not depend on how the call was
-    resolved. `is_generator` answers for a plain or generic callee; an
-    @overload-ed one carries False on every per-signature fi while the IMPL is
-    the generator, and there the DECLARED `typing.Iterator` return answers --
-    sema forbids that return on a non-generator plain-TPy function, so nothing
-    else can wear it. `@native` / `@cpp_template` callees are excluded: their
-    `Iterator[T]` returns are C++ combinator objects (map / zip / filter /
-    iter), not frames. Same rule and the same exclusions as
-    `_genfac_like_call`, one level down (an fi, not a call), so the two cannot
-    drift."""
-    if fi is None:
-        return False
-    if getattr(fi, "is_generator", False):
-        return True
-    if (getattr(fi, "native_function", False)
-            or getattr(fi, "cpp_template", None)
-            or getattr(fi, "is_stub", False)):
-        return False
-    rt = getattr(fi, "return_type", None)
-    if not isinstance(rt, TpyType):
-        return False
-    rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
-    return (isinstance(rt, NominalType) and rt.is_protocol
-            and rt.qualified_name() == "typing.Iterator")
-
-
 class _GenericArgSlot(NamedTuple):
     """What a bare-`T` argument slot owes, answered once from the (source,
     resolved slot, callee) triple.
@@ -7769,7 +7748,7 @@ def _generic_arg_slot(a: TpyExpr, raw_ptype: 'TpyType | None',
     pay the reference-typed one's temp.
 
     ONE thing still owes a temp at a value-typed instantiation: a callee whose
-    frame BORROWS the slot (`_borrowing_frame_callee`), where the temp is what
+    frame BORROWS the slot (`borrowing_frame_callee`), where the temp is what
     keeps the borrowed object alive -- the same rule
     `_container_call_temp_arg` applies at concrete readonly-ref slots. A
     view-form source owes nothing at ANY `T` slot: each of the four str/bytes
@@ -10821,9 +10800,11 @@ def _r_func_ref(req: _ArgReq) -> bool:
 
 
 def _r_lambda(req: _ArgReq) -> bool:
-    # `self_this` defaults False, which is what every family but `plain`
-    # spelled -- so threading it here leaves the shape one shared cell.
-    return _lambda_routable(req.a, req.analyzer, self_this=req.self_this)
+    # `self_capturable` defaults False, which is what every family but
+    # `plain` spelled -- so threading it here leaves the shape one shared
+    # cell.
+    return _lambda_routable(req.a, req.analyzer,
+                            self_capturable=req.self_capturable)
 
 
 def _r_callable_value_pass(req: _ArgReq) -> bool:
@@ -11650,7 +11631,7 @@ def _r_record_rvalue_temp_factory(req: _ArgReq) -> bool:
 def _r_tparam_slot_temp(req: _ArgReq) -> bool:
     return _tparam_slot_temp_arg(
         req.a, req.ptype, req.index, req.overload, req.analyzer,
-        borrowing_frame=_borrowing_frame_callee(req.overload)) is not None
+        borrowing_frame=borrowing_frame_callee(req.overload)) is not None
 
 
 def _r_struct_proto_union(req: _ArgReq) -> bool:
@@ -11931,7 +11912,7 @@ def _pre_generic_slot_family(req: _ArgReq) -> 'bool | None':
         return note_detail("call.generic_arg_slot")
     gslot = _generic_arg_slot(
         a, ptype, resolved, locals_, req.param_names, analyzer,
-        borrowing_frame=_borrowing_frame_callee(req.overload))
+        borrowing_frame=borrowing_frame_callee(req.overload))
     if isinstance(ptype, TypeParamRef):
         # A row hoisting a temp is flush-gated; one whose INSTANTIATED slot
         # binds the rvalue outright renders inline, so it needs no flush
@@ -12777,8 +12758,9 @@ _PLAIN_ARG_SINK = register_sink(_ArgSink(
     note=lambda req: ("call.arg_shape."
                       + _type_family_tag(req.ptype, req.analyzer)),
     rows=(
-        # The only family that reads `self_this`: a lambda capturing `self`
-        # spells `this`, which is the enclosing body's receiver render.
+        # The only family that reads `self_capturable`: a lambda capturing
+        # `self` copies the enclosing body's receiver handle, which only the
+        # call site knows the body has.
         _ArgRow("lambda", _r_lambda),
         _ArgRow("func_ref", _r_func_ref),
         _ArgRow("callable_value_pass", _r_callable_value_pass),
@@ -14091,7 +14073,7 @@ def _iter_proto_call_ret(it: 'TpyCall | TpyMethodCall', analyzer) -> bool:
     return _user_iterator_iterable(u, analyzer)
 
 
-def _gen_recv_ctor_temp(obj: TpyExpr, analyzer) -> bool:
+def gen_recv_ctor_temp(obj: TpyExpr, analyzer) -> bool:
     """A generator-method receiver lifted into a named local
     (`for v in Counter(3).each():` -> `Counter __tmp_N = Counter(..);` +
     `__tmp_N.each()`): the resumable frame / peephole captures the receiver
@@ -14122,7 +14104,7 @@ def _member_gen_call_iterable_ok(e: TpyMethodCall, locals_: dict[str, TpyType],
     gates are bypassed (via `iterable_override`); the receiver and args
     still lower through the standard member tail. Receivers: a bare
     in-scope name (`self` included) or the ctor-rvalue lift slice
-    (`_gen_recv_ctor_temp`). A generic method routes when its inferred
+    (`gen_recv_ctor_temp`). A generic method routes when its inferred
     targs spell through the member tail's method_targs suffix
     (`f.items<int32_t>(42)`); omitted trailing defaults ride the emitted
     C++ signature (`_call_arity_ok`). Native / template callees and
@@ -14148,7 +14130,7 @@ def _member_gen_call_iterable_ok(e: TpyMethodCall, locals_: dict[str, TpyType],
                                and not e.is_static_call):
         return False
     if not (isinstance(e.obj, TpyName) and e.obj.name in locals_):
-        if not _gen_recv_ctor_temp(e.obj, analyzer):
+        if not gen_recv_ctor_temp(e.obj, analyzer):
             return False
     return _call_arity_ok(e, fi)
 

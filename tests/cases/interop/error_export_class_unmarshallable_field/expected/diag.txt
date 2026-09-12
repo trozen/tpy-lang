@@ -1,2 +1,3 @@
+main.py:11: warning: copies list[Int64] into field; use copy() to make this explicit
 main.py:11: error: @export class 'Bad': field 'items' of type 'list[Int64]' cannot cross the CPython boundary yet
   supported types: the fixed-width ints, int, float, bool, str, bytes, @export classes/enums defined in this module; list/dict/set/tuple of those as function/method params/returns (not fields); a numeric Span as a param only (return numeric data as list[T])

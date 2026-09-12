@@ -146,3 +146,36 @@ class TestDivergenceSiteReport:
             "    return ::tpy::__getitem__(items, 1);\n", "")
         msg = self._fail_msg(tmp_path, monkeypatch, actual)
         assert "in `second`" in msg
+
+
+BAD_PASCAL = """\
+program ErrorSyntax;
+begin
+  writeln('unterminated call';
+end.
+"""
+
+
+def test_frontend_plugin_parse_error_fails_the_compile(tmp_path: Path) -> None:
+    """A plugin PARSE error must fail the case, not read as a clean compile.
+
+    The plugin's error is an ERROR on `compiler.diagnostics`: `Compiler.compile()`
+    records it and RETURNS rather than raising, so a `has_errors` that counts only
+    module-analyzer diagnostics reports success and the harness walks on into
+    codegen. There is no `error_` case that can pin this -- the annotation gate
+    reads `src/*.py` only, so a case whose sources are all plugin-extension files
+    cannot carry the `# tpyc: error(...)` leg it demands.
+    """
+    case_dir = tmp_path / "error_plugin_syntax"
+    src_dir = case_dir / "src"
+    src_dir.mkdir(parents=True)
+    (case_dir / "options.json").write_text(
+        '{"plugin": "frontends/pascal/pascal_frontend.py",'
+        ' "dsl_opts": {"sdl": "off"}}\n')
+    src_file = src_dir / "main.pas"
+    src_file.write_text(BAD_PASCAL)
+
+    result = conftest.compile_with_diagnostics(src_file, case_dir / "out")
+
+    assert result.success is False
+    assert "main.pas:3: error: expected RPAREN, got SEMI ';'" in result.diagnostics

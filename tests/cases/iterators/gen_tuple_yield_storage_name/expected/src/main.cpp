@@ -4,6 +4,45 @@
 namespace tpyapp::main {
 
 
+// def relay_twice(items: list[tuple[Int32, C]]) -> Iterator[tuple[Int32, C]]:
+std::expected<std::tuple<int32_t, C*>, ::tpy::StopIteration> __gen_relay_twice::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        __for_it_0.emplace((items).begin());
+        __for_end_0.emplace((items).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        // yield pair  # tpyc: ok
+        __state = S_RESUME_1;
+        return ::tpy::tuple_to_pointer<std::tuple<int32_t, C*>>((*pair));
+    }
+    case S_RESUME_1: {
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        pair = &(*((*__for_it_0))++);
+        // yield pair  # tpyc: ok
+        __state = S_RESUME_0;
+        return ::tpy::tuple_to_pointer<std::tuple<int32_t, C*>>((*pair));
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def relay_twice(items: list[tuple[Int32, C]]) -> Iterator[tuple[Int32, C]]:
+__gen_relay_twice relay_twice(std::vector<std::tuple<int32_t, C>>& items) {
+    return __gen_relay_twice(items);
+}
+
 // def main() -> None:
 void main() {
     // xs: list[tuple[Int32, C]] = [(1, C(5)), (2, C(6))]
@@ -25,8 +64,8 @@ void main() {
         c.v = ::tpy::add_check<int32_t>(c.v, (::tpy::mul_check<int32_t>(n, 10)));
         }
     }
-    // print([c.v for n, c in xs])
-    std::cout << ::tpy::ListPrinter(({
+    // print("free", [c.v for n, c in xs])
+    std::cout << "free" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto& __obj_2 = xs;
         __result.reserve(static_cast<std::size_t>(__obj_2.size()));
@@ -40,7 +79,105 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
+    // for n, c in relay_twice(xs):
+    {
+        auto __src_3 = relay_twice(xs);
+        auto&& __itr_3 = ::tpy::__iter__(__src_3);
+        for (;;) {
+            auto __r_4 = __itr_3.__next__();
+            if (!__r_4.has_value()) break;
+            auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_4);
+        // for n, c in relay_twice(xs):
+        auto& __tup_3 = __for_tup_1;
+        int32_t n = std::get<0>(__tup_3);
+        auto&& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_3)));
+        // c.v += n
+        c.v = ::tpy::add_check<int32_t>(c.v, n);
+        }
+    }
+    // print("twice", [c.v for n, c in xs])
+    std::cout << "twice" << " " << ::tpy::ListPrinter(({
+        std::vector<int32_t> __result;
+        auto& __obj_5 = xs;
+        __result.reserve(static_cast<std::size_t>(__obj_5.size()));
+        auto __beg_5 = __obj_5.begin();
+        auto __end_5 = __obj_5.end();
+        for (; __beg_5 != __end_5; ++__beg_5) {
+            auto& __tup_4 = *__beg_5;
+            int32_t n = std::get<0>(__tup_4);
+            auto& c = std::get<1>(__tup_4);
+            __result.push_back(c.v);
+        }
+        std::move(__result);
+    })) << "\n";
+    // h = Holder([(3, C(7)), (4, C(8))])
+    Holder h = Holder({::tpy::tuple_to_storage<std::tuple<int32_t, C>>(std::tuple<int32_t, C>{3, C(7)}), ::tpy::tuple_to_storage<std::tuple<int32_t, C>>(std::tuple<int32_t, C>{4, C(8)})});
+    // for n, c in h.relay():
+    {
+        auto __src_6 = h.relay();
+        auto&& __itr_6 = ::tpy::__iter__(__src_6);
+        for (;;) {
+            auto __r_7 = __itr_6.__next__();
+            if (!__r_7.has_value()) break;
+            auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_7);
+        // for n, c in h.relay():
+        auto& __tup_5 = __for_tup_2;
+        int32_t n = std::get<0>(__tup_5);
+        auto&& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_5)));
+        // c.v += n
+        c.v = ::tpy::add_check<int32_t>(c.v, n);
+        }
+    }
+    // print("method", [c.v for n, c in h.items])
+    std::cout << "method" << " " << ::tpy::ListPrinter(({
+        std::vector<int32_t> __result;
+        auto& __obj_8 = h.items;
+        __result.reserve(static_cast<std::size_t>(__obj_8.size()));
+        auto __beg_8 = __obj_8.begin();
+        auto __end_8 = __obj_8.end();
+        for (; __beg_8 != __end_8; ++__beg_8) {
+            auto& __tup_6 = *__beg_8;
+            int32_t n = std::get<0>(__tup_6);
+            auto& c = std::get<1>(__tup_6);
+            __result.push_back(c.v);
+        }
+        std::move(__result);
+    })) << "\n";
 }
+
+// def relay(self) -> Iterator[tuple[Int32, C]]:
+std::expected<std::tuple<int32_t, C*>, ::tpy::StopIteration> __gen_Holder_relay::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        __for_it_0.emplace((__self.items).begin());
+        __for_end_0.emplace((__self.items).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        // yield pair  # tpyc: ok
+        __state = S_RESUME_1;
+        return ::tpy::tuple_to_pointer<std::tuple<int32_t, C*>>((*pair));
+    }
+    case S_RESUME_1: {
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        pair = &(*((*__for_it_0))++);
+        // yield pair  # tpyc: ok
+        __state = S_RESUME_0;
+        return ::tpy::tuple_to_pointer<std::tuple<int32_t, C*>>((*pair));
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
 
 void __tpy_init() {
     static bool initialized = false;

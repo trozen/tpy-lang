@@ -215,11 +215,65 @@ BORROW_KIND_RANK: dict[BorrowKind, int] = {
 }
 
 
+class LoanResidency(Enum):
+    """Which of a name's storages the loaned-from value sat in at bind time.
+
+    A reference-typed local can hold up to two live object generations: the
+    block-scoped INIT storage its declaration writes, and the function-scoped
+    rebind SLOT every later rvalue rebind writes. A loan taken while the
+    source sat in the INIT storage survives a first rebind; one taken while
+    it sat in the SLOT is clobbered by the next. Positions that reserve no
+    rebind slot (a resumable frame, module level) hold ONE generation, so
+    every loan there is clobbered -- see `sema.alias_rebind`.
+    """
+    INIT = "init"
+    SLOT = "slot"
+
+
+# SLOT is the hazardous end: at a merge the loan that can be clobbered wins.
+LOAN_RESIDENCY_RANK: dict[LoanResidency, int] = {
+    LoanResidency.INIT: 0,
+    LoanResidency.SLOT: 1,
+}
+
+
+@dataclass(frozen=True, slots=True)
+class LoanInfo:
+    """One loan: what shape it has, and which storage generation it sits in."""
+    kind: BorrowKind
+    residency: LoanResidency = LoanResidency.INIT
+
+
+# Borrower name of the implicit iterator borrow a for-loop registers. Not a
+# real local -- it expires with the statement, not by a rebind of some name --
+# so the queries that must not see a synthetic holder name it here rather than
+# by shape.
+ITER_BORROWER = "__for_iter"
+
+
+def combine_loan_info(a: LoanInfo, b: LoanInfo) -> LoanInfo:
+    """The more dangerous of two loans on the same (storage, borrower) pair.
+
+    Each field independently: the kind by BORROW_KIND_RANK and the residency
+    by LOAN_RESIDENCY_RANK, so a loan that loses on kind still contributes its
+    clobberable residency. `a` wins a rank tie, which is what both callers --
+    a branch-merge dedup and a retarget onto an existing loan -- want.
+    """
+    kind = (b.kind if BORROW_KIND_RANK[b.kind] > BORROW_KIND_RANK[a.kind]
+            else a.kind)
+    residency = max(a.residency, b.residency,
+                    key=LOAN_RESIDENCY_RANK.__getitem__)
+    return LoanInfo(kind, residency)
+
+
 class BorrowTracker:
     """Tracks borrow relationships between variables for mutation safety.
 
     Manages which variables borrow storage from other variables, enabling
     conflict detection when borrowed storage is mutated.
+
+    Loans live in one record per ``(storage, borrower)`` pair, indexed by
+    storage because nearly every query asks "who borrows this name".
 
     Note: string view source tracking (str_source_borrows) and loop var
     mutation tracking (mutated_loop_vars) remain on SemanticContext since
@@ -228,33 +282,42 @@ class BorrowTracker:
     "deferred type tracking" system emerges.
     """
 
-    __slots__ = ('borrows', 'borrow_kinds')
+    __slots__ = ('loans', 'slot_resident')
 
     def __init__(self) -> None:
-        self.borrows: dict[str, set[str]] = {}
-        self.borrow_kinds: dict[tuple[str, str], BorrowKind] = {}
+        self.loans: dict[str, dict[str, LoanInfo]] = {}
+        # Names whose current value has moved into their rebind slot. A
+        # per-path fact, saved/restored/merged beside `loans` by FlowFacts: a
+        # sibling branch's rebind must not stamp this branch's loans, or a
+        # valid `if c: p = X` / `else: alias = p; p = Y` warns.
+        self.slot_resident: set[str] = set()
 
     def reset(self) -> None:
         """Clear all borrow state (called between function analyses)."""
-        self.borrows.clear()
-        self.borrow_kinds.clear()
+        self.loans.clear()
+        self.slot_resident.clear()
+
+    def mark_slot_resident(self, name: str) -> None:
+        """Record that ``name``'s value now lives in its rebind slot."""
+        self.slot_resident.add(name)
 
     def add_borrow(self, storage: str, borrower: str, kind: BorrowKind = BorrowKind.ALIAS) -> None:
         """Record that ``borrower`` borrows from ``storage``."""
-        self.borrows.setdefault(storage, set()).add(borrower)
-        self.borrow_kinds[(storage, borrower)] = kind
+        # A dotted key (`h.inner`) reaches through the ROOT name's storage, so
+        # it moves into the slot when the root does.
+        root = storage.split(".", 1)[0]
+        residency = (LoanResidency.SLOT if root in self.slot_resident
+                     else LoanResidency.INIT)
+        self.loans.setdefault(storage, {})[borrower] = LoanInfo(kind, residency)
 
     def remove_borrower(self, borrower: str) -> None:
         """Remove all borrows held by ``borrower`` (e.g. on reassignment)."""
         to_clean: list[str] = []
-        for storage, borrowers in self.borrows.items():
-            if borrower in borrowers:
-                borrowers.discard(borrower)
-                self.borrow_kinds.pop((storage, borrower), None)
-                if not borrowers:
-                    to_clean.append(storage)
+        for storage, holders in self.loans.items():
+            if holders.pop(borrower, None) is not None and not holders:
+                to_clean.append(storage)
         for storage in to_clean:
-            del self.borrows[storage]
+            del self.loans[storage]
 
     def retarget_storage_borrows(self, storage: str) -> None:
         """Reassignment of ``storage``: retarget its borrowers to the upstream source.
@@ -276,44 +339,33 @@ class BorrowTracker:
         its borrowers had nowhere to retarget to and are dropped.
         """
         upstream = self.borrow_source(storage)
-        upstream_kind = self.borrow_kinds.get((upstream, storage)) if upstream else None
+        up_loan = self.loans.get(upstream, {}).get(storage) if upstream else None
 
-        borrowers = self.borrows.pop(storage, None)
-        if borrowers:
-            if upstream is not None and upstream_kind is not None:
-                for b in borrowers:
-                    child_kind = self.borrow_kinds.pop((storage, b), None)
-                    if child_kind is None:
-                        continue
-                    # An OPAQUE borrow has no element/alias shape to promote:
-                    # rank-promoting it into the invalidating set would mint
-                    # exactly the mutation warnings the kind exists to avoid.
-                    if child_kind is BorrowKind.OPAQUE:
-                        promoted = BorrowKind.OPAQUE
-                    else:
-                        promoted = (child_kind
-                                    if BORROW_KIND_RANK[child_kind] >= BORROW_KIND_RANK[upstream_kind]
-                                    else upstream_kind)
-                    existing = self.borrow_kinds.get((upstream, b))
-                    if existing is None or BORROW_KIND_RANK[promoted] > BORROW_KIND_RANK[existing]:
-                        self.borrows.setdefault(upstream, set()).add(b)
-                        self.borrow_kinds[(upstream, b)] = promoted
-            else:
-                for b in borrowers:
-                    self.borrow_kinds.pop((storage, b), None)
+        holders = self.loans.pop(storage, None)
+        if holders and up_loan is not None and upstream is not None:
+            for b, child in holders.items():
+                # The retargeted loan reaches the upstream object THROUGH the
+                # rebound name, so it is at least as clobberable as either leg.
+                chained = combine_loan_info(child, up_loan)
+                # An OPAQUE borrow has no element/alias shape to promote:
+                # rank-promoting it into the invalidating set would mint
+                # exactly the mutation warnings the kind exists to avoid.
+                if child.kind is BorrowKind.OPAQUE:
+                    chained = LoanInfo(BorrowKind.OPAQUE, chained.residency)
+                existing = self.loans.get(upstream, {}).get(b)
+                if existing is not None:
+                    chained = combine_loan_info(existing, chained)
+                self.loans.setdefault(upstream, {})[b] = chained
 
         # Field-path borrows (storage.X) are dropped: the variable rebinds to
         # a different object, so dotted-key borrows are unreachable.
         prefix = storage + "."
-        to_remove = [k for k in self.borrows if k.startswith(prefix)]
-        for k in to_remove:
-            for b in self.borrows.pop(k):
-                self.borrow_kinds.pop((k, b), None)
+        for k in [k for k in self.loans if k.startswith(prefix)]:
+            del self.loans[k]
 
     def has_iter_borrow(self, storage_name: str) -> bool:
         """Check if a variable is borrowed by an active for-loop iterator."""
-        borrowers = self.borrows.get(storage_name)
-        return borrowers is not None and "__for_iter" in borrowers
+        return ITER_BORROWER in self.loans.get(storage_name, {})
 
     def has_element_borrow(self, storage_name: str) -> bool:
         """Check if a variable has element-level or iterator borrows.
@@ -322,24 +374,14 @@ class BorrowTracker:
         mutations (reallocation, insertion, deletion). Returns False for
         whole-container alias borrows which are safe through mutations.
         """
-        borrowers = self.borrows.get(storage_name)
-        if not borrowers:
-            return False
         _INVALIDATING = (BorrowKind.ITER, BorrowKind.ELEMENT, BorrowKind.PTR)
-        return any(
-            self.borrow_kinds.get((storage_name, b)) in _INVALIDATING
-            for b in borrowers
-        )
+        return any(loan.kind in _INVALIDATING
+                   for loan in self.loans.get(storage_name, {}).values())
 
     def has_borrow_of_kinds(self, storage: str, kinds: tuple[BorrowKind, ...]) -> bool:
         """Check if any borrower of storage has one of the given borrow kinds."""
-        borrowers = self.borrows.get(storage)
-        if not borrowers:
-            return False
-        return any(
-            self.borrow_kinds.get((storage, b)) in kinds
-            for b in borrowers
-        )
+        return any(loan.kind in kinds
+                   for loan in self.loans.get(storage, {}).values())
 
     def has_borrowers_outside(self, storage: str, known_aliases: set[str]) -> bool:
         """Any borrower of ``storage`` (including its dotted field paths)
@@ -350,16 +392,15 @@ class BorrowTracker:
         moving ``storage`` is unsound while one exists.
         """
         prefix = storage + "."
-        for key, borrowers in self.borrows.items():
+        for key, holders in self.loans.items():
             if key != storage and not key.startswith(prefix):
                 continue
-            for b in borrowers:
-                # "__for_iter" never expires (loops don't remove it) and is
-                # redundant here: an in-body consume of the iterable is kept
-                # live by the loop fixpoint in liveness, and a post-loop
-                # consume is safe -- gating on it would also block the
-                # loop's own consuming-iteration activation.
-                if b == "__for_iter":
+            for b in holders:
+                # The iterator borrow is redundant here: an in-body consume of
+                # the iterable is kept live by the loop fixpoint in liveness,
+                # and a post-loop consume is safe -- gating on it would also
+                # block the loop's own consuming-iteration activation.
+                if b == ITER_BORROWER:
                     continue
                 if b not in known_aliases:
                     return True
@@ -376,8 +417,9 @@ class BorrowTracker:
         current = name
         while True:
             found = None
-            for storage, borrowers in self.borrows.items():
-                if current in borrowers and self.borrow_kinds.get((storage, current)) is BorrowKind.ALIAS:
+            for storage, holders in self.loans.items():
+                loan = holders.get(current)
+                if loan is not None and loan.kind is BorrowKind.ALIAS:
                     found = storage
                     break
             if found is None or found in visited:
@@ -387,9 +429,10 @@ class BorrowTracker:
 
     def borrow_kind_of(self, name: str) -> 'BorrowKind | None':
         """Return the kind of borrow that 'name' holds, or None if not a borrower."""
-        for storage, borrowers in self.borrows.items():
-            if name in borrowers:
-                return self.borrow_kinds.get((storage, name))
+        for holders in self.loans.values():
+            loan = holders.get(name)
+            if loan is not None:
+                return loan.kind
         return None
 
     def is_deferred_borrow(self, name: str) -> bool:
@@ -415,8 +458,8 @@ class BorrowTracker:
         ITER/ELEMENT/FIELD/PTR borrows too -- used to trace loop-var addresses
         back to the source container.
         """
-        for storage, borrowers in self.borrows.items():
-            if name in borrowers:
+        for storage, holders in self.loans.items():
+            if name in holders:
                 return storage
         return None
 
@@ -453,8 +496,8 @@ class BorrowTracker:
         stack: list[str] = [name]
         while stack:
             current = stack.pop()
-            sources = [storage for storage, borrowers in self.borrows.items()
-                       if current in borrowers]
+            sources = [storage for storage, holders in self.loans.items()
+                       if current in holders]
             if not sources:
                 if current != name:
                     roots.append(current)
@@ -471,21 +514,22 @@ class BorrowTracker:
         must name SOME storage for every binding gets one answer shape."""
         return self.all_storage_through_borrows(name) or [name]
 
-    def freeze(self) -> frozenset[tuple[str, str, BorrowKind]]:
-        """Snapshot borrow state as immutable triples for flow analysis."""
+    def freeze(self) -> frozenset[tuple[str, str, LoanInfo]]:
+        """Snapshot loan state as immutable triples for flow analysis."""
         return frozenset(
-            (storage, borrower, self.borrow_kinds[(storage, borrower)])
-            for storage, borrowers in self.borrows.items()
-            for borrower in borrowers
+            (storage, borrower, loan)
+            for storage, holders in self.loans.items()
+            for borrower, loan in holders.items()
         )
 
-    def restore_from_frozen(self, triples: frozenset[tuple[str, str, BorrowKind]]) -> None:
-        """Restore borrow state from frozen triples."""
-        self.borrows.clear()
-        self.borrow_kinds.clear()
-        for storage, borrower, kind in triples:
-            self.borrows.setdefault(storage, set()).add(borrower)
-            self.borrow_kinds[(storage, borrower)] = kind
+    def restore_from_frozen(self, triples: frozenset[tuple[str, str, LoanInfo]],
+                            slot_resident: frozenset[str]) -> None:
+        """Restore loan state and slot residency from a frozen snapshot."""
+        self.loans.clear()
+        for storage, borrower, loan in triples:
+            self.loans.setdefault(storage, {})[borrower] = loan
+        self.slot_resident.clear()
+        self.slot_resident.update(slot_resident)
 
 
 def ephemeral_borrow_root(ephemeral_vars: set[str],
@@ -885,6 +929,19 @@ class FunctionTrackingState:
 
     # --- Prescan / last-use ---
     current_reassigned_vars: set[str] = field(default_factory=set)
+    # Names for which the lowering reserves a function-scoped rebind slot --
+    # `prescan.rvalue_reassigned`, the very set the THIR slot allocation
+    # reads, so `sema.alias_rebind.storage_generations` agrees with the
+    # emitted code by construction. Inside a nested def this stays the
+    # ENCLOSING body's set, mirroring the lowering's own prescan swap.
+    rebind_slot_names: set[str] = field(default_factory=set)
+    # Per enclosing loop (innermost last): storage root -> holder -> kind of
+    # the loans the body binds, anywhere. A rebind inside a loop re-executes,
+    # so the alias-rebind check must see loans the body takes at ANY position,
+    # not only those the walk has already registered. Holds strings, not AST
+    # -- `save_function_state` deep-copies this state for nested defs.
+    loop_body_loans: list[dict[str, dict[str, BorrowKind]]] = field(
+        default_factory=list)
     # Locals whose sole binding is a fresh constructor call of their exact static
     # type (never rebound -- field mutation doesn't count). Their dynamic type is
     # provably their static type, so the polymorphic-slicing guard may move them

@@ -80,13 +80,15 @@ __coro_pick pick(std::string_view tag, bool b) {
         // cond = True
         cond = true;
         if (cond) {
+            __coro_arg_0 = "then-run";
             // x = await one("then-run") if cond else await two("else-skipped")
-            __sub_0.emplace("then-run");
+            __sub_0.emplace(__coro_arg_0);
             __state = S_RESUME_0;
             continue;
         } else {
+            __coro_arg_1 = "else-skipped";
             // x = await one("then-run") if cond else await two("else-skipped")
-            __sub_1.emplace("else-skipped");
+            __sub_1.emplace(__coro_arg_1);
             __state = S_RESUME_1;
             continue;
         }
@@ -129,13 +131,15 @@ __coro_pick pick(std::string_view tag, bool b) {
         __await_lift_0 = std::move(__r4).value();
         __sub_4.reset();
         if (__await_lift_0) {
+            __coro_arg_5 = "z-then-skip";
             // z = await one("z-then-skip") if await pick("z-cond", False) else await two("z-else-run")
-            __sub_5.emplace("z-then-skip");
+            __sub_5.emplace(__coro_arg_5);
             __state = S_RESUME_5;
             continue;
         } else {
+            __coro_arg_6 = "z-else-run";
             // z = await one("z-then-skip") if await pick("z-cond", False) else await two("z-else-run")
-            __sub_6.emplace("z-else-run");
+            __sub_6.emplace(__coro_arg_6);
             __state = S_RESUME_6;
             continue;
         }
@@ -177,13 +181,15 @@ __coro_pick pick(std::string_view tag, bool b) {
         // cond2 = False
         cond2 = false;
         if (cond2) {
+            __coro_arg_2 = "then-skipped";
             // y = await one("then-skipped") if cond2 else await two("else-run")
-            __sub_2.emplace("then-skipped");
+            __sub_2.emplace(__coro_arg_2);
             __state = S_RESUME_2;
             continue;
         } else {
+            __coro_arg_3 = "else-run";
             // y = await one("then-skipped") if cond2 else await two("else-run")
-            __sub_3.emplace("else-run");
+            __sub_3.emplace(__coro_arg_3);
             __state = S_RESUME_3;
             continue;
         }
@@ -193,8 +199,9 @@ __coro_pick pick(std::string_view tag, bool b) {
         y = __await_ternary_1;
         // print("y", y)
         std::cout << "y" << " " << y << "\n";
+        __coro_arg_4 = "z-cond";
         // z = await one("z-then-skip") if await pick("z-cond", False) else await two("z-else-run")
-        __sub_4.emplace("z-cond", false);
+        __sub_4.emplace(__coro_arg_4, false);
         __state = S_RESUME_4;
         continue;
     }
@@ -205,8 +212,9 @@ __coro_pick pick(std::string_view tag, bool b) {
         z = __await_ternary_2;
         // print("z", z)
         std::cout << "z" << " " << z << "\n";
+        __coro_arg_7 = "w-cond";
         // w = 10 if await pick("w-cond", True) else 20
-        __sub_7.emplace("w-cond", true);
+        __sub_7.emplace(__coro_arg_7, true);
         __state = S_RESUME_7;
         continue;
     }

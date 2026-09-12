@@ -335,8 +335,19 @@ def _walk_arg_list(owner: str, args: 'Sequence[THIRExpr]',
                   eager_only=eager_only)
 
 
+# The wrappers this walk treats as pass-through for flushability -- the ONE
+# place that says "transparent": a coerce is a pure inline wrap around its
+# source (`::tpy::as_mut_span({0})`) and an error-return unwrap only composes
+# the `({ ... })` render around its call. Neither moves where an inner temp's
+# decl lands, so a temp reached through one keeps the flush right (and the
+# conditional-operand rule) of the position the wrapper sits in. Both reach
+# their child through the generic tail, which reads this tuple.
+_TRANSPARENT_WRAPPERS = (THIRCoerce, THIRErrorReturnUnwrap)
+
+
 def _walk(owner: str, node: THIRNode, return_type=None, *,
-          argtemp_ok: bool = False, eager_only: bool = False) -> None:
+          argtemp_ok: bool = False, eager_only: bool = False,
+          via_transparent: bool = False) -> None:
     """`argtemp_ok` marks the value expression of a flushable statement
     (expr stmt / var-decl init / assign value / return value / print arg)
     -- the only
@@ -357,7 +368,17 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
     _check_node(owner, node)
     _check_stmt(owner, node, return_type)
     if isinstance(node, THIRArgTemp):
-        _fail(owner, node, "THIRArgTemp outside a call arg position")
+        # Reached through a transparent wrapper the temp keeps the arg-list
+        # rules, since the wrapper only re-renders it in place; anywhere else
+        # a temp outside a call-arg position has no flush point at all.
+        if not (via_transparent and argtemp_ok):
+            _fail(owner, node, "THIRArgTemp outside a call arg position")
+        if eager_only and node.movable is None:
+            _fail(owner, node, "unaudited THIRArgTemp under "
+                               "a conditional operand")
+        _walk(owner, node.init, return_type, argtemp_ok=argtemp_ok,
+              eager_only=eager_only)
+        return
     if isinstance(node, THIRUnionArgLift) and node.temp_cpp is not None:
         # The temp-bearing lift hoists a decl like THIRArgTemp does, so it
         # is legal only where a temp has a flush point (checked in the
@@ -389,15 +410,6 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
                       argtemp_ok=argtemp_ok, eager_only=eager_only)
         _walk_arg_list(owner, node.args, return_type, argtemp_ok=argtemp_ok,
                        eager_only=eager_only)
-        return
-    if isinstance(node, THIRErrorReturnUnwrap):
-        # The expression unwrap is TRANSPARENT for flushability: its call's
-        # arg temps flush at the enclosing statement exactly as they would
-        # unwrapped (the wrapper only composes the `({ ... })` render). It is
-        # transparent for the conditional-operand rule too: an unwrap inside a
-        # lazy operand keeps its call's args in that operand.
-        _walk(owner, node.call, return_type, argtemp_ok=argtemp_ok,
-              eager_only=eager_only)
         return
     if isinstance(node, (THIRErrorReturnBind, THIRErrorReturnDiscard)):
         # Statement-level unwrap blocks: the call renders and its temps
@@ -549,7 +561,8 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
     for child in _iter_children(node):
         _walk(owner, child, return_type,
               argtemp_ok=argtemp_ok and isinstance(node, THIRExpr),
-              eager_only=eager_only and isinstance(node, THIRExpr))
+              eager_only=eager_only and isinstance(node, THIRExpr),
+              via_transparent=isinstance(node, _TRANSPARENT_WRAPPERS))
 
 
 def validate_function(fn: THIRFunction) -> None:
@@ -599,8 +612,6 @@ def validate_resumable_body(owner: str, body: THIRResumableBody) -> None:
         _walk(owner, stmt)
     # Temp-free seams: their lowering never grants a flush right, so an
     # arg temp reaching one is a lowering bug.
-    for expr in body.conds.values():
-        _walk(owner, expr)
     for expr in body.return_values.values():
         _walk(owner, expr)
     for expr in body.yield_values.values():
@@ -609,16 +620,22 @@ def validate_resumable_body(owner: str, body: THIRResumableBody) -> None:
     # renders the capture into an `auto* p = ...;` line with no flush point.
     for stmt in body.deferred_returns.values():
         _walk(owner, stmt)
-    # Flushable seams: the sub-coro emplace, the await operand and the sync
-    # for-head source are statement positions where the skeleton flushes
-    # temps ahead of the line. Both maps below pool entries from several
-    # populate sites of which exactly ONE grants temps -- `suspend_exprs`
-    # holds the await operand (flushable) plus the bound-method receiver;
-    # `region_exprs` the sync for-head iterable (flushable) plus the range
-    # bounds, the with-manager and the async-for iterable. Pooling by
-    # expression identity leaves no way to tell them apart here, so both are
-    # walked at the looser right: a temp reaching one of the four temp-free
-    # seams, where the skeleton has no flush point, is NOT caught.
+    # Flushable seams: the Branch condition, the sub-coro emplace, the await
+    # operand and the sync for-head source are positions where the skeleton
+    # flushes temps ahead of the line. For a condition the flush lands INSIDE
+    # the `case` block, so its temp is rebuilt on every re-entry -- which is
+    # what a fresh container argument in a loop head means.
+    for expr in body.conds.values():
+        _walk(owner, expr, argtemp_ok=True)
+    # Both maps below pool entries from several populate sites of which
+    # exactly ONE grants temps -- `suspend_exprs` holds the await operand
+    # (flushable) plus the bound-method receiver; `region_exprs` the sync
+    # for-head iterable (flushable) plus the range bounds, the with-manager
+    # and the async-for iterable. Pooling by expression identity leaves no way to
+    # tell them apart here, so both are walked at the looser right: a temp
+    # reaching one of the four temp-free seams pooled in (the bound-method
+    # receiver, the range bounds, the with-manager and the async-for
+    # iterable), where the skeleton has no flush point, is NOT caught.
     for args in body.await_args.values():
         # The tuple IS the emplace's arg list, so it is walked the way the
         # call-node arm walks a call's args.

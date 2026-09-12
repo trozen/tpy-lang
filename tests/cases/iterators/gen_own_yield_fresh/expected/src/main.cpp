@@ -4,6 +4,96 @@
 namespace tpyapp::main {
 
 
+// def mk(v: Int32) -> Own[Node]:
+Node mk(int32_t v) {
+    // return Node(v)
+    return Node(::tpy::BigInt(v));
+}
+
+// def mk_row(v: Int32) -> Own[list[Int32]]:
+std::vector<int32_t> mk_row(int32_t v) {
+    // return [v]
+    return {v};
+}
+
+// def fresh_records(src: list[Node]) -> Iterator[Own[Node]]:
+std::expected<Node, ::tpy::StopIteration> __gen_fresh_records::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        __for_it_0.emplace((src).begin());
+        __for_end_0.emplace((src).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        // yield mk(p.val * 10)  # tpyc: ok
+        __state = S_RESUME_1;
+        return mk((((p->val) * (::tpy::BigInt(10)))).to_fixed_check<int32_t>());
+    }
+    case S_RESUME_1: {
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        p = &(*((*__for_it_0))++);
+        // yield copy(p)  # tpyc: ok
+        __state = S_RESUME_0;
+        return Node((*p));
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def fresh_records(src: list[Node]) -> Iterator[Own[Node]]:
+__gen_fresh_records fresh_records(std::vector<Node>& src) {
+    return __gen_fresh_records(src);
+}
+
+// def fresh_rows(src: list[list[Int32]]) -> Iterator[Own[list[Int32]]]:
+std::expected<std::vector<int32_t>, ::tpy::StopIteration> __gen_fresh_rows::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        __for_it_0.emplace((src).begin());
+        __for_end_0.emplace((src).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        // yield mk_row(len(r))  # tpyc: ok
+        __state = S_RESUME_1;
+        return mk_row(::tpy::__len__((*r)));
+    }
+    case S_RESUME_1: {
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        r = &(*((*__for_it_0))++);
+        // yield copy(r)  # tpyc: ok
+        __state = S_RESUME_0;
+        return std::vector<int32_t>((*r));
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def fresh_rows(src: list[list[Int32]]) -> Iterator[Own[list[Int32]]]:
+__gen_fresh_rows fresh_rows(std::vector<std::vector<int32_t>>& src) {
+    return __gen_fresh_rows(src);
+}
+
 // def main() -> None:
 void main() {
     // total = 0
@@ -20,9 +110,105 @@ void main() {
         total = ((::tpy::BigInt(total)) + (b.val));
         }
     }
-    // print(total)
-    std::cout << total << "\n";
+    // print("boxes", total)
+    std::cout << "boxes" << " " << total << "\n";
+    // # free: the yielded value is a COPY -- mutating the source afterwards
+    // # leaves it alone.
+    // src = [Node(3)]
+    std::vector<Node> src = {Node(::tpy::BigInt(3))};
+    // kept = []
+    std::vector<::tpy::BigInt> kept = std::vector<::tpy::BigInt>{};
+    // for b2 in fresh_records(src):
+    {
+        auto __src_2 = fresh_records(src);
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            const auto& b2 = ::tpy::unwrap_ref(*__r_3);
+        // kept.append(b2.val)
+        kept.push_back(b2.val);
+        }
+    }
+    // src[0].val = 100
+    ::tpy::__getitem__(src, 0).val = ::tpy::BigInt(100);
+    // print("free", kept, src[0].val)
+    std::cout << "free" << " " << ::tpy::ListPrinter(kept) << " " << ::tpy::__getitem__(src, 0).val << "\n";
+    // rows: list[list[Int32]] = [[1, 2]]
+    std::vector<std::vector<int32_t>> rows = {{1, 2}};
+    // kept_rows = []
+    std::vector<int32_t> kept_rows = std::vector<int32_t>{};
+    // for r in fresh_rows(rows):
+    {
+        auto __src_4 = fresh_rows(rows);
+        auto&& __itr_4 = ::tpy::__iter__(__src_4);
+        for (;;) {
+            auto __r_5 = __itr_4.__next__();
+            if (!__r_5.has_value()) break;
+            const auto& r = ::tpy::unwrap_ref(*__r_5);
+        // kept_rows.append(len(r))
+        kept_rows.push_back(::tpy::__len__(r));
+        }
+    }
+    // rows[0].append(9)
+    ::tpy::__getitem__(rows, 0).push_back(9);
+    // print("container", kept_rows, len(rows[0]))
+    std::cout << "container" << " " << ::tpy::ListPrinter(kept_rows) << " " << ::tpy::__len__(::tpy::__getitem__(rows, 0)) << "\n";
+    // bag = Bag()
+    Bag bag = Bag();
+    // kept_m = []
+    std::vector<::tpy::BigInt> kept_m = std::vector<::tpy::BigInt>{};
+    // for b3 in bag.drain():
+    {
+        auto __src_6 = bag.drain();
+        auto&& __itr_6 = ::tpy::__iter__(__src_6);
+        for (;;) {
+            auto __r_7 = __itr_6.__next__();
+            if (!__r_7.has_value()) break;
+            const auto& b3 = ::tpy::unwrap_ref(*__r_7);
+        // kept_m.append(b3.val)
+        kept_m.push_back(b3.val);
+        }
+    }
+    // bag.items[0].val = 55
+    ::tpy::__getitem__(bag.items, 0).val = ::tpy::BigInt(55);
+    // print("method", kept_m, bag.items[0].val)
+    std::cout << "method" << " " << ::tpy::ListPrinter(kept_m) << " " << ::tpy::__getitem__(bag.items, 0).val << "\n";
 }
+
+// def drain(self) -> Iterator[Own[Node]]:
+std::expected<Node, ::tpy::StopIteration> __gen_Bag_drain::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        __for_it_0.emplace((__self.items).begin());
+        __for_end_0.emplace((__self.items).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        // yield mk(p.val + 1)  # tpyc: ok
+        __state = S_RESUME_1;
+        return mk((((p->val) + (::tpy::BigInt(1)))).to_fixed_check<int32_t>());
+    }
+    case S_RESUME_1: {
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        p = &(*((*__for_it_0))++);
+        // yield copy(p)  # tpyc: ok
+        __state = S_RESUME_0;
+        return Node((*p));
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
 
 void __tpy_init() {
     static bool initialized = false;

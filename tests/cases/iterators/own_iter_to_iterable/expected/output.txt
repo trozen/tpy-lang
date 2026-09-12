@@ -2,3 +2,5 @@
 6
 3 30
 1 10
+frame [50, 50] 999
+frame_scalar 12

@@ -1,1 +1,2 @@
+main.py:26: warning: copies A | B into field; use copy() to make this explicit
 main.py:32: error: 'Child.__init__' must call 'super().__init__(...)' (or 'Base.__init__(self, ...)') as its first statement: 'Base' cannot be constructed without arguments (field 'val' has type 'A | B' (union fields have no default in C++)), so the inherited fields are left uninitialized.

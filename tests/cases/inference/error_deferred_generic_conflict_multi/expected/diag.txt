@@ -1,1 +1,5 @@
+main.py:11: warning: may copy T into field if not a value type; use copy() to make this explicit
+main.py:13: warning: may copy U into field if not a value type; use copy() to make this explicit
+main.py:15: warning: may copy T into field if not a value type; use copy() to make this explicit
+main.py:16: warning: may copy U into field if not a value type; use copy() to make this explicit
 main.py:21: error: Conflicting type inference for 'T' in 'Pair': previously inferred as 'Int32', but 'set_a' argument 'val' implies 'Int64'

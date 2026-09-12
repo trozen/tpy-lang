@@ -1,1 +1,2 @@
+main.py:16: warning: copies Pet into field; use copy() to make this explicit
 main.py:21: error: match capture 'p' aliases the matched object (a reference type, or a tuple with reference elements) and is rebound in this arm; rebinding it would corrupt that object (CPython rebinds a local). Bind a different name, or copy before rebinding

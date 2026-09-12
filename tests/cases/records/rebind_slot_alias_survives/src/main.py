@@ -26,7 +26,7 @@ def pick(c: Counter) -> Counter:
 def alias_survives_rebind() -> None:
     c = Counter(1)
     alias = c
-    c = Counter(10)
+    c = Counter(10)  # tpyc: ok
     alias.bump()
     print("alias:", alias.n, "c:", c.n)
 
@@ -36,7 +36,7 @@ def rebind_in_loop() -> None:
     first = c
     i = 0
     while i < 3:
-        c = Counter(i)
+        c = Counter(i)  # tpyc: ok
         i += 1
     first.bump()
     print("first:", first.n, "c:", c.n)

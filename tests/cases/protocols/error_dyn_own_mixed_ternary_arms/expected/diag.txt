@@ -1,1 +1,2 @@
+main.py:24: warning: Own[Pet] param 'q' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
 main.py:25: error: in function 'pick': this construct is not yet supported by C++ code generation (expr.ifexpr)

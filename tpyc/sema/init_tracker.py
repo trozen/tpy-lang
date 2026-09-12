@@ -9,12 +9,15 @@ would be undefined behavior in generated C++.
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-from .flow_facts import FlowFacts, merge_binding_provenance
+from .flow_facts import (
+    FlowFacts, merge_borrow_triples, merge_binding_provenance,
+    merge_slot_resident,
+)
 from ..prescan import FactKills, alias_group, deref_view_key
 
 if TYPE_CHECKING:
     from ..typesys import TpyType
-    from .context import SemanticContext
+    from .context import LoanInfo, SemanticContext
     from .narrowing import NarrowingTracker
 
 
@@ -37,6 +40,7 @@ class InitTracker:
             consumed_vars=frozenset(self.ctx.func.consumed_vars),
             binding_provenance=frozenset(self.ctx.func.binding_provenance.items()),
             borrows=self.ctx.func.borrow_tracker.freeze(),
+            slot_resident=frozenset(self.ctx.func.borrow_tracker.slot_resident),
             value_ranges=frozenset(self.ctx.func.value_ranges.items()),
         )
 
@@ -52,7 +56,8 @@ class InitTracker:
         self.ctx.func.narrowed_types = dict(state.narrowed_types)
         self.ctx.func.consumed_vars = set(state.consumed_vars)
         self.ctx.func.binding_provenance = dict(state.binding_provenance)
-        self.ctx.func.borrow_tracker.restore_from_frozen(state.borrows)
+        self.ctx.func.borrow_tracker.restore_from_frozen(
+            state.borrows, state.slot_resident)
         self.ctx.func.value_ranges = dict(state.value_ranges)
 
     def mark_assigned(self, name: str) -> None:
@@ -170,7 +175,8 @@ class InitTracker:
         self.ctx.func.narrowed_types = dict(before.narrowed_types)
         self.ctx.func.consumed_vars = set(before.consumed_vars)
         self.ctx.func.binding_provenance = dict(before.binding_provenance)
-        self.ctx.func.borrow_tracker.restore_from_frozen(before.borrows)
+        self.ctx.func.borrow_tracker.restore_from_frozen(
+            before.borrows, before.slot_resident)
         self.ctx.func.value_ranges = dict(before.value_ranges)
         if kills is not None:
             self.apply_fact_kills(kills)
@@ -195,12 +201,47 @@ class InitTracker:
         body_end_nn_ptr = frozenset(self.ctx.func.non_null_ptr_vars)
         body_end_narrowed = frozenset(self.ctx.func.narrowed_types.items())
         body_end_bp = frozenset(self.ctx.func.binding_provenance.items())
+        body_end_borrows = self.ctx.func.borrow_tracker.freeze()
+        body_end_slot_resident = frozenset(
+            self.ctx.func.borrow_tracker.slot_resident)
         self.restore(before)
         self.ctx.func.non_null_ptr_vars &= body_end_nn_ptr
         self.ctx.func.narrowed_types = dict(body_end_narrowed & before.narrowed_types)
+        self._merge_loop_body_loans(before, body_end_borrows,
+                                    body_end_slot_resident)
         # Same lattice as a both-arms-live branch join: MUST facts (return
         # safety) intersect so a fact cleared in the body is not reinstated;
         # HAZARD facts (tuple-member) union in so a hazard introduced in the
         # body survives the loop.
         self.ctx.func.binding_provenance = dict(merge_binding_provenance(
             before.binding_provenance, body_end_bp, False, False))
+
+    def _merge_loop_body_loans(
+        self,
+        before: FlowFacts,
+        body_end_borrows: frozenset[tuple[str, str, LoanInfo]],
+        body_end_slot_resident: frozenset[str],
+    ) -> None:
+        """Carry the loans the loop body took past the loop's closing brace.
+
+        A loan bound in the body is still held after the last iteration -- the
+        holder reads it there -- so dropping it with ``restore(before)`` hides
+        every hazard a post-loop statement poses to it. Same lattice as a
+        both-arms-live join: the union, each field at its more dangerous value,
+        residency included -- a name the body rebound through its slot still
+        sits there at the closing brace.
+
+        Every triple reaching here names a real local: the for-loop lowering
+        releases its synthetic iterator holder where the `for` statement ends,
+        before the caller freezes the body-end state. A loan whose holder is
+        function-scoped but whose STORAGE the body declared is carried out
+        unchanged and is NOT diagnosed -- codegen gives that storage a
+        per-iteration block scope, so the holder dangles at the closing brace
+        (BUGS.md#loop-body-storage-outlived-by-loan).
+        """
+        merged = merge_borrow_triples(before.borrows, body_end_borrows,
+                                      False, False)
+        self.ctx.func.borrow_tracker.restore_from_frozen(
+            merged,
+            merge_slot_resident(before.slot_resident,
+                                body_end_slot_resident, False, False))

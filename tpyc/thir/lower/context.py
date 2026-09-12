@@ -917,11 +917,14 @@ _BRANCH_SCOPED_SETS = (
 #   frame_local_types -- the frame's resolved slot types, seeded once by
 #       lower_resumable (the frame ctx's var_types); a frame field's
 #       slot is one type for the whole body, position-blind.
+#   frame_field_names -- the frame's member set, seeded once by
+#       lower_resumable; membership is a layout fact, not a scope one.
 _FUNCTION_SCOPED_STATE = (
     "unhandled_hoists", "nested_def_locals", "nested_returns",
     "inline_narrowed", "tparam_bounds", "walrus_predeclared",
     "walrus_slot_locals",
     "frame_local_types",
+    "frame_field_names",
     # Forwarded proto-param aliases (`xs = it` in a resumable): a
     # compile-time name->param map seeded once at entry, never mutated.
     "forwarded_map",
@@ -974,11 +977,13 @@ class _LowerCtx:
                  "self_receiver", "self_cpp", "self_is_pointer",
                  "record_name", "storage_tuple_locals",
                  "own_borrow_tuple_locals", "optional_borrow_tuple_locals",
-                 "const_storage_tuple_locals", "frame_slots",
+                 "const_storage_tuple_locals", "frame_own_tuple_types",
+                 "frame_slots",
                  "resumable_leaf_mode", "in_container_elem",
                  "nested_returns", "in_finally_helper",
                  "plain_frame_fields", "borrow_tuple_frame_locals",
                  "coro_handle_slots", "frame_local_types",
+                 "frame_field_names",
                  "value_tuple_frame_locals",
                  "opt_tuple_holders", "opt_ptr_frame_locals",
                  "oneshot_lift_locals", "alias_ptr_locals",
@@ -1334,6 +1339,13 @@ class _LowerCtx:
         # Renders that spell the SLOT (the frame_slot brace-init prefix) must
         # read this, not `declared`. Populated only by `lower_resumable`.
         self.frame_local_types: dict = {}
+        # Every name the resumable frame stores as a MEMBER -- the layout's
+        # own field set (params + generator locals), unlike
+        # `frame_local_types`, which holds locals only. A capture list has to
+        # see the whole set: a member is not a variable, so a lambda reads it
+        # into an init-capture instead of naming it. Populated only by
+        # `lower_resumable`, empty for every sync body.
+        self.frame_field_names: frozenset = frozenset()
         # Value/storage tuple frame fields (`std::tuple<...>` bare members):
         # the unpack arm ref-binds one as a name source
         # (`const auto& __tup_N = <name>;`). Populated only by
@@ -1404,6 +1416,13 @@ class _LowerCtx:
         # storage name as `.`-access, so the pair must stay split until the
         # read arms key on this set directly.
         self.own_borrow_tuple_locals: set[str] = set()
+        # Resumable-frame tuple locals whose per-element OWNERSHIP is not in
+        # their declared type: a literal-bound owning/mixed frame slot, mapped
+        # to the effective `Own[...]`-marked tuple (codegen's
+        # `FrameLocalLayout.effective_type`). The element-read arrow chooser
+        # and the slot's write both read the ownership off this, since a
+        # literal's inferred type has no place to record it.
+        self.frame_own_tuple_types: dict[str, 'TpyType'] = {}
         # Subset of storage_tuple_locals bound from a const source (a const loop
         # var, or an alias off a const receiver chain): the borrow tuple wrap
         # spells `const T*` element pointers. Mirrors codegen's

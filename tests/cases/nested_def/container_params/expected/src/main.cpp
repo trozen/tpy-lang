@@ -4,6 +4,26 @@
 namespace tpyapp::main {
 
 
+// def push_to(ys: list[Int32], v: Int32) -> Int32:
+int32_t push_to(std::vector<int32_t>& ys, int32_t v) {
+    // ys.append(v)
+    ys.push_back(v);
+    // return len(ys)
+    return ::tpy::__len__(ys);
+}
+
+// # free function, NON-ESCAPING (`Fn`) slot: a captured container param is bound
+// # by reference, so the pass-through lambda mutates the CALLER's list. This is
+// # the sync twin of the frame position in nested_def/lambda_in_gen_method --
+// # both must print the same list.
+// def sync_ref_capture(xs: list[Int32]) -> Int32:
+int32_t sync_ref_capture(std::vector<int32_t>& xs) {
+    // a = apply_fn(lambda v: push_to(xs, v), 9)  # tpyc: ok
+    int32_t a = apply_fn([&xs](int32_t v) -> int32_t { return push_to(xs, v); }, 9);
+    // return a + apply_fn(lambda i: xs[i], 2)  # tpyc: ok
+    return (::tpy::add_check<int32_t>(a, apply_fn([&xs](int32_t i) -> int32_t { return ::tpy::__getitem__(xs, i); }, 2)));
+}
+
 // def main() -> None:
 void main() {
     // def push(xs: list[Int32]) -> None:
@@ -62,6 +82,10 @@ void main() {
     std::cout << ::tpy::__len__(data) << " " << ::tpy::__getitem__(data, 2) << " " << total(data) << "\n";
     // print(counts["n"], len(seen), len(buf))
     std::cout << ::tpy::__getitem__(counts, "n") << " " << ::tpy::__len__(seen) << " " << ::tpy::__len__(buf) << "\n";
+    // src = [1, 2]
+    std::vector<int32_t> src = {1, 2};
+    // print("lambda_ref", sync_ref_capture(src), src)
+    std::cout << "lambda_ref" << " " << sync_ref_capture(src) << " " << ::tpy::ListPrinter(src) << "\n";
 }
 
 void __tpy_init() {

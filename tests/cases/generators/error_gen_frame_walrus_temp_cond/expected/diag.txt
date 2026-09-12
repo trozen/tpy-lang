@@ -1,0 +1,1 @@
+main.py:15: error: in function 'counted': this construct is not yet supported by C++ code generation (res.cond:cond.mixed_walrus_temps)

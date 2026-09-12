@@ -1,1 +1,2 @@
+main.py:14: warning: copies Point into owned storage; use copy() to make this explicit
 main.py:14: error: in function 'wrap': this construct is not yet supported by C++ code generation (expr.container_literal)

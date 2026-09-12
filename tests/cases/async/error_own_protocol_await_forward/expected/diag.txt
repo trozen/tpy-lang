@@ -1,1 +1,2 @@
+main.py:22: warning: Own[Sink] param 's' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
 main.py:27: error: in function 'outer': this construct is not yet supported by C++ code generation (res.await_param_type:own_protocol.static)

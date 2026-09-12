@@ -16,9 +16,10 @@ from enum import Enum, auto
 from typing import Any, Protocol
 
 from .typesys import (
-    FunctionInfo, TpyType, TypeParamRef, OwnType, OptionalType, UnionType,
-    VoidType, is_open_type_param_return, is_protocol_type, unwrap_readonly,
-    unwrap_ref_type, unwrap_send_sync,
+    FunctionInfo, NominalType, PtrType, TpyType, TypeParamRef, OwnType,
+    OptionalType, UnionType,
+    VoidType, is_open_type_param_return, is_primitive_type, is_protocol_type,
+    unwrap_optional_own, unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
 from .parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral,
@@ -26,7 +27,7 @@ from .parse import (
     TpyDictLiteral, TpySetLiteral, TpyDictComprehension, TpySetComprehension,
     TpyGeneratorExpression, TpyCoerce, TpyBinOp, TpyUnaryOp, TpyMethodCall,
     TpySubscript, TpyCall, TpyName, TpyFieldAccess, TpyIfExpr, TpyAwait,
-    TpyNamedExpr,
+    TpyBytesLiteral, TpyFString, TpyNamedExpr,
 )
 from .type_def_registry import is_bool_type
 
@@ -242,6 +243,137 @@ def is_rvalue_source(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
             return not call_returns_cpp_ref(analyzer, expr.resolved_function_info)
         return True  # Default: treat unknown calls as rvalue
     return True  # Default: rvalue
+
+
+def peel_coerce(e: TpyExpr) -> TpyExpr:
+    """The expression under any stack of TpyCoerce wrappers."""
+    while isinstance(e, TpyCoerce):
+        e = e.expr
+    return e
+
+
+def materializing_temp_source(a: TpyExpr, analyzer) -> bool:
+    """Whether this expression MATERIALIZES a fresh object whose lifetime the
+    enclosing statement bounds -- `is_temporary_expr` restricted to the shapes
+    that can occupy a generator/coroutine factory's borrowed slot (a non-value
+    ref / readonly-ref param, or the storage a borrowing-view param aliases).
+    The frame borrows past the statement, so every such temporary must
+    materialize as a named scope-local.
+
+    A `str` / `bytes` LITERAL counts: its own render is a view over static
+    storage, but the frame that receives it must still hold a named local, and
+    a str-family argument is the one place where the OWNED form of the hoisted
+    local differs from what the argument position renders. Scalar literals
+    (int / float / bool) are omitted -- the only slots they reach are the
+    primitive ones the frame rule excludes anyway."""
+    if isinstance(a, _CONTAINER_LITERAL_NODES):
+        return True
+    if isinstance(a, (TpyBinOp, TpyUnaryOp, TpyFString,
+                      TpyStrLiteral, TpyBytesLiteral)):
+        return True
+    if isinstance(a, TpyCoerce):
+        # A Ptr deref coercion is an lvalue; every other coercion produces
+        # a temporary (is_temporary_expr's coerce arm, non-recursive).
+        return not isinstance(a.actual_type, PtrType)
+    if isinstance(a, (TpyCall, TpyMethodCall)):
+        return is_rvalue_source(analyzer, a)
+    if isinstance(a, TpySubscript):
+        ct = analyzer.get_expr_type(a.obj)
+        ct = unwrap_readonly(ct) if ct is not None else None
+        return isinstance(ct, NominalType) and ct.is_user_record
+    return False
+
+
+def borrowing_frame_callee(fi: 'FunctionInfo | None') -> bool:
+    """Does this callee's FRAME borrow an argument slot past the statement,
+    so a prvalue bound only for the full expression dangles on resume?
+
+    The simple-generator peephole does: its lambda captures a generic `T`
+    parameter by reference, a capture form decided on the OPEN `T`
+    (`BUGS.md#simple-generator-captures-open-t-param-by-reference`). A
+    RESUMABLE generator frame and a coroutine frame do not -- both copy the
+    argument into a `val_or_ref_t<T>` member in the frame constructor,
+    inside the full expression (verified for the coroutine by ASAN with the
+    temp elided). A BORROWING-VIEW slot is the exception to that copy: the
+    copied value IS a borrow, so `frame_temp_arg_source` answers for it
+    on top of this one.
+
+    Which of the two a generator lowers to is `is_simple_generator`, a
+    predicate over the callee's `TpyFunction` that this seam cannot reach:
+    a call site holds a `FunctionInfo`, and the peephole verdict is
+    finalized during codegen (`_prescan_for_src_embedding` may force a
+    simple generator resumable). So every generator factory is treated as
+    borrowing, which costs a resumable one a temp it does not need --
+    TODO.md carries that residue and the two ways to remove it.
+
+    The fact is the CALLEE's, so it must not depend on how the call was
+    resolved. `is_generator` answers for a plain or generic callee; an
+    @overload-ed one carries False on every per-signature fi while the IMPL is
+    the generator, and there the DECLARED `typing.Iterator` return answers --
+    sema forbids that return on a non-generator plain-TPy function, so nothing
+    else can wear it. `@native` / `@cpp_template` callees are excluded: their
+    `Iterator[T]` returns are C++ combinator objects (map / zip / filter /
+    iter), not frames. Same rule and the same exclusions as
+    `_genfac_like_call`, one level down (an fi, not a call), so the two cannot
+    drift."""
+    if fi is None:
+        return False
+    if getattr(fi, "is_generator", False):
+        return True
+    if (getattr(fi, "native_function", False)
+            or getattr(fi, "cpp_template", None)
+            or getattr(fi, "is_stub", False)):
+        return False
+    rt = getattr(fi, "return_type", None)
+    if not isinstance(rt, TpyType):
+        return False
+    rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
+    return (isinstance(rt, NominalType) and rt.is_protocol
+            and rt.qualified_name() == "typing.Iterator")
+
+
+def frame_temp_arg_source(a: TpyExpr, ptype: 'TpyType | None',
+                          analyzer) -> 'TpyExpr | None':
+    """The SOURCE expression a TEMPORARY argument to a generator/coroutine
+    factory materializes, and which must therefore be hoisted to a named local
+    of the block that owns the handle -- or None when nothing is owed.
+
+    THE INVARIANT: a frame never receives a temporary. Whatever a frame does
+    with an argument -- keep a `T&`, keep a view whose VALUE is a borrow, copy
+    it into an owned field -- it does it after the full expression that built
+    the argument has ended, so every argument it is handed must already be a
+    named local (or, for an inline `await`, a slot of the awaiter's own frame).
+    That is one rule over every slot, and it needs no taxonomy of which C++
+    shapes alias their source: the hoist is what makes the question moot.
+
+    Three slots are excluded, none by type taxonomy: a PRIMITIVE param
+    (register-sized, trivially copyable, nothing to borrow), a `Ptr[T]` param
+    (a pointer VALUE the frame copies -- what it points at is the caller's
+    problem, and naming the pointer pins nothing the pointee did not already
+    outlive) and an `Own[T]` param (the frame takes ownership -- the temporary
+    moves in, which is exactly what an unnamed rvalue is for). Everything else
+    hoists, literals included: the hoisted local is then passed through the same per-param
+    coercion the argument already went through, so an owning sink still moves,
+    a borrowing sink still views, and a value sink still copies.
+
+    Two callers ask: the lowering rows that BUILD the hoist
+    (`frame_temp_arg_slot`, which adds the storage type on top), and the sema
+    dangling-borrow warnings, which must not fire where the hoist has already
+    pinned the storage. Both must read one answer -- a second copy of this
+    shape rule is how a warning and a hoist drift into disagreeing about the
+    same argument."""
+    pt = unwrap_ref_type(ptype) if isinstance(ptype, TpyType) else None
+    if pt is None:
+        return None
+    if unwrap_optional_own(unwrap_readonly(pt)) is not None:
+        return None
+    bare = unwrap_readonly(unwrap_send_sync(pt))
+    if is_primitive_type(bare) or isinstance(bare, PtrType):
+        return None
+    src = peel_coerce(a)
+    if not materializing_temp_source(src, analyzer):
+        return None
+    return src
 
 
 def peel_value_wrappers(expr: TpyExpr) -> TpyExpr:

@@ -8,9 +8,18 @@
 namespace tpyapp::main {
 
 struct Node;
+struct Bag;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_fresh_records;
+struct __gen_fresh_rows;
+struct __gen_Bag_drain;
+
+Node mk(int32_t v);
+std::vector<int32_t> mk_row(int32_t v);
+__gen_fresh_records fresh_records(std::vector<Node>& src);
+__gen_fresh_rows fresh_rows(std::vector<std::vector<int32_t>>& src);
 void main();
 
 // class Node:
@@ -29,9 +38,114 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
     return os;
 }
 
+// class Bag:
+struct Bag {
+    // items: list[Node]
+    std::vector<Node> items;
+
+    // def __init__(self) -> None:
+    Bag();
+
+    __gen_Bag_drain drain() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
+    ::tpy::print_object_default(os, "Bag", obj);
+    return os;
+}
+
+// Generator: fresh_records
+struct __gen_fresh_records : public ::tpy::next_iter_mixin<__gen_fresh_records, Node> {
+    int32_t __state;
+    std::vector<Node>& src;
+    Node* p = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Node>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Node>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_fresh_records(std::vector<Node>& src)
+        : __state(S_INITIAL), src(src) {}
+
+    std::expected<Node, ::tpy::StopIteration> __next__();
+    __gen_fresh_records& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_fresh_records&) {
+        return os << "<generator fresh_records>";
+    }
+};
+
+// Generator: fresh_rows
+struct __gen_fresh_rows : public ::tpy::next_iter_mixin<__gen_fresh_rows, std::vector<int32_t>> {
+    int32_t __state;
+    std::vector<std::vector<int32_t>>& src;
+    std::vector<int32_t>* r = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::vector<int32_t>>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::vector<int32_t>>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_fresh_rows(std::vector<std::vector<int32_t>>& src)
+        : __state(S_INITIAL), src(src) {}
+
+    std::expected<std::vector<int32_t>, ::tpy::StopIteration> __next__();
+    __gen_fresh_rows& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_fresh_rows&) {
+        return os << "<generator fresh_rows>";
+    }
+};
+
+// Generator: Bag.drain
+struct __gen_Bag_drain : public ::tpy::next_iter_mixin<__gen_Bag_drain, Node> {
+    int32_t __state;
+    const Bag& __self;
+    const Node* p = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<Node>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<const std::vector<Node>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_Bag_drain(const Bag& __self)
+        : __state(S_INITIAL), __self(__self) {}
+
+    std::expected<Node, ::tpy::StopIteration> __next__();
+    __gen_Bag_drain& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_Bag_drain&) {
+        return os << "<generator Bag.drain>";
+    }
+};
+
+inline __gen_Bag_drain Bag::drain() const {
+    return __gen_Bag_drain(*this);
+}
+
 
 // def __init__(self, v: int):
 inline Node::Node(const ::tpy::BigInt& v) : val(v) {}
+
+// def __init__(self) -> None:
+inline Bag::Bag() : items(std::vector<Node>{Node(::tpy::BigInt(7))}) {}
 inline auto boxes(const ::tpy::BigInt& n) {
     return ::tpy::make_generator<Node>(
         [n, __i = ::tpy::BigInt(0), __stop = static_cast<::tpy::BigInt>(n)]() mutable -> std::optional<Node> {

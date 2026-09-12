@@ -1,1 +1,3 @@
+main.py:17: warning: copies Inner into field; use copy() to make this explicit
+main.py:24: warning: copies Outer into field; use copy() to make this explicit
 main.py:29: error: in function 'get_value': this construct is not yet supported by C++ code generation (stmt.if:if.cond_binop.is not.optional_other_nonetype:binop.shape.is not)

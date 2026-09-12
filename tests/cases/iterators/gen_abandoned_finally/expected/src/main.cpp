@@ -68,7 +68,8 @@ __gen_gen gen(std::string_view tag) {
 void temp_source() {
     // for x in gen("temp"):
     {
-        auto __src_0 = gen("temp");
+        std::string __tmp_1 = "temp";
+        auto __src_0 = gen(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -87,7 +88,8 @@ void temp_source() {
 // def named_source() -> None:
 void named_source() {
     // g = gen("named")
-    auto g = gen("named");
+    std::string __tmp_2 = "named";
+    auto g = gen(__tmp_2);
     // for x in g:
     auto& __src_0 = g;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -108,7 +110,8 @@ void named_source() {
 void exhausted() {
     // for x in gen("full"):
     {
-        auto __src_0 = gen("full");
+        std::string __tmp_3 = "full";
+        auto __src_0 = gen(__tmp_3);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();

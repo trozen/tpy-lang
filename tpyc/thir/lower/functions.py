@@ -1691,8 +1691,8 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
         # param name (`on_event(cb)`) or a routable LAMBDA literal
         # (`self.action = lambda: print(0)` -> `action([]() { ... })` -- the
         # closure converts implicitly in the member direct-init). A
-        # self-capturing lambda stays out (self_this defaults False: the MIL
-        # never confirmed the `this` receiver spelling). The
+        # self-capturing lambda stays out (self_capturable defaults False:
+        # the MIL never confirmed a receiver handle to copy). The
         # `Send[...]` wrapper is erased in storage form on BOTH sides, so it
         # is peeled off the field type as well as the param's -- comparing a
         # peeled param against an unpeeled field would reject a pair that

@@ -71,6 +71,7 @@ struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
     std::tuple<int32_t, std::string> p;
+    std::string __coro_arg_0;
     std::optional<__coro_make_pair<int32_t, std::string>> __sub_0;
 
     enum : int32_t {

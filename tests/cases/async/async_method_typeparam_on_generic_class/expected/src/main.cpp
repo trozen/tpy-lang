@@ -9,7 +9,8 @@ void main() {
     // b = Box(42)
     Box<int32_t> b = Box<int32_t>(42);
     // print(asyncio.run(b.with_label("hello")))
-    std::cout << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(b.with_label<std::string>("hello"))) << "\n";
+    std::string __tmp_1 = "hello";
+    std::cout << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(b.with_label<std::string>(__tmp_1))) << "\n";
     // print(asyncio.run(b.with_label(99)))
     std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(b.with_label<int32_t>(99))) << "\n";
 }

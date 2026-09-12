@@ -1,1 +1,2 @@
+main.py:10: warning: may copy T into field if not a value type; use copy() to make this explicit
 main.py:18: error: Conflicting type for 'T' in 'Pair': previously inferred as 'Int32', but expected type requires 'Int64'

@@ -1,2 +1,3 @@
+main.py:6: warning: Own[T] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
 main.py:11: error: Type argument 'T' does not satisfy bound 'Send' for type parameter 'T' of 'needs_send'
 T is not Send (unresolved type parameter 'T')

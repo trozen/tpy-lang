@@ -1,1 +1,2 @@
+main.py:24: warning: returns a copy of str field 'self.label'; use -> StrView for zero-copy access or -> String to silence this warning
 main.py:28: error: Protocol type 'Pet' cannot be used as a type argument. Protocols are only valid as function and method parameters

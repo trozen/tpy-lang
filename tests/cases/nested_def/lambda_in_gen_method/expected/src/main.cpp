@@ -10,6 +10,162 @@ int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t v) {
     return f(v);
 }
 
+// def push(ys: list[Int32], v: Int32) -> Int32:
+int32_t push(std::vector<int32_t>& ys, int32_t v) {
+    // ys.append(v)
+    ys.push_back(v);
+    // return len(ys)
+    return ::tpy::__len__(ys);
+}
+
+// def two_yield(n: Int32) -> Iterator[Int32]:
+std::expected<int32_t, ::tpy::StopIteration> __gen_two_yield::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // yield apply(lambda x: x + n, 1)  # tpyc: ok
+        __state = S_RESUME_0;
+        return apply([n = n](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, n)); }, 1);
+    }
+    case S_RESUME_0: {
+        // yield apply(lambda x: x + n, 2)  # tpyc: ok
+        __state = S_RESUME_1;
+        return apply([n = n](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, n)); }, 2);
+    }
+    case S_RESUME_1: {
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def two_yield(n: Int32) -> Iterator[Int32]:
+__gen_two_yield two_yield(int32_t n) {
+    return __gen_two_yield(n);
+}
+
+// def store(n: Int32, r: Registry) -> Iterator[Int32]:
+std::expected<int32_t, ::tpy::StopIteration> __gen_store::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // r.register(lambda x: x + n)  # tpyc: ok
+        r.register_([n = n](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, n)); });
+        // yield 1
+        __state = S_RESUME_0;
+        return 1;
+    }
+    case S_RESUME_0: {
+        // yield 2
+        __state = S_RESUME_1;
+        return 2;
+    }
+    case S_RESUME_1: {
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def store(n: Int32, r: Registry) -> Iterator[Int32]:
+__gen_store store(int32_t n, Registry& r) {
+    return __gen_store(n, r);
+}
+
+// def cell() -> Iterator[Int32]:
+std::expected<int32_t, ::tpy::StopIteration> __gen_cell::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // step = 1
+        step = 1;
+        // f: Callable[[Int32], Int32] = lambda x: x + step  # tpyc: warning(/reassigned after the closure is created/)
+        f = [step = step](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, step)); };
+        // yield apply(f, 1)
+        __state = S_RESUME_0;
+        return apply(f, 1);
+    }
+    case S_RESUME_0: {
+        // step = 100
+        step = 100;
+        // yield step
+        __state = S_RESUME_1;
+        return step;
+    }
+    case S_RESUME_1: {
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def cell() -> Iterator[Int32]:
+__gen_cell cell() {
+    return __gen_cell();
+}
+
+// def ref_capture(xs: list[Int32]) -> Iterator[Int32]:
+std::expected<int32_t, ::tpy::StopIteration> __gen_ref_capture::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // yield apply_fn(lambda v: push(xs, v), 9)  # tpyc: ok
+        __state = S_RESUME_0;
+        return apply_fn([&xs = xs](int32_t v) -> int32_t { return push(xs, v); }, 9);
+    }
+    case S_RESUME_0: {
+        // yield apply_fn(lambda i: xs[i], 2)  # tpyc: ok
+        __state = S_RESUME_1;
+        return apply_fn([&xs = xs](int32_t i) -> int32_t { return ::tpy::__getitem__(xs, i); }, 2);
+    }
+    case S_RESUME_1: {
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def ref_capture(xs: list[Int32]) -> Iterator[Int32]:
+__gen_ref_capture ref_capture(std::vector<int32_t>& xs) {
+    return __gen_ref_capture(xs);
+}
+
+// def own_capture(p: Own[Pt]) -> Iterator[Int32]:
+std::expected<int32_t, ::tpy::StopIteration> __gen_own_capture::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // yield apply(lambda i: i + p.x, 1)  # tpyc: ok
+        __state = S_RESUME_0;
+        return apply([p = p](int32_t i) -> int32_t { return (::tpy::add_check<int32_t>(i, p.x)); }, 1);
+    }
+    case S_RESUME_0: {
+        // yield apply(lambda i: i + p.x, 2)  # tpyc: ok
+        __state = S_RESUME_1;
+        return apply([p = p](int32_t i) -> int32_t { return (::tpy::add_check<int32_t>(i, p.x)); }, 2);
+    }
+    case S_RESUME_1: {
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def own_capture(p: Own[Pt]) -> Iterator[Int32]:
+__gen_own_capture own_capture(Pt p) {
+    return __gen_own_capture(std::move(p));
+}
+
 // def main() -> None:
 void main() {
     // c = C()
@@ -22,11 +178,117 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-        // print(v)
-        std::cout << v << "\n";
+        // print("peephole", v)
+        std::cout << "peephole" << " " << v << "\n";
+        }
+    }
+    // for v2 in D().emit():
+    {
+        D __tmp_1 = D();
+        auto __src_2 = __tmp_1.emit();
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            int32_t v2 = ::tpy::unwrap_ref(*__r_3);
+        // print("method", v2)
+        std::cout << "method" << " " << v2 << "\n";
+        }
+    }
+    // for v3 in two_yield(10):
+    {
+        auto __src_4 = two_yield(10);
+        auto&& __itr_4 = ::tpy::__iter__(__src_4);
+        for (;;) {
+            auto __r_5 = __itr_4.__next__();
+            if (!__r_5.has_value()) break;
+            int32_t v3 = ::tpy::unwrap_ref(*__r_5);
+        // print("free", v3)
+        std::cout << "free" << " " << v3 << "\n";
+        }
+    }
+    // r = Registry()
+    Registry r = Registry();
+    // for v4 in store(10, r):
+    {
+        auto __src_6 = store(10, r);
+        auto&& __itr_6 = ::tpy::__iter__(__src_6);
+        for (;;) {
+            auto __r_7 = __itr_6.__next__();
+            if (!__r_7.has_value()) break;
+            int32_t v4 = ::tpy::unwrap_ref(*__r_7);
+        // print("store", v4)
+        std::cout << "store" << " " << v4 << "\n";
+        }
+    }
+    // print("store cb", r.cb(1))
+    std::cout << "store cb" << " " << r.cb(1) << "\n";
+    // for v5 in cell():
+    {
+        auto __src_8 = cell();
+        auto&& __itr_8 = ::tpy::__iter__(__src_8);
+        for (;;) {
+            auto __r_9 = __itr_8.__next__();
+            if (!__r_9.has_value()) break;
+            int32_t v5 = ::tpy::unwrap_ref(*__r_9);
+        // print("cell", v5)
+        std::cout << "cell" << " " << v5 << "\n";
+        }
+    }
+    // src = [1, 2]
+    std::vector<int32_t> src = {1, 2};
+    // for v6 in ref_capture(src):
+    {
+        auto __src_10 = ref_capture(src);
+        auto&& __itr_10 = ::tpy::__iter__(__src_10);
+        for (;;) {
+            auto __r_11 = __itr_10.__next__();
+            if (!__r_11.has_value()) break;
+            int32_t v6 = ::tpy::unwrap_ref(*__r_11);
+        // print("ref", v6)
+        std::cout << "ref" << " " << v6 << "\n";
+        }
+    }
+    // print("ref after", src)
+    std::cout << "ref after" << " " << ::tpy::ListPrinter(src) << "\n";
+    // for v7 in own_capture(Pt(5)):
+    {
+        auto __src_12 = own_capture(Pt(5));
+        auto&& __itr_12 = ::tpy::__iter__(__src_12);
+        for (;;) {
+            auto __r_13 = __itr_12.__next__();
+            if (!__r_13.has_value()) break;
+            int32_t v7 = ::tpy::unwrap_ref(*__r_13);
+        // print("own", v7)
+        std::cout << "own" << " " << v7 << "\n";
         }
     }
 }
+
+// def emit(self) -> Iterator[Int32]:
+std::expected<int32_t, ::tpy::StopIteration> __gen_D_emit::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // yield apply(lambda x: x + self.n, 1)  # tpyc: ok
+        __state = S_RESUME_0;
+        return apply([&__self = __self](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, __self.n)); }, 1);
+    }
+    case S_RESUME_0: {
+        // self.n = 100
+        __self.n = 100;
+        // yield apply(lambda x: x + self.n, 2)  # tpyc: ok
+        __state = S_RESUME_1;
+        return apply([&__self = __self](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, __self.n)); }, 2);
+    }
+    case S_RESUME_1: {
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
 
 void __tpy_init() {
     static bool initialized = false;

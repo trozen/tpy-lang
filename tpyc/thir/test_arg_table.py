@@ -960,21 +960,21 @@ class TestPlainSinkShape:
         assert ("str_literal_value_opt"
                 not in {r.row for r in _PLAIN_ARG_SINK.rows})
 
-    def test_self_this_reaches_the_lambda_row(self):
+    def test_self_capturable_reaches_the_lambda_row(self):
         # The one per-call input this family adds. It defaults False, which
         # is what every other family spelled, so the lambda cell stays
         # shared instead of forking into a plain-only copy.
         seen = []
 
         def _spy(req):
-            seen.append(req.self_this)
+            seen.append(req.self_capturable)
             return False
 
         sink = _ArgSink(family="t_self", note="x.y",
                         rows=(_ArgRow("t_self1", _spy),))
         assert arg_ok(sink, None, None, {}, None, param_names=frozenset(),
                       narrowed=frozenset(), temps_ok=False,
-                      self_this=True) is False
+                      self_capturable=True) is False
         assert arg_ok(sink, None, None, {}, None, param_names=frozenset(),
                       narrowed=frozenset(), temps_ok=False) is False
         assert seen == [True, False]

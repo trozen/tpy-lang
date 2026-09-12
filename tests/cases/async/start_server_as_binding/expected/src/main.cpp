@@ -52,8 +52,9 @@ __coro_handle handle(::tpystd::asyncio::StreamReader reader, ::tpystd::asyncio::
 ::tpystd::tpy::Poll<std::string> __coro_client::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
+        __coro_arg_0 = "127.0.0.1";
         // reader, writer = await asyncio.open_connection("127.0.0.1", port)
-        __sub_0.emplace("127.0.0.1", port);
+        __sub_0.emplace(__coro_arg_0, port);
         __state = S_RESUME_0;
         continue;
     }
@@ -120,8 +121,9 @@ __coro_client client(int32_t port, std::string_view msg) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
+        __coro_arg_0 = "127.0.0.1";
         // server = await asyncio.start_server(handle, "127.0.0.1", 0)
-        __sub_0.emplace([](::tpystd::asyncio::StreamReader&& __a0, ::tpystd::asyncio::StreamWriter&& __a1) -> std::unique_ptr<::tpystd::coro::Cancellable<std::monostate>> { return ::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(handle(std::move(__a0), std::move(__a1))); }, "127.0.0.1", 0);
+        __sub_0.emplace([](::tpystd::asyncio::StreamReader&& __a0, ::tpystd::asyncio::StreamWriter&& __a1) -> std::unique_ptr<::tpystd::coro::Cancellable<std::monostate>> { return ::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(handle(std::move(__a0), std::move(__a1))); }, __coro_arg_0, 0);
         __state = S_RESUME_0;
         continue;
     }
@@ -216,8 +218,9 @@ __coro_client client(int32_t port, std::string_view msg) {
         try {
             // port = srv.sockets[0].getsockname()[1]
             port = std::get<1>(srv->sockets[0].getsockname());
+            __coro_arg_1 = "ping";
             // print(await client(port, "ping"))
-            __sub_2.emplace(port, "ping");
+            __sub_2.emplace(port, __coro_arg_1);
             __state = S_RESUME_2;
             continue;
         } catch (...) {

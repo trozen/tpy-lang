@@ -1,1 +1,3 @@
+main.py:23: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
+main.py:23: warning: Assigning to ClassVar 'C.n' via instance writes to class storage in TPy (CPython creates an instance attribute); use 'C.n = ...' for portability
 main.py:23: error: in function 'store': this construct is not yet supported by C++ code generation (stmt.assign:assign.field_write_shape)

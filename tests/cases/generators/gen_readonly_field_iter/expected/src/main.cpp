@@ -4,6 +4,38 @@
 namespace tpyapp::main {
 
 
+// def alias_param(h: Holder) -> Iterator[Int32]:
+std::expected<int32_t, ::tpy::StopIteration> __gen_alias_param::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // a = h.plain  # tpyc: ok
+        a = &(h.plain);
+        // yield a[1]
+        __state = S_RESUME_0;
+        return ::tpy::__getitem__((*a), 1);
+    }
+    case S_RESUME_0: {
+        // h.plain[1] = 222
+        ::tpy::__setitem__(h.plain, 1, 222);
+        // yield a[1]
+        __state = S_RESUME_1;
+        return ::tpy::__getitem__((*a), 1);
+    }
+    case S_RESUME_1: {
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def alias_param(h: Holder) -> Iterator[Int32]:
+__gen_alias_param alias_param(Holder& h) {
+    return __gen_alias_param(h);
+}
+
 // def main() -> None:
 void main() {
     // h = Holder()
@@ -14,6 +46,14 @@ void main() {
     std::cout << ::tpy::builtin_sum<int32_t>(h.via_alias()) << "\n";
     // print(sum(h.simple_alias()))
     std::cout << ::tpy::builtin_sum<int32_t>(h.simple_alias()) << "\n";
+    // h2 = Holder()
+    Holder h2 = Holder();
+    // print("live", list(h2.live_alias()))
+    std::cout << "live" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(h2.live_alias())) << "\n";
+    // h3 = Holder()
+    Holder h3 = Holder();
+    // print("param", list(alias_param(h3)))
+    std::cout << "param" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(alias_param(h3))) << "\n";
     // b = Bumper()
     Bumper b = Bumper();
     // print(sum(b.bump()))
@@ -93,6 +133,33 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_via_alias::__next__() 
         // yield x
         __state = S_RESUME_0;
         return x;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def live_alias(self) -> Iterator[Int32]:
+std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_live_alias::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // a = self.plain  # tpyc: ok
+        a = &(__self.plain);
+        // yield a[0]
+        __state = S_RESUME_0;
+        return ::tpy::__getitem__((*a), 0);
+    }
+    case S_RESUME_0: {
+        // self.plain[0] = 111
+        ::tpy::__setitem__(__self.plain, 0, 111);
+        // yield a[0]
+        __state = S_RESUME_1;
+        return ::tpy::__getitem__((*a), 0);
+    }
+    case S_RESUME_1: {
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

@@ -54,10 +54,20 @@ void main() {
         std::cout << n << "\n";
         }
     }
-    // # Temporary source: the view borrows it, so this warns. Constructed but not
-    // # iterated -- we only assert the diagnostic, not run the (opted-in) UB.
-    // g = lengths(make_tmp())  # tpyc: warning(/borrows from temporary/)
-    auto g = lengths(make_tmp());
+    // # Temporary source: hoisted, so the view reads live storage on both pulls.
+    // g = lengths(make_tmp())  # tpyc: ok
+    std::string __tmp_1 = make_tmp();
+    auto g = lengths(__tmp_1);
+    // for n in g:
+    auto& __src_2 = g;
+    auto&& __itr_2 = ::tpy::__iter__(__src_2);
+    for (;;) {
+        auto __r_3 = __itr_2.__next__();
+        if (!__r_3.has_value()) break;
+        const ::tpy::BigInt& n = ::tpy::unwrap_ref(*__r_3);
+        // print(n)
+        std::cout << n << "\n";
+    }
 }
 
 void __tpy_init() {

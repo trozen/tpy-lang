@@ -110,6 +110,7 @@ from ...type_def_registry import (
     is_basic_slice_type,
     is_big_int_type,
     is_bool_type,
+    is_borrowing_view_type,
     is_bytearray_type,
     is_bytes_type,
     is_bytes_view_type,
@@ -134,7 +135,10 @@ from ...coercions import CoercionContext
 from ...value_category import (
     _CONTAINER_LITERAL_NODES,
     call_returns_cpp_ref,
+    frame_temp_arg_source,
     is_rvalue_source,
+    materializing_temp_source,
+    peel_coerce,
 )
 from ...codegen_cpp.type_resolution import resolve_stmt_binding_type
 from ...codegen_cpp.forms import (
@@ -2121,11 +2125,9 @@ def _bytes_concat_operand(e: TpyExpr, t: TpyType | None, analyzer) -> bool:
     return bool(tu is not None and is_bytearray_type(tu)
                 and _witness("binop.bytearray_operand"))
 
-def _peel_coerce(e: TpyExpr) -> TpyExpr:
-    """The expression under any stack of TpyCoerce wrappers."""
-    while isinstance(e, TpyCoerce):
-        e = e.expr
-    return e
+# The value-category module owns the one definition; the private spelling is
+# what the rest of thir/lower imports from here.
+_peel_coerce = peel_coerce
 
 def _str_self_append_rhs(target_name: str, value: TpyExpr) -> 'TpyExpr | None':
     """The `x = x + y` self-append trigger: peel any TpyCoerce wrappers, then
@@ -7340,6 +7342,20 @@ def _f2_reseat_ok(init: TpyExpr, declared: dict[str, TpyType], analyzer) -> bool
     return (_field_receiver_ok(init, declared, analyzer)
             and _f1_record(analyzer.get_expr_type(init), analyzer))
 
+def _alias_field_source_ok(init: TpyExpr, declared: dict[str, TpyType],
+                           analyzer) -> bool:
+    """`_f2_reseat_ok`'s reference-AXIS sibling: an lvalue field read off an
+    F1-record receiver whose field is any reference type -- record or
+    container alike -- so an alias local binds `a = &(recv.field);`.
+
+    A separate predicate rather than a widening of `_f2_reseat_ok`: that one
+    gates the sync pointer-local RESEAT, whose container flavor has its own
+    emit, so the two axes must not move together. Both halves here take the
+    identical FIELD-source render, which is why one predicate spans them
+    (docs/PITFALLS.md#same-construct-every-position)."""
+    return (_field_receiver_ok(init, declared, analyzer)
+            and _f1_ref(analyzer.get_expr_type(init), analyzer))
+
 def _f1_param_lvalue_reseat_ok(init: TpyExpr, pointee: TpyType,
                                declared: dict[str, TpyType], lc, analyzer) -> bool:
     """A pointer-repr `Optional` local reseat source that lifts via `&(name)`: a
@@ -9973,27 +9989,38 @@ def _strview_coerce_name(a: TpyExpr) -> 'TpyName | None':
         return a.expr
     return None
 
-def _factory_borrow_temp_arg(a: TpyExpr, analyzer) -> bool:
-    """`ctx.is_temporary_expr` restricted to the shapes that can occupy a
-    non-value ref / readonly-ref slot of a generator/coro factory method:
-    the frame borrows the param past the statement, so every temporary must
-    materialize as a named scope-local. Scalar-literal arms are omitted
-    (a value-typed slot is never a ref param under the caller's guard)."""
-    if isinstance(a, _CONTAINER_LITERAL_NODES):
-        return True
-    if isinstance(a, (TpyBinOp, TpyUnaryOp)):
-        return True
-    if isinstance(a, TpyCoerce):
-        # A Ptr deref coercion is an lvalue; every other coercion produces
-        # a temporary (is_temporary_expr's coerce arm, non-recursive).
-        return not isinstance(a.actual_type, PtrType)
-    if isinstance(a, (TpyCall, TpyMethodCall)):
-        return is_rvalue_source(analyzer, a)
-    if isinstance(a, TpySubscript):
-        ct = analyzer.get_expr_type(a.obj)
-        ct = unwrap_readonly(ct) if ct is not None else None
-        return isinstance(ct, NominalType) and ct.is_user_record
-    return False
+def frame_temp_arg_slot(a: TpyExpr, ptype: 'TpyType | None',
+                        analyzer) -> 'TpyType | None':
+    """The OWNED storage type to hoist for a TEMPORARY argument at a
+    generator/coroutine factory call -- `frame_temp_arg_source`'s shape verdict
+    plus the type the hoisted local is spelled with. None when no hoist is
+    owed.
+
+    The hoisted local is the SOURCE's owned form, not the slot's: a str/bytes
+    argument hoists as `std::string` / `::tpy::Bytes` however the param spells
+    it, because a local of the view form would pin nothing. A container
+    literal's still-PENDING type is resolved first (sema's resolution is final
+    by now); an UNRESOLVED one is returned as-is so the render arm rejects on
+    it rather than fall through to the inline prvalue this row exists to
+    remove."""
+    src = frame_temp_arg_source(a, ptype, analyzer)
+    if src is None:
+        return None
+    st = analyzer.get_expr_type(src)
+    st = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(st)))
+          if st is not None else None)
+    if st is None or not isinstance(st, TpyType):
+        return None
+    fam = view_family_for_type(st)
+    if fam is not None:
+        return fam.owned_type
+    st = resolve_pending_container(st, analyzer) or st
+    if isinstance(st, (IntLiteralType, LiteralType)):
+        # A literal source carries no type of its own to spell a local with
+        # (`Literal[-17]` has no C++ render); it was resolving to the SLOT's
+        # type, so that is what the local holds.
+        return unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+    return st
 
 def _own_cascade_fires(ptype: TpyType | None) -> bool:
     """Whether the call-argument ownership cascade fires for this slot: an

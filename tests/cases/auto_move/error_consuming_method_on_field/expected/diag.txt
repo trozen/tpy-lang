@@ -1,1 +1,2 @@
+main.py:18: warning: copies Inner into field; use copy() to make this explicit
 main.py:21: error: Cannot call consuming method 'take' on a field; only local variables and temporaries are allowed

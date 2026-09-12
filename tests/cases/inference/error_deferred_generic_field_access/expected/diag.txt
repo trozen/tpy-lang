@@ -1,1 +1,2 @@
+main.py:9: warning: may copy T into field if not a value type; use copy() to make this explicit
 main.py:13: error: Cannot access field 'val' on 'Container' until its type arguments are resolved; call a constraining method first or add explicit type arguments to the constructor

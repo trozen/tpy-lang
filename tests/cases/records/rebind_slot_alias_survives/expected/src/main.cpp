@@ -18,7 +18,7 @@ void alias_survives_rebind() {
     Counter* c = &__slot_1;
     // alias = c
     Counter& alias = (*c);
-    // c = Counter(10)
+    // c = Counter(10)  # tpyc: ok
     c = &*(__slot_2 = Counter(10));
     // alias.bump()
     alias.bump();
@@ -38,7 +38,7 @@ void rebind_in_loop() {
     int32_t i = 0;
     // while i < 3:
     while ((i < 3)) {
-        // c = Counter(i)
+        // c = Counter(i)  # tpyc: ok
         c = &*(__slot_2 = Counter(i));
         // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);

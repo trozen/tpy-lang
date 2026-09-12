@@ -1,0 +1,1 @@
+main.py:15: error: in function 'gen': this construct is not yet supported by C++ code generation (expr.lambda)

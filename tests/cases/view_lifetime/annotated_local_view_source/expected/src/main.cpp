@@ -117,7 +117,8 @@ void main() {
     hoisted_branch("first", false);
     // for n in gen_frame("frame"):
     {
-        auto __src_0 = gen_frame("frame");
+        std::string __tmp_1 = "frame";
+        auto __src_0 = gen_frame(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();

@@ -1,1 +1,2 @@
+main.py:19: warning: copies Inner | None into field; use copy() to make this explicit
 main.py:23: error: binding a `T | None` field from a non-lvalue `match` subject inside a generator/`async` is not yet supported (the binding would dangle across a suspension); bind the subject to a local first

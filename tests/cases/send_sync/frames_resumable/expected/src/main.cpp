@@ -214,7 +214,8 @@ void main() {
     // print(asyncio.run(c.bump()))
     std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(c.bump())) << "\n";
     // print(list(gen_while(3)), list(gen_for(3)), list(gen_str("abc")))
-    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(gen_while(3))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(gen_for(3))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(gen_str("abc"))) << "\n";
+    std::string __tmp_1 = "abc";
+    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(gen_while(3))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(gen_for(3))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(gen_str(__tmp_1))) << "\n";
     // print(list(gen_own([4, 5])))
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(gen_own({4, 5}))) << "\n";
     // print(asyncio.run(tup_ref((Counter(2), Counter(3)))))

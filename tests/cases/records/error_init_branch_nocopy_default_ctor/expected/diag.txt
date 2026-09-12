@@ -1,1 +1,2 @@
+main.py:15: warning: field 'tok' is not initialized before the constructor body; it will be default-constructed in C++ (in CPython, the attribute would not exist)
 main.py:16: error: field 'tok' of type 'Token' assigned inside control flow in __init__; 'Token' is move-only or has '__del__', so it must be initialized unconditionally before any branch

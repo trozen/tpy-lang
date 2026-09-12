@@ -82,3 +82,27 @@ def test_read_only_ok() -> None:
         total += x        # tpyc: ok
         _ = len(items)    # tpyc: ok
         _ = items[Int32(0)]  # tpyc: ok
+
+def test_outer_loan_survives_inner_while() -> None:
+    """A loop shape that takes no iterator loan must not expire the outer one."""
+    items: list[Int32] = [1, 2]
+    i: Int32 = 0
+    for x in items:
+        while i < 2:
+            i += 1
+        items.append(x)  # tpyc: warning(/Mutation of 'items'.*'append'/)
+
+def test_else_clause_ok() -> None:
+    """The `else` clause runs after the iterator is done -- mutating there is fine."""
+    items: list[Int32] = [1, 2]
+    total: Int32 = 0
+    for x in items:
+        total += x
+    else:
+        items.append(3)  # tpyc: ok
+    print("else_clause:", total, len(items))
+
+def main() -> None:
+    test_else_clause_ok()
+
+main()

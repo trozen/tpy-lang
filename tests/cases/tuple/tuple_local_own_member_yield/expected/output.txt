@@ -1,3 +1,38 @@
-0 0
-1 10
-2 20
+free 0 0
+free 1 10
+free 2 20
+twice 0 1
+twice 100 1
+twice 1 11
+twice 101 2
+call 0 0
+call 100 1000
+call 1 10
+call 101 1010
+call-once 0 1
+call-once 1 11
+borrowed-consumer 0 0
+borrowed 0
+borrowed-consumer 100 1000
+borrowed-consumer 1 10
+borrowed 10
+borrowed-consumer 101 1010
+dead-borrow 0
+dead-consumer 0 0
+dead-consumer 100 1000
+dead-borrow 10
+dead-consumer 1 10
+dead-consumer 101 1010
+preloop 7 70
+preloop 7 70
+preloop-kept 70
+live 0 0
+live-gen 0
+live 0 0
+live 1 10
+live-gen 10
+live 1 1
+method 100 0
+method 100 0
+method 101 10
+method 99 1
