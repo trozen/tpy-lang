@@ -217,6 +217,7 @@ from .predicates import (
     _f1_record,
     _f1_ref,
     _method_rvalue_f1_record,
+    _union_member_match,
     _native_iter_value_slot,
     _protocol_auto_slot,
     _type_param_value_slot,
@@ -7155,7 +7156,9 @@ def _union_member_lift_arg(a: TpyExpr, ptype: TpyType | None,
                            locals_: dict[str, TpyType], analyzer) -> bool:
     """The temp-free member rows of the union-arg pointer-variant branch:
     a `None` literal (`pv{std::monostate{}}`) or a member-typed record NAME
-    (`pv{&(name)}` -- never a temp: names are never rvalue sources) into a
+    (`pv{&(name)}` -- never a temp: names are never rvalue sources; a name
+    deriving from exactly one member counts, the ctor binding the base
+    pointer) into a
     non-Own pointer-variant slot. A deep-const slot (a `readonly[...]`
     annotation or the callee's `const_borrow_params` verdict) takes the
     same lift with the const-pointee variant spelling, decided at
@@ -7175,7 +7178,7 @@ def _union_member_lift_arg(a: TpyExpr, ptype: TpyType | None,
     if not isinstance(a, TpyName) or a.name not in locals_:
         return False
     at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(locals_[a.name])))
-    return (any(at == m for m in ut.members if not is_void_like_type(m)))
+    return _union_member_match(at, ut.members, analyzer)
 
 def _union_coerced_literal_arg(a: TpyExpr, ptype: TpyType | None,
                                locals_: dict[str, TpyType], analyzer) -> bool:

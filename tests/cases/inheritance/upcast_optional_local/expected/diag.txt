@@ -1,1 +1,12 @@
-main.py:23: warning: upcast narrows 'Dog' to 'Pet' -- only 'Pet' fields and methods will be accessible; keep the concrete type or make 'Pet' a @dynamic protocol
+main.py:147: warning: copies Dog into field; use copy() to make this explicit
+main.py:147: warning: upcast narrows 'Dog' to 'Pet' -- only 'Pet' fields and methods will be accessible; keep the concrete type or make 'Pet' a @dynamic protocol
+main.py:32: warning: upcast narrows 'Dog' to 'Pet' -- only 'Pet' fields and methods will be accessible; keep the concrete type or make 'Pet' a @dynamic protocol
+main.py:40: warning: upcast narrows 'Dog' to 'Pet' -- only 'Pet' fields and methods will be accessible; keep the concrete type or make 'Pet' a @dynamic protocol
+main.py:49: warning: upcast narrows 'Dog' to 'Pet' -- only 'Pet' fields and methods will be accessible; keep the concrete type or make 'Pet' a @dynamic protocol
+main.py:50: warning: upcast narrows 'Cat' to 'Pet' -- only 'Pet' fields and methods will be accessible; keep the concrete type or make 'Pet' a @dynamic protocol
+main.py:57: warning: upcast narrows 'Dog' to 'Pet' -- only 'Pet' fields and methods will be accessible; keep the concrete type or make 'Pet' a @dynamic protocol
+main.py:65: warning: upcast narrows 'Dog' to 'Pet' -- only 'Pet' fields and methods will be accessible; keep the concrete type or make 'Pet' a @dynamic protocol
+main.py:101: warning: upcast narrows 'Dog' to 'Pet' -- only 'Pet' fields and methods will be accessible; keep the concrete type or make 'Pet' a @dynamic protocol
+main.py:113: warning: upcast narrows 'Dog' to 'Pet' -- only 'Pet' fields and methods will be accessible; keep the concrete type or make 'Pet' a @dynamic protocol
+main.py:117: warning: upcast narrows 'Dog' to 'Pet' -- only 'Pet' fields and methods will be accessible; keep the concrete type or make 'Pet' a @dynamic protocol
+main.py:136: warning: upcast narrows 'Dog' to 'Pet' -- only 'Pet' fields and methods will be accessible; keep the concrete type or make 'Pet' a @dynamic protocol

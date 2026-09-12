@@ -4,35 +4,404 @@
 namespace tpyapp::main {
 
 
+// # sync local: the address-of lift into the `Pet | None` slot
 // def upcast(d: Dog) -> None:
-//     p: Pet | None = d  # the base handle aliases `d`, it does not copy it
+//     p: Pet | None = d  # tpyc: warning(/upcast narrows/)
 //     if p is not None:
 //         p.rename("via-base")  # ... so this write is visible through `d`
-//     print(d.name)
+//     print("local", d.name)
 void upcast(Dog& d) {
     Pet* p = &(d);
     if ((p != nullptr)) {
         p->rename("via-base");
     }
-    std::cout << d.name << "\n";
+    std::cout << "local" << " " << d.name << "\n";
+}
+
+// # frame param: the same lift re-points the generator's frame field
+// def gen(d: Dog) -> Iterator[str]:
+//     p: Pet | None = d  # tpyc: warning(/upcast narrows/)
+//     yield d.name                                          # -> S_RESUME_0
+//     if p is not None:
+//         p.rename("frame-base")
+//     yield d.name                                          # -> S_RESUME_1
+std::expected<std::string, ::tpy::StopIteration> __gen_gen::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        p = &(d);
+        __state = S_RESUME_0;
+        return d.name;
+    }
+    case S_RESUME_0: {  // after: yield d.name
+        if ((p != nullptr)) {
+            p->rename("frame-base");
+        }
+        __state = S_RESUME_1;
+        return d.name;
+    }
+    case S_RESUME_1: {  // after: yield d.name
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def gen(d: Dog) -> Iterator[str]:
+__gen_gen gen(Dog& d) {
+    return __gen_gen(d);
+}
+
+// # reseat: a non-optional base local re-pointed at a sibling subclass
+// def reseat(d: Dog, c: Cat) -> None:
+//     p: Pet = d  # tpyc: warning(/upcast narrows/)
+//     p = c  # tpyc: warning(/upcast narrows/)
+//     p.rename("reseat-base")
+//     print("reseat", d.name, c.name)
+void reseat(Dog& d, Cat& c) {
+    Pet* p = &(d);
+    p = &(c);
+    p->rename("reseat-base");
+    std::cout << "reseat" << " " << d.name << " " << c.name << "\n";
+}
+
+// # union: the subclass address binds the unique base member
+// def union(d: Dog) -> None:
+//     p: Pet | Cat = d  # tpyc: warning(/upcast narrows/)
+//     if isinstance(p, Pet):
+//         p.rename("union-base")
+//     print("union", d.name)
+void union_(Dog& d) {
+    ::tpy::Union<Cat*, Pet*> p{&(d)};
+    if (std::holds_alternative<Pet*>(p)) {
+        auto& __p = *std::get<Pet*>(p);
+        __p.rename("union-base");
+    }
+    std::cout << "union" << " " << d.name << "\n";
+}
+
+// # union with None: same bind, a monostate alternative alongside
+// def union_opt(d: Dog) -> None:
+//     p: Pet | Cat | None = d  # tpyc: warning(/upcast narrows/)
+//     if isinstance(p, Pet):
+//         p.rename("union-opt-base")
+//     print("union_opt", d.name)
+void union_opt(Dog& d) {
+    ::tpy::Union<std::monostate, Cat*, Pet*> p{&(d)};
+    if (std::holds_alternative<Pet*>(p)) {
+        auto& __p = *std::get<Pet*>(p);
+        __p.rename("union-opt-base");
+    }
+    std::cout << "union_opt" << " " << d.name << "\n";
+}
+
+// def take(p: Pet | None) -> None:
+//     if p is not None:
+//         p.rename("arg-base")
+void take(Pet* p) {
+    if ((p != nullptr)) {
+        p->rename("arg-base");
+    }
+}
+
+// # call arg: `&(d)` at the nullable base param (unwarned, like a `Pet` param)
+// def arg(d: Dog) -> None:
+//     take(d)  # tpyc: ok
+//     print("arg", d.name)
+void arg(Dog& d) {
+    take(&(d));
+    std::cout << "arg" << " " << d.name << "\n";
+}
+
+// def take_union(p: Pet | Cat) -> None:
+//     if isinstance(p, Pet):
+//         p.rename("arg-union-base")
+void take_union(::tpy::Union<Cat*, Pet*> p) {
+    if (std::holds_alternative<Pet*>(p)) {
+        auto& __p = *std::get<Pet*>(p);
+        __p.rename("arg-union-base");
+    }
+}
+
+// def take_union_opt(p: Pet | Cat | None) -> None:
+//     if isinstance(p, Pet):
+//         p.rename("arg-union-opt-base")
+void take_union_opt(::tpy::Union<std::monostate, Cat*, Pet*> p) {
+    if (std::holds_alternative<Pet*>(p)) {
+        auto& __p = *std::get<Pet*>(p);
+        __p.rename("arg-union-opt-base");
+    }
+}
+
+// # call arg union: the address lands in the unique base member of the param
+// def arg_union(d: Dog, e: Dog) -> None:
+//     take_union(d)  # tpyc: ok
+//     print("arg_union", d.name)
+//     take_union_opt(e)  # tpyc: ok
+//     print("arg_union", e.name)
+void arg_union(Dog& d, Dog& e) {
+    take_union(::tpy::Union<Cat*, Pet*>{&(d)});
+    std::cout << "arg_union" << " " << d.name << "\n";
+    take_union_opt(::tpy::Union<std::monostate, Cat*, Pet*>{&(e)});
+    std::cout << "arg_union" << " " << e.name << "\n";
+}
+
+// def give(d: Dog) -> Pet | None:
+//     return d  # tpyc: warning(/upcast narrows/)
+Pet* give(Dog& d) {
+    return &(d);
+}
+
+// # return: the caller's handle aliases the argument
+// def ret(d: Dog) -> None:
+//     p = give(d)
+//     if p is not None:
+//         p.rename("ret-base")
+//     print("ret", d.name)
+void ret(Dog& d) {
+    Pet* p = give(d);
+    if ((p != nullptr)) {
+        p->rename("ret-base");
+    }
+    std::cout << "ret" << " " << d.name << "\n";
+}
+
+// def give_union(d: Dog) -> Pet | Cat:
+//     return d  # tpyc: warning(/upcast narrows/)
+::tpy::Union<Cat*, Pet*> give_union(Dog& d) {
+    return &(d);
+}
+
+// def give_union_opt(d: Dog) -> Pet | Cat | None:
+//     return d  # tpyc: warning(/upcast narrows/)
+::tpy::Union<std::monostate, Cat*, Pet*> give_union_opt(Dog& d) {
+    return &(d);
+}
+
+// # return union: the subclass address binds the unique base member of the
+// # returned variant, so the caller's handle aliases the argument
+// def ret_union(d: Dog, e: Dog) -> None:
+//     p = give_union(d)
+//     if isinstance(p, Pet):
+//         p.rename("ret-union-base")
+//     print("ret_union", d.name)
+//     q = give_union_opt(e)
+//     if isinstance(q, Pet):
+//         q.rename("ret-union-opt-base")
+//     print("ret_union", e.name)
+void ret_union(Dog& d, Dog& e) {
+    ::tpy::Union<Cat*, Pet*> p = give_union(d);
+    if (std::holds_alternative<Pet*>(p)) {
+        auto& __p = *std::get<Pet*>(p);
+        __p.rename("ret-union-base");
+    }
+    std::cout << "ret_union" << " " << d.name << "\n";
+    ::tpy::Union<std::monostate, Cat*, Pet*> q = give_union_opt(e);
+    if (std::holds_alternative<Pet*>(q)) {
+        auto& __q = *std::get<Pet*>(q);
+        __q.rename("ret-union-opt-base");
+    }
+    std::cout << "ret_union" << " " << e.name << "\n";
+}
+
+// # async: the lift re-points the coroutine's frame field, and the alias
+// # survives the suspension
+// async def coro(d: Dog) -> str:
+//     p: Pet | None = d  # tpyc: warning(/upcast narrows/)
+//     await asyncio.sleep(0)                                # -> S_RESUME_0
+//     if p is not None:
+//         p.rename("async-base")
+//     return d.name
+::tpystd::tpy::Poll<std::string> __coro_coro::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        p = &(d);
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        if ((p != nullptr)) {
+            p->rename("async-base");
+        }
+        __state = S_DONE;
+        std::string __tpy_async_ret = d.name;
+        return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def coro(d: Dog) -> str:
+__coro_coro coro(Dog& d) {
+    return __coro_coro(d);
+}
+
+// # field: storage form, a warned copy -- read back through the field only
+// def field(d: Dog) -> None:
+//     h = Holder(d)
+//     if h.p is not None:
+//         h.p.rename("field-copy")
+//         print("field", h.p.name)
+void field(const Dog& d) {
+    Holder h = Holder(d);
+    if ((h.p.has_value())) {
+        (*h.p).rename("field-copy");
+        std::cout << "field" << " " << (*h.p).name << "\n";
+    }
+}
+
+// def gen_same(x: Pet) -> Iterator[str]:
+//     p: Pet | None = x  # tpyc: ok
+//     if p is not None:
+//         p.rename("same-frame")
+//     yield x.name                        # -> S_RESUME_0
+std::expected<std::string, ::tpy::StopIteration> __gen_gen_same::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        p = &(x);
+        if ((p != nullptr)) {
+            p->rename("same-frame");
+        }
+        __state = S_RESUME_0;
+        return x.name;
+    }
+    case S_RESUME_0: {  // after: yield x.name
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def gen_same(x: Pet) -> Iterator[str]:
+__gen_gen_same gen_same(Pet& x) {
+    return __gen_gen_same(x);
+}
+
+// # same-type sources at every position stay unwarned
+// def same_type(x: Pet, y: Pet) -> None:
+//     p: Pet | None = x  # tpyc: ok
+//     q: Pet = x  # tpyc: ok
+//     q = y  # tpyc: ok
+//     u: Pet | Cat = x  # tpyc: ok
+//     take(y)  # tpyc: ok
+//     take_union(y)  # tpyc: ok
+//     if p is not None:
+//         p.rename("same-local")
+//     q.rename("same-reseat")
+//     if isinstance(u, Pet):
+//         u.rename("same-union")
+//     print("same", x.name, y.name)
+//     for n in gen_same(x):
+//         print("same", n)
+void same_type(Pet& x, Pet& y) {
+    Pet* p = &(x);
+    Pet* q = &(x);
+    q = &(y);
+    ::tpy::Union<Cat*, Pet*> u{&(x)};
+    take(&(y));
+    take_union(::tpy::Union<Cat*, Pet*>{&(y)});
+    if ((p != nullptr)) {
+        p->rename("same-local");
+    }
+    q->rename("same-reseat");
+    if (std::holds_alternative<Pet*>(u)) {
+        auto& __u = *std::get<Pet*>(u);
+        __u.rename("same-union");
+    }
+    std::cout << "same" << " " << x.name << " " << y.name << "\n";
+    {
+        auto __src_0 = gen_same(x);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            std::string_view n = ::tpy::unwrap_ref(*__r_1);
+        std::cout << "same" << " " << n << "\n";
+        }
+    }
 }
 
 // def main() -> None:
 //     d = Dog("rex")
 //     upcast(d)
-//     print(d.name)
+//     print("local", d.name)
+//     for n in gen(Dog("gen")):
+//         print("frame", n)
+//     reseat(Dog("rd"), Cat("rc"))
+//     union(Dog("ud"))
+//     union_opt(Dog("uod"))
+//     arg(Dog("ad"))
+//     arg_union(Dog("aud"), Dog("aue"))
+//     ret(Dog("rt"))
+//     ret_union(Dog("rud"), Dog("rue"))
+//     print("async", asyncio.run(coro(Dog("ac"))))
+//     field(Dog("fd"))
+//     same_type(Pet("sx"), Pet("sy"))
 void main() {
     Dog d = Dog("rex");
     upcast(d);
-    std::cout << d.name << "\n";
+    std::cout << "local" << " " << d.name << "\n";
+    {
+        Dog __tmp_1 = Dog("gen");
+        auto __src_0 = gen(__tmp_1);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            std::string_view n = ::tpy::unwrap_ref(*__r_1);
+        std::cout << "frame" << " " << n << "\n";
+        }
+    }
+    Dog __tmp_2 = Dog("rd");
+    Cat __tmp_3 = Cat("rc");
+    reseat(__tmp_2, __tmp_3);
+    Dog __tmp_4 = Dog("ud");
+    union_(__tmp_4);
+    Dog __tmp_5 = Dog("uod");
+    union_opt(__tmp_5);
+    Dog __tmp_6 = Dog("ad");
+    arg(__tmp_6);
+    Dog __tmp_7 = Dog("aud");
+    Dog __tmp_8 = Dog("aue");
+    arg_union(__tmp_7, __tmp_8);
+    Dog __tmp_9 = Dog("rt");
+    ret(__tmp_9);
+    Dog __tmp_10 = Dog("rud");
+    Dog __tmp_11 = Dog("rue");
+    ret_union(__tmp_10, __tmp_11);
+    Dog __tmp_12 = Dog("ac");
+    std::cout << "async" << " " << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(coro(__tmp_12))) << "\n";
+    Dog __tmp_13 = Dog("fd");
+    field(__tmp_13);
+    Pet __tmp_14 = Pet("sx");
+    Pet __tmp_15 = Pet("sy");
+    same_type(__tmp_14, __tmp_15);
 }
 
+// # A record lvalue upcast into every pointer slot (nullable/union locals, frame
+// # locals, reseats, args, returns) is an address bind: writes through the base
+// # handle are visible through the derived one; a FIELD is a warned copy.
+// import asyncio
+//
 // main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
+    ::tpystd::asyncio::__tpy_init();
     main();
 }
 

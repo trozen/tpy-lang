@@ -4,16 +4,61 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
+#include "tpystd/coro.hpp"
+#include "tpystd/asyncio.hpp"
+#include "tpystd/asyncio/_executor/_executor.hpp"
 
 namespace tpyapp::main {
 
 struct Pet;
 struct Dog;
+struct Cat;
+struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_gen;
+struct __coro_coro;
+struct __gen_gen_same;
+
 // def upcast(d: Dog) -> None:
 void upcast(Dog& d);
+// def gen(d: Dog) -> Iterator[str]:
+__gen_gen gen(Dog& d);
+// def reseat(d: Dog, c: Cat) -> None:
+void reseat(Dog& d, Cat& c);
+// def union(d: Dog) -> None:
+void union_(Dog& d);
+// def union_opt(d: Dog) -> None:
+void union_opt(Dog& d);
+// def take(p: Pet | None) -> None:
+void take(Pet* p);
+// def arg(d: Dog) -> None:
+void arg(Dog& d);
+// def take_union(p: Pet | Cat) -> None:
+void take_union(::tpy::Union<Cat*, Pet*> p);
+// def take_union_opt(p: Pet | Cat | None) -> None:
+void take_union_opt(::tpy::Union<std::monostate, Cat*, Pet*> p);
+// def arg_union(d: Dog, e: Dog) -> None:
+void arg_union(Dog& d, Dog& e);
+// def give(d: Dog) -> Pet | None:
+Pet* give(Dog& d);
+// def ret(d: Dog) -> None:
+void ret(Dog& d);
+// def give_union(d: Dog) -> Pet | Cat:
+::tpy::Union<Cat*, Pet*> give_union(Dog& d);
+// def give_union_opt(d: Dog) -> Pet | Cat | None:
+::tpy::Union<std::monostate, Cat*, Pet*> give_union_opt(Dog& d);
+// def ret_union(d: Dog, e: Dog) -> None:
+void ret_union(Dog& d, Dog& e);
+// async def coro(d: Dog) -> str:
+__coro_coro coro(Dog& d);
+// def field(d: Dog) -> None:
+void field(const Dog& d);
+// def gen_same(x: Pet) -> Iterator[str]:
+__gen_gen_same gen_same(Pet& x);
+// def same_type(x: Pet, y: Pet) -> None:
+void same_type(Pet& x, Pet& y);
 // def main() -> None:
 void main();
 
@@ -38,6 +83,22 @@ inline std::ostream& operator<<(std::ostream& os, const Pet& obj) {
     return os;
 }
 
+// class Holder:
+struct Holder {
+    // p: Pet | None
+    std::optional<Pet> p;
+
+    // def __init__(self, d: Dog) -> None:
+    Holder() = default;
+    explicit Holder(const Dog& d);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
+    ::tpy::print_object_default(os, "Holder", obj);
+    return os;
+}
+
 // class Dog(Pet):
 struct Dog : Pet {
 
@@ -52,6 +113,92 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
     return os;
 }
 
+// class Cat(Pet):
+struct Cat : Pet {
+
+    // def __init__(self, name: str) -> None:
+    Cat() = default;
+    explicit Cat(std::string_view name);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Cat";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
+    ::tpy::print_object_default(os, "Cat", obj);
+    return os;
+}
+
+// async def coro(d: Dog) -> str:
+struct __coro_coro {
+    int32_t __state;
+    bool __cancel_pending;
+    Dog& d;
+    Pet* p = nullptr;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_coro(Dog& d)
+        : __state(S_INITIAL), __cancel_pending(false), d(d) {}
+
+    ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_coro&) {
+        return os << "<coroutine coro>";
+    }
+};
+
+// def gen(d: Dog) -> Iterator[str]:
+struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::string> {
+    int32_t __state;
+    Dog& d;
+    Pet* p = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_gen(Dog& d)
+        : __state(S_INITIAL), d(d) {}
+
+    std::expected<std::string, ::tpy::StopIteration> __next__();
+    __gen_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen&) {
+        return os << "<generator gen>";
+    }
+};
+
+// def gen_same(x: Pet) -> Iterator[str]:
+struct __gen_gen_same : public ::tpy::next_iter_mixin<__gen_gen_same, std::string> {
+    int32_t __state;
+    Pet& x;
+    Pet* p = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __gen_gen_same(Pet& x)
+        : __state(S_INITIAL), x(x) {}
+
+    std::expected<std::string, ::tpy::StopIteration> __next__();
+    __gen_gen_same& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_same&) {
+        return os << "<generator gen_same>";
+    }
+};
+
 
 // def __init__(self, name: str) -> None:
 //     self.name = name
@@ -64,8 +211,16 @@ inline void Pet::rename(std::string_view name) {
     this->name = name;
 }
 
+// def __init__(self, d: Dog) -> None:
+//     self.p = d  # tpyc: warning(/copies Dog into field/) warning(/upcast narrows/)
+inline Holder::Holder(const Dog& d) : p(d) {}
+
 // def __init__(self, name: str) -> None:
 //     super().__init__(name)
 inline Dog::Dog(std::string_view name) : Pet(name) {}
+
+// def __init__(self, name: str) -> None:
+//     super().__init__(name)
+inline Cat::Cat(std::string_view name) : Pet(name) {}
 void __tpy_init();
 } // namespace tpyapp::main

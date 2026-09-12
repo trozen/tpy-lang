@@ -1,0 +1,2 @@
+main.py:25: warning: upcast narrows 'Dog' to 'Animal' -- only 'Animal' fields and methods will be accessible; keep the concrete type or make 'Animal' a @dynamic protocol
+main.py:25: error: in function 'main': this construct is not yet supported by C++ code generation (stmt.var_decl:decl.ptr_union_source)

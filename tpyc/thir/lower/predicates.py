@@ -7356,14 +7356,36 @@ def _alias_field_source_ok(init: TpyExpr, declared: dict[str, TpyType],
     return (_field_receiver_ok(init, declared, analyzer)
             and _f1_ref(analyzer.get_expr_type(init), analyzer))
 
+def _union_base_member_match(st: 'TpyType | None', members, analyzer) -> bool:
+    """A record source type deriving from exactly ONE member of a
+    pointer-variant union: its address binds that member through the
+    variant's converting ctor (`pv{&(dog)}` at `Pet | Cat`), so the render
+    spells no member. Exactly one -- a source deriving from two members is
+    ambiguous to the ctor and rejects. Strict subclass only; an exact member
+    is the caller's own test. Address binds only: a subclass RVALUE would
+    slice into the base's value slot, so callers admit NAME sources alone."""
+    if st is None or not _f1_record(st, analyzer):
+        return False
+    return sum(1 for m in members
+               if analyzer.registry.is_subclass_of(st, m)) == 1
+
+def _union_member_match(st: 'TpyType | None', members, analyzer) -> bool:
+    """A NAME source's type against a pointer-variant union's members: an
+    exact member, or a record deriving from exactly one member
+    (`_union_base_member_match`). One predicate for the arg gate and the
+    arg lift, so the two cannot drift."""
+    return (any(st == m for m in members if not is_void_like_type(m))
+            or _union_base_member_match(st, members, analyzer))
+
 def _f1_param_lvalue_reseat_ok(init: TpyExpr, pointee: TpyType,
                                declared: dict[str, TpyType], lc, analyzer) -> bool:
     """A pointer-repr `Optional` local reseat source that lifts via `&(name)`: a
-    bare record PARAM name whose stripped type is the exact F1-record pointee. A
-    param renders as a plain lvalue (`T&` / `const T&`), so `&(p)` is well-formed
-    -- the pointer-local rebind's address-of arm. A pointer-local source
-    (bare copy) or an owned-local / rvalue source takes a different emit and
-    rejects here."""
+    bare record PARAM name whose stripped type is the F1-record pointee or a
+    subclass of it (C++ binds the derived address to the base pointer
+    implicitly, so the upcast is the same `&(p)`). A param renders as a plain
+    lvalue (`T&` / `const T&`), so `&(p)` is well-formed -- the pointer-local
+    rebind's address-of arm. A pointer-local source (bare copy) or an
+    owned-local / rvalue source takes a different emit and rejects here."""
     if not isinstance(init, TpyName):
         return False
     if init.name not in lc.prescan.param_names or init.name in lc.pointers:
@@ -7372,7 +7394,8 @@ def _f1_param_lvalue_reseat_ok(init: TpyExpr, pointee: TpyType,
     if t is None:
         return False
     tu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-    return _f1_record(tu, analyzer) and tu == pointee
+    return (_f1_record(tu, analyzer)
+            and analyzer.registry.is_subclass_of_or_equal(tu, pointee))
 
 def _is_borrow_ptr_local(e: TpyExpr, declared: dict[str, TpyType],
                          pointers: set[str]) -> bool:
@@ -10614,7 +10637,11 @@ def _optional_ptr_arg_face(a: TpyExpr, ptype: TpyType | None,
         return None
     if isinstance(at, OwnType):
         at = unwrap_readonly(at.wrapped)
-    if _resolve_plain_alias(at, analyzer) == inner_r:
+    at_r = _resolve_plain_alias(at, analyzer)
+    # A subclass-record name takes the same `&(name)`: C++ binds the
+    # derived address to the base pointer implicitly (the `Ptr[Base]`
+    # param precedent).
+    if at_r == inner_r or analyzer.registry.is_subclass_of(at_r, inner_r):
         return 'name'
     # A STRUCTURAL-conformer NAME lvalue at an Optional[@dynamic P] slot:
     # the non-owning RefAdapter temp (`::tpy::RefAdapter<P, C> __tmp{x};`

@@ -303,6 +303,8 @@ from .predicates import (
     _f1_is_const,
     _f1_param_lvalue_reseat_ok,
     _f1_record,
+    _union_base_member_match,
+    _union_member_match,
     _f1_container_ref,
     _f1_ref,
     _method_rvalue_f1_record,
@@ -3969,8 +3971,11 @@ def _ptr_union_slot_kind(init: TpyExpr, ptr_u: 'UnionType',
     """Classify a ptr-variant union init/reseat source outside the bare-copy /
     field-lift slice: a concrete-MEMBER F1-record rvalue (UNION_RVALUE -- the
     value-variant `__slot_N` + `to_ptr_variant` lift) or a concrete-member
-    lvalue NAME (UNION_ADDR -- `v{&(name)}`). None for everything else
-    (const-rooted sources, pointer-form names, non-member types)."""
+    lvalue NAME (UNION_ADDR -- `v{&(name)}`; a record NAME deriving from
+    exactly one member counts, the variant's converting ctor binding the
+    base pointer). None for everything else (const-rooted sources,
+    pointer-form names, non-member types, a subclass rvalue or a source
+    deriving from two members)."""
     it = analyzer.get_expr_type(init)
     if it is None:
         return None
@@ -4003,8 +4008,16 @@ def _ptr_union_slot_kind(init: TpyExpr, ptr_u: 'UnionType',
     scalar_member = False
     if not whole_union:
         if not any(m == it_u for m in ptr_u.members):
-            return None
-        if not _f1_record(it_u, analyzer):
+            # A subclass-record lvalue NAME reaches the UNION_ADDR arm
+            # only: `v{&(dog)}` at `Pet | Cat` converts `Dog*` to the
+            # base member implicitly. NAME only -- a subclass rvalue would
+            # slice into the base's value slot -- and a source deriving
+            # from two members would be ambiguous to the converting ctor.
+            if not (isinstance(init, TpyName)
+                    and _union_base_member_match(it_u, ptr_u.members,
+                                                 analyzer)):
+                return None
+        elif not _f1_record(it_u, analyzer):
             # A scalar MEMBER of a mixed union (`a: int32 | Dog | None =
             # int32(42)`): a type-ctor RVALUE takes the same value-variant
             # `__slot_N` + lift (the rvalue branch is member-shape-blind,
@@ -9086,7 +9099,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                               analyzer):
                     src: THIRExpr = _lower_expr(stmt.init, lc, declared)
                     if (src.form is Form.BORROW
-                            and src.result_type == pointee
+                            and analyzer.registry.is_subclass_of_or_equal(
+                                src.result_type, pointee)
                             and not lc.resumable_leaf_mode):
                         # Same trap as the plain-record param reseat below:
                         # the BORROW convert over a same-type BORROW param
@@ -9166,14 +9180,16 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                           analyzer):
                 src_name = _lower_expr(stmt.init, lc, declared)
                 if (src_name.form is Form.BORROW
-                        and src_name.result_type == vtype):
+                        and analyzer.registry.is_subclass_of_or_equal(
+                            src_name.result_type, vtype)):
                     if isinstance(src_name, THIRName) and src_name.cpp is None:
                         # A plain record-param `T&` lvalue: the same
                         # PTR_ADDR address-of as the storage-local rung
-                        # (`x = &(b);`). A spelled (narrowed/deref) source
-                        # stays out. (A type-differing source -- e.g. a
-                        # readonly-wrapped binding -- stays a real convert
-                        # below.)
+                        # (`x = &(b);`), a subclass param binding the base
+                        # pointer implicitly. A spelled (narrowed/deref)
+                        # source stays out. (A type-differing source --
+                        # e.g. a readonly-wrapped binding -- stays a real
+                        # convert below.)
                         _witness("reseat.param_name")
                         return THIRPtrLocalRebind(
                             name=stmt.name, kind=PtrSlotKind.PTR_ADDR,
@@ -9193,12 +9209,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                           lc.record_name)
                   and is_plain_nonvalue(unwrap_readonly(unwrap_ref_type(
                       unwrap_send_sync(declared[stmt.init.name]))))
-                  and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                      declared[stmt.init.name]))) == unwrap_readonly(
-                      unwrap_ref_type(unwrap_send_sync(
-                          declared[stmt.name])))):
-                # A plain same-type storage LOCAL lvalue (`items = base;` ->
-                # `items = &(base);`): the rebind's address-of catch-all
+                  and analyzer.registry.is_subclass_of_or_equal(
+                      unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                          declared[stmt.init.name]))),
+                      unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                          declared[stmt.name]))))):
+                # A plain same-type -- or subclass-record -- storage LOCAL
+                # lvalue (`items = base;` -> `items = &(base);`, `pet =
+                # &(cat);`): the rebind's address-of catch-all
                 # for a name that renders bare storage. The `&` lives in the
                 # PTR_ADDR emit (a FormConvert over the BORROW-form name read
                 # would be the no-op node the validator rejects).
@@ -13007,12 +13025,15 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             and stmt.value.name in declared
             and stmt.value.name not in lc.narrow.narrowed
             and stmt.value.name not in lc.pointers
-            # A plain record BINDING whose type is exactly one member: the
-            # variant holds pointers, so the return takes its address
-            # (`return &(d);`). A pointer-shaped binding already IS the
-            # pointer and rides its own row.
-            and any(m == unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                declared[stmt.value.name]))) for m in ret_pu.members)
+            # A plain record BINDING whose type is exactly one member, or a
+            # subclass of exactly one (the variant's converting ctor binds
+            # the derived address to the base pointer): the variant holds
+            # pointers, so the return takes its address (`return &(d);`).
+            # A pointer-shaped binding already IS the pointer and rides its
+            # own row.
+            and _union_member_match(
+                unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                    declared[stmt.value.name]))), ret_pu.members, analyzer)
             and _f1_record(declared[stmt.value.name], analyzer))
         if (stmt.value is not None and ret_pu is not None
                 and (member_lvalue_ret

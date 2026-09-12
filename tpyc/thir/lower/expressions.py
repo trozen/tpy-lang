@@ -304,6 +304,7 @@ from .predicates import (
     _f1_record,
     _f1_ref,
     _f1_tuple,
+    _union_member_match,
     frame_temp_arg_slot,
     _field_read_ref_ctor_arg,
     _field_over_global_record_ok,
@@ -15751,7 +15752,7 @@ def _lower_union_arg_lift(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     at = lc.analyzer.get_expr_type(a)
     at = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
           if at is not None else None)
-    if not any(at == m for m in ut.members if not is_void_like_type(m)):
+    if not _union_member_match(at, ut.members, lc.analyzer):
         return None
     _witness("unionlift.member")
     return THIRUnionArgLift(
