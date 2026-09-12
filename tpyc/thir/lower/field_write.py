@@ -16,6 +16,9 @@ from enum import Enum, auto
 from typing import Callable
 
 from ...parse.nodes import (
+    TpyDictComprehension,
+    TpyListComprehension,
+    TpySetComprehension,
     TpyArrayLiteral,
     TpyAssign,
     TpyCall,
@@ -83,6 +86,7 @@ from .checks import (
     copy_ctor_rvalue_source,
 )
 from .predicates import (
+    _comp_shadow_pointers,
     _eligible_char,
     _eligible_enum,
     _eligible_ptr_union,
@@ -111,6 +115,7 @@ from .predicates import (
     _value_tuple_field_literal_write_ok,
     copy_ptr_optional_peel,
 )
+from . import comprehensions as _comprehensions
 from .expressions import (
     _flush_witness,
     _is_move_source,
@@ -585,18 +590,38 @@ def _lower_container_literal_value(stmt: TpyAssign, plan: _RefFieldPlan,
     return _lower_expr(stmt.value, lc, declared)
 
 
+def _lower_container_comp_value(stmt: TpyAssign, slot: 'TpyType | None',
+                                lc: _LowerCtx,
+                                declared: dict[str, TpyType]) -> THIRExpr:
+    """The comprehension value render at a container field, plain or the
+    storage-form `Optional[C]` one unwrap down: the stmt-expr assigns bare
+    (`this->data = ({ ... });`), the member-init prefix's render at the body
+    position."""
+    return _comprehensions._lower_comprehension(
+        stmt.value, slot, lc, declared,
+        _comp_shadow_pointers(lc.pointers, declared, lc.analyzer))
+
+
 def _lower_ref_field(stmt: TpyAssign, plan: _RefFieldPlan,
                      lc: _LowerCtx, declared: dict[str, TpyType],
                      loc) -> THIRAssign:
     analyzer = lc.analyzer
     if plan.slot is _RefSlot.OPT_TAIL:
-        # The Optional slot the OPT rows do not claim: a literal against the
-        # Optional's inner, everything else through the shared tail, whose
-        # Optional-inner convert target serves exactly these fields.
+        # The Optional slot the OPT rows do not claim: a literal or a
+        # comprehension against the Optional's inner, everything else through
+        # the shared tail, whose Optional-inner convert target serves exactly
+        # these fields.
         if isinstance(stmt.value, (TpyArrayLiteral, TpyDictLiteral,
                                    TpySetLiteral)):
             fvalue: THIRExpr = _lower_container_literal_value(
                 stmt, plan, lc, declared)
+        elif isinstance(stmt.value, (TpyListComprehension,
+                                     TpySetComprehension,
+                                     TpyDictComprehension)):
+            _witness("field_write.opt_container_comp")
+            fvalue = _lower_container_comp_value(
+                stmt, plan.opt_inner if plan.opt_inner is not None
+                else plan.decl_ftype, lc, declared)
         else:
             fvalue = _lower_tail_value(stmt, plan.slot_type, lc, declared,
                                        loc)
@@ -644,6 +669,13 @@ def _lower_ref_field(stmt: TpyAssign, plan: _RefFieldPlan,
                 target=_lower_field_write_target(stmt, lc, declared),
                 value=_lower_container_literal_value(stmt, plan, lc,
                                                      declared), loc=loc)
+        if isinstance(stmt.value, (TpyListComprehension, TpySetComprehension,
+                                   TpyDictComprehension)):
+            _witness("field_write.container_comp")
+            return THIRAssign(
+                target=_lower_field_write_target(stmt, lc, declared),
+                value=_lower_container_comp_value(stmt, plan.decl_ftype, lc,
+                                                  declared), loc=loc)
         if plan.prvalue_src:
             if isinstance(stmt.value, TpyListRepeat):
                 # The repeat threads the FIELD type -- an untargeted resolve

@@ -2647,13 +2647,19 @@ def _container_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
     spelled empty list, the `::tpy::ordered_map<K, V>(...)` /
     `ordered_set<T>(...)` constructor forms) with no move wrap (a literal is
     never a movable name). Element admission is the shared
-    container-literal slice.
+    container-literal slice. A COMPREHENSION joins the row: its stmt-expr
+    builds the field's own container in place (the member-init prefix's
+    `mil.container_comp` render, one position down), so it lands bare too;
+    the comprehension's own route owns every element reject.
 
     A storage-form `Optional[container]` ftype takes the same render one
     unwrap down -- the field is a `std::optional<C>` and the literal is
     classified against C."""
-    if not isinstance(stmt.value, (TpyArrayLiteral, TpyDictLiteral,
-                                   TpySetLiteral)):
+    comp = isinstance(stmt.value, (TpyListComprehension, TpySetComprehension,
+                                   TpyDictComprehension))
+    if not comp and not isinstance(stmt.value, (TpyArrayLiteral,
+                                                TpyDictLiteral,
+                                                TpySetLiteral)):
         return False
     if not _field_receiver_or_unbound_self_ok(stmt.target, declared,
                                               analyzer):
@@ -2667,7 +2673,11 @@ def _container_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
         # the Optional itself, so the
         # literal is classified (and lowered) against the INNER -- element
         # targets derived from the Optional would be wrong.
+        if comp:
+            return _container_comp_arg(stmt.value, oc_inner)
         return _container_literal_shape_ok(stmt.value, oc_inner, analyzer)
+    if comp:
+        return _container_comp_arg(stmt.value, ftype)
     return _container_literal_shape_ok(stmt.value, ftype, analyzer)
 
 def _container_prvalue_field_write_ok(stmt: TpyAssign,

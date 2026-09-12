@@ -1,0 +1,14 @@
+method 3 [0, 0, 7]
+ctor_body [[1, 0], [2, 0], [3, 0, 8]]
+free_dict 4 free_set 4
+optional_field [0, 1, 2, 5]
+optional_reseat [0, 2, 6]
+setitem_list [[0, 1, 2, 7], []]
+setitem_list_safe [[0, 1, 8], [1, 2, 8]]
+setitem_dict {'a': [0, 1, 2, 7]}
+setitem_field [10, 11, 12, 7]
+generator 3
+generator 3
+generator [1, 2, 9]
+closure 5 [0, 1, 2, 3, 1]
+module_level [0, 3, 6, 1]

@@ -443,6 +443,7 @@ from .context import (
     ValueOptKind,
 )
 from .checks import (
+    _container_comp_arg,
     _open_tparam_return_slot,
     _value_opt_scalar_elem_arg,
     _str_field_over_container_subscript_read,
@@ -10794,6 +10795,15 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                         result=_ExprResultUse.STORAGE,
                                         allow_temps=True)))
                     _witness("setitem.container_rvalue")
+                elif (type(_cv) in _comprehensions._COMP_KINDS
+                      and _container_comp_arg(_cv, eu)):
+                    # The stmt-expr builds the element's container in place
+                    # and moves into the slot, the field-write row's render.
+                    value = _comprehensions._lower_comprehension(
+                        _cv, eu, lc, declared,
+                        _comp_shadow_pointers(lc.pointers, declared,
+                                              analyzer))
+                    _witness("setitem.container_comp")
                 elif not isinstance(stmt.value,
                                     (TpyArrayLiteral, TpyDictLiteral,
                                      TpySetLiteral)):

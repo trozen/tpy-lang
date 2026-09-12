@@ -752,6 +752,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # owned local moves in (std::move(z))
     "setitem.container_value",      # nested-container element: literal value,
                                     # type-prefixed on the checked path
+    "setitem.container_comp",       # nested-container element: comprehension
+                                    # stmt-expr moved into the slot
     "setitem.btuple_call",          # ptr-Optional-tuple value slot: a
                                     # borrow-tuple call lifts via the
                                     # non-move tuple_to_storage
@@ -780,6 +782,10 @@ THIR_FACES: frozenset[str] = frozenset({
     # Container-literal FIELD write: the decl-init literal render assigned
     # into the field lvalue (`this->xs = {n};` / the ordered_map ctor form).
     "field_write.container_lit",
+    # `recv.field = [f(x) for x in xs]` at a container field: the
+    # comprehension's stmt-expr assigned bare (`this->data = ({ ... });`),
+    # the member-init prefix's render one position down.
+    "field_write.container_comp",
     # `recv.field = [e] * n` at a container field: the repeat's from_range
     # build, target-typed by the FIELD slot, assigned bare.
     "field_write.container_repeat",
@@ -793,6 +799,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # (`this->items = std::vector<T>{10, 20};`) -- lowered against the
     # Optional's INNER, the list brace self-describing for the optional ctor.
     "field_write.opt_container_lit",
+    # ... and the comprehension into the same STORAGE-form Optional field,
+    # lowered against the Optional's INNER.
+    "field_write.opt_container_comp",
     # Str-family FIELD write from a name/literal: the bare
     # `recv.field = s;` (operator=(string_view), no view->owned wrap).
     "field_write.str_slice",        # `self.s = x[1:3]` -- a str SLICE value
