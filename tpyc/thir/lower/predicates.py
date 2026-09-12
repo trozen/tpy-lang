@@ -133,7 +133,7 @@ from ...type_def_registry import (
 )
 from ...coercions import CoercionContext
 from ...value_category import (
-    _CONTAINER_LITERAL_NODES,
+    CONTAINER_LITERAL_NODES,
     call_returns_cpp_ref,
     frame_temp_arg_source,
     is_rvalue_source,

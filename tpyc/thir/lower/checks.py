@@ -1829,6 +1829,11 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
                 and _container_rebind_call_ret(
                     stmt.init, analyzer.get_expr_type(stmt.init), analyzer)):
             return binding
+        # ... and a list/set/dict COMPREHENSION at its own container slot:
+        # the same owning fill (`std::vector<T> __slot_1 = ({...});`), the
+        # comp's route gating its element shapes.
+        if _container_comp_arg(stmt.init, target_type):
+            return binding
         return None
     if isinstance(stmt.init, (TpyCall, TpyMethodCall)):
         # A borrow-record-returning free call (`p = shared(x)` -> `Pair& p =

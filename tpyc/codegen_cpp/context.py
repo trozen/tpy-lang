@@ -41,7 +41,7 @@ from ..compilation_context import get_current_compiler
 from ..value_category import (
     is_rvalue_source as _is_rvalue_source_shared,
     call_returns_cpp_ref as _call_returns_cpp_ref_shared,
-    _CONTAINER_LITERAL_NODES,
+    CONTAINER_LITERAL_NODES,
 )
 from .forms import (
     is_plain_nonvalue as _forms_is_plain_nonvalue,
@@ -3284,9 +3284,9 @@ class CodeGenContext:
         return _is_rvalue_source_shared(self.analyzer, expr)
 
     def is_container_literal_expr(self, expr: TpyExpr) -> bool:
-        """Predicate form of `_CONTAINER_LITERAL_NODES`; see the constant
+        """Predicate form of `CONTAINER_LITERAL_NODES`; see the constant
         comment for the value-emit-rvalue rationale."""
-        return isinstance(expr, _CONTAINER_LITERAL_NODES)
+        return isinstance(expr, CONTAINER_LITERAL_NODES)
 
     def is_value_emit_rvalue(self, expr: TpyExpr) -> bool:
         """Rvalue source that renders as a value (not a `T*`), so a

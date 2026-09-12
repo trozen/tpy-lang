@@ -1,0 +1,24 @@
+free_self: [2, 3, 4]
+other_source: [2, 4, 6]
+filtered: [1, 3, 5]
+loop: [4, 5, 6]
+if_body_after_empty: [2, 3, 4]
+both_arms: 1 2
+comp_first: [2, 3, 4]
+dict_comp: {1: 3}
+set_comp: [2, 3]
+str_elems: ['a!', 'b!']
+tuple_elems: [(2, 2)]
+record_elems: 9 2 3
+method_local: 11
+ctor_local: 2
+field: [2, 3, 4]
+closure: 2
+with_body: [2, 3, 4]
+try_finally: [2, 3, 4]
+match_arm: [2, 3, 4]
+error_return: 2
+async: 2
+call_rebinds sorted: [1, 2, 3]
+call_rebinds list: [2, 3, 4]
+module_level: [2, 3, 4]

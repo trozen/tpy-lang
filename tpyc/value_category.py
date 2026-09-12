@@ -116,7 +116,7 @@ class ValueCategoryAnalyzer(Protocol):
 # stable pointer storage. Codegen sites initializing a pointer-form slot
 # from an Optional source use this to decide whether to materialize a
 # named slot before taking address.
-_CONTAINER_LITERAL_NODES: tuple = (
+CONTAINER_LITERAL_NODES: tuple = (
     TpyArrayLiteral, TpyListRepeat, TpyListComprehension,
     TpyDictLiteral, TpySetLiteral,
     TpyDictComprehension, TpySetComprehension,
@@ -221,7 +221,7 @@ def is_rvalue_source(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
                          TpyBoolLiteral, TpyNoneLiteral,
                          TpyBinOp, TpyUnaryOp)):
         return True
-    if isinstance(expr, _CONTAINER_LITERAL_NODES):
+    if isinstance(expr, CONTAINER_LITERAL_NODES):
         return True
     if isinstance(expr, TpyMethodCall):
         return not call_returns_cpp_ref(analyzer, expr.resolved_function_info)
@@ -266,7 +266,7 @@ def materializing_temp_source(a: TpyExpr, analyzer) -> bool:
     local differs from what the argument position renders. Scalar literals
     (int / float / bool) are omitted -- the only slots they reach are the
     primitive ones the frame rule excludes anyway."""
-    if isinstance(a, _CONTAINER_LITERAL_NODES):
+    if isinstance(a, CONTAINER_LITERAL_NODES):
         return True
     if isinstance(a, (TpyBinOp, TpyUnaryOp, TpyFString,
                       TpyStrLiteral, TpyBytesLiteral)):

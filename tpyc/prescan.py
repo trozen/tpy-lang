@@ -13,14 +13,15 @@ from .parse import (
     TpyForEach, TpyWith, TpyName, TpySubscript,
     TpyCall, TpyBinOp, TpyChainedCompare, TpyUnaryOp, TpyMethodCall,
     TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
-    TpyBoolLiteral, TpyNoneLiteral, TpyArrayLiteral, TpyListRepeat,
+    TpyBoolLiteral, TpyNoneLiteral,
     TpyCoerce, TpyFieldAccess, TpyIfExpr, TpyNamedExpr,
     TpyNestedDef,
     TpyFStringValue, TpyComprehensionGenerator,
-    TpyDictLiteral, TpySetLiteral, TpyTupleLiteral, TpyFString,
+    TpyTupleLiteral, TpyFString,
     TpyDelVar, TpyDelAttr, TpyDelItem, TpyNonlocal, TpyGlobal, TpyTry,
 )
 from .parse.nodes import SourceLocation, stmts_have_any_suspension
+from .value_category import CONTAINER_LITERAL_NODES
 
 
 @dataclass
@@ -175,11 +176,14 @@ def is_scan_rvalue(expr: TpyExpr | None) -> bool:
         return is_scan_rvalue(expr.obj)
     if isinstance(expr, TpyNamedExpr):
         return is_scan_rvalue(expr.value)
+    # The container/generator-shaped rvalues (comprehensions included) are
+    # the same set the typed twin `value_category.is_rvalue_source` admits,
+    # so a comp-rebound name lands in `rvalue_reassigned` on both sides.
     return isinstance(expr, (TpyCall, TpyBinOp, TpyChainedCompare, TpyUnaryOp, TpyMethodCall,
                              TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
-                             TpyBoolLiteral, TpyNoneLiteral, TpyArrayLiteral, TpyListRepeat,
-                             TpyDictLiteral, TpySetLiteral, TpyTupleLiteral, TpyFString,
-                             TpyIfExpr))
+                             TpyBoolLiteral, TpyNoneLiteral,
+                             TpyTupleLiteral, TpyFString,
+                             TpyIfExpr) + CONTAINER_LITERAL_NODES)
 
 
 def _scan_walrus_in_expr(expr: TpyExpr | None, declared: set[str],

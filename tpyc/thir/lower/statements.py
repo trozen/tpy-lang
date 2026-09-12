@@ -2774,12 +2774,15 @@ def _lower_hoist_predecls(hoists: dict, declared: dict[str, TpyType],
 def _rebind_rvalue_source_ok(init: TpyExpr, target_t: TpyType,
                              analyzer) -> bool:
     """The rvalue shapes a slot rebind admits (`__slot_N = <init>`): a
-    shape-checked container literal, an F1-record rvalue, or a
-    container-returning by-value/Own call (the storage-call family -- the
-    rebind render is source-shape-blind past is_rvalue_source; these are
-    the vetted slices of it)."""
+    shape-checked container literal or comprehension, an F1-record rvalue,
+    or a container-returning by-value/Own call (the storage-call family --
+    the rebind render is source-shape-blind past is_rvalue_source; these
+    are the vetted slices of it). Every sink that admits through here
+    lowers the source through `_lower_rebind_rvalue`."""
     if isinstance(init, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral)):
         return _container_literal_shape_ok(init, target_t, analyzer)
+    if _container_comp_arg(init, target_t):
+        return True
     if _record_rvalue_source_shape(init, analyzer):
         return True
     # `copy(x)` of a bare plain F1-record name: the copy-construct rvalue
@@ -2833,6 +2836,26 @@ def _rebind_rvalue_use(init: TpyExpr) -> '_ExprUse':
     if isinstance(init, (TpyCall, TpyMethodCall)):
         return _ExprUse(result=_ExprResultUse.STORAGE, allow_temps=True)
     return _ExprUse()
+
+
+def _lower_rebind_rvalue(init: TpyExpr, slot_t: TpyType, lc: '_LowerCtx',
+                         declared: dict[str, TpyType], loc) -> THIRExpr:
+    """The value a slot rebind assigns (`__slot_N = <init>` at every sink
+    `_rebind_rvalue_source_ok` admits): a comprehension renders its whole
+    stmt-expr into the slot -- dispatched HERE because the generic
+    `_lower_expr` has no comprehension arm -- a `copy(x)` its
+    copy-construct rvalue, anything else the plain storage-sink lowering."""
+    if type(init) in _comprehensions._COMP_KINDS:
+        _witness("reseat.rvalue_comp")
+        return _comprehensions._lower_comprehension(
+            init, slot_t, lc, declared,
+            _comp_shadow_pointers(lc.pointers, declared, lc.analyzer))
+    value = _lower_copy_record(init, lc, declared, loc=loc)
+    if value is None:
+        value = _lower_expr(init, lc, declared,
+                            use=replace(_rebind_rvalue_use(init),
+                                        slot_target=slot_t))
+    return value
 
 
 def _value_hoist_entry(name: str, vtype: TpyType,
@@ -3621,14 +3644,23 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
         if isinstance(stmt.init, (TpyArrayLiteral, TpyDictLiteral,
                                   TpySetLiteral)):
             _witness("decl.container_rebind_slot")
-        # A decl is a flush position: the emitter drains the init's arg
-        # temps before the `T __slot_N = <init>;` line.
-        return THIRVarDecl(
-            name=stmt.name, resolved_type=vtype,
-            init=_lower_expr(
+        if type(stmt.init) in _comprehensions._COMP_KINDS:
+            # A comprehension fills the init slot with its whole stmt-expr
+            # (`std::vector<T> __slot_1 = ({...});`) -- the generic
+            # `_lower_expr` has no comprehension arm.
+            _witness("decl.comp_rebind_slot")
+            init = _comprehensions._lower_comprehension(
+                stmt.init, vtype, lc, declared,
+                _comp_shadow_pointers(lc.pointers, declared, lc.analyzer))
+        else:
+            # A decl is a flush position: the emitter drains the init's arg
+            # temps before the `T __slot_N = <init>;` line.
+            init = _lower_expr(
                 stmt.init, lc, declared,
                 use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
-                             slot_target=vtype, allow_temps=True)),
+                             slot_target=vtype, allow_temps=True))
+        return THIRVarDecl(
+            name=stmt.name, resolved_type=vtype, init=init,
             cpp_type=lc.render_type(vtype), form=Form.BORROW, is_const=is_const,
             cpp_local_representation=binding, loc=loc)
     if (binding is LocalBinding.POINTER
@@ -8638,17 +8670,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 note_detail("reseat.opt_storage_source")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
             _witness("reseat.opt_storage")
-            reseat_value = _lower_copy_record(stmt.init, lc, declared,
-                                              loc=loc)
-            if reseat_value is None:
-                reseat_value = _lower_expr(
-                    stmt.init, lc, declared,
-                    use=replace(_rebind_rvalue_use(stmt.init),
-                                slot_target=target_t))
             return THIRAssign(
                 target=THIRName(result_type=target_t, name=stmt.name,
                                 loc=loc),
-                value=reseat_value, loc=loc)
+                value=_lower_rebind_rvalue(stmt.init, target_t, lc, declared,
+                                           loc),
+                loc=loc)
         # A None reseat of a wide-opt POINTER binding nulls the pointer
         # (`z = nullptr;`) -- slot or no slot; checked before the
         # BRANCH_RVALUE arm, which would misclassify the literal as a
@@ -8687,16 +8714,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 note_detail("reseat.branch_rvalue_source")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
             _witness("reseat.branch_rvalue")
-            reseat_value = _lower_copy_record(stmt.init, lc, declared,
-                                              loc=loc)
-            if reseat_value is None:
-                reseat_value = _lower_expr(
-                    stmt.init, lc, declared,
-                    use=replace(_rebind_rvalue_use(stmt.init),
-                                slot_target=target_t))
             return THIRPtrLocalRebind(
                 name=stmt.name, kind=PtrSlotKind.BRANCH_RVALUE,
-                value=reseat_value,
+                value=_lower_rebind_rvalue(stmt.init, target_t, lc, declared,
+                                           loc),
                 val_cpp=lc.render_type(slot_t), loc=loc)
         # An OPT_STORAGE_CALL-declared name reseats by re-filling ITS slot
         # and re-lifting (`__slot_1 = make(43); z =
@@ -8834,17 +8855,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                             and _witness("reseat.rvalue_op"))):
                     note_detail("decl.rebind_source")
                     raise ThirUnsupported(stmt_reject_reason(stmt))
-                reseat_value = _lower_copy_record(stmt.init, lc, declared,
-                                                  loc=loc)
-                if reseat_value is None:
-                    reseat_value = _lower_expr(
-                        stmt.init, lc, declared,
-                        use=replace(_rebind_rvalue_use(stmt.init),
-                                    slot_target=declared[stmt.name]))
                 return THIRAssign(
                     target=THIRName(result_type=vtype, name=stmt.name,
                                     loc=loc),
-                    value=reseat_value, loc=loc)
+                    value=_lower_rebind_rvalue(
+                        stmt.init, declared[stmt.name], lc, declared, loc),
+                    loc=loc)
             # An LVALUE reseat of a slot-holding name leaves the slot
             # untouched and re-points the alias (`p = &(lvalue);`) -- fall
             # through to the pointer reseat arms below.

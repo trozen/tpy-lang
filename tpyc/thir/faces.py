@@ -1196,6 +1196,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # with a container-literal init/reseat -- `std::vector<T>* xs = &__slot_1;
     # ... xs = &*(__slot_2 = {...});`).
     "decl.container_rebind_slot",
+    # ... and the comprehension init of the same two-slot machinery
+    # (`std::vector<T> __slot_1 = ({...});`).
+    "decl.comp_rebind_slot",
     # Runtime-BigInt `.to_fixed_check<T>()` narrows (lowering; the
     # subscript-index / slice-bound / aug-assign / enum-from_value wraps).
     "narrow.subscript_index",       # `i.to_fixed_check<int32_t>()` (reads + del)
@@ -2353,6 +2356,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "reseat.opt_storage_comp",      # ... its comprehension source (the whole
                                     # stmt-expr assigns into the optional)
     "reseat.branch_rvalue",         # lazy-slot rvalue reseat of a branch hoist
+    "reseat.rvalue_comp",           # a comprehension source at any slot
+                                    # rebind (`&*(__slot_N = ({...}))`)
     "reseat.storage_name",          # `x = base;` -> `x = &(base);` lvalue lift
     "reseat.param_name",            # `x = b;` over a record param's T& lvalue
     "reseat.borrow_call",           # `x = pick(s);` -> `x = &(pick(s));`
